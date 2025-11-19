@@ -1,0 +1,427 @@
+//
+//  SpeechTranscriber.swift
+//  fastv
+//
+//  Created by rocky on 2025/11/19.
+//
+
+import Foundation
+import AVFoundation
+
+struct SpeechTranscriber {
+    // 使用项目资源目录中的模型
+    private static var modelPath: URL? {
+        // 首先尝试在子目录中查找
+        if let url = Bundle.main.url(forResource: "model", withExtension: "onnx", subdirectory: "Models/sensevoice-small") {
+            return url
+        }
+        // 如果不在子目录，尝试在 Resources 根目录查找
+        return Bundle.main.url(forResource: "model", withExtension: "onnx")
+    }
+    
+    private static var tokensPath: URL? {
+        // 首先尝试在子目录中查找
+        if let url = Bundle.main.url(forResource: "tokens", withExtension: "json", subdirectory: "Models/sensevoice-small") {
+            return url
+        }
+        // 如果不在子目录，尝试在 Resources 根目录查找
+        return Bundle.main.url(forResource: "tokens", withExtension: "json")
+    }
+    
+    private static var configPath: URL? {
+        // 首先尝试在子目录中查找
+        if let url = Bundle.main.url(forResource: "config", withExtension: "yaml", subdirectory: "Models/sensevoice-small") {
+            return url
+        }
+        // 如果不在子目录，尝试在 Resources 根目录查找
+        return Bundle.main.url(forResource: "config", withExtension: "yaml")
+    }
+    
+    // 缓存 token 映射
+    private static var tokenMap: [Int: String]?
+    
+    /// 从音频文件转文字
+    /// - Parameter audioURL: 音频文件 URL
+    /// - Returns: 转录的文本
+    static func transcribe(audioURL: URL) async throws -> String {
+        // 1. 预处理音频：转换为 16kHz 单声道 WAV
+        let processedAudioURL = try await preprocessAudio(audioURL: audioURL)
+        defer {
+            // 清理临时文件
+            try? FileManager.default.removeItem(at: processedAudioURL)
+        }
+        
+        // 2. 提取音频特征
+        // 获取 CMVN 文件路径
+        var cmvnURL: URL? = nil
+        
+        // 尝试多种路径查找方式
+        // 方式1: 使用 subdirectory
+        cmvnURL = Bundle.main.url(forResource: "am", withExtension: "mvn", subdirectory: "sensevoice-small")
+        
+        // 方式2: 如果方式1失败，尝试直接查找（文件可能在根目录）
+        if cmvnURL == nil {
+            cmvnURL = Bundle.main.url(forResource: "am", withExtension: "mvn")
+        }
+        
+        // 方式3: 尝试查找完整路径
+        if cmvnURL == nil {
+            if let resourcePath = Bundle.main.resourcePath {
+                let fullPath = (resourcePath as NSString).appendingPathComponent("sensevoice-small/am.mvn")
+                if FileManager.default.fileExists(atPath: fullPath) {
+                    cmvnURL = URL(fileURLWithPath: fullPath)
+                }
+            }
+        }
+        
+        // 方式4: 尝试查找 Resources 目录下的文件
+        if cmvnURL == nil {
+            if let resourcePath = Bundle.main.resourcePath {
+                let fullPath = (resourcePath as NSString).appendingPathComponent("am.mvn")
+                if FileManager.default.fileExists(atPath: fullPath) {
+                    cmvnURL = URL(fileURLWithPath: fullPath)
+                }
+            }
+        }
+        
+        #if DEBUG
+        if cmvnURL == nil {
+            print("警告：未找到 am.mvn 文件，特征可能未归一化")
+            print("尝试查找的路径:")
+            if let resourcePath = Bundle.main.resourcePath {
+                print("  Resource Path: \(resourcePath)")
+                print("  尝试路径1: \(resourcePath)/sensevoice-small/am.mvn")
+                print("  尝试路径2: \(resourcePath)/am.mvn")
+                
+                // 列出所有资源文件
+                if let files = try? FileManager.default.contentsOfDirectory(atPath: resourcePath) {
+                    print("  Resource 目录下的文件: \(files.prefix(10))")
+                }
+                if let sensevoicePath = Bundle.main.path(forResource: "sensevoice-small", ofType: nil, inDirectory: nil) {
+                    print("  sensevoice-small 路径: \(sensevoicePath)")
+                    if let files = try? FileManager.default.contentsOfDirectory(atPath: sensevoicePath) {
+                        print("  sensevoice-small 目录下的文件: \(files)")
+                    }
+                }
+            }
+        } else {
+            print("成功找到 am.mvn 文件: \(cmvnURL!.path)")
+        }
+        #endif
+        
+        let features = try await AudioFeatureExtractor.extractMelFeatures(from: processedAudioURL, cmvnURL: cmvnURL)
+        
+        // 3. 加载模型并推理
+        let transcript = try await performTranscription(features: features)
+        
+        return transcript
+    }
+    
+    /// 预处理音频：转换为 16kHz 单声道 WAV 格式
+    private static func preprocessAudio(audioURL: URL) async throws -> URL {
+        let asset = AVAsset(url: audioURL)
+        
+        // 创建输出 URL
+        let tempDir = FileManager.default.temporaryDirectory
+        let outputURL = tempDir.appendingPathComponent(UUID().uuidString + ".wav")
+        
+        // 检查并删除已存在的文件
+        if FileManager.default.fileExists(atPath: outputURL.path) {
+            try FileManager.default.removeItem(at: outputURL)
+        }
+        
+        // 创建音频格式设置（16kHz 单声道 PCM）
+        let audioSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: 16000,
+            AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsNonInterleaved: false  // 单声道使用交错格式
+        ]
+        
+        // 创建可编辑组合
+        let composition = AVMutableComposition()
+        let audioTracks = try await asset.loadTracks(withMediaType: .audio)
+        guard !audioTracks.isEmpty else {
+            throw VideoProcessingError.noAudioTrack
+        }
+        
+        // 将所有音频轨道添加到 composition，这样会自动混合所有声道
+        var compositionAudioTracks: [AVMutableCompositionTrack] = []
+        let duration = try await asset.load(.duration)
+        
+        for audioTrack in audioTracks {
+            guard let compositionAudioTrack = composition.addMutableTrack(
+                withMediaType: .audio,
+                preferredTrackID: kCMPersistentTrackID_Invalid
+            ) else {
+                continue
+            }
+            
+            try compositionAudioTrack.insertTimeRange(
+                CMTimeRange(start: .zero, duration: duration),
+                of: audioTrack,
+                at: .zero
+            )
+            
+            compositionAudioTracks.append(compositionAudioTrack)
+        }
+        
+        guard !compositionAudioTracks.isEmpty else {
+            throw VideoProcessingError.compositionFailed
+        }
+        
+        #if DEBUG
+        print("找到 \(audioTracks.count) 个音频轨道，已全部添加到 composition")
+        // 检查每个轨道的声道数
+        for (index, track) in audioTracks.enumerated() {
+            do {
+                let formatDescriptions = try await track.load(.formatDescriptions)
+                if let formatDescription = formatDescriptions.first {
+                    let audioFormatDescription = formatDescription as! CMAudioFormatDescription
+                    // 尝试从格式描述中获取声道数
+                    let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(audioFormatDescription)
+                    if let asbd = asbd {
+                        let channelCount = Int(asbd.pointee.mChannelsPerFrame)
+                        print("音频轨道 \(index + 1): \(channelCount) 个声道")
+                    } else {
+                        print("音频轨道 \(index + 1): 无法获取声道信息")
+                    }
+                }
+            } catch {
+                print("音频轨道 \(index + 1): 无法加载格式描述 (\(error.localizedDescription))")
+            }
+        }
+        #endif
+        
+        // 使用 AVAssetReader 和 AVAssetWriter 进行格式转换
+        // AVAssetReaderAudioMixOutput 会自动将所有轨道混合成单声道
+        let reader = try AVAssetReader(asset: composition)
+        let audioOutput = AVAssetReaderAudioMixOutput(audioTracks: compositionAudioTracks, audioSettings: nil)
+        
+        guard reader.canAdd(audioOutput) else {
+            throw VideoProcessingError.transcriptionFailed("无法添加音频输出")
+        }
+        reader.add(audioOutput)
+        
+        // 创建 Writer
+        let writer = try AVAssetWriter(outputURL: outputURL, fileType: .wav)
+        let audioInput = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
+        
+        guard writer.canAdd(audioInput) else {
+            throw VideoProcessingError.transcriptionFailed("无法添加音频输入")
+        }
+        writer.add(audioInput)
+        
+        // 开始转换
+        guard reader.startReading() else {
+            throw VideoProcessingError.transcriptionFailed("无法开始读取音频: \(reader.error?.localizedDescription ?? "未知错误")")
+        }
+        
+        guard writer.startWriting() else {
+            throw VideoProcessingError.transcriptionFailed("无法开始写入音频: \(writer.error?.localizedDescription ?? "未知错误")")
+        }
+        
+        writer.startSession(atSourceTime: .zero)
+        
+        // 处理音频数据
+        return try await withCheckedThrowingContinuation { continuation in
+            let queue = DispatchQueue(label: "audio.conversion")
+            audioInput.requestMediaDataWhenReady(on: queue) {
+                while audioInput.isReadyForMoreMediaData {
+                    guard let sampleBuffer = audioOutput.copyNextSampleBuffer() else {
+                        audioInput.markAsFinished()
+                        writer.finishWriting {
+                            if let error = writer.error {
+                                continuation.resume(throwing: VideoProcessingError.transcriptionFailed("音频预处理失败: \(error.localizedDescription)"))
+                            } else {
+                                continuation.resume(returning: outputURL)
+                            }
+                        }
+                        return
+                    }
+                    if !audioInput.append(sampleBuffer) {
+                        audioInput.markAsFinished()
+                        writer.finishWriting {
+                            if let error = writer.error {
+                                continuation.resume(throwing: VideoProcessingError.transcriptionFailed("音频预处理失败: \(error.localizedDescription)"))
+                            } else {
+                                continuation.resume(returning: outputURL)
+                            }
+                        }
+                        return
+                    }
+                }
+            }
+        }
+    }
+    
+    /// 执行语音转文字推理
+    private static func performTranscription(features: [[Float]]) async throws -> String {
+        // 检查模型文件是否存在
+        guard let tokensPath = tokensPath else {
+            throw VideoProcessingError.modelLoadFailed("tokens 文件未找到")
+        }
+        
+        // 加载 token 映射
+        let tokenMap = try await loadTokenMap(from: tokensPath)
+        
+        // 准备输入：将特征转换为模型输入格式
+        // 输入形状：[batch_size=1, sequence_length, feature_dim]
+        let inputFeatures: [[[Float]]] = [features]
+        
+        // 使用 ONNX Runtime（通过 C wrapper）
+        guard let modelPath = modelPath else {
+            throw VideoProcessingError.modelLoadFailed(
+                """
+                模型文件未找到。
+                
+                请确认：
+                1. model.onnx 文件在 fastv/Resources/Models/sensevoice-small/ 目录中
+                2. 文件已添加到 Xcode 项目的 Target Membership
+                
+                详细说明请参考：INSTALL_GUIDE.md
+                """
+            )
+        }
+        
+        #if DEBUG
+        print("使用 ONNX Runtime 进行推理")
+        print("模型路径: \(modelPath.path)")
+        print("输入特征数量: \(features.count) 帧, 每帧 \(features.first?.count ?? 0) 维")
+        if let firstFrame = features.first {
+            let minVal = firstFrame.min() ?? 0
+            let maxVal = firstFrame.max() ?? 0
+            let avgVal = firstFrame.reduce(0, +) / Float(firstFrame.count)
+            print("特征值范围: min=\(minVal), max=\(maxVal), avg=\(avgVal)")
+            
+            // 检查特征值是否全为 0 或异常
+            let nonZeroCount = firstFrame.filter { abs($0) > 1e-6 }.count
+            print("非零特征数量: \(nonZeroCount)/\(firstFrame.count)")
+        }
+        
+        // 检查所有帧的特征值
+        var allMin: Float = Float.infinity
+        var allMax: Float = -Float.infinity
+        var totalSum: Float = 0
+        var totalCount = 0
+        for frame in features {
+            if let frameMin = frame.min() { allMin = min(allMin, frameMin) }
+            if let frameMax = frame.max() { allMax = max(allMax, frameMax) }
+            totalSum += frame.reduce(0, +)
+            totalCount += frame.count
+        }
+        let allAvg = totalCount > 0 ? totalSum / Float(totalCount) : 0
+        print("所有帧特征值范围: min=\(allMin), max=\(allMax), avg=\(allAvg)")
+        #endif
+        
+        let onnxWrapper = ONNXRuntimeWrapper()
+        try onnxWrapper.loadModel(from: modelPath.path)
+        
+        // 运行推理
+        let tokenIDs = try onnxWrapper.runInference(input: inputFeatures)
+        
+        // 后处理：token 解码和文本规范化
+        let text = postprocessTokens(tokenIDs: tokenIDs, tokenMap: tokenMap)
+        
+        return text
+    }
+    
+    /// 加载 token 映射表
+    private static func loadTokenMap(from url: URL) async throws -> [Int: String] {
+        if let cached = tokenMap {
+            return cached
+        }
+        
+        let data = try Data(contentsOf: url)
+        let tokens = try JSONDecoder().decode([String].self, from: data)
+        
+        var map: [Int: String] = [:]
+        for (index, token) in tokens.enumerated() {
+            map[index] = token
+        }
+        
+        tokenMap = map
+        return map
+    }
+    
+    /// 后处理：将 token IDs 转换为文本
+    private static func postprocessTokens(tokenIDs: [Int], tokenMap: [Int: String]) -> String {
+        // 调试：打印原始 token IDs
+        #if DEBUG
+        print("原始 token IDs: \(tokenIDs.prefix(20))... (共 \(tokenIDs.count) 个)")
+        #endif
+        
+        // 1. 过滤特殊 token
+        let sosToken = 1  // <s>
+        let eosToken = 2  // </s>
+        let unkToken = 0  // <unk>
+        
+        var filteredTokens = tokenIDs.filter { token in
+            token != sosToken && token != eosToken && token != unkToken && token >= 0
+        }
+        
+        #if DEBUG
+        print("过滤后 token IDs: \(filteredTokens.prefix(20))... (共 \(filteredTokens.count) 个)")
+        #endif
+        
+        // 2. CTC 去重：移除连续重复的 token
+        filteredTokens = removeConsecutiveDuplicates(filteredTokens)
+        
+        // 3. Token 到文本转换，同时过滤 SenseVoice 特殊 token
+        var textParts: [String] = []
+        var specialTokensFound: [String] = []
+        for tokenID in filteredTokens {
+            if let token = tokenMap[tokenID] {
+                // 过滤所有 SenseVoice 特殊 token（以 <| 开头，以 |> 结尾）
+                // 只有当 token 既以 <| 开头又以 |> 结尾时，才是特殊 token，需要过滤
+                let isSpecialToken = token.hasPrefix("<|") && token.hasSuffix("|>")
+                if isSpecialToken {
+                    specialTokensFound.append(token)
+                } else {
+                textParts.append(token)
+            }
+        }
+        }
+        
+        #if DEBUG
+        if !specialTokensFound.isEmpty {
+            print("过滤掉的特殊 token: \(specialTokensFound)")
+        }
+        print("保留的 token 文本: \(textParts.prefix(10))... (共 \(textParts.count) 个)")
+        #endif
+        
+        // 4. 合并文本
+        var text = textParts.joined(separator: "")
+        
+        // 5. 处理 SentencePiece 格式（移除 ▁ 前缀，转换为空格）
+        text = text.replacingOccurrences(of: "▁", with: " ")
+        
+        // 6. 清理多余空格
+        text = text.replacingOccurrences(of: "  ", with: " ")
+        text = text.trimmingCharacters(in: .whitespaces)
+        
+        #if DEBUG
+        print("最终文本: '\(text)'")
+        #endif
+        
+        return text.isEmpty ? "（无语音内容）" : text
+    }
+    
+    /// 移除连续重复的 token（CTC 去重）
+    private static func removeConsecutiveDuplicates(_ tokens: [Int]) -> [Int] {
+        guard !tokens.isEmpty else { return [] }
+        
+        var result: [Int] = [tokens[0]]
+        for i in 1..<tokens.count {
+            if tokens[i] != tokens[i - 1] {
+                result.append(tokens[i])
+            }
+        }
+        
+        return result
+    }
+}
+

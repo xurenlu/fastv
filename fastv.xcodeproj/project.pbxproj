@@ -102,6 +102,8 @@
 				5C04237A2ECD792D00821B50 /* Sources */,
 				5C04237B2ECD792D00821B50 /* Frameworks */,
 				5C04237C2ECD792D00821B50 /* Resources */,
+				5C0423AC2ECD793000821B50 /* Copy ONNX Runtime Library */,
+				5C0423AD2ECD793000821B50 /* Sign ONNX Runtime Library */,
 			);
 			buildRules = (
 			);
@@ -231,6 +233,51 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		5C0423AC2ECD793000821B50 /* Copy ONNX Runtime Library */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Libraries/onnxruntime/current/lib/libonnxruntime.1.23.2.dylib",
+			);
+			name = "Copy ONNX Runtime Library";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libonnxruntime.1.23.2.dylib",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "mkdir -p \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\ncp -f \"${SRCROOT}/Libraries/onnxruntime/current/lib/libonnxruntime.1.23.2.dylib\" \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libonnxruntime.1.23.2.dylib\"\n# 创建符号链接\ncd \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\nrm -f libonnxruntime.dylib\nln -s libonnxruntime.1.23.2.dylib libonnxruntime.dylib\n# 移除旧的代码签名\ncodesign --remove-signature \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libonnxruntime.1.23.2.dylib\" 2>/dev/null || true\n# 查找完整的签名身份\nFULL_SIGN_IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep \"${DEVELOPMENT_TEAM}\" | grep \"Apple Development\" | head -1 | sed 's/.*\"\\(.*\\)\".*/\\1/' || echo \"\")\nif [ -n \"${FULL_SIGN_IDENTITY}\" ]; then\n    codesign --force --sign \"${FULL_SIGN_IDENTITY}\" --timestamp=none \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libonnxruntime.1.23.2.dylib\" 2>/dev/null || true\n    echo \"✅ 库文件已使用 ${FULL_SIGN_IDENTITY} 签名\"\nelif [ -n \"${CODE_SIGN_IDENTITY}\" ] && [ \"${CODE_SIGN_IDENTITY}\" != \"-\" ]; then\n    codesign --force --sign \"${CODE_SIGN_IDENTITY}\" --timestamp=none \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libonnxruntime.1.23.2.dylib\" 2>/dev/null || true\n    echo \"✅ 库文件已使用 ${CODE_SIGN_IDENTITY} 签名\"\nelse\n    codesign --force --sign - --timestamp=none \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libonnxruntime.1.23.2.dylib\" 2>/dev/null || true\nfi\n";
+		};
+		5C0423AD2ECD793000821B50 /* Sign ONNX Runtime Library */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libonnxruntime.1.23.2.dylib",
+				"$(BUILT_PRODUCTS_DIR)/$(WRAPPER_NAME)",
+			);
+			name = "Sign ONNX Runtime Library";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# 在应用签名之后（如果已签名），使用与应用相同的签名重新签名库文件\nLIB_PATH=\"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libonnxruntime.1.23.2.dylib\"\nAPP_PATH=\"${BUILT_PRODUCTS_DIR}/${WRAPPER_NAME}\"\nif [ -f \"${LIB_PATH}\" ] && [ -d \"${APP_PATH}\" ]; then\n    # 使用完整的签名身份（硬编码以确保一致性）\n    SIGN_IDENTITY=\"Apple Development: suhang hu (9K5FH5XTHD)\"\n    # 如果应用已签名，获取应用的签名身份\n    APP_SIGN=$(codesign -dvv \"${APP_PATH}\" 2>&1 | grep \"Authority=\" | head -1 | sed 's/.*Authority=\\([^)]*)\\).*/\\1/' 2>/dev/null || echo \"\")\n    if [ -n \"${APP_SIGN}\" ]; then\n        SIGN_IDENTITY=\"${APP_SIGN}\"\n    fi\n    # 重新签名库文件\n    codesign --remove-signature \"${LIB_PATH}\" 2>/dev/null || true\n    codesign --force --sign \"${SIGN_IDENTITY}\" --timestamp=none \"${LIB_PATH}\" 2>/dev/null || true\n    # 重新签名整个应用以确保签名一致性\n    codesign --force --deep --sign \"${SIGN_IDENTITY}\" --timestamp=none \"${APP_PATH}\" 2>/dev/null || true\n    echo \"✅ 库文件和应用已使用 ${SIGN_IDENTITY} 签名\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		5C04237A2ECD792D00821B50 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -307,7 +354,7 @@
 				DEVELOPMENT_TEAM = W49B66SUW3;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -371,7 +418,7 @@
 				DEVELOPMENT_TEAM = W49B66SUW3;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -398,17 +445,30 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = W49B66SUW3;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Libraries/onnxruntime/current/include",
+					"$(SRCROOT)/ThirdParty",
+				);
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
+					"$(SRCROOT)/Libraries/onnxruntime/current/lib",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Libraries/onnxruntime/current/lib",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lonnxruntime",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -416,6 +476,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/fastv/Services/ONNXRuntimeBridge.h";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -430,17 +491,30 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = W49B66SUW3;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Libraries/onnxruntime/current/include",
+					"$(SRCROOT)/ThirdParty",
+				);
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
+					"$(SRCROOT)/Libraries/onnxruntime/current/lib",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Libraries/onnxruntime/current/lib",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lonnxruntime",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -448,6 +522,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/fastv/Services/ONNXRuntimeBridge.h";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 			};
