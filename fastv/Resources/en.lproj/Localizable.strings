@@ -1,0 +1,202 @@
+/* 
+  Localizable.strings
+  typecho
+
+  English
+*/
+
+// General
+"app.name" = "typecho";
+"ok" = "OK";
+"cancel" = "Cancel";
+"save" = "Save";
+"delete" = "Delete";
+"copy" = "Copy";
+"settings" = "Settings";
+"help" = "Help";
+"error" = "Error";
+"history" = "History";
+"copied" = "Copied";
+"more.options" = "More Options";
+"not.set" = "Not Set";
+"clear" = "Clear";
+"records" = "records";
+
+// Voice Input
+"voice.input" = "Voice Input";
+"voice.input.history" = "History";
+"clear.all" = "Clear All";
+"no.records" = "No Records";
+"press.shortcut.to.start" = "Press shortcut to start voice input";
+"press.shortcut.to.speak" = "Press shortcut to speak";
+"to.speak" = "to speak";
+"press.and.hold.to.speak" = "Press and hold to speak, release to end";
+"press.and.hold" = "Press and Hold:";
+"enable.voice.input.in.settings" = "Please enable voice input in settings";
+"transcribing" = "Transcribing...";
+
+// Settings
+"enable.voice.input" = "Enable Voice Input";
+"global.shortcut" = "Global Shortcut";
+"current.shortcut" = "Current Shortcut:";
+"click.to.capture.shortcut" = "Click to Capture Shortcut";
+"press.to.capture.shortcut" = "Press shortcut...";
+"set.shortcut" = "Set Shortcut";
+"language" = "Language";
+"recognition.language" = "Recognition Language";
+"default.language" = "Default Language";
+"auto.detect" = "Auto Detect";
+"chinese" = "Chinese";
+"english" = "English";
+"japanese" = "Japanese";
+"korean" = "Korean";
+"waveform.window.position" = "Toolbar Position";
+"waveform.window.size" = "Toolbar Size";
+"waveform.window.color" = "Toolbar Color";
+"permission.test" = "Permission Test";
+"test.microphone.permission" = "Test Microphone Permission";
+"test.show.toolbar" = "Test Show Toolbar";
+"cleanup.toolbar.window" = "Cleanup Toolbar Window";
+"voice.input.section" = "Voice Input";
+"voice.input.description" = "Press shortcut to start voice input, release to automatically recognize and insert text. Requires microphone and accessibility permissions.";
+"fn.key.hint" = "Tip: Press FN alone for voice input only. Press FN+Ctrl for voice input followed by AI optimization (remove filler words, add punctuation, fix typos).";
+
+// Statistics
+"total.duration" = "Total Duration";
+"total.characters" = "Total Characters";
+"characters.per.minute" = "chars/min";
+"minutes" = "min";
+"hours" = "hours";
+"characters" = "chars";
+"key" = "Key";
+"minute" = "min";
+
+// Onboarding
+"onboarding.welcome" = "Welcome to typecho";
+"onboarding.set.shortcut.title" = "Set Shortcut";
+"onboarding.set.shortcut.description" = "Please set a global shortcut to start voice input";
+"onboarding.select.language.title" = "Select Default Language";
+"onboarding.select.language.description" = "Select your most commonly used voice input language. You can change it anytime in settings.";
+"onboarding.download.model.title" = "Download Model";
+"onboarding.download.model.description" = "First-time use requires downloading the voice recognition model file";
+"onboarding.model.size.warning" = "Model file is large (894MB), please be patient";
+"onboarding.model.other.files" = "Other configuration files will use built-in resources";
+"onboarding.downloading" = "Downloading";
+"onboarding.download.complete" = "Download Complete";
+"onboarding.start.download" = "Start Download";
+"onboarding.previous" = "Previous";
+"onboarding.next" = "Next";
+"onboarding.complete" = "Complete";
+"onboarding.model.ready" = "Model File Ready";
+
+// Shortcut Capture Window
+"shortcut.capture.title" = "Set Shortcut";
+"shortcut.capture.description" = "Please press the shortcut combination you want to set";
+"shortcut.capture.current" = "Current Shortcut:";
+"shortcut.capture.not.set" = "Not Set";
+"shortcut.capture.hint" = "Tip: Recommended to use FN key or FN+Control key.";
+"shortcut.capture.stop" = "Stop Capturing (Press shortcut to set)";
+"shortcut.capture.click" = "Click to Set Shortcut";
+"shortcut.capture.press.hint" = "Please press the shortcut to set (FN key supported)";
+
+// Language Selection
+"select.language" = "Select Language";
+"language.description" = "This will be your default voice input language.";
+
+// Model Download
+"model.download.status.preparing" = "Preparing download...";
+"model.download.status.downloading" = "Downloading %@... %d%%";
+"model.download.status.complete" = "%@ download complete";
+"model.download.status.failed" = "Download %@ failed: %@";
+"model.download.status.all.complete" = "Download Complete";
+"model.download.cancel" = "Cancel Download";
+"model.download.error" = "Error: %@";
+"model.download.error.invalid.url" = "Invalid URL";
+"model.download.error.temp.file.not.found" = "Temporary download file not found";
+"model.download.already.exists" = "%@ already exists, skipping";
+"model.download.url.label" = "Download URL:";
+"model.download.edit.url" = "Edit URL";
+"model.download.url.placeholder" = "Enter model download URL";
+
+// Welcome Page
+"welcome.title" = "Welcome to typecho";
+"welcome.subtitle" = "Smart Voice Input";
+"welcome.feature.global.shortcut" = "Global Shortcut";
+"welcome.feature.global.shortcut.desc" = "Set shortcuts to quickly start voice input in any application";
+"welcome.feature.real.time" = "Real-time Voice Recognition";
+"welcome.feature.real.time.desc" = "Use local AI models to quickly and accurately convert speech to text";
+"welcome.feature.ai.optimization" = "AI Smart Optimization";
+"welcome.feature.ai.optimization.desc" = "Automatically remove filler words, add punctuation, and fix typos";
+"welcome.feature.multilanguage" = "Multi-language Support";
+"welcome.feature.multilanguage.desc" = "Supports Chinese, English, Japanese and other languages";
+"welcome.start.using" = "Start Using";
+
+// Permissions
+"microphone.permission.required" = "Microphone Permission Required";
+"microphone.permission.description" = "Voice input requires microphone access.\n\nPlease follow these steps:\n1. Open \"System Settings\"\n2. Go to \"Privacy & Security\" > \"Microphone\"\n3. Find typecho and check it\n4. Restart the app";
+"open.system.settings" = "Open System Settings";
+"later" = "Later";
+"microphone.in.use" = "Microphone In Use";
+"microphone.in.use.description" = "Microphone is being used by another app (e.g., Lightning Talk).\n\nSolutions:\n1. Close other voice input apps\n2. Or use different shortcuts to avoid conflicts\n3. Or use this app when other apps are not recording";
+"got.it" = "Got It";
+
+// Key Names
+"key.left.control" = "Left Control";
+"key.fn" = "FN";
+"key.space" = "Space";
+"key.return" = "Return";
+"key.esc" = "Esc";
+
+// AI Optimization Settings
+"ai.optimization.enable" = "Enable AI Text Optimization";
+"ai.optimization.section" = "AI Text Optimization";
+"ai.optimization.description" = "When enabled, recognized text will be optimized by AI to remove filler words, add punctuation, and fix typos.";
+"ai.optimization.description.detail" = "Default uses local Ollama service (http://127.0.0.1:11434), can also be configured to other compatible API endpoints.";
+"ai.shortcut.usage.hint" = "Important: Even with AI optimization enabled, you need to press a specific shortcut combination to trigger AI correction.";
+"ai.shortcut.normal" = "Normal Voice Input:";
+"ai.shortcut.with.ai" = "AI-Optimized Voice Input:";
+"ai.api.endpoint" = "API Endpoint";
+"ai.model.name" = "Model Name";
+"ai.model.example" = "e.g.: gemma2:2b";
+"ai.api.token" = "API Token (Optional)";
+"ai.api.token.placeholder" = "Leave empty to not use";
+"ai.timeout" = "Timeout";
+"ai.timeout.seconds" = "seconds";
+"ai.timeout.hint" = "Recommended: 2-5 seconds for local models, 10-30 seconds for remote APIs";
+"ai.system.prompt" = "System Prompt";
+"ai.system.prompt.reset" = "Reset to Default";
+"ai.system.prompt.reset.help" = "Reset to default system prompt";
+"ai.system.prompt.hint" = "Custom system prompt can control AI optimization behavior. Use {text} placeholder for original text (optional).";
+"ai.test.connection" = "Test Connection";
+"ai.test.connection.help" = "Test connection to Ollama API";
+"ai.fetch.models" = "Fetch Model List";
+"ai.fetch.models.help" = "Fetch available model list from Ollama";
+"ai.test.optimization" = "Test Text Optimization";
+"ai.test.optimization.help" = "Send test text to verify AI optimization functionality";
+"settings.title" = "Settings";
+"settings.done" = "Done";
+
+// Permission Alerts
+"permission.test.trigger" = "Trigger Permission Request";
+"permission.test.description" = "Will attempt to access microphone to trigger system permission dialog.\n\nIf permission dialog appears, please click \"Allow\".";
+"permission.request.title" = "Request Microphone Permission";
+"permission.request.description" = "System will show permission request dialog.\n\nPlease click \"Allow\" to authorize typecho to access microphone.";
+"permission.granted.title" = "✅ Microphone Permission Granted";
+"permission.granted.description" = "You have successfully granted microphone permission!\n\nYou can now use voice input feature.";
+"permission.already.granted.title" = "✅ Microphone Permission Granted";
+"permission.already.granted.description" = "You have already granted microphone permission.\n\nYou can use voice input feature directly.";
+"permission.denied.title" = "⚠️ Microphone Permission Denied";
+"permission.denied.description" = "Voice input requires microphone permission.\n\nPlease follow these steps to manually authorize:\n1. Open \"System Settings\"\n2. Go to \"Privacy & Security\" > \"Microphone\"\n3. Find typecho and check it";
+"continue" = "Continue";
+"great" = "Great";
+
+// AI Test Alerts
+"ai.connection.success.title" = "✅ Connection Successful";
+"ai.connection.success.description" = "Successfully connected to Ollama API!\n\nEndpoint: %@";
+"ai.connection.failed.title" = "❌ Connection Failed";
+"ai.connection.failed.description" = "Unable to connect to Ollama API.\n\nError: %@\n\nPlease check:\n1. Is Ollama running?\n2. Is API endpoint address correct?\n3. If using API Token, verify its validity";
+"ai.models.list.title" = "📋 Available Model List";
+"ai.models.list.empty" = "No models found.\n\nPlease use 'ollama pull' command to download models first.";
+"ai.models.list.found" = "Found %d available models:\n\n• %@\n\nYou can copy model names to the \"Model Name\" field above.";
+"ai.test.success.title" = "✅ Test Successful";
+"ai.test.success.description" = "AI optimization is working correctly!\n\nOriginal Text:\n%@\n\nOptimized:\n%@\n\nDuration: %@ seconds";

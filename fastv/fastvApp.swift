@@ -81,7 +81,7 @@ struct fastvApp: App {
             } else {
                 print("⚠️ [fastvApp] 辅助功能权限未授权，请求权限...")
                 print("💡 [fastvApp] 提示：系统将弹出权限请求对话框，请点击'打开系统偏好设置'")
-                print("💡 [fastvApp] 然后在'系统设置 > 隐私与安全性 > 辅助功能'中找到 fastv 并勾选")
+                print("💡 [fastvApp] 然后在'系统设置 > 隐私与安全性 > 辅助功能'中找到 妙打 并勾选")
                 TextInsertionService.requestAccessibilityPermission()
             }
         }
@@ -136,7 +136,7 @@ struct fastvApp: App {
                         print("💡 [fastvApp] 现在可以使用语音输入功能了")
                 } else {
                         print("❌ [fastvApp] 用户拒绝了麦克风权限")
-                        print("💡 [fastvApp] 如需使用语音输入，请在'系统设置 > 隐私与安全性 > 麦克风'中手动授权 fastv")
+                        print("💡 [fastvApp] 如需使用语音输入，请在'系统设置 > 隐私与安全性 > 麦克风'中手动授权 妙打")
                         
                         // 显示提示对话框
                         self.showMicrophonePermissionDeniedAlert()
@@ -147,7 +147,7 @@ struct fastvApp: App {
             print("✅ [fastvApp] 麦克风权限已授权")
         case .denied, .restricted:
             print("⚠️ [fastvApp] 麦克风权限被拒绝或受限")
-            print("💡 [fastvApp] 提示：请在'系统设置 > 隐私与安全性 > 麦克风'中找到 fastv 并勾选")
+            print("💡 [fastvApp] 提示：请在'系统设置 > 隐私与安全性 > 麦克风'中找到 妙打 并勾选")
             
             // 显示提示对话框
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
@@ -176,11 +176,11 @@ struct fastvApp: App {
     @MainActor
     private func showMicrophonePermissionDeniedAlert() {
         let alert = NSAlert()
-        alert.messageText = "需要麦克风权限"
-        alert.informativeText = "语音输入功能需要访问麦克风。\n\n请按以下步骤授权：\n1. 打开\"系统设置\"\n2. 进入\"隐私与安全性\" > \"麦克风\"\n3. 找到 fastv 并勾选\n4. 重启应用"
+        alert.messageText = NSLocalizedString("microphone.permission.required", comment: "")
+        alert.informativeText = NSLocalizedString("microphone.permission.description", comment: "")
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "打开系统设置")
-        alert.addButton(withTitle: "稍后")
+        alert.addButton(withTitle: NSLocalizedString("open.system.settings", comment: ""))
+        alert.addButton(withTitle: NSLocalizedString("later", comment: ""))
         
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
@@ -213,19 +213,19 @@ struct fastvApp: App {
             return
         }
         
-        // 设置快捷键监听回调
+        // 设置快捷键监听回调（使用带Ctrl状态的回调）
         print("🔧 [fastvApp] 设置快捷键回调函数")
-        GlobalShortcutMonitor.shared.onShortcutPressed = {
-            print("🎯 [fastvApp] onShortcutPressed 回调被触发")
+        GlobalShortcutMonitor.shared.onShortcutPressedWithCtrl = { hasCtrl in
+            print("🎯 [fastvApp] onShortcutPressed 回调被触发（Ctrl: \(hasCtrl)）")
             Task { @MainActor in
-                await handleShortcutPressed()
+                await handleShortcutPressed(hasCtrl: hasCtrl)
             }
         }
         
-        GlobalShortcutMonitor.shared.onShortcutReleased = {
-            print("🎯 [fastvApp] onShortcutReleased 回调被触发")
+        GlobalShortcutMonitor.shared.onShortcutReleasedWithCtrl = { hasCtrl in
+            print("🎯 [fastvApp] onShortcutReleased 回调被触发（Ctrl: \(hasCtrl)）")
             Task { @MainActor in
-                await handleShortcutReleased()
+                await handleShortcutReleased(hasCtrl: hasCtrl)
             }
         }
         
@@ -238,7 +238,7 @@ struct fastvApp: App {
     }
     
     @MainActor
-    private func handleShortcutPressed() async {
+    private func handleShortcutPressed(hasCtrl: Bool = false) async {
         print("🎤 [fastvApp] handleShortcutPressed: 开始处理快捷键按下事件")
         
         // 记录开始时间
@@ -285,10 +285,10 @@ struct fastvApp: App {
     @MainActor
     private func showMicrophoneInUseAlert() {
         let alert = NSAlert()
-        alert.messageText = "麦克风正在使用中"
-        alert.informativeText = "麦克风正被其他应用使用（如闪电说）。\n\n解决方法：\n1. 关闭其他语音输入应用\n2. 或使用不同的快捷键避免冲突\n3. 或在其他应用不录音时使用本应用"
+        alert.messageText = NSLocalizedString("microphone.in.use", comment: "")
+        alert.informativeText = NSLocalizedString("microphone.in.use.description", comment: "")
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "知道了")
+        alert.addButton(withTitle: NSLocalizedString("got.it", comment: ""))
         alert.runModal()
     }
     
@@ -296,11 +296,11 @@ struct fastvApp: App {
     @MainActor
     private func showMicrophonePermissionAlert() {
         let alert = NSAlert()
-        alert.messageText = "需要麦克风权限"
-        alert.informativeText = "语音输入功能需要访问麦克风。\n\n请按以下步骤授权：\n1. 打开\"系统设置\"\n2. 进入\"隐私与安全性\" > \"麦克风\"\n3. 找到 fastv 并勾选\n4. 重新尝试语音输入"
+        alert.messageText = NSLocalizedString("microphone.permission.required", comment: "")
+        alert.informativeText = NSLocalizedString("microphone.permission.description", comment: "")
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "打开系统设置")
-        alert.addButton(withTitle: "稍后")
+        alert.addButton(withTitle: NSLocalizedString("open.system.settings", comment: ""))
+        alert.addButton(withTitle: NSLocalizedString("later", comment: ""))
         
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
@@ -312,7 +312,7 @@ struct fastvApp: App {
     }
     
     @MainActor
-    private func handleShortcutReleased() async {
+    private func handleShortcutReleased(hasCtrl: Bool = false) async {
         print("🎤 [fastvApp] handleShortcutReleased: 开始处理快捷键释放事件")
         
         // 计算持续时间
@@ -355,9 +355,9 @@ struct fastvApp: App {
             var text = try await SpeechTranscriber.transcribe(recording: recording)
             print("✅ [fastvApp] 语音转文字成功: \(text.prefix(50))...")
             
-            // AI 优化（如果启用）
+            // AI 优化（如果启用且按了Ctrl键）
             let preferences = UserPreferences.shared
-            if preferences.enableAIOptimization {
+            if hasCtrl && preferences.enableAIOptimization {
                 print("🤖 [fastvApp] AI 优化已启用，开始优化文本（超时: \(preferences.aiTimeout)秒）...")
                 let aiStartTime = Date()
                 do {

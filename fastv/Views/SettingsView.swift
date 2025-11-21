@@ -17,79 +17,13 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    Toggle("提取第一帧", isOn: $preferences.extractFirstFrame)
-                    Toggle("提取最后一帧", isOn: $preferences.extractLastFrame)
-                    Toggle("提取音频", isOn: $preferences.extractAudio)
-                    
-                    Picker("音频格式", selection: $preferences.audioFormat) {
-                        ForEach(AudioFormat.allCases, id: \.self) { format in
-                            Text(format.displayName).tag(format)
-                        }
-                    }
-                } header: {
-                    Text("默认处理选项")
-                } footer: {
-                    Text("这些选项将作为下次处理视频时的默认设置")
-                }
-                
-                Section {
-                    Picker("图片格式", selection: $preferences.imageFormat) {
-                        ForEach(ImageFormat.allCases, id: \.self) { format in
-                            Text(format.displayName).tag(format)
-                        }
-                    }
-                    
-                    HStack {
-                        Text("最大宽度")
-                        Spacer()
-                        TextField("", value: $preferences.imageMaxWidth, format: .number)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 100)
-                            .multilineTextAlignment(.trailing)
-                        Text("像素")
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    HStack {
-                        Text("最大高度")
-                        Spacer()
-                        TextField("", value: $preferences.imageMaxHeight, format: .number)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 100)
-                            .multilineTextAlignment(.trailing)
-                        Text("像素")
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    Toggle("启用图片压缩", isOn: $preferences.imageCompressionEnabled)
-                    
-                    if preferences.imageCompressionEnabled {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text("压缩质量")
-                                Spacer()
-                                Text("\(Int(preferences.imageCompressionQuality * 100))%")
-                                    .foregroundStyle(.secondary)
-                                    .monospacedDigit()
-                            }
-                            Slider(value: $preferences.imageCompressionQuality, in: 0.1...1.0)
-                        }
-                        .padding(.leading, 20)
-                    }
-                } header: {
-                    Text("图片设置")
-                } footer: {
-                    Text("设置图片的最大尺寸和压缩选项")
-                }
-                
-                Section {
-                    Toggle("启用语音输入法", isOn: $preferences.enableVoiceInput)
+                    Toggle(NSLocalizedString("enable.voice.input", comment: ""), isOn: $preferences.enableVoiceInput)
                     
                     if preferences.enableVoiceInput {
                         VStack(alignment: .leading, spacing: 16) {
                             // 快捷键设置区域
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("全局快捷键")
+                                Text(NSLocalizedString("global.shortcut", comment: ""))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                 
@@ -109,32 +43,32 @@ struct SettingsView: View {
                             Divider()
                             
                             // 识别语言设置
-                            Picker("识别语言", selection: $preferences.voiceInputLanguage) {
-                                Text("自动检测").tag("auto")
-                                Text("中文").tag("zh")
-                                Text("英文").tag("en")
-                                Text("日语").tag("ja")
-                                Text("韩语").tag("ko")
+                            Picker(NSLocalizedString("recognition.language", comment: ""), selection: $preferences.voiceInputLanguage) {
+                                Text(NSLocalizedString("auto.detect", comment: "")).tag("auto")
+                                Text(NSLocalizedString("chinese", comment: "")).tag("zh")
+                                Text(NSLocalizedString("english", comment: "")).tag("en")
+                                Text(NSLocalizedString("japanese", comment: "")).tag("ja")
+                                Text(NSLocalizedString("korean", comment: "")).tag("ko")
                             }
                             
                             Divider()
                             
                             // 悬浮工具条位置设置
-                            Picker("悬浮工具条位置", selection: $preferences.waveformWindowPosition) {
+                            Picker(NSLocalizedString("waveform.window.position", comment: ""), selection: $preferences.waveformWindowPosition) {
                                 ForEach(WaveformWindowPosition.allCases, id: \.self) { position in
                                     Text(position.displayName).tag(position)
                                 }
                             }
                             
                             // 悬浮工具条样式设置
-                            Picker("悬浮工具条大小", selection: $preferences.waveformWindowStyle) {
+                            Picker(NSLocalizedString("waveform.window.size", comment: ""), selection: $preferences.waveformWindowStyle) {
                                 ForEach(WaveformWindowStyle.allCases, id: \.self) { style in
                                     Text(style.displayName).tag(style)
                                 }
                             }
                             
                             // 悬浮工具条颜色设置
-                            Picker("悬浮工具条颜色", selection: $preferences.waveformWindowColorStyle) {
+                            Picker(NSLocalizedString("waveform.window.color", comment: ""), selection: $preferences.waveformWindowColorStyle) {
                                 ForEach(WaveformWindowColorStyle.allCases, id: \.self) { colorStyle in
                                     HStack {
                                         Circle()
@@ -150,7 +84,7 @@ struct SettingsView: View {
                             
                             // 麦克风权限测试按钮
                             VStack(alignment: .leading, spacing: 12) {
-                                Text("权限测试")
+                                Text(NSLocalizedString("permission.test", comment: ""))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                 
@@ -160,12 +94,12 @@ struct SettingsView: View {
                                     }) {
                                         HStack {
                                             Image(systemName: "mic.circle.fill")
-                                            Text("测试麦克风权限")
+                                            Text(NSLocalizedString("test.microphone.permission", comment: ""))
                                         }
                                     }
                                     .buttonStyle(.borderedProminent)
                                     .controlSize(.small)
-                                    .help("测试麦克风权限，如果未授权会弹出权限请求对话框")
+                                    .help(NSLocalizedString("test.microphone.permission", comment: ""))
                                     
                                     Button(action: {
                                         print("🧪 [SettingsView] 测试显示波形窗口")
@@ -179,12 +113,12 @@ struct SettingsView: View {
                                     }) {
                                         HStack {
                                             Image(systemName: "play.circle.fill")
-                                            Text("测试显示工具条")
+                                            Text(NSLocalizedString("test.show.toolbar", comment: ""))
                                         }
                                     }
                                     .buttonStyle(.bordered)
                                     .controlSize(.small)
-                                    .help("测试显示波形工具条（3秒后自动消失）")
+                                    .help(NSLocalizedString("test.show.toolbar", comment: ""))
                                 }
                                 
                             Button(action: {
@@ -192,22 +126,22 @@ struct SettingsView: View {
                             }) {
                                 HStack {
                                     Image(systemName: "xmark.circle.fill")
-                                    Text("清理工具条窗口")
+                                    Text(NSLocalizedString("cleanup.toolbar.window", comment: ""))
                                 }
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
-                            .help("如果工具条窗口没有正常关闭，可以点击此按钮强制清理")
+                            .help(NSLocalizedString("cleanup.toolbar.window", comment: ""))
                             }
                         }
                         .padding(.leading, 20)
                     }
                 } header: {
-                    Text("语音输入法")
+                    Text(NSLocalizedString("voice.input.section", comment: ""))
                 } footer: {
                     if preferences.enableVoiceInput {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("按下快捷键开始语音输入，松开时自动识别并插入文本。需要麦克风和辅助功能权限。")
+                            Text(NSLocalizedString("voice.input.description", comment: ""))
                             
                             // 权限状态显示
                             PermissionStatusView()
@@ -219,18 +153,54 @@ struct SettingsView: View {
                                     Image(systemName: "info.circle.fill")
                                         .font(.caption)
                                         .foregroundStyle(.orange)
-                                    Text("提示：FN键在macOS上可能被其他应用占用，如果无法正常工作，建议使用其他快捷键组合（如 ⌥V 或 ⌘⇧V）。")
+                                    Text(NSLocalizedString("fn.key.hint", comment: ""))
                                         .font(.system(size: 11))
                                         .foregroundStyle(.secondary)
                                     }
-                                    
+                                }
+                                .padding(.top, 4)
+                            }
+                            
+                            // AI 优化快捷键说明（如果启用了 AI 优化）
+                            if preferences.enableAIOptimization {
+                                VStack(alignment: .leading, spacing: 8) {
                                     HStack(spacing: 6) {
-                                        Image(systemName: "exclamationmark.triangle.fill")
+                                        Image(systemName: "wand.and.stars")
                                             .font(.caption)
-                                            .foregroundStyle(.red)
-                                        Text("冲突警告：如果闪电说等其他语音输入应用也使用FN键，可能会导致麦克风资源冲突。建议：\n• 关闭其他语音输入应用\n• 或使用不同的快捷键\n• 或错开使用时间")
-                                            .font(.system(size: 11))
-                                            .foregroundStyle(.secondary)
+                                            .foregroundStyle(.blue)
+                                        
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(NSLocalizedString("ai.shortcut.usage.hint", comment: ""))
+                                                .font(.system(size: 11))
+                                                .foregroundStyle(.secondary)
+                                            
+                                            // 显示两套快捷键组合
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                HStack(spacing: 6) {
+                                                    Text(NSLocalizedString("ai.shortcut.normal", comment: ""))
+                                                        .font(.system(size: 10))
+                                                        .foregroundStyle(.tertiary)
+                                                    
+                                                    ShortcutDisplayView(
+                                                        keyCode: preferences.voiceInputShortcutKeyCode,
+                                                        modifiers: preferences.voiceInputShortcutModifiers
+                                                    )
+                                                }
+                                                
+                                                HStack(spacing: 6) {
+                                                    Text(NSLocalizedString("ai.shortcut.with.ai", comment: ""))
+                                                        .font(.system(size: 10))
+                                                        .foregroundStyle(.tertiary)
+                                                    
+                                                    ShortcutDisplayView(
+                                                        keyCode: preferences.voiceInputShortcutKeyCode,
+                                                        modifiers: preferences.voiceInputShortcutModifiers,
+                                                        showCtrl: true
+                                                    )
+                                                }
+                                            }
+                                            .padding(.top, 4)
+                                        }
                                     }
                                 }
                                 .padding(.top, 4)
@@ -278,13 +248,83 @@ struct SettingsView: View {
                 }
                 
                 Section {
-                    Toggle("启用 AI 文本优化", isOn: $preferences.enableAIOptimization)
+                    Picker(NSLocalizedString("default.language", comment: ""), selection: Binding(
+                        get: { preferences.defaultLanguage },
+                        set: { newValue in
+                            preferences.defaultLanguage = newValue
+                            LocalizationManager.shared.currentLanguage = newValue
+                        }
+                    )) {
+                        ForEach(SupportedLanguage.allCases, id: \.self) { language in
+                            Text(language.nativeName).tag(language.rawValue)
+                        }
+                    }
+                } header: {
+                    Text(NSLocalizedString("language", comment: ""))
+                } footer: {
+                    Text(NSLocalizedString("language.description", comment: ""))
+                }
+                
+                Section {
+                    Toggle(NSLocalizedString("ai.optimization.enable", comment: ""), isOn: $preferences.enableAIOptimization)
                     
                     if preferences.enableAIOptimization {
+                        // 快捷键使用说明
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "info.circle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.blue)
+                                
+                                Text(NSLocalizedString("ai.shortcut.usage.hint", comment: ""))
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            // 显示两套快捷键组合
+                            VStack(alignment: .leading, spacing: 6) {
+                                // 普通语音输入
+                                HStack(spacing: 8) {
+                                    Text(NSLocalizedString("ai.shortcut.normal", comment: ""))
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundStyle(.secondary)
+                                    
+                                    Spacer()
+                                    
+                                    ShortcutDisplayView(
+                                        keyCode: preferences.voiceInputShortcutKeyCode,
+                                        modifiers: preferences.voiceInputShortcutModifiers
+                                    )
+                                }
+                                
+                                // AI 优化语音输入
+                                HStack(spacing: 8) {
+                                    Text(NSLocalizedString("ai.shortcut.with.ai", comment: ""))
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundStyle(.secondary)
+                                    
+                                    Spacer()
+                                    
+                                    ShortcutDisplayView(
+                                        keyCode: preferences.voiceInputShortcutKeyCode,
+                                        modifiers: preferences.voiceInputShortcutModifiers,
+                                        showCtrl: true
+                                    )
+                                }
+                            }
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 12)
+                            .background {
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(Color.secondary.opacity(0.05))
+                            }
+                        }
+                        .padding(.bottom, 8)
+                        
                         VStack(alignment: .leading, spacing: 16) {
                             // API 端点设置
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("API 端点")
+                                Text(NSLocalizedString("ai.api.endpoint", comment: ""))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                 
@@ -296,11 +336,11 @@ struct SettingsView: View {
                             
                             // 模型选择
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("模型名称")
+                                Text(NSLocalizedString("ai.model.name", comment: ""))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                 
-                                TextField("例如: gemma2:2b", text: $preferences.aiModel)
+                                TextField(NSLocalizedString("ai.model.example", comment: ""), text: $preferences.aiModel)
                                     .textFieldStyle(.roundedBorder)
                             }
                             
@@ -308,11 +348,11 @@ struct SettingsView: View {
                             
                             // API Token（可选）
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("API Token（可选）")
+                                Text(NSLocalizedString("ai.api.token", comment: ""))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                 
-                                SecureField("留空表示不使用", text: $preferences.aiAPIToken)
+                                SecureField(NSLocalizedString("ai.api.token.placeholder", comment: ""), text: $preferences.aiAPIToken)
                                     .textFieldStyle(.roundedBorder)
                             }
                             
@@ -321,13 +361,13 @@ struct SettingsView: View {
                             // 超时设置
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
-                                    Text("超时时间")
+                                    Text(NSLocalizedString("ai.timeout", comment: ""))
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                     
                                     Spacer()
                                     
-                                    Text("\(String(format: "%.1f", preferences.aiTimeout)) 秒")
+                                    Text("\(String(format: "%.1f", preferences.aiTimeout)) \(NSLocalizedString("ai.timeout.seconds", comment: ""))")
                                         .font(.system(size: 12))
                                         .foregroundStyle(.secondary)
                                         .monospacedDigit()
@@ -340,7 +380,7 @@ struct SettingsView: View {
                                         .font(.caption)
                                         .foregroundStyle(.blue)
                                     
-                                    Text("建议本地模型使用 2-5 秒，远程 API 使用 10-30 秒")
+                                    Text(NSLocalizedString("ai.timeout.hint", comment: ""))
                                         .font(.system(size: 11))
                                         .foregroundStyle(.secondary)
                                 }
@@ -351,7 +391,7 @@ struct SettingsView: View {
                             // 系统提示词设置
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
-                                    Text("系统提示词")
+                                    Text(NSLocalizedString("ai.system.prompt", comment: ""))
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                     
@@ -360,12 +400,12 @@ struct SettingsView: View {
                                     Button(action: {
                                         resetSystemPrompt()
                                     }) {
-                                        Text("恢复默认")
+                                        Text(NSLocalizedString("ai.system.prompt.reset", comment: ""))
                                             .font(.system(size: 11))
                                     }
                                     .buttonStyle(.borderless)
                                     .controlSize(.small)
-                                    .help("恢复默认的系统提示词")
+                                    .help(NSLocalizedString("ai.system.prompt.reset.help", comment: ""))
                                 }
                                 
                                 ScrollView {
@@ -387,7 +427,7 @@ struct SettingsView: View {
                                         .font(.caption)
                                         .foregroundStyle(.blue)
                                     
-                                    Text("自定义系统提示词可以控制 AI 的优化行为。提示词中可以使用 {text} 占位符表示原始文本（可选）。")
+                                    Text(NSLocalizedString("ai.system.prompt.hint", comment: ""))
                                         .font(.system(size: 11))
                                         .foregroundStyle(.secondary)
                                 }
@@ -403,24 +443,24 @@ struct SettingsView: View {
                                     }) {
                                         HStack {
                                             Image(systemName: "network")
-                                            Text("测试连接")
+                                            Text(NSLocalizedString("ai.test.connection", comment: ""))
                                         }
                                     }
                                     .buttonStyle(.bordered)
                                     .controlSize(.small)
-                                    .help("测试与 Ollama API 的连接")
+                                    .help(NSLocalizedString("ai.test.connection.help", comment: ""))
                                     
                                     Button(action: {
                                         fetchAvailableModels()
                                     }) {
                                         HStack {
                                             Image(systemName: "list.bullet")
-                                            Text("获取模型列表")
+                                            Text(NSLocalizedString("ai.fetch.models", comment: ""))
                                         }
                                     }
                                     .buttonStyle(.bordered)
                                     .controlSize(.small)
-                                    .help("从 Ollama 获取可用的模型列表")
+                                    .help(NSLocalizedString("ai.fetch.models.help", comment: ""))
                                 }
                                 
                                 Button(action: {
@@ -428,38 +468,38 @@ struct SettingsView: View {
                                 }) {
                                     HStack {
                                         Image(systemName: "wand.and.stars")
-                                        Text("测试文本优化")
+                                        Text(NSLocalizedString("ai.test.optimization", comment: ""))
                                     }
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .controlSize(.small)
-                                .help("发送测试文本，验证 AI 优化功能是否正常工作")
+                                .help(NSLocalizedString("ai.test.optimization.help", comment: ""))
                             }
                         }
                         .padding(.leading, 20)
                     }
                 } header: {
-                    Text("AI 文本优化")
+                    Text(NSLocalizedString("ai.optimization.section", comment: ""))
                 } footer: {
                     if preferences.enableAIOptimization {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("启用后，语音识别完成的文本会通过 AI 进行优化，去除口头禅、添加标点符号、修正错别字。")
+                            Text(NSLocalizedString("ai.optimization.description", comment: ""))
                             
-                            Text("默认使用本机的 Ollama 服务（http://127.0.0.1:11434），也可以配置为其他兼容的 API 端点。")
+                            Text(NSLocalizedString("ai.optimization.description.detail", comment: ""))
                                 .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
                                 .padding(.top, 4)
                         }
                     } else {
-                        Text("启用后可使用 AI 优化语音识别结果")
+                        Text(NSLocalizedString("ai.optimization.description", comment: ""))
                     }
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("设置")
+            .navigationTitle(NSLocalizedString("settings.title", comment: ""))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") {
+                    Button(NSLocalizedString("settings.done", comment: "")) {
                         dismiss()
                     }
                     .keyboardShortcut(.defaultAction)
@@ -515,11 +555,11 @@ struct SettingsView: View {
         print("🎤 [SettingsView] 尝试通过AVAudioEngine触发权限请求...")
         
         let alert = NSAlert()
-        alert.messageText = "尝试触发权限请求"
-        alert.informativeText = "即将尝试访问麦克风以触发系统权限对话框。\n\n如果弹出权限对话框，请点击\"允许\"。"
+        alert.messageText = NSLocalizedString("permission.test.trigger", comment: "")
+        alert.informativeText = NSLocalizedString("permission.test.description", comment: "")
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "继续")
-        alert.addButton(withTitle: "取消")
+        alert.addButton(withTitle: NSLocalizedString("continue", comment: ""))
+        alert.addButton(withTitle: NSLocalizedString("cancel", comment: ""))
         
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
@@ -557,6 +597,7 @@ struct SettingsView: View {
     }
     
     private func microphoneStatusDescription(_ status: AVAuthorizationStatus) -> String {
+        // 这些状态描述不需要本地化，因为它们是技术状态
         switch status {
         case .notDetermined:
             return "未确定"
@@ -573,38 +614,38 @@ struct SettingsView: View {
     
     private func showPermissionRequestAlert() {
         let alert = NSAlert()
-        alert.messageText = "请求麦克风权限"
-        alert.informativeText = "系统将弹出权限请求对话框。\n\n请点击\"允许\"以授权 fastv 访问麦克风。"
+        alert.messageText = NSLocalizedString("permission.request.title", comment: "")
+        alert.informativeText = NSLocalizedString("permission.request.description", comment: "")
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "知道了")
+        alert.addButton(withTitle: NSLocalizedString("got.it", comment: ""))
         alert.runModal()
     }
     
     private func showPermissionGrantedAlert() {
         let alert = NSAlert()
-        alert.messageText = "✅ 麦克风权限已授权"
-        alert.informativeText = "您已成功授权麦克风权限！\n\n现在可以使用语音输入功能了。"
+        alert.messageText = NSLocalizedString("permission.granted.title", comment: "")
+        alert.informativeText = NSLocalizedString("permission.granted.description", comment: "")
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "太好了")
+        alert.addButton(withTitle: NSLocalizedString("great", comment: ""))
         alert.runModal()
     }
     
     private func showPermissionAlreadyGrantedAlert() {
         let alert = NSAlert()
-        alert.messageText = "✅ 麦克风权限已授权"
-        alert.informativeText = "您已经授权了麦克风权限。\n\n可以直接使用语音输入功能。"
+        alert.messageText = NSLocalizedString("permission.already.granted.title", comment: "")
+        alert.informativeText = NSLocalizedString("permission.already.granted.description", comment: "")
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "知道了")
+        alert.addButton(withTitle: NSLocalizedString("got.it", comment: ""))
         alert.runModal()
     }
     
     private func showPermissionDeniedAlert() {
         let alert = NSAlert()
-        alert.messageText = "⚠️ 麦克风权限被拒绝"
-        alert.informativeText = "语音输入功能需要麦克风权限。\n\n请按以下步骤手动授权：\n1. 打开\"系统设置\"\n2. 进入\"隐私与安全性\" > \"麦克风\"\n3. 找到 fastv 并勾选"
+        alert.messageText = NSLocalizedString("permission.denied.title", comment: "")
+        alert.informativeText = NSLocalizedString("permission.denied.description", comment: "")
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "打开系统设置")
-        alert.addButton(withTitle: "稍后")
+        alert.addButton(withTitle: NSLocalizedString("open.system.settings", comment: ""))
+        alert.addButton(withTitle: NSLocalizedString("later", comment: ""))
         
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
@@ -788,72 +829,61 @@ struct SettingsView: View {
     
     private func showAIConnectionSuccessAlert() {
         let alert = NSAlert()
-        alert.messageText = "✅ 连接成功"
-        alert.informativeText = "成功连接到 Ollama API！\n\n端点: \(preferences.aiAPIEndpoint)"
+        alert.messageText = NSLocalizedString("ai.connection.success.title", comment: "")
+        let descriptionFormat = NSLocalizedString("ai.connection.success.description", comment: "")
+        alert.informativeText = descriptionFormat.replacingOccurrences(of: "%@", with: preferences.aiAPIEndpoint)
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "太好了")
+        alert.addButton(withTitle: NSLocalizedString("great", comment: ""))
         alert.runModal()
     }
     
     private func showAIConnectionFailedAlert(message: String) {
         let alert = NSAlert()
-        alert.messageText = "❌ 连接失败"
-        alert.informativeText = "无法连接到 Ollama API。\n\n错误信息: \(message)\n\n请检查：\n1. Ollama 是否正在运行\n2. API 端点地址是否正确\n3. 如果使用了 API Token，请确认其有效性"
+        alert.messageText = NSLocalizedString("ai.connection.failed.title", comment: "")
+        let descriptionFormat = NSLocalizedString("ai.connection.failed.description", comment: "")
+        alert.informativeText = descriptionFormat.replacingOccurrences(of: "%@", with: message)
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "知道了")
+        alert.addButton(withTitle: NSLocalizedString("got.it", comment: ""))
         alert.runModal()
     }
     
     private func showModelsListAlert(models: [String]) {
         let alert = NSAlert()
-        alert.messageText = "📋 可用模型列表"
+        alert.messageText = NSLocalizedString("ai.models.list.title", comment: "")
         
         if models.isEmpty {
-            alert.informativeText = "未找到任何模型。\n\n请先使用 'ollama pull' 命令下载模型。"
+            alert.informativeText = NSLocalizedString("ai.models.list.empty", comment: "")
         } else {
             let modelsList = models.joined(separator: "\n• ")
-            alert.informativeText = "找到 \(models.count) 个可用模型：\n\n• \(modelsList)\n\n您可以将模型名称复制到上方的\"模型名称\"字段中。"
+            let foundFormat = NSLocalizedString("ai.models.list.found", comment: "")
+            alert.informativeText = foundFormat.replacingOccurrences(of: "%d", with: "\(models.count)").replacingOccurrences(of: "%@", with: modelsList)
         }
         
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "知道了")
+        alert.addButton(withTitle: NSLocalizedString("got.it", comment: ""))
         alert.runModal()
     }
     
     private func showOptimizationTestResult(originalText: String, optimizedText: String, duration: TimeInterval) {
         let alert = NSAlert()
-        alert.messageText = "✅ 测试成功"
+        alert.messageText = NSLocalizedString("ai.test.success.title", comment: "")
         
         let durationText = String(format: "%.2f", duration)
-        let speedIndicator: String
-        if duration < 2.0 {
-            speedIndicator = "⚡️ 非常快"
-        } else if duration < 5.0 {
-            speedIndicator = "✅ 正常"
-        } else if duration < 10.0 {
-            speedIndicator = "⚠️ 较慢"
-        } else {
-            speedIndicator = "❌ 太慢"
+        let descriptionFormat = NSLocalizedString("ai.test.success.description", comment: "")
+        // 替换三个占位符：原始文本、优化文本、耗时
+        var description = descriptionFormat
+        if let range1 = description.range(of: "%@") {
+            description.replaceSubrange(range1, with: originalText)
         }
-        
-        alert.informativeText = """
-        AI 文本优化功能正常工作！
-        
-        ⏱️ 响应时间: \(durationText) 秒 \(speedIndicator)
-        
-        📝 原始文本:
-        \(originalText)
-        
-        ✨ 优化后:
-        \(optimizedText)
-        
-        💡 提示:
-        • 响应时间 < 5 秒：适合实时语音输入
-        • 响应时间 > 5 秒：建议使用更小的模型或调整超时设置
-        """
-        
+        if let range2 = description.range(of: "%@") {
+            description.replaceSubrange(range2, with: optimizedText)
+        }
+        if let range3 = description.range(of: "%@") {
+            description.replaceSubrange(range3, with: durationText)
+        }
+        alert.informativeText = description
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "太好了")
+        alert.addButton(withTitle: NSLocalizedString("great", comment: ""))
         alert.runModal()
     }
 }
@@ -872,14 +902,14 @@ struct ShortcutCaptureView: View {
         VStack(alignment: .leading, spacing: 12) {
             // 当前快捷键显示
             HStack {
-                Text("当前快捷键:")
+                Text(NSLocalizedString("current.shortcut", comment: ""))
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
                 
                 Spacer()
                 
                 if keyCode == 0 {
-                    Text("未设置")
+                    Text(NSLocalizedString("not.set", comment: ""))
                         .font(.system(size: 13, design: .monospaced))
                         .foregroundStyle(.tertiary)
                         .padding(.horizontal, 12)
@@ -922,7 +952,7 @@ struct ShortcutCaptureView: View {
                     Image(systemName: isCapturing ? "stop.circle.fill" : "keyboard")
                         .font(.system(size: 13))
                     
-                    Text(isCapturing ? "停止捕获（按下要设置的快捷键）" : "点击设置快捷键")
+                    Text(isCapturing ? NSLocalizedString("shortcut.capture.stop", comment: "") : NSLocalizedString("shortcut.capture.click", comment: ""))
                         .font(.system(size: 13))
                 }
                 .frame(maxWidth: .infinity)
@@ -950,7 +980,7 @@ struct ShortcutCaptureView: View {
                         .font(.caption)
                         .foregroundStyle(.orange)
                     
-                    Text("请按下要设置的快捷键（支持FN键）")
+                    Text(NSLocalizedString("shortcut.capture.press.hint", comment: ""))
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
@@ -1097,6 +1127,72 @@ struct KeyBadge: View {
                 RoundedRectangle(cornerRadius: 5, style: .continuous)
                     .fill(.quaternary)
             }
+    }
+}
+
+/// 快捷键显示视图
+struct ShortcutDisplayView: View {
+    let keyCode: UInt16
+    let modifiers: NSEvent.ModifierFlags
+    var showCtrl: Bool = false
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            // 显示修饰键
+            if modifiers.contains(.command) {
+                KeyBadge(symbol: "⌘")
+            }
+            if modifiers.contains(.shift) {
+                KeyBadge(symbol: "⇧")
+            }
+            if modifiers.contains(.option) {
+                KeyBadge(symbol: "⌥")
+            }
+            if modifiers.contains(.control) {
+                KeyBadge(symbol: "⌃")
+            }
+            
+            // 如果 showCtrl 为 true，额外显示 Ctrl 键
+            if showCtrl && !modifiers.contains(.control) {
+                KeyBadge(symbol: "⌃")
+            }
+            
+            // 显示主键
+            KeyBadge(symbol: keyCodeToString(keyCode))
+        }
+    }
+    
+    private func keyCodeToString(_ keyCode: UInt16) -> String {
+        switch keyCode {
+        case 0xFFFF: return NSLocalizedString("key.left.control", comment: "")
+        case 0x3F: return NSLocalizedString("key.fn", comment: "")
+        case 0x09: return "V"
+        case 0x00: return "A"
+        case 0x0B: return "B"
+        case 0x08: return "C"
+        case 0x02: return "D"
+        case 0x0E: return "E"
+        case 0x03: return "F"
+        case 0x05: return "G"
+        case 0x04: return "H"
+        case 0x22: return "I"
+        case 0x26: return "J"
+        case 0x28: return "K"
+        case 0x25: return "L"
+        case 0x2E: return "M"
+        case 0x2D: return "N"
+        case 0x1F: return "O"
+        case 0x23: return "P"
+        case 0x0C: return "Q"
+        case 0x0F: return "R"
+        case 0x01: return "S"
+        case 0x11: return "T"
+        case 0x20: return "U"
+        case 0x31: return NSLocalizedString("key.space", comment: "")
+        case 0x24: return NSLocalizedString("key.return", comment: "")
+        case 0x35: return NSLocalizedString("key.esc", comment: "")
+        default: return "\(NSLocalizedString("key", comment: ""))\(keyCode)"
+        }
     }
 }
 

@@ -9,31 +9,53 @@ import Foundation
 import AVFoundation
 
 struct SpeechTranscriber {
-    // 使用项目资源目录中的模型
+    // 获取模型目录（优先使用下载的模型）
+    private static func getModelDirectory() -> URL {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appDir = appSupport.appendingPathComponent("妙打")
+        return appDir.appendingPathComponent("Models/sensevoice-small")
+    }
+    
+    // 使用下载的模型文件，如果不存在则使用Bundle中的模型
     private static var modelPath: URL? {
-        // 首先尝试在子目录中查找
+        // 首先尝试使用下载的模型文件
+        let downloadedPath = getModelDirectory().appendingPathComponent("model.onnx")
+        if FileManager.default.fileExists(atPath: downloadedPath.path) {
+            return downloadedPath
+        }
+        
+        // 如果不存在，尝试在Bundle中查找
         if let url = Bundle.main.url(forResource: "model", withExtension: "onnx", subdirectory: "Models/sensevoice-small") {
             return url
         }
-        // 如果不在子目录，尝试在 Resources 根目录查找
         return Bundle.main.url(forResource: "model", withExtension: "onnx")
     }
     
     private static var tokensPath: URL? {
-        // 首先尝试在子目录中查找
+        // 首先尝试使用下载的文件
+        let downloadedPath = getModelDirectory().appendingPathComponent("tokens.json")
+        if FileManager.default.fileExists(atPath: downloadedPath.path) {
+            return downloadedPath
+        }
+        
+        // 如果不存在，尝试在Bundle中查找
         if let url = Bundle.main.url(forResource: "tokens", withExtension: "json", subdirectory: "Models/sensevoice-small") {
             return url
         }
-        // 如果不在子目录，尝试在 Resources 根目录查找
         return Bundle.main.url(forResource: "tokens", withExtension: "json")
     }
     
     private static var configPath: URL? {
-        // 首先尝试在子目录中查找
+        // 首先尝试使用下载的文件
+        let downloadedPath = getModelDirectory().appendingPathComponent("config.yaml")
+        if FileManager.default.fileExists(atPath: downloadedPath.path) {
+            return downloadedPath
+        }
+        
+        // 如果不存在，尝试在Bundle中查找
         if let url = Bundle.main.url(forResource: "config", withExtension: "yaml", subdirectory: "Models/sensevoice-small") {
             return url
         }
-        // 如果不在子目录，尝试在 Resources 根目录查找
         return Bundle.main.url(forResource: "config", withExtension: "yaml")
     }
     
@@ -41,6 +63,13 @@ struct SpeechTranscriber {
     private static var tokenMap: [Int: String]?
     
     private static func resolveCMVNURL() -> URL? {
+        // 首先尝试使用下载的文件
+        let downloadedPath = getModelDirectory().appendingPathComponent("am.mvn")
+        if FileManager.default.fileExists(atPath: downloadedPath.path) {
+            return downloadedPath
+        }
+        
+        // 如果不存在，尝试在Bundle中查找
         // 方式1: 使用子目录
         if let url = Bundle.main.url(forResource: "am", withExtension: "mvn", subdirectory: "sensevoice-small") {
             return url

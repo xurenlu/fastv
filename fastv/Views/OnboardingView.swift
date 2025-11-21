@@ -1,0 +1,490 @@
+//
+//  OnboardingView.swift
+//  fastv
+//
+//  Created by rocky on 2025/11/19.
+//
+
+import SwiftUI
+
+struct OnboardingView: View {
+    @State private var currentStep = 0
+    @State private var isDownloading = false
+    @State private var downloadProgress: Double = 0.0
+    @State private var downloadStatus: String = ""
+    @State private var downloadError: Error?
+    
+    @ObservedObject private var preferences = UserPreferences.shared
+    @ObservedObject private var downloader = ModelDownloader.shared
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // 步骤指示器
+            HStack(spacing: 8) {
+                ForEach(0..<3) { index in
+                    Circle()
+                        .fill(index <= currentStep ? Color.accentColor : Color.gray.opacity(0.3))
+                        .frame(width: 8, height: 8)
+                }
+            }
+            .padding(.top, 30)
+            .padding(.bottom, 20)
+            
+            // 内容区域
+            Group {
+                switch currentStep {
+                case 0:
+                    LanguageSelectionStep()
+                case 1:
+                    ShortcutSetupStep()
+                case 2:
+                    ModelDownloadStep(
+                        isDownloading: $isDownloading,
+                        downloadProgress: $downloadProgress,
+                        downloadStatus: $downloadStatus,
+                        downloadError: $downloadError
+                    )
+                default:
+                    LanguageSelectionStep()
+                }
+            }
+            .transition(.opacity)
+            
+            // 底部按钮
+            HStack {
+                if currentStep > 0 {
+                    Button(NSLocalizedString("onboarding.previous", comment: "")) {
+                        withAnimation {
+                            currentStep -= 1
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                }
+                
+                Spacer()
+                
+                Button(currentStep == 2 ? NSLocalizedString("onboarding.complete", comment: "") : NSLocalizedString("onboarding.next", comment: "")) {
+                    if currentStep == 2 {
+                        // 完成引导
+                        preferences.markOnboardingCompleted()
+                    } else {
+                        withAnimation {
+                            currentStep += 1
+                        }
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(currentStep == 2 && !preferences.modelDownloaded)
+            }
+            .padding(20)
+        }
+        .frame(width: 600, height: 500)
+        .onAppear {
+            // 初始化语言设置（如果还没有选择）
+            if preferences.defaultLanguage.isEmpty {
+                // 使用系统语言或默认中文
+                let systemLanguage = Locale.preferredLanguages.first ?? "zh-Hans"
+                let supportedLanguage = SupportedLanguage.allCases.first { $0.rawValue == systemLanguage } ?? .chinese
+                preferences.defaultLanguage = supportedLanguage.rawValue
+                LocalizationManager.shared.currentLanguage = supportedLanguage.rawValue
+            } else {
+                // 确保LocalizationManager使用已保存的语言
+                LocalizationManager.shared.currentLanguage = preferences.defaultLanguage
+            }
+            
+            // 如果模型已下载，自动完成
+            if ModelDownloader.shared.checkModelFilesExist() {
+                preferences.modelDownloaded = true
+            }
+        }
+    }
+}
+
+// MARK: - 步骤1: 选择语言
+struct LanguageSelectionStep: View {
+    @ObservedObject private var preferences = UserPreferences.shared
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "globe")
+                .font(.system(size: 64))
+                .foregroundStyle(.tint)
+            
+            Text("onboarding.select.language.title")
+                .font(.title)
+                .fontWeight(.bold)
+            
+            Text("onboarding.select.language.description")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            
+            VStack(spacing: 12) {
+                ForEach(SupportedLanguage.allCases, id: \.self) { language in
+                    Button(action: {
+                        preferences.defaultLanguage = language.rawValue
+                        LocalizationManager.shared.currentLanguage = language.rawValue
+                    }) {
+                        HStack {
+                            Text(language.nativeName)
+                                .font(.body)
+                            Spacer()
+                            if preferences.defaultLanguage == language.rawValue {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.tint)
+                            }
+                        }
+                        .padding()
+                        .background {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(preferences.defaultLanguage == language.rawValue ? 
+                                      Color.accentColor.opacity(0.1) : Color.gray.opacity(0.1))
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 40)
+        }
+        .padding(40)
+    }
+}
+
+// MARK: - 步骤2: 设置快捷键
+struct ShortcutSetupStep: View {
+    @ObservedObject private var preferences = UserPreferences.shared
+    @State private var isCapturing = false
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "keyboard")
+                .font(.system(size: 64))
+                .foregroundStyle(.tint)
+            
+            Text("onboarding.set.shortcut.title")
+                .font(.title)
+                .fontWeight(.bold)
+            
+            Text("onboarding.set.shortcut.description")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            
+            if preferences.enableVoiceInput {
+                VStack(spacing: 8) {
+                    Text("current.shortcut")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 4) {
+                        if preferences.voiceInputShortcutModifiers.contains(.control) {
+                            Text("⌃")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        if preferences.voiceInputShortcutModifiers.contains(.option) {
+                            Text("⌥")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        if preferences.voiceInputShortcutModifiers.contains(.shift) {
+                            Text("⇧")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        if preferences.voiceInputShortcutModifiers.contains(.command) {
+                            Text("⌘")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        
+                        Text(keyCodeToString(preferences.voiceInputShortcutKeyCode))
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(Color.gray.opacity(0.1))
+                    }
+                }
+            }
+            
+            Button(action: {
+                isCapturing = true
+            }) {
+                Text(isCapturing ? NSLocalizedString("press.to.capture.shortcut", comment: "") : NSLocalizedString("set.shortcut", comment: ""))
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+        }
+        .padding(40)
+        .sheet(isPresented: $isCapturing) {
+            ShortcutCaptureSheetView(
+                keyCode: Binding(
+                    get: { preferences.voiceInputShortcutKeyCode },
+                    set: { preferences.voiceInputShortcutKeyCode = $0 }
+                ),
+                modifiers: Binding(
+                    get: { preferences.voiceInputShortcutModifiers },
+                    set: { 
+                        preferences.voiceInputShortcutModifiers = $0
+                        preferences.enableVoiceInput = true
+                    }
+                ),
+                onDismiss: {
+                    isCapturing = false
+                }
+            )
+        }
+    }
+    
+    private func keyCodeToString(_ keyCode: UInt16) -> String {
+        switch keyCode {
+        case 0xFFFF: return NSLocalizedString("key.left.control", comment: "")
+        case 0x3F: return NSLocalizedString("key.fn", comment: "")
+        default: return "\(NSLocalizedString("key", comment: ""))\(keyCode)"
+        }
+    }
+}
+
+// MARK: - 步骤3: 下载模型
+struct ModelDownloadStep: View {
+    @Binding var isDownloading: Bool
+    @Binding var downloadProgress: Double
+    @Binding var downloadStatus: String
+    @Binding var downloadError: Error?
+    
+    @ObservedObject private var preferences = UserPreferences.shared
+    @ObservedObject private var downloader = ModelDownloader.shared
+    @State private var isEditingURL = false
+    @State private var editedURL: String = ""
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "arrow.down.circle")
+                .font(.system(size: 64))
+                .foregroundStyle(.tint)
+            
+            Text("onboarding.download.model.title")
+                .font(.title)
+                .fontWeight(.bold)
+            
+            Text("onboarding.download.model.description")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            
+            // 显示模型大小提示
+            HStack(spacing: 6) {
+                Image(systemName: "info.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                Text("onboarding.model.size.warning")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 8)
+            .background {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.orange.opacity(0.1))
+            }
+            
+            // 显示其他文件说明
+            Text("onboarding.model.other.files")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            
+            // 下载地址显示和编辑
+            VStack(spacing: 12) {
+                if isEditingURL {
+                    VStack(spacing: 12) {
+                        TextField(NSLocalizedString("model.download.url.placeholder", comment: ""), text: $editedURL)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(size: 13))
+                        
+                        HStack(spacing: 12) {
+                            Button(NSLocalizedString("cancel", comment: "")) {
+                                isEditingURL = false
+                                editedURL = preferences.modelDownloadURL
+                            }
+                            .buttonStyle(.bordered)
+                            
+                            Button(NSLocalizedString("save", comment: "")) {
+                                preferences.modelDownloadURL = editedURL
+                                isEditingURL = false
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                } else {
+                    VStack(spacing: 8) {
+                        HStack {
+                            Text(NSLocalizedString("model.download.url.label", comment: ""))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            Spacer()
+                            
+                            Button(action: {
+                                editedURL = preferences.modelDownloadURL
+                                isEditingURL = true
+                            }) {
+                                Text(NSLocalizedString("model.download.edit.url", comment: ""))
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.blue)
+                        }
+                        
+                        Text(preferences.modelDownloadURL)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(8)
+                            .background {
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(Color.gray.opacity(0.1))
+                            }
+                    }
+                    .padding(.horizontal, 20)
+                }
+            }
+            
+            if downloader.isDownloading {
+                VStack(spacing: 16) {
+                    ProgressView(value: downloadProgress)
+                        .progressViewStyle(.linear)
+                    
+                    VStack(spacing: 8) {
+                        Text(downloader.downloadStatus)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                        
+                        HStack(spacing: 16) {
+                            Text("\(Int(downloadProgress * 100))%")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                            
+                            if !downloader.downloadSpeed.isEmpty {
+                                Text("•")
+                                    .foregroundStyle(.secondary)
+                                
+                                Text(downloader.downloadSpeed)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 40)
+            } else if preferences.modelDownloaded || ModelDownloader.shared.checkModelFilesExist() {
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("onboarding.model.ready")
+                        .font(.body)
+                }
+            } else {
+                Button(action: {
+                    Task {
+                        await startDownload()
+                    }
+                }) {
+                    Text("onboarding.start.download")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            }
+            
+            if let error = downloadError {
+                Text(String(format: NSLocalizedString("model.download.error", comment: ""), error.localizedDescription))
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+        .padding(40)
+    }
+    
+    private func startDownload() async {
+        isDownloading = true
+        downloadError = nil
+        
+        do {
+            try await downloader.downloadModel(baseURL: preferences.modelDownloadURL) { progress, status, speed in
+                downloadProgress = progress
+                downloadStatus = status
+                // speed 已经在 downloader.downloadSpeed 中更新了
+            }
+        } catch {
+            downloadError = error
+        }
+        
+        isDownloading = false
+    }
+}
+
+// MARK: - 快捷键捕获 Sheet 视图
+struct ShortcutCaptureSheetView: View {
+    @Binding var keyCode: UInt16
+    @Binding var modifiers: NSEvent.ModifierFlags
+    var onDismiss: () -> Void
+    @State private var isCapturing = false
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                // 说明文字
+                VStack(spacing: 12) {
+                    Image(systemName: "keyboard")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.tint)
+                    
+                    Text("shortcut.capture.title")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    
+                    Text("shortcut.capture.description")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 20)
+                
+                // 快捷键捕获视图
+                ShortcutCaptureView(
+                    keyCode: $keyCode,
+                    modifiers: $modifiers
+                )
+                .padding(.horizontal, 40)
+                
+                Spacer()
+                
+                // 底部按钮
+                HStack(spacing: 12) {
+                    Button(NSLocalizedString("cancel", comment: "")) {
+                        onDismiss()
+                    }
+                    .buttonStyle(.bordered)
+                    
+                    Spacer()
+                    
+                    Button(NSLocalizedString("onboarding.complete", comment: "")) {
+                        onDismiss()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                }
+                .padding(.horizontal, 40)
+                .padding(.bottom, 20)
+            }
+            .frame(width: 500, height: 400)
+        }
+    }
+}
+
+#Preview {
+    OnboardingView()
+}
+

@@ -194,6 +194,8 @@
 			knownRegions = (
 				en,
 				Base,
+				ja,
+				"zh-Hans",
 			);
 			mainGroup = 5C0423752ECD792D00821B50;
 			minimizedProjectReferenceProxies = 1;
@@ -472,7 +474,7 @@
 					"$(inherited)",
 					"-lonnxruntime",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.typecho;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -521,7 +523,7 @@
 					"$(inherited)",
 					"-lonnxruntime",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.typecho;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;

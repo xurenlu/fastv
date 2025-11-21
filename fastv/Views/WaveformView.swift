@@ -75,7 +75,7 @@ class WaveformWindowManager: ObservableObject {
         window.level = .statusBar  // 改为statusBar级别，比floating更高
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]  // 添加fullScreenAuxiliary
         window.ignoresMouseEvents = true
-        window.hasShadow = true
+        window.hasShadow = false  // 去掉窗口阴影，避免黑框效果
         window.isReleasedWhenClosed = false  // 重要：防止窗口被自动释放
         window.hidesOnDeactivate = false  // 防止失去焦点时隐藏
         
@@ -277,7 +277,7 @@ struct WaveformView: View {
         let state = manager.state
         
         ZStack {
-            // 优化后的毛玻璃背景 - 更精致的层次
+            // 优化后的毛玻璃背景 - 光滑圆角，无边框无阴影
             RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
                 .fill(.ultraThinMaterial)
                 .background {
@@ -287,17 +287,6 @@ struct WaveformView: View {
                               Color.black.opacity(0.2) : 
                               Color.white.opacity(0.3))
                 }
-                .overlay {
-                    // 更精致的边框 - 单色半透明
-                    RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
-                        .strokeBorder(
-                            Color.white.opacity(colorScheme == .dark ? 0.15 : 0.25),
-                            lineWidth: 1
-                        )
-                }
-                // 更轻盈的阴影 - 符合苹果设计规范
-                .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
-                .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 1)
             
             // 根据状态显示不同内容 - 使用动画过渡
             Group {
@@ -451,12 +440,11 @@ struct WaveformView: View {
     }
     
     private func startTranscribingAnimation() {
+        // 重置角度
         rotationAngle = 0
-        // 使用缓入缓出的旋转动画，更有"呼吸感"
-        withAnimation(
-            .timingCurve(0.4, 0.0, 0.2, 1.0, duration: 1.2)
-            .repeatForever(autoreverses: false)
-        ) {
+        
+        // 使用线性动画确保连续旋转
+        withAnimation(.linear(duration: 1.2).repeatForever(autoreverses: false)) {
             rotationAngle = 360
         }
     }
