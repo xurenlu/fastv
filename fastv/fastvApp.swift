@@ -15,15 +15,41 @@ private var voiceInputStartTime: Date?
 
 /// 应用代理，用于监听应用退出事件
 class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // 应用启动完成后，初始化状态栏
+        print("📱 [AppDelegate] 应用启动完成，初始化状态栏")
+        StatusBarManager.shared.show()
+        
+        // 设置应用不自动退出（关闭窗口时保留在后台）
+        NSApplication.shared.setActivationPolicy(.regular)
+    }
+    
     func applicationWillTerminate(_ notification: Notification) {
-        print("🧹 [AppDelegate] 应用即将退出，清理波形窗口")
+        print("🧹 [AppDelegate] 应用即将退出，清理资源")
         WaveformWindowManager.shared.cleanup()
+        StatusBarManager.shared.cleanup()
     }
     
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        // 当最后一个窗口关闭时，清理波形窗口
-        print("🧹 [AppDelegate] 最后一个窗口关闭，清理波形窗口")
-        WaveformWindowManager.shared.cleanup()
+        // 当最后一个窗口关闭时，不退出应用，而是隐藏窗口并保留在系统托盘
+        print("📱 [AppDelegate] 最后一个窗口关闭，隐藏窗口并保留在系统托盘")
+        // 隐藏所有窗口
+        NSApplication.shared.windows.forEach { window in
+            window.orderOut(nil)
+        }
+        // 不退出应用
+        return false
+    }
+    
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        // 当用户点击 Dock 图标时，显示主窗口
+        if !flag {
+            // 如果没有可见窗口，显示主窗口
+            if let window = NSApplication.shared.windows.first {
+                window.makeKeyAndOrderFront(nil)
+                NSApplication.shared.activate(ignoringOtherApps: true)
+            }
+        }
         return true
     }
 }
@@ -42,6 +68,9 @@ struct fastvApp: App {
                     Task { @MainActor in
                         print("🧹 [fastvApp] 应用启动，清理可能遗留的工具条窗口")
                         WaveformWindowManager.shared.cleanup()
+                        
+                        // 确保状态栏已初始化
+                        StatusBarManager.shared.show()
                         
                         // 延迟初始化，确保窗口已显示
                         try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
@@ -331,13 +360,10 @@ struct fastvApp: App {
         let textInsertion = TextInsertionService.shared
         let history = VoiceInputHistory.shared
         
-        // 立即切换到转文字状态（在停止录音之前）
+        // 立即切换到转文字状态（在停止录音之前），不使用延迟
         print("📊 [fastvApp] 立即切换到转文字状态...")
         waveformManager.setTranscribing()
         print("✅ [fastvApp] 已切换到转文字状态")
-        
-        // 确保UI更新完成
-        try? await Task.sleep(nanoseconds: 50_000_000) // 50ms，让动画开始
         
         // 停止录音
         print("🎤 [fastvApp] 停止录音...")

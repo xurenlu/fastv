@@ -164,11 +164,9 @@ class WaveformWindowManager: ObservableObject {
     /// 切换到转文字状态
     func setTranscribing() {
         print("📊 [WaveformWindowManager] 切换到转文字状态")
-        // 使用动画立即切换状态
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            state = .transcribing
-            audioLevel = 0.0
-        }
+        // 立即切换状态，不使用动画延迟，确保用户感觉不到停顿
+        state = .transcribing
+        audioLevel = 0.0
     }
     
     /// 强制清理窗口（用于应用退出时的兜底方案）
@@ -277,15 +275,17 @@ struct WaveformView: View {
         let state = manager.state
         
         ZStack {
-            // 优化后的毛玻璃背景 - 光滑圆角，无边框无阴影
+            // 紫色主题背景 - 使用紫色作为主要背景色，更显眼
             RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
                 .fill(.ultraThinMaterial)
                 .background {
-                    // 更细腻的背景色 - 根据深浅模式调整
+                    // 紫色背景，根据深浅模式调整透明度
                     RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
-                        .fill(colorScheme == .dark ? 
-                              Color.black.opacity(0.2) : 
-                              Color.white.opacity(0.3))
+                        .fill(
+                            colorScheme == .dark ? 
+                            accentColor.opacity(0.25) :  // 深色模式下紫色背景
+                            accentColor.opacity(0.15)    // 浅色模式下紫色背景
+                        )
                 }
             
             // 根据状态显示不同内容 - 使用动画过渡
@@ -368,7 +368,14 @@ struct WaveformView: View {
                                 .opacity(0.8)
                         }
                         .onAppear {
+                            // 立即启动转圈动画，不等待
                             startTranscribingAnimation()
+                        }
+                        .onChange(of: state) { newState in
+                            // 当状态切换到转文字时，立即启动动画
+                            if newState == .transcribing {
+                                startTranscribingAnimation()
+                            }
                         }
                     }
                     .padding(.horizontal, style.horizontalPadding)
@@ -380,8 +387,7 @@ struct WaveformView: View {
                     ))
                 }
             }
-            // 更流畅的弹簧动画 - 符合苹果设计规范
-            .animation(.spring(response: 0.35, dampingFraction: 0.75, blendDuration: 0.1), value: state)
+            // 不使用动画延迟，确保状态切换立即生效
             .id(state) // 强制在状态改变时重新创建视图，确保动画立即切换
         }
         .frame(width: size.width, height: size.height)
@@ -440,12 +446,14 @@ struct WaveformView: View {
     }
     
     private func startTranscribingAnimation() {
-        // 重置角度
+        // 立即重置角度并启动动画，不等待
         rotationAngle = 0
         
-        // 使用线性动画确保连续旋转
-        withAnimation(.linear(duration: 1.2).repeatForever(autoreverses: false)) {
-            rotationAngle = 360
+        // 使用线性动画确保连续旋转，立即开始
+        DispatchQueue.main.async {
+            withAnimation(.linear(duration: 1.2).repeatForever(autoreverses: false)) {
+                self.rotationAngle = 360
+            }
         }
     }
 }

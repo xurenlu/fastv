@@ -170,12 +170,12 @@ class UserPreferences: ObservableObject {
             waveformWindowStyle = .compact
         }
         
-        // 波形窗口颜色风格设置，默认为蓝色
+        // 波形窗口颜色风格设置，默认为紫色（更显眼）
         if let colorStyleString = defaults.string(forKey: Keys.waveformWindowColorStyle),
            let colorStyle = WaveformWindowColorStyle(rawValue: colorStyleString) {
             waveformWindowColorStyle = colorStyle
         } else {
-            waveformWindowColorStyle = .blue
+            waveformWindowColorStyle = .purple
         }
         
         // AI 优化设置，默认不启用

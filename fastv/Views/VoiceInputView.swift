@@ -10,123 +10,10 @@ import SwiftUI
 struct VoiceInputView: View {
     @ObservedObject private var history = VoiceInputHistory.shared
     @ObservedObject private var preferences = UserPreferences.shared
-    @State private var inputText: String = ""
-    @State private var isTranscribing = false
     @State private var errorMessage: String?
-    @FocusState private var isInputFocused: Bool
     
     var body: some View {
         VStack(spacing: 0) {
-            // 顶部文本输入区域
-            VStack(spacing: 0) {
-                // 文本输入框
-                VStack(alignment: .leading, spacing: 8) {
-                    TextEditor(text: $inputText)
-                        .font(.system(size: 15, design: .default))
-                        .lineSpacing(4)
-                        .scrollContentBackground(.hidden)
-                        .background(Color.clear)
-                        .frame(minHeight: 60, maxHeight: 120)
-                        .padding(12)
-                        .background {
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(Color(NSColor.textBackgroundColor))
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .strokeBorder(
-                                            isInputFocused ? Color.accentColor.opacity(0.5) : Color.secondary.opacity(0.2),
-                                            lineWidth: isInputFocused ? 2 : 1
-                                        )
-                                }
-                        }
-                        .focused($isInputFocused)
-                        .onChange(of: history.items.first?.id) { _ in
-                            // 当历史记录更新时，更新输入框内容
-                            if let latestItem = history.items.first, !latestItem.text.isEmpty {
-                                inputText = latestItem.text
-                            }
-                        }
-                    
-                    // 输入框底部工具栏
-                    HStack(spacing: 16) {
-                        // 快捷键提示
-                        HStack(spacing: 6) {
-                            Image(systemName: "keyboard")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                            
-                            Text("press.shortcut.to.speak")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.secondary)
-                            
-                            if preferences.enableVoiceInput {
-                                HStack(spacing: 3) {
-                                    ForEach(shortcutKeys, id: \.self) { key in
-                                        Text(key)
-                                            .font(.system(size: 10, weight: .medium, design: .rounded))
-                                            .foregroundStyle(.primary)
-                                            .padding(.horizontal, 5)
-                                            .padding(.vertical, 2)
-                                            .background {
-                                                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                                                    .fill(Color.secondary.opacity(0.15))
-                                            }
-                                    }
-                                }
-                            }
-                        }
-                        
-                        Spacer()
-                        
-                        // 字数统计
-                        if !inputText.isEmpty {
-                            Text("\(inputText.count) \(NSLocalizedString("characters", comment: ""))")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                        }
-                        
-                        // 操作按钮
-                        HStack(spacing: 8) {
-                            // 清空按钮
-                            if !inputText.isEmpty {
-                                Button(action: {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        inputText = ""
-                                    }
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 14))
-                                        .foregroundStyle(.secondary)
-                                }
-                                .buttonStyle(.plain)
-                                .help(NSLocalizedString("clear", comment: ""))
-                            }
-                            
-                            // 复制按钮
-                            if !inputText.isEmpty {
-                                Button(action: {
-                                    history.copyToPasteboard(inputText)
-                                }) {
-                                    Image(systemName: "doc.on.doc")
-                                        .font(.system(size: 14))
-                                        .foregroundStyle(.blue)
-                                }
-                                .buttonStyle(.plain)
-                                .help(NSLocalizedString("copy", comment: ""))
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 4)
-                }
-                .padding(20)
-                .background {
-                    Rectangle()
-                        .fill(.regularMaterial)
-                }
-                
-                Divider()
-            }
-            
             // 历史记录区域
             VStack(spacing: 0) {
                 // 标题栏
@@ -186,7 +73,6 @@ struct VoiceInputView: View {
                     if !history.items.isEmpty {
                         Button(action: {
                             history.clear()
-                            inputText = ""
                         }) {
                             Text("clear.all")
                                 .font(.system(size: 13))
@@ -258,12 +144,6 @@ struct VoiceInputView: View {
             }
         }
         .navigationTitle(NSLocalizedString("voice.input", comment: ""))
-        .onAppear {
-            // 初始化时，如果有最新记录，显示在输入框中
-            if let latestItem = history.items.first {
-                inputText = latestItem.text
-            }
-        }
         .alert(NSLocalizedString("error", comment: ""), isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
