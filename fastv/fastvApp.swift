@@ -331,10 +331,13 @@ struct fastvApp: App {
         let textInsertion = TextInsertionService.shared
         let history = VoiceInputHistory.shared
         
-        // 切换到转文字状态（不隐藏窗口）
-        print("📊 [fastvApp] 切换到转文字状态...")
+        // 立即切换到转文字状态（在停止录音之前）
+        print("📊 [fastvApp] 立即切换到转文字状态...")
         waveformManager.setTranscribing()
         print("✅ [fastvApp] 已切换到转文字状态")
+        
+        // 确保UI更新完成
+        try? await Task.sleep(nanoseconds: 50_000_000) // 50ms，让动画开始
         
         // 停止录音
         print("🎤 [fastvApp] 停止录音...")
@@ -349,8 +352,35 @@ struct fastvApp: App {
         // 语音转文字
         print("🔊 [fastvApp] 开始语音转文字...")
         do {
-            let text = try await SpeechTranscriber.transcribe(recording: recording)
+            var text = try await SpeechTranscriber.transcribe(recording: recording)
             print("✅ [fastvApp] 语音转文字成功: \(text.prefix(50))...")
+            
+            // AI 优化（如果启用）
+            let preferences = UserPreferences.shared
+            if preferences.enableAIOptimization {
+                print("🤖 [fastvApp] AI 优化已启用，开始优化文本（超时: \(preferences.aiTimeout)秒）...")
+                let aiStartTime = Date()
+                do {
+                    let optimizedText = try await OllamaService.shared.optimizeTranscript(
+                        text: text,
+                        endpoint: preferences.aiAPIEndpoint,
+                        model: preferences.aiModel,
+                        apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken,
+                        timeout: preferences.aiTimeout,
+                        systemPrompt: preferences.aiSystemPrompt
+                    )
+                    let aiDuration = Date().timeIntervalSince(aiStartTime)
+                    print("✅ [fastvApp] AI 优化完成，耗时: \(String(format: "%.2f", aiDuration))秒")
+                    print("📝 [fastvApp] 原文: \(text.prefix(50))...")
+                    print("📝 [fastvApp] 优化后: \(optimizedText.prefix(50))...")
+                    text = optimizedText
+                } catch {
+                    print("⚠️ [fastvApp] AI 优化失败，使用原始文本: \(error.localizedDescription)")
+                    // AI 优化失败不影响主流程，继续使用原始文本
+                }
+            } else {
+                print("ℹ️ [fastvApp] AI 优化未启用，使用原始文本")
+            }
             
             // 保存到历史记录（包含时长）
             history.add(text, duration: duration)

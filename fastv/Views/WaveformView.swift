@@ -52,19 +52,12 @@ class WaveformWindowManager: ObservableObject {
         state = .recording
         audioLevel = 0.0
         
-        // 使用 weak self 避免循环引用
-        let contentView = WaveformView(
-            audioLevel: Binding(
-                get: { [weak self] in self?.audioLevel ?? 0.0 },
-                set: { [weak self] newValue in self?.audioLevel = newValue }
-            ),
-            state: Binding(
-                get: { [weak self] in self?.state ?? .recording },
-                set: { [weak self] newValue in self?.state = newValue }
-            )
-        )
+        let contentView = WaveformView(manager: self)
         let hostingView = NSHostingView(rootView: contentView)
-        hostingView.frame = NSRect(x: 0, y: 0, width: 120, height: 40)
+        
+        // 根据用户设置的样式调整窗口大小
+        let windowSize = UserPreferences.shared.waveformWindowStyle.size
+        hostingView.frame = NSRect(x: 0, y: 0, width: windowSize.width, height: windowSize.height)
         
         let windowFrame = calculateWindowFrame()
         print("📊 [WaveformWindowManager] 窗口位置: x=\(windowFrame.origin.x), y=\(windowFrame.origin.y), width=\(windowFrame.width), height=\(windowFrame.height)")
@@ -171,8 +164,11 @@ class WaveformWindowManager: ObservableObject {
     /// 切换到转文字状态
     func setTranscribing() {
         print("📊 [WaveformWindowManager] 切换到转文字状态")
-        state = .transcribing
-        audioLevel = 0.0
+        // 使用动画立即切换状态
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            state = .transcribing
+            audioLevel = 0.0
+        }
     }
     
     /// 强制清理窗口（用于应用退出时的兜底方案）
@@ -208,12 +204,14 @@ class WaveformWindowManager: ObservableObject {
     /// 计算窗口位置
     private func calculateWindowFrame() -> NSRect {
         guard let screen = NSScreen.main else {
-            return NSRect(x: 0, y: 0, width: 120, height: 40)
+            let size = UserPreferences.shared.waveformWindowStyle.size
+            return NSRect(x: 0, y: 0, width: size.width, height: size.height)
         }
         
         let screenFrame = screen.visibleFrame
-        let windowWidth: CGFloat = 120
-        let windowHeight: CGFloat = 40
+        let windowSize = UserPreferences.shared.waveformWindowStyle.size
+        let windowWidth: CGFloat = windowSize.width
+        let windowHeight: CGFloat = windowSize.height
         let margin: CGFloat = 20
         
         // 获取用户设置的位置
@@ -264,91 +262,171 @@ class WindowDelegate: NSObject, NSWindowDelegate {
 
 /// 波形视图
 struct WaveformView: View {
-    @Binding var audioLevel: Float
-    @Binding var state: WaveformWindowState
-    @State private var pulseScale: CGFloat = 1.0
+    @ObservedObject var manager: WaveformWindowManager
     @State private var rotationAngle: Double = 0
     @State private var bars: [CGFloat] = [0.3, 0.5, 0.7, 0.5, 0.3]
+    @State private var containerScale: CGFloat = 1.0
+    @State private var containerOpacity: Double = 1.0
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
+        let style = UserPreferences.shared.waveformWindowStyle
+        let colorStyle = UserPreferences.shared.waveformWindowColorStyle
+        let size = style.size
+        let accentColor = colorStyle.adaptiveColor(for: colorScheme)
+        let state = manager.state
+        
         ZStack {
-            // 更明显的背景，确保可见
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            // 优化后的毛玻璃背景 - 更精致的层次
+            RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
                 .fill(.ultraThinMaterial)
+                .background {
+                    // 更细腻的背景色 - 根据深浅模式调整
+                    RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
+                        .fill(colorScheme == .dark ? 
+                              Color.black.opacity(0.2) : 
+                              Color.white.opacity(0.3))
+                }
                 .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(Color.accentColor.opacity(0.5), lineWidth: 2)
-                }
-                .shadow(color: .black.opacity(0.3), radius: 10, y: 5)
-            
-            // 根据状态显示不同内容
-            switch state {
-            case .recording:
-                // 录音中：显示简单的音量动画
-                HStack(spacing: 4) {
-                    // 简单的音量条动画
-                    ForEach(0..<bars.count, id: \.self) { index in
-                        RoundedRectangle(cornerRadius: 2, style: .continuous)
-                            .fill(Color.accentColor.opacity(0.8))
-                            .frame(width: 4, height: bars[index] * 20)
-                            .animation(
-                                .easeInOut(duration: 0.3)
-                                .repeatForever(autoreverses: true)
-                                .delay(Double(index) * 0.1),
-                                value: bars[index]
-                            )
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .onAppear {
-                    animateBars()
-                }
-                .onChange(of: audioLevel) { newLevel in
-                    updateBars(with: newLevel)
-                }
-                
-            case .transcribing:
-                VStack(spacing: 6) {
-                    Circle()
-                        .trim(from: 0.0, to: 0.85)
-                        .stroke(
-                            AngularGradient(
-                                gradient: Gradient(colors: [Color.accentColor, Color.accentColor.opacity(0.2)]),
-                                center: .center
-                            ),
-                            style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                    // 更精致的边框 - 单色半透明
+                    RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
+                        .strokeBorder(
+                            Color.white.opacity(colorScheme == .dark ? 0.15 : 0.25),
+                            lineWidth: 1
                         )
-                        .frame(width: 22, height: 22)
-                        .rotationEffect(.degrees(rotationAngle))
+                }
+                // 更轻盈的阴影 - 符合苹果设计规范
+                .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
+                .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 1)
+            
+            // 根据状态显示不同内容 - 使用动画过渡
+            Group {
+                switch state {
+                case .recording:
+                    // 录音中：显示音量波形动画 - 更协调的波形
+                    HStack(spacing: style.barSpacing) {
+                        ForEach(0..<bars.count, id: \.self) { index in
+                            RoundedRectangle(cornerRadius: style.barWidth / 2, style: .continuous)
+                                .fill(
+                                    // 更丰富的渐变层次
+                                    LinearGradient(
+                                        colors: [
+                                            accentColor.opacity(0.9),
+                                            accentColor.opacity(0.7),
+                                            accentColor.opacity(0.5)
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                                .frame(width: style.barWidth, height: bars[index] * style.maxBarHeight)
+                                // 添加微妙的发光效果
+                                .shadow(color: accentColor.opacity(0.3), radius: 2, x: 0, y: 0)
+                        }
+                    }
+                    .padding(.horizontal, style.horizontalPadding)
+                    .padding(.vertical, style.verticalPadding)
+                    .onAppear {
+                        animateBars()
+                    }
+                    .onChange(of: manager.audioLevel) { newLevel in
+                        updateBars(with: newLevel)
+                    }
+                    // 更自然的过渡效果
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.9),
+                        removal: .scale(scale: 1.05).combined(with: .opacity)
+                    ))
+                    
+                case .transcribing:
+                    // 转文字中：显示旋转加载动画 - 更流畅的动画
+                    VStack(spacing: 6) {
+                        ZStack {
+                            // 背景圆环 - 更细腻
+                            Circle()
+                                .stroke(accentColor.opacity(0.25), lineWidth: 2.5)
+                                .frame(width: style.spinnerSize, height: style.spinnerSize)
+                            
+                            // 旋转的渐变圆环 - 更丰富的渐变
+                            Circle()
+                                .trim(from: 0.0, to: 0.75)
+                                .stroke(
+                                    AngularGradient(
+                                        gradient: Gradient(colors: [
+                                            accentColor.opacity(1.0),
+                                            accentColor.opacity(0.85),
+                                            accentColor.opacity(0.6),
+                                            accentColor.opacity(0.35),
+                                            accentColor.opacity(0.15)
+                                        ]),
+                                        center: .center,
+                                        startAngle: .degrees(0),
+                                        endAngle: .degrees(360)
+                                    ),
+                                    style: StrokeStyle(lineWidth: 2.6, lineCap: .round)
+                                )
+                                .frame(width: style.spinnerSize, height: style.spinnerSize)
+                                .rotationEffect(.degrees(rotationAngle))
+                                // 添加微妙的发光效果
+                                .shadow(color: accentColor.opacity(0.45), radius: 4, x: 0, y: 0)
+                            
+                            // 额外的高光层，增强存在感
+                            Circle()
+                                .trim(from: 0.0, to: 0.35)
+                                .stroke(accentColor.opacity(0.5), lineWidth: 1.2)
+                                .frame(width: style.spinnerSize + 4, height: style.spinnerSize + 4)
+                                .blur(radius: 1.5)
+                                .opacity(0.8)
+                        }
                         .onAppear {
                             startTranscribingAnimation()
                         }
-                        .onChange(of: state) { newState in
-                            if newState == .transcribing {
-                                startTranscribingAnimation()
-                            }
-                        }
-                    
-                    Text("转文字中…")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, style.horizontalPadding)
+                    .padding(.vertical, style.verticalPadding)
+                    // 更自然的过渡效果
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 1.05),
+                        removal: .scale(scale: 0.85).combined(with: .opacity)
+                    ))
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+            }
+            // 更流畅的弹簧动画 - 符合苹果设计规范
+            .animation(.spring(response: 0.35, dampingFraction: 0.75, blendDuration: 0.1), value: state)
+            .id(state) // 强制在状态改变时重新创建视图，确保动画立即切换
+        }
+        .frame(width: size.width, height: size.height)
+        // 容器本身的缩放动画 - 增加微交互
+        .scaleEffect(containerScale)
+        .opacity(containerOpacity)
+        .onAppear {
+            // 出现时的弹性动画
+            containerScale = 0.8
+            containerOpacity = 0
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                containerScale = 1.0
+                containerOpacity = 1.0
             }
         }
-        .frame(width: 120, height: 40)
     }
     
     private func animateBars() {
-        // 创建持续的动画效果
-        withAnimation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true)) {
-            for i in 0..<bars.count {
-                DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.1) {
-                    withAnimation(.easeInOut(duration: 0.3).repeatForever(autoreverses: true)) {
-                        bars[i] = Double.random(in: 0.3...1.0)
-                    }
+        // 更协调的波形动画 - 中间高两边低的自然形态
+        let baseHeights: [CGFloat] = [0.35, 0.55, 0.75, 0.55, 0.35]
+        
+        for i in 0..<bars.count {
+            let delay = Double(i) * 0.08 // 轻微的延迟创造波浪效果
+            let duration = 0.4 + Double(i) * 0.05 // 不同的持续时间增加变化
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                // 使用缓入缓出动画，更自然
+                withAnimation(
+                    .easeInOut(duration: duration)
+                    .repeatForever(autoreverses: true)
+                ) {
+                    // 在基础高度上下波动，而不是完全随机
+                    let variation: CGFloat = 0.15
+                    bars[i] = baseHeights[i] + CGFloat.random(in: -variation...variation)
                 }
             }
         }
@@ -374,7 +452,11 @@ struct WaveformView: View {
     
     private func startTranscribingAnimation() {
         rotationAngle = 0
-        withAnimation(.linear(duration: 0.9).repeatForever(autoreverses: false)) {
+        // 使用缓入缓出的旋转动画，更有"呼吸感"
+        withAnimation(
+            .timingCurve(0.4, 0.0, 0.2, 1.0, duration: 1.2)
+            .repeatForever(autoreverses: false)
+        ) {
             rotationAngle = 360
         }
     }

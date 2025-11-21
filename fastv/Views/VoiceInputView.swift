@@ -158,7 +158,7 @@ struct VoiceInputView: View {
                     List {
                         ForEach(history.items) { item in
                             VoiceInputHistoryRow(item: item)
-                                .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 12, trailing: 20))
+                                .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
                                 .listRowSeparator(.hidden)
                         }
                     }
@@ -272,6 +272,7 @@ struct VoiceInputHistoryRow: View {
     @ObservedObject private var history = VoiceInputHistory.shared
     @State private var isHovered = false
     @State private var showMenu = false
+    @State private var copySuccess = false
     
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
@@ -298,13 +299,21 @@ struct VoiceInputHistoryRow: View {
                     // 复制按钮
                     Button(action: {
                         history.copyToPasteboard(item.text)
+                        copySuccess = true
+                        // 1.5秒后恢复图标
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            withAnimation {
+                                copySuccess = false
+                            }
+                        }
                     }) {
-                        Image(systemName: "doc.on.doc")
+                        Image(systemName: copySuccess ? "checkmark.circle.fill" : "doc.on.doc")
                             .font(.system(size: 13))
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(copySuccess ? .green : .blue)
+                            .animation(.easeInOut(duration: 0.2), value: copySuccess)
                     }
                     .buttonStyle(.plain)
-                    .help("复制")
+                    .help(copySuccess ? "已复制" : "复制")
                     
                     // 删除按钮
                     Button(action: {
@@ -323,8 +332,15 @@ struct VoiceInputHistoryRow: View {
                     Menu {
                         Button(action: {
                             history.copyToPasteboard(item.text)
+                            copySuccess = true
+                            // 1.5秒后恢复图标
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                withAnimation {
+                                    copySuccess = false
+                                }
+                            }
                         }) {
-                            Label("复制", systemImage: "doc.on.doc")
+                            Label("复制", systemImage: copySuccess ? "checkmark.circle.fill" : "doc.on.doc")
                         }
                         
                         Divider()
@@ -347,7 +363,7 @@ struct VoiceInputHistoryRow: View {
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 6)
         .padding(.horizontal, 20)
         .background {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
