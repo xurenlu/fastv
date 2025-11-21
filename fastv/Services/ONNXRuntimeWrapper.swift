@@ -99,7 +99,7 @@ class ONNXRuntimeWrapper {
         self.session = session
     }
     
-    func runInference(input: [[[Float]]]) throws -> [Int] {
+    func runInference(input: [[[Float]]], language: TranscriptLanguage = .auto) throws -> [Int] {
         guard let api = api else {
             throw VideoProcessingError.modelLoadFailed("API 未初始化")
         }
@@ -117,7 +117,35 @@ class ONNXRuntimeWrapper {
         let sequenceLength: Int64 = Int64(input[0].count)
         let featureDim: Int64 = Int64(input[0][0].count)
         
+        // 验证输入数据
+        guard sequenceLength > 0, featureDim > 0 else {
+            throw VideoProcessingError.transcriptionFailed("输入数据维度无效: sequence=\(sequenceLength), feature=\(featureDim)")
+        }
+        
+        // 检查所有帧的维度是否一致
+        for (index, frame) in input[0].enumerated() {
+            guard frame.count == Int(featureDim) else {
+                throw VideoProcessingError.transcriptionFailed("输入数据维度不一致: 帧 \(index) 维度为 \(frame.count)，期望 \(featureDim)")
+            }
+            
+            // 检查 NaN 和 Inf
+            for (valueIndex, value) in frame.enumerated() {
+                if value.isNaN {
+                    throw VideoProcessingError.transcriptionFailed("输入数据包含 NaN: 帧 \(index), 维度 \(valueIndex)")
+                }
+                if value.isInfinite {
+                    throw VideoProcessingError.transcriptionFailed("输入数据包含 Inf: 帧 \(index), 维度 \(valueIndex), 值=\(value)")
+                }
+            }
+        }
+        
         let flatInput = input[0].flatMap { $0 }
+        
+        // 验证展平后的数据大小
+        let expectedSize = Int(sequenceLength * featureDim)
+        guard flatInput.count == expectedSize else {
+            throw VideoProcessingError.transcriptionFailed("输入数据大小不匹配: 实际=\(flatInput.count), 期望=\(expectedSize)")
+        }
         
         // 创建内存信息
         var memoryInfo: OpaquePointer?
@@ -182,6 +210,7 @@ class ONNXRuntimeWrapper {
         print("ONNX 模型输入要求: \(inputNames)")
         print("ONNX 模型输出: \(outputNames)")
         print("输入特征形状: batch=\(batchSize), sequence=\(sequenceLength), feature=\(featureDim)")
+        print("输入数据统计: 总元素数=\(flatInput.count), min=\(flatInput.min() ?? 0), max=\(flatInput.max() ?? 0), avg=\(flatInput.reduce(0, +) / Float(flatInput.count))")
         #endif
         
         // 创建所有必需的输入张量（按照模型定义的顺序）
@@ -242,8 +271,8 @@ class ONNXRuntimeWrapper {
         // 检查模型是否有 language 输入
         // SenseVoice lid_dict: {"auto": 0, "zh": 3, "en": 4, "yue": 7, "ja": 11, "ko": 12, "nospeech": 13}
         // 根据错误信息，模型期望的范围是 [-16, 15]，但 3 在这个范围内，应该可以
-        // 尝试使用 3 (中文)，因为用户明确说是中文音频
-        var languageDataValue: Int32 = 3 // 3 = 中文 (zh)
+        // 使用用户选择的语言ID
+        var languageDataValue: Int32 = language.languageID
         if inputNames.contains(where: { $0.contains("language") || $0 == "language" }) {
             // 尝试整数类型（ONNX 模型通常使用整数）
             let languageData: [Int32] = [languageDataValue] // 3 = 中文 (zh)
@@ -294,7 +323,8 @@ class ONNXRuntimeWrapper {
         // C# 示例使用: textnormId = 15 (woitn)
         // Python 示例：use_itn=False，对应 textnorm="woitn" -> 15
         var textnormTensor: OpaquePointer?
-        let textnormData: [Int32] = [15] // 15 = woitn (without ITN，对应 use_itn=False)
+        let textnormDataValue: Int32 = 15 // 15 = woitn (without ITN，对应 use_itn=False)
+        let textnormData: [Int32] = [textnormDataValue]
         textnormData.withUnsafeBufferPointer { buffer in
             let shape: [Int64] = [batchSize]
             var tensor: OpaquePointer?
@@ -308,10 +338,16 @@ class ONNXRuntimeWrapper {
                 &tensor
             )
             if status != nil {
-                _ = getErrorMessage(from: status, api: api)
+                let errorMsg = getErrorMessage(from: status, api: api)
                 api.pointee.ReleaseStatus(status)
+                #if DEBUG
+                print("警告：创建 textnorm 张量失败: \(errorMsg)")
+                #endif
             } else {
                 textnormTensor = tensor
+                #if DEBUG
+                print("成功创建 textnorm 张量，值=\(textnormDataValue)")
+                #endif
             }
         }
         
@@ -336,6 +372,12 @@ class ONNXRuntimeWrapper {
         
         #if DEBUG
         print("实际使用的输入: \(inputNameStrings)")
+        print("输入张量数量: \(inputTensors.count)")
+        print("输入名称数量: \(inputNameStrings.count)")
+        // 验证输入顺序
+        for (index, name) in inputNameStrings.enumerated() {
+            print("  输入[\(index)]: \(name)")
+        }
         #endif
         
         defer {

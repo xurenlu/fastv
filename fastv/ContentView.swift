@@ -13,53 +13,100 @@ struct ContentView: View {
     @State private var showSettings = false
     @State private var showLastVideoBanner = false
     @State private var showWelcome = false
+    @State private var selectedTab = 0
     
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // 上次打开视频横幅提示
-                if showLastVideoBanner, let lastURL = viewModel.getLastVideoURL() {
-                    LastVideoBannerView(
-                        lastVideoURL: lastURL,
-                        onOpen: {
-                            viewModel.loadVideo(lastURL)
-                            showLastVideoBanner = false
-                        },
-                        onDismiss: {
-                            showLastVideoBanner = false
-                        }
-                    )
-                }
-                
-                // 主内容区域
-                Group {
-                    if viewModel.appState.isEmpty {
-                        DropZoneView(viewModel: viewModel)
-                    } else if viewModel.appState.isSingleVideo {
-                        processingView
-                    } else {
-                        // 多视频列表视图
-                        if let listViewModel = viewModel.videoListViewModel {
-                            VideoListView(viewModel: listViewModel)
+        TabView(selection: $selectedTab) {
+            // Tab 1: 视频处理
+            NavigationStack {
+                VStack(spacing: 0) {
+                    // 上次打开视频横幅提示
+                    if showLastVideoBanner, let lastURL = viewModel.getLastVideoURL() {
+                        LastVideoBannerView(
+                            lastVideoURL: lastURL,
+                            onOpen: {
+                                viewModel.loadVideo(lastURL)
+                                showLastVideoBanner = false
+                            },
+                            onDismiss: {
+                                showLastVideoBanner = false
+                            }
+                        )
+                    }
+                    
+                    // 主内容区域
+                    Group {
+                        if viewModel.appState.isEmpty {
+                            DropZoneView(viewModel: viewModel)
+                        } else if viewModel.appState.isSingleVideo {
+                            processingView
                         } else {
-                            ProgressView("加载中...")
-                                .onAppear {
-                                    viewModel.initializeVideoList()
-                                }
+                            // 多视频列表视图
+                            if let listViewModel = viewModel.videoListViewModel {
+                                VideoListView(viewModel: listViewModel)
+                            } else {
+                                ProgressView("加载中...")
+                                    .onAppear {
+                                        viewModel.initializeVideoList()
+                                    }
+                            }
                         }
+                    }
+                }
+                .navigationTitle("视频处理")
+                .toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button(action: selectVideoFiles) {
+                            Label("选择文件", systemImage: "folder")
+                        }
+                        .keyboardShortcut("o", modifiers: [.command])
+                        .help("选择视频文件")
+                    }
+                    
+                    ToolbarItem(placement: .automatic) {
+                        Button(action: { showWelcome = true }) {
+                            Label("使用说明", systemImage: "questionmark.circle")
+                        }
+                        .help("查看使用说明")
+                    }
+                    
+                    ToolbarItem(placement: .automatic) {
+                        Button(action: { showSettings = true }) {
+                            Label("设置", systemImage: "gearshape")
+                        }
+                        .help("打开设置")
+                    }
+                }
+                .sheet(isPresented: $showSettings) {
+                    SettingsView()
+                }
+                .sheet(isPresented: $showWelcome) {
+                    WelcomeView()
+                        .frame(width: 600, height: 650)
+                }
+                .alert("错误", isPresented: Binding(
+                    get: { viewModel.errorMessage != nil },
+                    set: { if !$0 { viewModel.errorMessage = nil } }
+                )) {
+                    Button("确定", role: .cancel) {
+                        viewModel.errorMessage = nil
+                    }
+                } message: {
+                    if let errorMessage = viewModel.errorMessage {
+                        Text(errorMessage)
                     }
                 }
             }
-            .navigationTitle("视频处理")
+            .tabItem {
+                Label("视频处理", systemImage: "video.fill")
+            }
+            .tag(0)
+            
+            // Tab 2: 语音输入
+            NavigationStack {
+                VoiceInputView()
+            }
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: selectVideoFiles) {
-                        Label("选择文件", systemImage: "folder")
-                    }
-                    .keyboardShortcut("o", modifiers: [.command])
-                    .help("选择视频文件")
-                }
-                
                 ToolbarItem(placement: .automatic) {
                     Button(action: { showWelcome = true }) {
                         Label("使用说明", systemImage: "questionmark.circle")
@@ -81,18 +128,10 @@ struct ContentView: View {
                 WelcomeView()
                     .frame(width: 600, height: 650)
             }
-            .alert("错误", isPresented: Binding(
-                get: { viewModel.errorMessage != nil },
-                set: { if !$0 { viewModel.errorMessage = nil } }
-            )) {
-                Button("确定", role: .cancel) {
-                    viewModel.errorMessage = nil
-                }
-            } message: {
-                if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage)
-                }
+            .tabItem {
+                Label("语音输入", systemImage: "mic.fill")
             }
+            .tag(1)
         }
         .frame(minWidth: 720, minHeight: 520)
         .onAppear {

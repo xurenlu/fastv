@@ -14,6 +14,7 @@ protocol ProcessingOptionsProvider {
     var extractAudio: Bool { get set }
     var extractTranscript: Bool { get set }
     var selectedAudioFormat: AudioFormat { get set }
+    var selectedTranscriptLanguage: TranscriptLanguage { get set }
     var videoInfo: VideoInfo? { get }
 }
 
@@ -106,6 +107,29 @@ struct ProcessingOptionsView<Provider: ProcessingOptionsProvider & ObservableObj
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.leading, 40)
+                }
+                
+                if provider.extractTranscript && !shouldDisableAudio {
+                    HStack {
+                        Text("语言")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Picker("", selection: Binding(
+                            get: { [weak provider] in provider?.selectedTranscriptLanguage ?? .auto },
+                            set: { [weak provider] newValue in
+                                Task { @MainActor in
+                                    provider?.selectedTranscriptLanguage = newValue
+                                }
+                            }
+                        )) {
+                            ForEach(TranscriptLanguage.allCases, id: \.self) { language in
+                                Text(language.displayName).tag(language)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 120)
+                    }
+                    .padding(.leading, 20)
                 }
             }
         }

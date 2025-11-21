@@ -40,10 +40,53 @@ struct SpeechTranscriber {
     // 缓存 token 映射
     private static var tokenMap: [Int: String]?
     
+    private static func resolveCMVNURL() -> URL? {
+        // 方式1: 使用子目录
+        if let url = Bundle.main.url(forResource: "am", withExtension: "mvn", subdirectory: "sensevoice-small") {
+            return url
+        }
+        // 方式2: 根目录
+        if let url = Bundle.main.url(forResource: "am", withExtension: "mvn") {
+            return url
+        }
+        // 方式3: 手动拼路径
+        if let resourcePath = Bundle.main.resourcePath {
+            let sensevoicePath = (resourcePath as NSString).appendingPathComponent("sensevoice-small/am.mvn")
+            if FileManager.default.fileExists(atPath: sensevoicePath) {
+                return URL(fileURLWithPath: sensevoicePath)
+            }
+            let fallbackPath = (resourcePath as NSString).appendingPathComponent("am.mvn")
+            if FileManager.default.fileExists(atPath: fallbackPath) {
+                return URL(fileURLWithPath: fallbackPath)
+            }
+        }
+        #if DEBUG
+        print("警告：未找到 am.mvn 文件，特征可能未归一化")
+        #endif
+        return nil
+    }
+    
+    /// 从内存录音转文字（用于语音输入）
+    static func transcribe(recording: VoiceRecording, language: TranscriptLanguage = .auto) async throws -> String {
+        guard recording.channelCount == 1 else {
+            throw VideoProcessingError.transcriptionFailed("仅支持单声道录音")
+        }
+        guard abs(recording.sampleRate - 16000) < 1 else {
+            throw VideoProcessingError.transcriptionFailed("录音采样率需为16kHz")
+        }
+        
+        let cmvnURL = resolveCMVNURL()
+        let features = try await AudioFeatureExtractor.extractMelFeatures(from: recording, cmvnURL: cmvnURL)
+        let transcript = try await performTranscription(features: features, language: language)
+        return transcript
+    }
+    
     /// 从音频文件转文字
-    /// - Parameter audioURL: 音频文件 URL
+    /// - Parameters:
+    ///   - audioURL: 音频文件 URL
+    ///   - language: 语言类型，默认为自动检测
     /// - Returns: 转录的文本
-    static func transcribe(audioURL: URL) async throws -> String {
+    static func transcribe(audioURL: URL, language: TranscriptLanguage = .auto) async throws -> String {
         // 1. 预处理音频：转换为 16kHz 单声道 WAV
         let processedAudioURL = try await preprocessAudio(audioURL: audioURL)
         defer {
@@ -52,67 +95,11 @@ struct SpeechTranscriber {
         }
         
         // 2. 提取音频特征
-        // 获取 CMVN 文件路径
-        var cmvnURL: URL? = nil
-        
-        // 尝试多种路径查找方式
-        // 方式1: 使用 subdirectory
-        cmvnURL = Bundle.main.url(forResource: "am", withExtension: "mvn", subdirectory: "sensevoice-small")
-        
-        // 方式2: 如果方式1失败，尝试直接查找（文件可能在根目录）
-        if cmvnURL == nil {
-            cmvnURL = Bundle.main.url(forResource: "am", withExtension: "mvn")
-        }
-        
-        // 方式3: 尝试查找完整路径
-        if cmvnURL == nil {
-            if let resourcePath = Bundle.main.resourcePath {
-                let fullPath = (resourcePath as NSString).appendingPathComponent("sensevoice-small/am.mvn")
-                if FileManager.default.fileExists(atPath: fullPath) {
-                    cmvnURL = URL(fileURLWithPath: fullPath)
-                }
-            }
-        }
-        
-        // 方式4: 尝试查找 Resources 目录下的文件
-        if cmvnURL == nil {
-            if let resourcePath = Bundle.main.resourcePath {
-                let fullPath = (resourcePath as NSString).appendingPathComponent("am.mvn")
-                if FileManager.default.fileExists(atPath: fullPath) {
-                    cmvnURL = URL(fileURLWithPath: fullPath)
-                }
-            }
-        }
-        
-        #if DEBUG
-        if cmvnURL == nil {
-            print("警告：未找到 am.mvn 文件，特征可能未归一化")
-            print("尝试查找的路径:")
-            if let resourcePath = Bundle.main.resourcePath {
-                print("  Resource Path: \(resourcePath)")
-                print("  尝试路径1: \(resourcePath)/sensevoice-small/am.mvn")
-                print("  尝试路径2: \(resourcePath)/am.mvn")
-                
-                // 列出所有资源文件
-                if let files = try? FileManager.default.contentsOfDirectory(atPath: resourcePath) {
-                    print("  Resource 目录下的文件: \(files.prefix(10))")
-                }
-                if let sensevoicePath = Bundle.main.path(forResource: "sensevoice-small", ofType: nil, inDirectory: nil) {
-                    print("  sensevoice-small 路径: \(sensevoicePath)")
-                    if let files = try? FileManager.default.contentsOfDirectory(atPath: sensevoicePath) {
-                        print("  sensevoice-small 目录下的文件: \(files)")
-                    }
-                }
-            }
-        } else {
-            print("成功找到 am.mvn 文件: \(cmvnURL!.path)")
-        }
-        #endif
-        
+        let cmvnURL = resolveCMVNURL()
         let features = try await AudioFeatureExtractor.extractMelFeatures(from: processedAudioURL, cmvnURL: cmvnURL)
         
         // 3. 加载模型并推理
-        let transcript = try await performTranscription(features: features)
+        let transcript = try await performTranscription(features: features, language: language)
         
         return transcript
     }
@@ -259,7 +246,11 @@ struct SpeechTranscriber {
     }
     
     /// 执行语音转文字推理
-    private static func performTranscription(features: [[Float]]) async throws -> String {
+    /// - Parameters:
+    ///   - features: 音频特征
+    ///   - language: 语言类型
+    /// - Returns: 转录的文本
+    private static func performTranscription(features: [[Float]], language: TranscriptLanguage) async throws -> String {
         // 检查模型文件是否存在
         guard let tokensPath = tokensPath else {
             throw VideoProcessingError.modelLoadFailed("tokens 文件未找到")
@@ -321,7 +312,7 @@ struct SpeechTranscriber {
         try onnxWrapper.loadModel(from: modelPath.path)
         
         // 运行推理
-        let tokenIDs = try onnxWrapper.runInference(input: inputFeatures)
+        let tokenIDs = try onnxWrapper.runInference(input: inputFeatures, language: language)
         
         // 后处理：token 解码和文本规范化
         let text = postprocessTokens(tokenIDs: tokenIDs, tokenMap: tokenMap)

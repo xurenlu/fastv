@@ -18,6 +18,7 @@ struct VideoProcessor {
         extractAudio: Bool,
         extractTranscript: Bool,
         audioFormat: AudioFormat,
+        transcriptLanguage: TranscriptLanguage = .auto,
         outputDirectory: URL,
         imageFormat: ImageFormat,
         imageMaxWidth: Int?,
@@ -131,7 +132,7 @@ struct VideoProcessor {
             // 提取文本稿（需要先有音频）
             if extractTranscript, let audioURL = audioURL {
                 progressHandler(currentProgress, "正在转写语音...")
-                let transcript = try await SpeechTranscriber.transcribe(audioURL: audioURL)
+                let transcript = try await SpeechTranscriber.transcribe(audioURL: audioURL, language: transcriptLanguage)
                 
                 // 保存转录文本
                 let transcriptFileName = fileManager.uniqueFileName(

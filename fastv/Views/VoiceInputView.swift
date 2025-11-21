@@ -234,6 +234,7 @@ struct VoiceInputView: View {
     private func keyCodeToString(_ keyCode: UInt16) -> String {
         // 常见按键映射
         switch keyCode {
+        case 0xFFFF: return "左Control"
         case 0x3F: return "FN"
         case 0x09: return "V"
         case 0x00: return "A"

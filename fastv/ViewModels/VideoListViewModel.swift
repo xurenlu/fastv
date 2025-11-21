@@ -46,6 +46,11 @@ class VideoListViewModel: ObservableObject {
         set { preferences.extractTranscript = newValue }
     }
     
+    var selectedTranscriptLanguage: TranscriptLanguage {
+        get { preferences.transcriptLanguage }
+        set { preferences.transcriptLanguage = newValue }
+    }
+    
     var hasAnyOptionSelected: Bool {
         return extractFirstFrame || extractLastFrame || extractAudio
     }
@@ -175,6 +180,7 @@ class VideoListViewModel: ObservableObject {
                 extractAudio: extractAudio,
                 extractTranscript: extractTranscript,
                 audioFormat: selectedAudioFormat,
+                transcriptLanguage: selectedTranscriptLanguage,
                 outputDirectory: outputDirectory,
                 imageFormat: preferences.imageFormat,
                 imageMaxWidth: preferences.imageMaxWidth,

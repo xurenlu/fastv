@@ -64,6 +64,11 @@ class VideoProcessorViewModel: ObservableObject {
         set { preferences.extractTranscript = newValue }
     }
     
+    var selectedTranscriptLanguage: TranscriptLanguage {
+        get { preferences.transcriptLanguage }
+        set { preferences.transcriptLanguage = newValue }
+    }
+    
     // 结果
     @Published var firstFrameImage: NSImage?
     @Published var lastFrameImage: NSImage?
@@ -209,6 +214,7 @@ class VideoProcessorViewModel: ObservableObject {
                 extractAudio: extractAudio,
                 extractTranscript: extractTranscript,
                 audioFormat: selectedAudioFormat,
+                transcriptLanguage: selectedTranscriptLanguage,
                 outputDirectory: outputDirectory,
                 imageFormat: preferences.imageFormat,
                 imageMaxWidth: preferences.imageMaxWidth,

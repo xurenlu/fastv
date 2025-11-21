@@ -24,9 +24,22 @@ struct AudioFeatureExtractor {
     /// - Parameter cmvnURL: Global CMVN 文件 URL (am.mvn)
     /// - Returns: 特征矩阵 [[Float]]，每行是一帧，每列是一个 Mel 频带
     static func extractMelFeatures(from audioURL: URL, cmvnURL: URL? = nil) async throws -> [[Float]] {
-        // 1. 加载音频数据
         let audioData = try await loadAudioData(from: audioURL)
-        
+        return try processSamples(audioData, cmvnURL: cmvnURL)
+    }
+    
+    static func extractMelFeatures(from recording: VoiceRecording, cmvnURL: URL? = nil) async throws -> [[Float]] {
+        guard recording.channelCount == 1 else {
+            throw VideoProcessingError.transcriptionFailed("仅支持单声道录音")
+        }
+        guard abs(recording.sampleRate - sampleRate) < 1 else {
+            throw VideoProcessingError.transcriptionFailed("录音采样率需为16kHz")
+        }
+        let samples = recording.normalizedSamples()
+        return try processSamples(samples, cmvnURL: cmvnURL)
+    }
+    
+    private static func processSamples(_ audioData: [Float], cmvnURL: URL?) throws -> [[Float]] {
         // 2. 计算 Mel 频谱图（优先使用 Kaldi 原生实现）
         var melFeatures: [[Float]]
         do {
@@ -144,12 +157,44 @@ struct AudioFeatureExtractor {
         
         let features = try KaldiFbankWrapper.shared.compute(samples: audioData)
         
+        // 验证特征数据
+        guard !features.isEmpty else {
+            throw VideoProcessingError.transcriptionFailed("Kaldi FBank 返回空特征")
+        }
+        
+        let featureDim = features[0].count
+        guard featureDim > 0 else {
+            throw VideoProcessingError.transcriptionFailed("Kaldi FBank 特征维度为 0")
+        }
+        
+        // 检查所有帧的维度是否一致
+        for (index, frame) in features.enumerated() {
+            guard frame.count == featureDim else {
+                throw VideoProcessingError.transcriptionFailed("Kaldi FBank 特征维度不一致: 帧 \(index) 维度为 \(frame.count)，期望 \(featureDim)")
+            }
+            
+            // 检查 NaN 和 Inf
+            for (valueIndex, value) in frame.enumerated() {
+                if value.isNaN {
+                    throw VideoProcessingError.transcriptionFailed("Kaldi FBank 特征包含 NaN: 帧 \(index), 维度 \(valueIndex)")
+                }
+                if value.isInfinite {
+                    throw VideoProcessingError.transcriptionFailed("Kaldi FBank 特征包含 Inf: 帧 \(index), 维度 \(valueIndex), 值=\(value)")
+                }
+            }
+        }
+        
         #if DEBUG
         if let firstFrame = features.first {
             let minVal = firstFrame.min() ?? 0
             let maxVal = firstFrame.max() ?? 0
             let avgVal = firstFrame.reduce(0, +) / Float(firstFrame.count)
             print("Kaldi FBank 第一帧统计: min=\(minVal), max=\(maxVal), avg=\(avgVal)")
+            
+            // 检查特征值范围是否合理（FBank 特征通常在 -50 到 50 之间）
+            if abs(minVal) > 100 || abs(maxVal) > 100 {
+                print("警告：Kaldi FBank 特征值范围异常: min=\(minVal), max=\(maxVal)")
+            }
         }
         print("Kaldi FBank 特征: 帧数=\(features.count), 维度=\(features.first?.count ?? 0)")
         #endif
