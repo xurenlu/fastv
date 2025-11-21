@@ -386,10 +386,14 @@ struct fastvApp: App {
             history.add(text, duration: duration)
             print("✅ [fastvApp] 已保存到历史记录（时长: \(String(format: "%.2f", duration))秒）")
             
-            // 插入到当前输入框
-            print("📝 [fastvApp] 插入文本到当前输入框...")
-            textInsertion.insertText(text)
-            print("✅ [fastvApp] 文本已插入")
+            // 插入到当前输入框（只有当文本不为空时才插入）
+            if !text.isEmpty {
+                print("📝 [fastvApp] 插入文本到当前输入框...")
+                textInsertion.insertText(text)
+                print("✅ [fastvApp] 文本已插入")
+            } else {
+                print("ℹ️ [fastvApp] 识别结果为空，跳过文本插入")
+            }
             
             // 转文字完成后，隐藏波形窗口
             print("📊 [fastvApp] 转文字完成，隐藏波形窗口...")

@@ -398,7 +398,7 @@ struct SpeechTranscriber {
         print("最终文本: '\(text)'")
         #endif
         
-        return text.isEmpty ? "（无语音内容）" : text
+        return text
     }
     
     /// 移除连续重复的 token（CTC 去重）
