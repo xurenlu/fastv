@@ -31,8 +31,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     /// 设置窗口标题为多语言的 APP 名称
     private func setWindowTitle() {
-        // 获取多语言的 APP 名称
-        let appName = AppVersionManager.appName
+        // 获取多语言的 APP 名称（使用本地化字符串）
+        let appName = NSLocalizedString("app.name", comment: "应用名称")
         
         // 设置所有窗口的标题
         for window in NSApplication.shared.windows {
@@ -46,7 +46,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             queue: .main
         ) { notification in
             if let window = notification.object as? NSWindow {
-                window.title = appName
+                window.title = NSLocalizedString("app.name", comment: "应用名称")
             }
         }
     }
@@ -101,7 +101,7 @@ struct fastvApp: App {
                         
                         // 设置窗口标题为多语言的 APP 名称
                         if let window = NSApplication.shared.windows.first {
-                            window.title = AppVersionManager.appName
+                            window.title = NSLocalizedString("app.name", comment: "应用名称")
                         }
                         
                         // 延迟初始化，确保窗口已显示
