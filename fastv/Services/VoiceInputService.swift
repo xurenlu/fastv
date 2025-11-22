@@ -19,7 +19,7 @@ class VoiceInputService: ObservableObject {
     
     private var audioEngine: AVAudioEngine?
     private var audioLevelTimer: Timer?
-    private var recordedBuffers: [Data] = []
+    nonisolated(unsafe) private var recordedBuffers: [Data] = []
     private var recordingOriginalFormat: AVAudioFormat?
     private let recordingSampleRate: Double = 16000
     private let recordingChannels: AVAudioChannelCount = 1
@@ -58,7 +58,7 @@ class VoiceInputService: ObservableObject {
         
         guard status == .authorized else {
             print("❌ [VoiceInputService] 麦克风权限未授权: \(statusDescription(status))")
-            print("💡 [VoiceInputService] 请在'系统设置 > 隐私与安全性 > 麦克风'中授权 fastv")
+            print("💡 [VoiceInputService] 请在'系统设置 > 隐私与安全性 > 麦克风'中授权 typecho")
             throw VoiceInputError.microphonePermissionDenied
         }
         
@@ -71,14 +71,8 @@ class VoiceInputService: ObservableObject {
         let inputNode = engine.inputNode
         
         // 尝试获取输入格式，如果失败可能是麦克风被占用
-        let format: AVAudioFormat
-        do {
-            format = inputNode.inputFormat(forBus: 0)
-            print("✅ [VoiceInputService] 成功获取音频输入格式: \(format)")
-        } catch {
-            print("❌ [VoiceInputService] 无法获取音频输入格式，麦克风可能被其他应用占用: \(error)")
-            throw VoiceInputError.microphoneInUse
-        }
+        let format = inputNode.inputFormat(forBus: 0)
+        print("✅ [VoiceInputService] 成功获取音频输入格式: \(format)")
         
         // 重置录音数据容器并保存原始格式
         recordingDataQueue.sync {
@@ -127,13 +121,17 @@ class VoiceInputService: ObservableObject {
             print("✅ [VoiceInputService] 音频引擎已启动，isRecording=\(isRecording)")
             
             // 启动音频电平更新定时器
-            audioLevelTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            audioLevelTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] timer in
                 // 定时器用于平滑音频电平衰减
+                guard let strongSelf = self else {
+                    timer.invalidate()
+                    return
+                }
                 Task { @MainActor in
-                    if let self = self, !self.isRecording {
-                        self.audioLevel *= 0.9
-                        if self.audioLevel < 0.01 {
-                            self.audioLevel = 0.0
+                    if !strongSelf.isRecording {
+                        strongSelf.audioLevel *= 0.9
+                        if strongSelf.audioLevel < 0.01 {
+                            strongSelf.audioLevel = 0.0
                         }
                     }
                 }
@@ -255,16 +253,25 @@ class VoiceInputService: ObservableObject {
         print("🔄 [VoiceInputService] 开始转换: 源帧数=\(frames), 源采样率=\(originalFormat.sampleRate), 目标采样率=\(toSampleRate), 目标容量=\(outputCapacity)")
         
         var error: NSError?
-        var inputExhausted = false
+        let inputExhaustedLock = NSLock()
+        let inputExhaustedRef = UnsafeMutablePointer<Bool>.allocate(capacity: 1)
+        inputExhaustedRef.initialize(to: false)
+        defer {
+            inputExhaustedRef.deinitialize(count: 1)
+            inputExhaustedRef.deallocate()
+        }
         
         let inputBlock: AVAudioConverterInputBlock = { inNumPackets, outStatus in
             // 确保只提供一次数据
-            if inputExhausted {
+            inputExhaustedLock.lock()
+            defer { inputExhaustedLock.unlock() }
+            
+            if inputExhaustedRef.pointee {
                 outStatus.pointee = .noDataNow
                 return nil
             }
             
-            inputExhausted = true
+            inputExhaustedRef.pointee = true
             outStatus.pointee = .haveData
             return sourceBuffer
         }

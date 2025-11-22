@@ -20,12 +20,18 @@
 "more.options" = "More Options";
 "not.set" = "Not Set";
 "clear" = "Clear";
+"clear.all" = "Clear All";
+"clear.all.confirm.title" = "Confirm Clear All";
+"clear.all.confirm.message" = "This will delete all history records and cannot be undone.\n\nAre you sure you want to continue?";
+"test.input.label" = "Test Input Field";
+"test.input.placeholder" = "Press shortcut key here to test voice input";
+"model.not.downloaded.title" = "Model File Not Downloaded";
+"model.not.downloaded.message" = "Click here to download the model file to use voice input";
 "records" = "records";
 
 // Voice Input
 "voice.input" = "Voice Input";
 "voice.input.history" = "History";
-"clear.all" = "Clear All";
 "no.records" = "No Records";
 "press.shortcut.to.start" = "Press shortcut to start voice input";
 "press.shortcut.to.speak" = "Press shortcut to speak";
@@ -46,8 +52,10 @@
 "recognition.language" = "Recognition Language";
 "default.language" = "Default Language";
 "auto.detect" = "Auto Detect";
+"auto.detect.hint" = "Tip: If auto detection is inaccurate, we recommend explicitly selecting the language for better recognition";
 "chinese" = "Chinese";
 "english" = "English";
+"cantonese" = "Cantonese";
 "japanese" = "Japanese";
 "korean" = "Korean";
 "waveform.window.position" = "Toolbar Position";
@@ -88,6 +96,14 @@
 "onboarding.next" = "Next";
 "onboarding.complete" = "Complete";
 "onboarding.model.ready" = "Model File Ready";
+"onboarding.usage.guide.title" = "Get Started";
+"onboarding.usage.guide.description" = "Setup complete! You can now use voice input in other applications' text fields.";
+"onboarding.usage.guide.chinese" = "Press the shortcut key in a Chinese text field to speak, and the system will automatically recognize Chinese and insert text.";
+"onboarding.usage.guide.english" = "Press the shortcut key in an English text field to speak, and the system will automatically recognize English and insert text.";
+"onboarding.usage.guide.cantonese" = "Press the shortcut key in a Cantonese text field to speak, and the system will automatically recognize Cantonese and insert text.";
+"onboarding.usage.guide.japanese" = "Press the shortcut key in a Japanese text field to speak, and the system will automatically recognize Japanese and insert text.";
+"onboarding.usage.guide.korean" = "Press the shortcut key in a Korean text field to speak, and the system will automatically recognize Korean and insert text.";
+"onboarding.usage.guide.auto" = "Press the shortcut key in any text field to speak, and the system will automatically detect the language and insert text.";
 
 // Shortcut Capture Window
 "shortcut.capture.title" = "Set Shortcut";
@@ -113,6 +129,16 @@
 "model.download.error" = "Error: %@";
 "model.download.error.invalid.url" = "Invalid URL";
 "model.download.error.temp.file.not.found" = "Temporary download file not found";
+"model.download.error.404" = "File not found (404)";
+"model.download.error.500" = "Server error (500)";
+"model.download.error.403" = "Forbidden (403)";
+"model.download.error.http" = "HTTP error %d";
+"model.download.error.timeout" = "Download timeout, please check your network connection";
+"model.download.error.no.internet" = "Network connection failed, please check your network settings";
+"model.download.error.connection.lost" = "Network connection interrupted";
+"model.download.error.cannot.connect" = "Cannot connect to server";
+"model.download.error.file.too.small" = "Downloaded file size is abnormal (only %@ MB), download may have failed or file is corrupted, please download again";
+"model.download.error.cannot.get.file.size" = "Cannot get file size, download may have failed";
 "model.download.already.exists" = "%@ already exists, skipping";
 "model.download.url.label" = "Download URL:";
 "model.download.edit.url" = "Edit URL";

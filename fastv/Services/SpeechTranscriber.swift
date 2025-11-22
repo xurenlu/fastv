@@ -116,7 +116,7 @@ struct SpeechTranscriber {
     
     /// 预处理音频：转换为 16kHz 单声道 WAV 格式
     private static func preprocessAudio(audioURL: URL) async throws -> URL {
-        let asset = AVAsset(url: audioURL)
+        let asset = AVURLAsset(url: audioURL)
         
         // 创建输出 URL
         let tempDir = FileManager.default.temporaryDirectory
@@ -177,7 +177,7 @@ struct SpeechTranscriber {
             do {
                 let formatDescriptions = try await track.load(.formatDescriptions)
                 if let formatDescription = formatDescriptions.first {
-                    let audioFormatDescription = formatDescription as! CMAudioFormatDescription
+                    let audioFormatDescription = formatDescription as CMAudioFormatDescription
                     // 尝试从格式描述中获取声道数
                     let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(audioFormatDescription)
                     if let asbd = asbd {
@@ -226,12 +226,15 @@ struct SpeechTranscriber {
         // 处理音频数据
         return try await withCheckedThrowingContinuation { continuation in
             let queue = DispatchQueue(label: "audio.conversion")
-            audioInput.requestMediaDataWhenReady(on: queue) {
-                while audioInput.isReadyForMoreMediaData {
-                    guard let sampleBuffer = audioOutput.copyNextSampleBuffer() else {
-                        audioInput.markAsFinished()
-                        writer.finishWriting {
-                            if let error = writer.error {
+            nonisolated(unsafe) let audioInputCapture = audioInput
+            nonisolated(unsafe) let audioOutputCapture = audioOutput
+            nonisolated(unsafe) let writerCapture = writer
+            audioInputCapture.requestMediaDataWhenReady(on: queue) {
+                while audioInputCapture.isReadyForMoreMediaData {
+                    guard let sampleBuffer = audioOutputCapture.copyNextSampleBuffer() else {
+                        audioInputCapture.markAsFinished()
+                        writerCapture.finishWriting {
+                            if let error = writerCapture.error {
                                 continuation.resume(throwing: VideoProcessingError.transcriptionFailed("音频预处理失败: \(error.localizedDescription)"))
                             } else {
                                 continuation.resume(returning: outputURL)
@@ -239,10 +242,10 @@ struct SpeechTranscriber {
                         }
                         return
                     }
-                    if !audioInput.append(sampleBuffer) {
-                        audioInput.markAsFinished()
-                        writer.finishWriting {
-                            if let error = writer.error {
+                    if !audioInputCapture.append(sampleBuffer) {
+                        audioInputCapture.markAsFinished()
+                        writerCapture.finishWriting {
+                            if let error = writerCapture.error {
                                 continuation.resume(throwing: VideoProcessingError.transcriptionFailed("音频预处理失败: \(error.localizedDescription)"))
                             } else {
                                 continuation.resume(returning: outputURL)

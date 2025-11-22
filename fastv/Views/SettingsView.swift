@@ -47,8 +47,22 @@ struct SettingsView: View {
                                 Text(NSLocalizedString("auto.detect", comment: "")).tag("auto")
                                 Text(NSLocalizedString("chinese", comment: "")).tag("zh")
                                 Text(NSLocalizedString("english", comment: "")).tag("en")
+                                Text(NSLocalizedString("cantonese", comment: "")).tag("yue")
                                 Text(NSLocalizedString("japanese", comment: "")).tag("ja")
                                 Text(NSLocalizedString("korean", comment: "")).tag("ko")
+                            }
+                            
+                            // 自动检测提示
+                            if preferences.voiceInputLanguage == "auto" {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "info.circle.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(.orange)
+                                    Text(NSLocalizedString("auto.detect.hint", comment: ""))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.leading, 20)
                             }
                             
                             Divider()
@@ -70,11 +84,38 @@ struct SettingsView: View {
                             // 悬浮工具条颜色设置
                             Picker(NSLocalizedString("waveform.window.color", comment: ""), selection: $preferences.waveformWindowColorStyle) {
                                 ForEach(WaveformWindowColorStyle.allCases, id: \.self) { colorStyle in
-                                    HStack {
-                                        Circle()
-                                            .fill(colorStyle.color)
-                                            .frame(width: 12, height: 12)
+                                    let colorConfig = colorStyle.colorConfig(for: .dark)
+                                    HStack(spacing: 8) {
+                                        // 显示背景色和音量条颜色的组合预览
+                                        ZStack {
+                                            // 背景色
+                                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                                .fill(colorConfig.backgroundColor.opacity(colorConfig.backgroundOpacity))
+                                                .frame(width: 24, height: 16)
+                                            
+                                            // 音量条颜色（小竖条）
+                                            HStack(spacing: 2) {
+                                                RoundedRectangle(cornerRadius: 1, style: .continuous)
+                                                    .fill(colorConfig.barColor)
+                                                    .frame(width: 2, height: 8)
+                                                RoundedRectangle(cornerRadius: 1, style: .continuous)
+                                                    .fill(colorConfig.barColor)
+                                                    .frame(width: 2, height: 12)
+                                                RoundedRectangle(cornerRadius: 1, style: .continuous)
+                                                    .fill(colorConfig.barColor)
+                                                    .frame(width: 2, height: 10)
+                                                RoundedRectangle(cornerRadius: 1, style: .continuous)
+                                                    .fill(colorConfig.barColor)
+                                                    .frame(width: 2, height: 8)
+                                            }
+                                        }
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                                .strokeBorder(Color.secondary.opacity(0.2), lineWidth: 0.5)
+                                        }
+                                        
                                         Text(colorStyle.displayName)
+                                            .font(.body)
                                     }
                                     .tag(colorStyle)
                                 }
@@ -501,6 +542,80 @@ struct SettingsView: View {
                     } else {
                         Text(NSLocalizedString("ai.optimization.description", comment: ""))
                     }
+                }
+                
+                // 模型文件信息 Section
+                Section {
+                    ModelFileInfoView()
+                } header: {
+                    Text("模型文件")
+                } footer: {
+                    Text("语音识别模型文件，首次使用需要下载（约 894MB）")
+                }
+                
+                // 支持与推荐 Section
+                Section {
+                    // 官方支持页
+                    Link(destination: URL(string: "https://83d.me/products/typecho")!) {
+                        HStack {
+                            Image(systemName: "questionmark.circle.fill")
+                                .foregroundStyle(.blue)
+                            Text("官方支持页")
+                            Spacer()
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    // 推荐应用
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("推荐应用")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        
+                        // 妙墨 Markdown 笔记软件
+                        Link(destination: URL(string: "https://apps.apple.com/cn/app/%E5%A6%99%E5%A2%A8/id6751117141")!) {
+                            HStack {
+                                Image(systemName: "doc.text.fill")
+                                    .foregroundStyle(.purple)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("妙墨")
+                                        .font(.body)
+                                    Text("Markdown 笔记软件")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "arrow.up.right.square")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        // 时间帐单
+                        Link(destination: URL(string: "https://apps.apple.com/cn/app/%E6%97%B6%E9%97%B4%E5%B8%90%E5%8D%95/id6752824838?mt=12")!) {
+                            HStack {
+                                Image(systemName: "clock.fill")
+                                    .foregroundStyle(.orange)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("时间帐单")
+                                        .font(.body)
+                                    Text("个人时间记录工具")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "arrow.up.right.square")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("支持与推荐")
                 }
             }
             .formStyle(.grouped)
@@ -1303,6 +1418,104 @@ struct ModifierKeyButton: View {
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovered = hovering
             }
+        }
+    }
+}
+
+/// 模型文件信息视图
+struct ModelFileInfoView: View {
+    @State private var isModelDownloaded = false
+    @State private var showOnboarding = false
+    @ObservedObject private var downloader = ModelDownloader.shared
+    @ObservedObject private var preferences = UserPreferences.shared
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: isModelDownloaded ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                    .foregroundStyle(isModelDownloaded ? .green : .orange)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("模型文件状态")
+                        .font(.body)
+                    
+                    Text(isModelDownloaded ? "已下载" : "未下载")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                if !isModelDownloaded {
+                    Button(action: {
+                        showOnboarding = true
+                    }) {
+                        HStack {
+                            Image(systemName: "arrow.down.circle.fill")
+                            Text("下载模型")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+            }
+            
+            if isModelDownloaded {
+                HStack(spacing: 6) {
+                    Image(systemName: "info.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.blue)
+                    Text("模型文件已就绪，可以使用语音输入功能")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                HStack(spacing: 6) {
+                    Image(systemName: "info.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                    Text("首次使用需要下载模型文件（约 894MB）")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+        .onAppear {
+            checkModelStatus()
+        }
+        .onChange(of: downloader.isDownloading) { oldValue, newValue in
+            // 如果下载完成（从下载中变为非下载中），检查模型状态
+            if oldValue && !newValue {
+                checkModelStatus()
+                // 如果模型已下载，关闭 onboarding sheet
+                if isModelDownloaded {
+                    showOnboarding = false
+                }
+            }
+        }
+        .onChange(of: preferences.modelDownloaded) { oldValue, newValue in
+            if newValue {
+                checkModelStatus()
+                // 如果模型已下载，关闭 onboarding sheet
+                if isModelDownloaded {
+                    showOnboarding = false
+                }
+            }
+        }
+        .sheet(isPresented: $showOnboarding) {
+            OnboardingView()
+        }
+    }
+    
+    private func checkModelStatus() {
+        // 统一使用 checkModelFilesExist() 检查，并同步 preferences.modelDownloaded
+        let modelExists = ModelDownloader.shared.checkModelFilesExist()
+        isModelDownloaded = modelExists
+        if modelExists {
+            preferences.modelDownloaded = true
+        } else {
+            preferences.modelDownloaded = false
         }
     }
 }

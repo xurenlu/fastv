@@ -20,12 +20,18 @@
 "more.options" = "更多选项";
 "not.set" = "未设置";
 "clear" = "清空";
+"clear.all" = "清空所有";
+"clear.all.confirm.title" = "确认清空所有记录";
+"clear.all.confirm.message" = "此操作将删除所有历史记录，且无法恢复。\n\n确定要继续吗？";
+"test.input.label" = "测试输入框";
+"test.input.placeholder" = "在此处按快捷键测试语音输入";
+"model.not.downloaded.title" = "模型文件未下载";
+"model.not.downloaded.message" = "点击此处下载模型文件以使用语音输入功能";
 "records" = "条记录";
 
 // 语音输入
 "voice.input" = "语音输入";
 "voice.input.history" = "历史记录";
-"clear.all" = "清空所有";
 "no.records" = "暂无记录";
 "press.shortcut.to.start" = "按下快捷键开始语音输入";
 "press.shortcut.to.speak" = "按下快捷键开始说话";
@@ -46,8 +52,10 @@
 "recognition.language" = "识别语言";
 "default.language" = "默认语言";
 "auto.detect" = "自动检测";
+"auto.detect.hint" = "提示：如果自动检测不准确，建议明确选择对应的语言以获得更好的识别效果";
 "chinese" = "中文";
 "english" = "英文";
+"cantonese" = "粤语";
 "japanese" = "日语";
 "korean" = "韩语";
 "waveform.window.position" = "悬浮工具条位置";
@@ -88,6 +96,14 @@
 "onboarding.next" = "下一步";
 "onboarding.complete" = "完成";
 "onboarding.model.ready" = "模型文件已就绪";
+"onboarding.usage.guide.title" = "开始使用";
+"onboarding.usage.guide.description" = "设置已完成！现在您可以在其他应用的输入框中使用语音输入功能了。";
+"onboarding.usage.guide.chinese" = "请在中文输入框中按快捷键说话，系统会自动识别中文并插入文本。";
+"onboarding.usage.guide.english" = "请在英文输入框中按快捷键说话，系统会自动识别英文并插入文本。";
+"onboarding.usage.guide.cantonese" = "请在粤语输入框中按快捷键说话，系统会自动识别粤语并插入文本。";
+"onboarding.usage.guide.japanese" = "请在日文输入框中按快捷键说话，系统会自动识别日文并插入文本。";
+"onboarding.usage.guide.korean" = "请在韩文输入框中按快捷键说话，系统会自动识别韩文并插入文本。";
+"onboarding.usage.guide.auto" = "可以在任何输入框中按快捷键说话，系统会自动检测语言并插入文本。";
 
 // 快捷键设置窗口
 "shortcut.capture.title" = "设置快捷键";
@@ -113,6 +129,16 @@
 "model.download.error" = "错误: %@";
 "model.download.error.invalid.url" = "无效的URL";
 "model.download.error.temp.file.not.found" = "临时下载文件不存在";
+"model.download.error.404" = "文件未找到 (404)";
+"model.download.error.500" = "服务器错误 (500)";
+"model.download.error.403" = "禁止访问 (403)";
+"model.download.error.http" = "HTTP错误 %d";
+"model.download.error.timeout" = "下载超时，请检查网络连接";
+"model.download.error.no.internet" = "网络连接失败，请检查网络设置";
+"model.download.error.connection.lost" = "网络连接中断";
+"model.download.error.cannot.connect" = "无法连接到服务器";
+"model.download.error.file.too.small" = "下载的文件大小异常（仅 %@ MB），可能是下载失败或文件损坏，请重新下载";
+"model.download.error.cannot.get.file.size" = "无法获取文件大小，下载可能失败";
 "model.download.already.exists" = "%@ 已存在，跳过";
 "model.download.url.label" = "下载地址:";
 "model.download.edit.url" = "修改地址";

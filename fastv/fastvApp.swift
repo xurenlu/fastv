@@ -410,11 +410,16 @@ struct fastvApp: App {
         // 语音转文字
         print("🔊 [fastvApp] 开始语音转文字...")
         do {
-            var text = try await SpeechTranscriber.transcribe(recording: recording)
+            // 获取用户设置的识别语言
+            let preferences = UserPreferences.shared
+            let languageString = preferences.voiceInputLanguage
+            let language = TranscriptLanguage(rawValue: languageString) ?? .zh // 如果无效，默认使用中文
+            print("🌐 [fastvApp] 使用识别语言: \(languageString) (languageID: \(language.languageID))")
+            
+            var text = try await SpeechTranscriber.transcribe(recording: recording, language: language)
             print("✅ [fastvApp] 语音转文字成功: \(text.prefix(50))...")
             
             // 快速纠错（如果启用，毫秒级，非常快）
-            let preferences = UserPreferences.shared
             if preferences.enableFastCorrection {
                 let correctionStartTime = Date()
                 text = TextCorrectionService.shared.correctText(text)

@@ -34,7 +34,7 @@ class ONNXRuntimeWrapper {
         
         // 创建环境
         var env: OpaquePointer?
-        let logid = "fastv".cString(using: .utf8)
+        let logid = "typecho".cString(using: .utf8)
         let status = api.pointee.CreateEnv(
             ORT_LOGGING_LEVEL_WARNING,
             logid,
@@ -272,7 +272,7 @@ class ONNXRuntimeWrapper {
         // SenseVoice lid_dict: {"auto": 0, "zh": 3, "en": 4, "yue": 7, "ja": 11, "ko": 12, "nospeech": 13}
         // 根据错误信息，模型期望的范围是 [-16, 15]，但 3 在这个范围内，应该可以
         // 使用用户选择的语言ID
-        var languageDataValue: Int32 = language.languageID
+        let languageDataValue: Int32 = language.languageID
         if inputNames.contains(where: { $0.contains("language") || $0 == "language" }) {
             // 尝试整数类型（ONNX 模型通常使用整数）
             let languageData: [Int32] = [languageDataValue] // 3 = 中文 (zh)
@@ -429,9 +429,12 @@ class ONNXRuntimeWrapper {
         // 使用 withCString 确保字符串生命周期
         var currentStatus: OrtStatusPtr?
         
-        // 为每个输入名称创建 C 字符串（使用 cString 返回的指针在整个函数调用期间有效）
+        // 为每个输入名称创建 C 字符串（使用 withCString 确保生命周期）
+        var inputNamePtrs: [UnsafePointer<CChar>?] = []
+        
+        // 使用 withExtendedLifetime 确保所有字符串在整个函数调用期间有效
         let inputNameCStrings = inputNameStrings.map { $0.cString(using: .utf8)! }
-        var inputNamePtrs: [UnsafePointer<CChar>?] = inputNameCStrings.map { UnsafePointer($0) }
+        inputNamePtrs = inputNameCStrings.map { UnsafePointer($0) }
         
         // 准备输出名称 C 字符串
         let ctcLogitsCString = ctcLogitsOutputName.cString(using: .utf8)!
@@ -787,7 +790,7 @@ class ONNXRuntimeWrapper {
             
             // 假设形状为 [batch_size, sequence_length, vocab_size]
             // 对于 batch_size=1，跳过第一个维度
-            let batchSize = dims.count > 0 ? Int(dims[0]) : 1
+            _ = dims.count > 0 ? Int(dims[0]) : 1
             let sequenceLength = dims.count > 1 ? Int(dims[1]) : Int(elementCount)
             let vocabSize = dims.count > 2 ? Int(dims[2]) : 1
             

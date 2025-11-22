@@ -90,7 +90,6 @@ class FeatureWindowFunction {
   /**
    * @param wave Pointer to a 1-D array of shape [window_size].
    *             It is modified in-place: wave[i] = wave[i] * window_[i].
-   * @param
    */
   void Apply(float *wave) const;
 

@@ -2,10 +2,16 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- 麦克风权限 - 用于语音输入 -->
 	<key>com.apple.security.device.audio-input</key>
 	<true/>
+	<!-- 辅助功能权限 - 用于全局快捷键监听和文本插入 -->
 	<key>com.apple.security.automation.apple-events</key>
 	<true/>
+	<!-- 网络访问权限 - 用于下载模型文件 -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Debug模式权限 - 仅在Debug构建时使用 -->
 	<key>com.apple.security.get-task-allow</key>
 	<true/>
 </dict>

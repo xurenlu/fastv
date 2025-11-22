@@ -11,9 +11,77 @@ struct VoiceInputView: View {
     @ObservedObject private var history = VoiceInputHistory.shared
     @ObservedObject private var preferences = UserPreferences.shared
     @State private var errorMessage: String?
+    @State private var showClearConfirmation = false
+    @State private var testInputText: String = ""
+    @FocusState private var isTestInputFocused: Bool
+    @State private var showModelDownload = false
+    @State private var isModelDownloaded = false
+    @ObservedObject private var downloader = ModelDownloader.shared
     
     var body: some View {
         VStack(spacing: 0) {
+            // 模型未下载提示横幅
+            if !isModelDownloaded {
+                Button(action: {
+                    showModelDownload = true
+                }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.title3)
+                            .foregroundStyle(.orange)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(NSLocalizedString("model.not.downloaded.title", comment: ""))
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                            
+                            Text(NSLocalizedString("model.not.downloaded.message", comment: ""))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "arrow.right.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(.blue)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        RoundedRectangle(cornerRadius: 0)
+                            .fill(Color.orange.opacity(0.1))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 0)
+                                    .strokeBorder(Color.orange.opacity(0.3), lineWidth: 1)
+                            }
+                    }
+                }
+                .buttonStyle(.plain)
+                .onHover { hovering in
+                    // 可以添加悬停效果
+                }
+            }
+            
+            // 测试输入框区域
+            VStack(alignment: .leading, spacing: 8) {
+                Text(NSLocalizedString("test.input.label", comment: ""))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                
+                TextField(NSLocalizedString("test.input.placeholder", comment: ""), text: $testInputText, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(2...2)
+                    .focused($isTestInputFocused)
+                    .frame(height: 50)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(Color(NSColor.controlBackgroundColor))
+            
+            Divider()
+            
             // 历史记录区域
             VStack(spacing: 0) {
                 // 标题栏
@@ -72,7 +140,7 @@ struct VoiceInputView: View {
                     // 清空按钮
                     if !history.items.isEmpty {
                         Button(action: {
-                            history.clear()
+                            showClearConfirmation = true
                         }) {
                             Text("clear.all")
                                 .font(.system(size: 13))
@@ -156,6 +224,37 @@ struct VoiceInputView: View {
                 Text(errorMessage)
             }
         }
+        .alert(NSLocalizedString("clear.all.confirm.title", comment: ""), isPresented: $showClearConfirmation) {
+            Button(NSLocalizedString("cancel", comment: ""), role: .cancel) {
+                showClearConfirmation = false
+            }
+            Button(NSLocalizedString("clear.all", comment: ""), role: .destructive) {
+                history.clear()
+                showClearConfirmation = false
+            }
+        } message: {
+            Text(NSLocalizedString("clear.all.confirm.message", comment: ""))
+        }
+        .sheet(isPresented: $showModelDownload) {
+            OnboardingView()
+        }
+        .onAppear {
+            checkModelStatus()
+        }
+        .onChange(of: preferences.modelDownloaded) { _, newValue in
+            checkModelStatus()
+        }
+        .onChange(of: downloader.isDownloading) { oldValue, newValue in
+            // 当下载完成时（从下载中变为非下载中），检查模型状态
+            if oldValue && !newValue {
+                checkModelStatus()
+            }
+        }
+    }
+    
+    // 检查模型文件状态
+    private func checkModelStatus() {
+        isModelDownloaded = ModelDownloader.shared.checkModelFilesExist()
     }
     
     // 格式化快捷键显示

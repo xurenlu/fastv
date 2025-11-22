@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct OnboardingView: View {
+    @Environment(\.dismiss) private var dismiss
     @State private var currentStep = 0
     @State private var isDownloading = false
     @State private var downloadProgress: Double = 0.0
@@ -21,7 +22,7 @@ struct OnboardingView: View {
         VStack(spacing: 0) {
             // 步骤指示器
             HStack(spacing: 8) {
-                ForEach(0..<3) { index in
+                ForEach(0..<4) { index in
                     Circle()
                         .fill(index <= currentStep ? Color.accentColor : Color.gray.opacity(0.3))
                         .frame(width: 8, height: 8)
@@ -44,6 +45,8 @@ struct OnboardingView: View {
                         downloadStatus: $downloadStatus,
                         downloadError: $downloadError
                     )
+                case 3:
+                    UsageGuideStep()
                 default:
                     LanguageSelectionStep()
                 }
@@ -63,10 +66,21 @@ struct OnboardingView: View {
                 
                 Spacer()
                 
-                Button(currentStep == 2 ? NSLocalizedString("onboarding.complete", comment: "") : NSLocalizedString("onboarding.next", comment: "")) {
-                    if currentStep == 2 {
+                Button(currentStep == 3 ? NSLocalizedString("onboarding.complete", comment: "") : NSLocalizedString("onboarding.next", comment: "")) {
+                    if currentStep == 3 {
                         // 完成引导
                         preferences.markOnboardingCompleted()
+                        dismiss()
+                    } else if currentStep == 2 {
+                        // 从模型下载步骤进入下一步时，检查模型是否已下载
+                        // 统一使用 checkModelFilesExist() 检查，并同步 preferences.modelDownloaded
+                        let modelExists = ModelDownloader.shared.checkModelFilesExist()
+                        if modelExists {
+                            preferences.modelDownloaded = true
+                            withAnimation {
+                                currentStep += 1
+                            }
+                        }
                     } else {
                         withAnimation {
                             currentStep += 1
@@ -75,13 +89,18 @@ struct OnboardingView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .disabled(currentStep == 2 && !preferences.modelDownloaded)
+                .disabled(currentStep == 2 && !ModelDownloader.shared.checkModelFilesExist())
             }
             .padding(20)
         }
-        .frame(width: 600, height: 500)
+        .frame(width: 720, height: 600)
         .onAppear {
-            // 初始化语言设置（如果还没有选择）
+            // 初始化识别语言设置（如果还没有选择，默认为中文）
+            if preferences.voiceInputLanguage.isEmpty || preferences.voiceInputLanguage == "auto" {
+                preferences.voiceInputLanguage = "zh"
+            }
+            
+            // 初始化应用界面语言设置（如果还没有选择）
             if preferences.defaultLanguage.isEmpty {
                 // 使用系统语言或默认中文
                 let systemLanguage = Locale.preferredLanguages.first ?? "zh-Hans"
@@ -93,8 +112,9 @@ struct OnboardingView: View {
                 LocalizationManager.shared.currentLanguage = preferences.defaultLanguage
             }
             
-            // 如果模型已下载，自动完成
-            if ModelDownloader.shared.checkModelFilesExist() {
+            // 如果模型已下载，同步状态
+            let modelExists = ModelDownloader.shared.checkModelFilesExist()
+            if modelExists {
                 preferences.modelDownloaded = true
             }
         }
@@ -120,17 +140,24 @@ struct LanguageSelectionStep: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             
-            VStack(spacing: 12) {
-                ForEach(SupportedLanguage.allCases, id: \.self) { language in
+            // 使用网格布局，一行排2个语言
+            let languages = TranscriptLanguage.allCases.filter { $0 != .nospeech }
+            let columns = [
+                GridItem(.flexible(), spacing: 12),
+                GridItem(.flexible(), spacing: 12)
+            ]
+            
+            LazyVGrid(columns: columns, spacing: 12) {
+                // 显示识别语言选项（排除 nospeech）
+                ForEach(languages, id: \.self) { language in
                     Button(action: {
-                        preferences.defaultLanguage = language.rawValue
-                        LocalizationManager.shared.currentLanguage = language.rawValue
+                        preferences.voiceInputLanguage = language.rawValue
                     }) {
                         HStack {
-                            Text(language.nativeName)
+                            Text(language.displayName)
                                 .font(.body)
                             Spacer()
-                            if preferences.defaultLanguage == language.rawValue {
+                            if preferences.voiceInputLanguage == language.rawValue {
                                 Image(systemName: "checkmark")
                                     .foregroundStyle(.tint)
                             }
@@ -138,7 +165,7 @@ struct LanguageSelectionStep: View {
                         .padding()
                         .background {
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(preferences.defaultLanguage == language.rawValue ? 
+                                .fill(preferences.voiceInputLanguage == language.rawValue ? 
                                       Color.accentColor.opacity(0.1) : Color.gray.opacity(0.1))
                         }
                     }
@@ -379,7 +406,11 @@ struct ModelDownloadStep: View {
                     }
                 }
                 .padding(.horizontal, 40)
-            } else if preferences.modelDownloaded || ModelDownloader.shared.checkModelFilesExist() {
+            } else if ModelDownloader.shared.checkModelFilesExist() {
+                // 统一使用 checkModelFilesExist() 检查，并同步状态
+                let _ = {
+                    preferences.modelDownloaded = true
+                }()
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
@@ -417,11 +448,126 @@ struct ModelDownloadStep: View {
                 downloadStatus = status
                 // speed 已经在 downloader.downloadSpeed 中更新了
             }
+            // 下载完成后，同步状态
+            if ModelDownloader.shared.checkModelFilesExist() {
+                preferences.modelDownloaded = true
+            }
         } catch {
             downloadError = error
         }
         
         isDownloading = false
+    }
+}
+
+// MARK: - 步骤4: 使用引导
+struct UsageGuideStep: View {
+    @ObservedObject private var preferences = UserPreferences.shared
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "lightbulb.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(.tint)
+            
+            Text(NSLocalizedString("onboarding.usage.guide.title", comment: ""))
+                .font(.title)
+                .fontWeight(.bold)
+            
+            Text(NSLocalizedString("onboarding.usage.guide.description", comment: ""))
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+            
+            // 根据用户选择的识别语言显示相应提示
+            VStack(spacing: 16) {
+                HStack(spacing: 12) {
+                    Image(systemName: "info.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(.blue)
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(usageHintText)
+                            .font(.body)
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.leading)
+                        
+                        // 显示快捷键提示
+                        HStack(spacing: 6) {
+                            Text(NSLocalizedString("press.shortcut.to.start", comment: ""))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            HStack(spacing: 4) {
+                                if preferences.voiceInputShortcutModifiers.contains(.control) {
+                                    Text("⌃")
+                                        .font(.system(size: 12, weight: .medium))
+                                }
+                                if preferences.voiceInputShortcutModifiers.contains(.option) {
+                                    Text("⌥")
+                                        .font(.system(size: 12, weight: .medium))
+                                }
+                                if preferences.voiceInputShortcutModifiers.contains(.shift) {
+                                    Text("⇧")
+                                        .font(.system(size: 12, weight: .medium))
+                                }
+                                if preferences.voiceInputShortcutModifiers.contains(.command) {
+                                    Text("⌘")
+                                        .font(.system(size: 12, weight: .medium))
+                                }
+                                
+                                Text(keyCodeToString(preferences.voiceInputShortcutKeyCode))
+                                    .font(.system(size: 12, weight: .medium))
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background {
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                    .fill(Color.secondary.opacity(0.1))
+                            }
+                        }
+                    }
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.blue.opacity(0.1))
+                }
+            }
+            .padding(.horizontal, 40)
+        }
+        .padding(40)
+    }
+    
+    private var usageHintText: String {
+        switch preferences.voiceInputLanguage {
+        case "zh":
+            return NSLocalizedString("onboarding.usage.guide.chinese", comment: "")
+        case "en":
+            return NSLocalizedString("onboarding.usage.guide.english", comment: "")
+        case "yue":
+            return NSLocalizedString("onboarding.usage.guide.cantonese", comment: "")
+        case "ja":
+            return NSLocalizedString("onboarding.usage.guide.japanese", comment: "")
+        case "ko":
+            return NSLocalizedString("onboarding.usage.guide.korean", comment: "")
+        case "auto":
+            return NSLocalizedString("onboarding.usage.guide.auto", comment: "")
+        default:
+            return NSLocalizedString("onboarding.usage.guide.auto", comment: "")
+        }
+    }
+    
+    private func keyCodeToString(_ keyCode: UInt16) -> String {
+        switch keyCode {
+        case 0xFFFF: return NSLocalizedString("key.left.control", comment: "")
+        case 0x3F: return NSLocalizedString("key.fn", comment: "")
+        case 0x09: return "V"
+        case 0x31: return NSLocalizedString("key.space", comment: "")
+        default: return "\(NSLocalizedString("key", comment: ""))\(keyCode)"
+        }
     }
 }
 

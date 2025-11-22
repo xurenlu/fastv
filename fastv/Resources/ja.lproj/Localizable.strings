@@ -1,12 +1,12 @@
 /* 
   Localizable.strings
-  妙打
+  音速入力
 
   日本語
 */
 
 // 一般
-"app.name" = "妙打";
+"app.name" = "音速入力";
 "ok" = "OK";
 "cancel" = "キャンセル";
 "save" = "保存";
@@ -20,12 +20,18 @@
 "more.options" = "その他のオプション";
 "not.set" = "未設定";
 "clear" = "クリア";
+"clear.all" = "すべてクリア";
+"clear.all.confirm.title" = "すべての記録をクリアすることを確認";
+"clear.all.confirm.message" = "この操作により、すべての履歴記録が削除され、元に戻すことはできません。\n\n続行してもよろしいですか？";
+"test.input.label" = "テスト入力フィールド";
+"test.input.placeholder" = "ここでショートカットキーを押して音声入力をテスト";
+"model.not.downloaded.title" = "モデルファイルがダウンロードされていません";
+"model.not.downloaded.message" = "ここをクリックしてモデルファイルをダウンロードし、音声入力機能を使用";
 "records" = "件の記録";
 
 // 音声入力
 "voice.input" = "音声入力";
 "voice.input.history" = "履歴";
-"clear.all" = "すべてクリア";
 "no.records" = "記録なし";
 "press.shortcut.to.start" = "ショートカットを押して音声入力を開始";
 "press.shortcut.to.speak" = "ショートカットを押して話す";
@@ -46,8 +52,10 @@
 "recognition.language" = "認識言語";
 "default.language" = "デフォルト言語";
 "auto.detect" = "自動検出";
+"auto.detect.hint" = "ヒント：自動検出が不正確な場合は、より良い認識のために言語を明示的に選択することをお勧めします";
 "chinese" = "中国語";
 "english" = "英語";
+"cantonese" = "広東語";
 "japanese" = "日本語";
 "korean" = "韓国語";
 "waveform.window.position" = "ツールバー位置";
@@ -88,6 +96,14 @@
 "onboarding.next" = "次へ";
 "onboarding.complete" = "完了";
 "onboarding.model.ready" = "モデルファイル準備完了";
+"onboarding.usage.guide.title" = "使用開始";
+"onboarding.usage.guide.description" = "設定が完了しました！これで他のアプリケーションのテキストフィールドで音声入力を使用できます。";
+"onboarding.usage.guide.chinese" = "中国語のテキストフィールドでショートカットキーを押して話すと、システムが自動的に中国語を認識してテキストを挿入します。";
+"onboarding.usage.guide.english" = "英語のテキストフィールドでショートカットキーを押して話すと、システムが自動的に英語を認識してテキストを挿入します。";
+"onboarding.usage.guide.cantonese" = "広東語のテキストフィールドでショートカットキーを押して話すと、システムが自動的に広東語を認識してテキストを挿入します。";
+"onboarding.usage.guide.japanese" = "日本語のテキストフィールドでショートカットキーを押して話すと、システムが自動的に日本語を認識してテキストを挿入します。";
+"onboarding.usage.guide.korean" = "韓国語のテキストフィールドでショートカットキーを押して話すと、システムが自動的に韓国語を認識してテキストを挿入します。";
+"onboarding.usage.guide.auto" = "任意のテキストフィールドでショートカットキーを押して話すと、システムが自動的に言語を検出してテキストを挿入します。";
 
 // ショートカットキャプチャウィンドウ
 "shortcut.capture.title" = "ショートカットを設定";
@@ -113,6 +129,16 @@
 "model.download.error" = "エラー: %@";
 "model.download.error.invalid.url" = "無効なURL";
 "model.download.error.temp.file.not.found" = "一時ダウンロードファイルが見つかりません";
+"model.download.error.404" = "ファイルが見つかりません (404)";
+"model.download.error.500" = "サーバーエラー (500)";
+"model.download.error.403" = "アクセス禁止 (403)";
+"model.download.error.http" = "HTTPエラー %d";
+"model.download.error.timeout" = "ダウンロードタイムアウト、ネットワーク接続を確認してください";
+"model.download.error.no.internet" = "ネットワーク接続に失敗しました、ネットワーク設定を確認してください";
+"model.download.error.connection.lost" = "ネットワーク接続が中断されました";
+"model.download.error.cannot.connect" = "サーバーに接続できません";
+"model.download.error.file.too.small" = "ダウンロードしたファイルサイズが異常です（%@ MBのみ）。ダウンロードが失敗したか、ファイルが破損している可能性があります。再度ダウンロードしてください";
+"model.download.error.cannot.get.file.size" = "ファイルサイズを取得できません。ダウンロードが失敗した可能性があります";
 "model.download.already.exists" = "%@は既に存在します。スキップします";
 "model.download.url.label" = "ダウンロードURL:";
 "model.download.edit.url" = "URLを編集";

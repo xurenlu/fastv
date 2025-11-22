@@ -54,7 +54,6 @@ class ModelDownloader: ObservableObject {
         
         // 只下载 model.onnx 文件（894MB）
         let filename = "model.onnx"
-        let fileSizeMB = 894.0
         let destinationURL = modelDir.appendingPathComponent(filename)
         
         // 检查文件是否已存在
@@ -75,11 +74,14 @@ class ModelDownloader: ObservableObject {
                 to: destinationURL,
                 progressHandler: { [weak self] fileProgress, speed in
                     guard let self = self else { return }
-                    self.downloadProgress = fileProgress
-                    let statusFormat = NSLocalizedString("model.download.status.downloading", comment: "")
-                    self.downloadStatus = statusFormat.replacingOccurrences(of: "%@", with: filename).replacingOccurrences(of: "%d", with: "\(Int(fileProgress * 100))")
-                    self.downloadSpeed = speed
-                    progressHandler(fileProgress, self.downloadStatus, speed)
+                    // 确保在主线程更新 @Published 属性
+                    Task { @MainActor in
+                        self.downloadProgress = fileProgress
+                        let statusFormat = NSLocalizedString("model.download.status.downloading", comment: "")
+                        self.downloadStatus = statusFormat.replacingOccurrences(of: "%@", with: filename).replacingOccurrences(of: "%d", with: "\(Int(fileProgress * 100))")
+                        self.downloadSpeed = speed
+                        progressHandler(fileProgress, self.downloadStatus, speed)
+                    }
                 }
             )
             
@@ -99,6 +101,30 @@ class ModelDownloader: ObservableObject {
                 try FileManager.default.removeItem(at: destinationURL)
             }
             try FileManager.default.moveItem(at: localURL, to: destinationURL)
+            
+            // 校验文件大小（模型文件应该约 894MB，最小不应小于 800MB）
+            let fileAttributes = try FileManager.default.attributesOfItem(atPath: destinationURL.path)
+            if let fileSize = fileAttributes[.size] as? Int64 {
+                let minFileSize: Int64 = 800 * 1024 * 1024 // 800MB
+                let expectedFileSize: Int64 = 894 * 1024 * 1024 // 894MB
+                
+                if fileSize < minFileSize {
+                    // 文件太小，可能是错误页面或下载不完整，删除文件并报错
+                    try? FileManager.default.removeItem(at: destinationURL)
+                    let fileSizeMB = Double(fileSize) / (1024 * 1024)
+                    let errorMessage = String(format: NSLocalizedString("model.download.error.file.too.small", comment: ""), String(format: "%.2f", fileSizeMB))
+                    throw ModelDownloadError.downloadFailed(errorMessage)
+                }
+                
+                #if DEBUG
+                let fileSizeMB = Double(fileSize) / (1024 * 1024)
+                print("✅ [ModelDownloader] 文件大小校验通过: \(String(format: "%.2f", fileSizeMB)) MB (期望: ~894 MB)")
+                #endif
+            } else {
+                // 无法获取文件大小，也视为错误
+                try? FileManager.default.removeItem(at: destinationURL)
+                throw ModelDownloadError.downloadFailed(NSLocalizedString("model.download.error.cannot.get.file.size", comment: ""))
+            }
             
             downloadProgress = 1.0
             let completeFormat = NSLocalizedString("model.download.status.complete", comment: "")
@@ -133,15 +159,27 @@ class ModelDownloader: ObservableObject {
                 tempFileURL: tempFileURL,
                 progress: { [weak self] progress, _ in
                     guard let self = self else { return }
-                    // 使用定时器更新速度
-                    progressHandler(progress, self.downloadSpeed)
+                    // 确保在主线程更新进度
+                    Task { @MainActor in
+                        // 使用定时器更新速度
+                        progressHandler(progress, self.downloadSpeed)
+                    }
                 },
                 completion: { result in
-                    continuation.resume(with: result)
+                    // 确保在主线程恢复 continuation
+                    Task { @MainActor in
+                        continuation.resume(with: result)
+                    }
                 }
             )
             
-            let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+            // 配置 URLSession，设置超时时间
+            let configuration = URLSessionConfiguration.default
+            configuration.timeoutIntervalForRequest = 30.0 // 30秒请求超时
+            configuration.timeoutIntervalForResource = 3600.0 // 1小时资源超时（大文件下载需要更长时间）
+            configuration.waitsForConnectivity = true
+            
+            let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
             let task = session.downloadTask(with: url)
             downloadTask = task
             
@@ -155,16 +193,18 @@ class ModelDownloader: ObservableObject {
                     timer.invalidate()
                     return
                 }
-                let now = Date()
-                let timeInterval = now.timeIntervalSince(self.lastSpeedCheckTime)
-                if timeInterval > 0 {
-                    let currentBytes = delegate.totalBytesWritten
-                    let bytesDiff = currentBytes - self.lastDownloadedBytes
-                    let speed = Double(bytesDiff) / timeInterval
-                    let speedString = self.formatSpeed(bytesPerSecond: speed)
-                    self.downloadSpeed = speedString
-                    self.lastDownloadedBytes = currentBytes
-                    self.lastSpeedCheckTime = now
+                Task { @MainActor in
+                    let now = Date()
+                    let timeInterval = now.timeIntervalSince(self.lastSpeedCheckTime)
+                    if timeInterval > 0 {
+                        let currentBytes = delegate.totalBytesWritten
+                        let bytesDiff = currentBytes - self.lastDownloadedBytes
+                        let speed = Double(bytesDiff) / timeInterval
+                        let speedString = self.formatSpeed(bytesPerSecond: speed)
+                        self.downloadSpeed = speedString
+                        self.lastDownloadedBytes = currentBytes
+                        self.lastSpeedCheckTime = now
+                    }
                 }
             }
             RunLoop.main.add(speedTimer!, forMode: .common)
@@ -236,7 +276,10 @@ class DownloadTaskDelegate: NSObject, URLSessionDownloadDelegate {
         self.totalBytesExpected = totalBytesExpectedToWrite
         
         let progress = totalBytesExpectedToWrite > 0 ? Double(totalBytesWritten) / Double(totalBytesExpectedToWrite) : 0.0
-        progressHandler?(progress, "")
+        // 确保在主线程调用 progressHandler
+        DispatchQueue.main.async { [weak self] in
+            self?.progressHandler?(progress, "")
+        }
     }
     
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
@@ -244,9 +287,36 @@ class DownloadTaskDelegate: NSObject, URLSessionDownloadDelegate {
         // 因为 session 结束后，临时文件可能被系统删除
         let downloadedFileURL = location
         
+        // 检查 HTTP 响应状态码
+        if let httpResponse = downloadTask.response as? HTTPURLResponse {
+            let statusCode = httpResponse.statusCode
+            // 检查状态码是否表示成功（200-299）
+            guard (200...299).contains(statusCode) else {
+                let errorMessage: String
+                switch statusCode {
+                case 404:
+                    errorMessage = NSLocalizedString("model.download.error.404", comment: "文件未找到 (404)")
+                case 500:
+                    errorMessage = NSLocalizedString("model.download.error.500", comment: "服务器错误 (500)")
+                case 403:
+                    errorMessage = NSLocalizedString("model.download.error.403", comment: "禁止访问 (403)")
+                default:
+                    errorMessage = String(format: NSLocalizedString("model.download.error.http", comment: "HTTP错误 %d"), statusCode)
+                }
+                print("❌ [ModelDownloader] HTTP错误状态码: \(statusCode)")
+                // 确保在主线程调用 completionHandler
+                DispatchQueue.main.async { [weak self] in
+                    self?.completionHandler?(.failure(ModelDownloadError.downloadFailed(errorMessage)))
+                }
+                return
+            }
+        }
+        
         // 检查下载的文件是否存在
         guard FileManager.default.fileExists(atPath: downloadedFileURL.path) else {
-            completionHandler?(.failure(ModelDownloadError.downloadFailed(NSLocalizedString("model.download.error.temp.file.not.found", comment: ""))))
+            DispatchQueue.main.async { [weak self] in
+                self?.completionHandler?(.failure(ModelDownloadError.downloadFailed(NSLocalizedString("model.download.error.temp.file.not.found", comment: ""))))
+            }
             return
         }
         
@@ -260,20 +330,53 @@ class DownloadTaskDelegate: NSObject, URLSessionDownloadDelegate {
             // 复制文件到临时位置
             try FileManager.default.copyItem(at: downloadedFileURL, to: tempFileURL)
             
+            // 捕获需要的值，避免在闭包中引用 self 的属性
+            let finalTempFileURL = tempFileURL
             if let response = downloadTask.response {
-                completionHandler?(.success((tempFileURL, response)))
+                // 确保在主线程调用 completionHandler
+                DispatchQueue.main.async { [weak self] in
+                    self?.completionHandler?(.success((finalTempFileURL, response)))
+                }
             } else {
-                completionHandler?(.failure(ModelDownloadError.downloadFailed(NSLocalizedString("model.download.error", comment: ""))))
+                DispatchQueue.main.async { [weak self] in
+                    self?.completionHandler?(.failure(ModelDownloadError.downloadFailed(NSLocalizedString("model.download.error", comment: ""))))
+                }
             }
         } catch {
             print("❌ [ModelDownloader] 复制临时文件失败: \(error.localizedDescription)")
-            completionHandler?(.failure(ModelDownloadError.downloadFailed(error.localizedDescription)))
+            // 确保在主线程调用 completionHandler
+            DispatchQueue.main.async { [weak self] in
+                self?.completionHandler?(.failure(ModelDownloadError.downloadFailed(error.localizedDescription)))
+            }
         }
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         if let error = error {
-            completionHandler?(.failure(error))
+            // 检查是否是网络错误或超时错误
+            let nsError = error as NSError
+            var errorMessage = error.localizedDescription
+            
+            if nsError.domain == NSURLErrorDomain {
+                switch nsError.code {
+                case NSURLErrorTimedOut:
+                    errorMessage = NSLocalizedString("model.download.error.timeout", comment: "下载超时，请检查网络连接")
+                case NSURLErrorNotConnectedToInternet:
+                    errorMessage = NSLocalizedString("model.download.error.no.internet", comment: "网络连接失败，请检查网络设置")
+                case NSURLErrorNetworkConnectionLost:
+                    errorMessage = NSLocalizedString("model.download.error.connection.lost", comment: "网络连接中断")
+                case NSURLErrorCannotFindHost, NSURLErrorCannotConnectToHost:
+                    errorMessage = NSLocalizedString("model.download.error.cannot.connect", comment: "无法连接到服务器")
+                default:
+                    break
+                }
+            }
+            
+            print("❌ [ModelDownloader] 下载任务完成时出错: \(errorMessage)")
+            // 确保在主线程调用 completionHandler
+            DispatchQueue.main.async { [weak self] in
+                self?.completionHandler?(.failure(ModelDownloadError.downloadFailed(errorMessage)))
+            }
         }
     }
 }

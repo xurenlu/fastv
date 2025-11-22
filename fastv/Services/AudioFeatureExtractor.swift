@@ -76,7 +76,7 @@ struct AudioFeatureExtractor {
     
     /// 加载音频数据
     private static func loadAudioData(from audioURL: URL) async throws -> [Float] {
-        let asset = AVAsset(url: audioURL)
+        let asset = AVURLAsset(url: audioURL)
         
         guard let audioTrack = try await asset.loadTracks(withMediaType: .audio).first else {
             throw VideoProcessingError.noAudioTrack
@@ -303,38 +303,47 @@ struct AudioFeatureExtractor {
             // 将输入数据打包到 splitComplex (Even-Odd Split)
             inputBuffer.withUnsafeBufferPointer { inputPtr in
                 inputPtr.baseAddress!.withMemoryRebound(to: DSPComplex.self, capacity: fftSize/2) { complexPtr in
-                    var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
-                    vDSP_ctoz(complexPtr, 2, &splitComplex, 1, vDSP_Length(fftSize/2))
+                    realParts.withUnsafeMutableBufferPointer { realBuffer in
+                        imagParts.withUnsafeMutableBufferPointer { imagBuffer in
+                            var splitComplex = DSPSplitComplex(realp: realBuffer.baseAddress!, imagp: imagBuffer.baseAddress!)
+                            vDSP_ctoz(complexPtr, 2, &splitComplex, 1, vDSP_Length(fftSize/2))
+                        }
+                    }
                 }
             }
             
-            // 执行实数 FFT
-            var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
-            vDSP_fft_zrip(fftSetup, &splitComplex, 1, log2n, FFTDirection(FFT_FORWARD))
-            
-            // 缩放结果 (vDSP_fft_zrip 结果放大了 2 倍)
-            var scale: Float = 0.5
-            vDSP_vsmul(splitComplex.realp, 1, &scale, splitComplex.realp, 1, vDSP_Length(fftSize/2))
-            vDSP_vsmul(splitComplex.imagp, 1, &scale, splitComplex.imagp, 1, vDSP_Length(fftSize/2))
-            
-            // 计算功率谱
-            // 结果是对称的，我们只需要前 fftSize/2 + 1 个点
+            // 计算功率谱（在闭包外部定义）
             var powerSpectrum = [Float](repeating: 0, count: fftSize/2 + 1)
+            var melSpectrum = [Float](repeating: 0, count: nMelBands)
+            var logResult = [Float](repeating: 0, count: nMelBands)
             
-            // 处理 DC 和 Nyquist
-            let dc = splitComplex.realp[0]
-            let nyquist = splitComplex.imagp[0]
-            powerSpectrum[0] = dc * dc
-            powerSpectrum[fftSize/2] = nyquist * nyquist
-            
-            // 处理其他频率分量
-            splitComplex.imagp[0] = 0 // 重置 Nyquist 位置为 0 以便批量计算
-            
-            var tempSpectrum = [Float](repeating: 0, count: fftSize/2)
-            vDSP_zvmags(&splitComplex, 1, &tempSpectrum, 1, vDSP_Length(fftSize/2))
-            
-            for i in 1..<fftSize/2 {
-                powerSpectrum[i] = tempSpectrum[i]
+            // 执行实数 FFT
+            realParts.withUnsafeMutableBufferPointer { realBuffer in
+                imagParts.withUnsafeMutableBufferPointer { imagBuffer in
+                    var splitComplex = DSPSplitComplex(realp: realBuffer.baseAddress!, imagp: imagBuffer.baseAddress!)
+                    vDSP_fft_zrip(fftSetup, &splitComplex, 1, log2n, FFTDirection(FFT_FORWARD))
+                    
+                    // 缩放结果 (vDSP_fft_zrip 结果放大了 2 倍)
+                    var scale: Float = 0.5
+                    vDSP_vsmul(splitComplex.realp, 1, &scale, splitComplex.realp, 1, vDSP_Length(fftSize/2))
+                    vDSP_vsmul(splitComplex.imagp, 1, &scale, splitComplex.imagp, 1, vDSP_Length(fftSize/2))
+                    
+                    // 处理 DC 和 Nyquist
+                    let dc = splitComplex.realp[0]
+                    let nyquist = splitComplex.imagp[0]
+                    powerSpectrum[0] = dc * dc
+                    powerSpectrum[fftSize/2] = nyquist * nyquist
+                    
+                    // 处理其他频率分量
+                    splitComplex.imagp[0] = 0 // 重置 Nyquist 位置为 0 以便批量计算
+                    
+                    var tempSpectrum = [Float](repeating: 0, count: fftSize/2)
+                    vDSP_zvmags(&splitComplex, 1, &tempSpectrum, 1, vDSP_Length(fftSize/2))
+                    
+                    for i in 1..<fftSize/2 {
+                        powerSpectrum[i] = tempSpectrum[i]
+                    }
+                }
             }
             
             vDSP_destroy_fftsetup(fftSetup)
@@ -352,7 +361,6 @@ struct AudioFeatureExtractor {
             
             // 应用 Mel 滤波器组
             // 滤波器长度通常是 fftSize / 2 + 1
-            var melSpectrum = [Float](repeating: 0, count: nMelBands)
             for (i, filter) in melFilters.enumerated() {
                 var sum: Float = 0
                 // 注意：这里使用前 fftSize / 2 + 1 个点
@@ -381,7 +389,7 @@ struct AudioFeatureExtractor {
             // 使用自然对数 (ln)
             var count = Int32(nMelBands)
             var input = logMelSpectrum
-            var logResult = logMelSpectrum
+            logResult = logMelSpectrum
             vvlogf(&logResult, &input, &count)
             
             // 注意：不再乘以 10。Kaldi Fbank 输出通常是自然对数能量，不是 dB (10*log10)

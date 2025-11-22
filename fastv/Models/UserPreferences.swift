@@ -151,7 +151,7 @@ class UserPreferences: ObservableObject {
             voiceInputShortcutModifiers = .option
         }
         
-        voiceInputLanguage = defaults.string(forKey: Keys.voiceInputLanguage) ?? "auto"
+        voiceInputLanguage = defaults.string(forKey: Keys.voiceInputLanguage) ?? "zh"
         
         // 文本稿语言设置，默认为自动检测
         if let languageString = defaults.string(forKey: Keys.transcriptLanguage),
@@ -177,12 +177,12 @@ class UserPreferences: ObservableObject {
             waveformWindowStyle = .compact
         }
         
-        // 波形窗口颜色风格设置，默认为紫色（更显眼）
+        // 波形窗口颜色风格设置，默认为深蓝+青色
         if let colorStyleString = defaults.string(forKey: Keys.waveformWindowColorStyle),
            let colorStyle = WaveformWindowColorStyle(rawValue: colorStyleString) {
             waveformWindowColorStyle = colorStyle
         } else {
-            waveformWindowColorStyle = .purple
+            waveformWindowColorStyle = .darkBlueCyan
         }
         
         // AI 优化设置，默认不启用

@@ -253,6 +253,7 @@ class WindowDelegate: NSObject, NSWindowDelegate {
         print("📊 [WindowDelegate] 窗口即将关闭")
     }
     
+    @objc(windowDidClose:)
     func windowDidClose(_ notification: Notification) {
         print("📊 [WindowDelegate] 窗口已关闭")
     }
@@ -271,22 +272,23 @@ struct WaveformView: View {
         let style = UserPreferences.shared.waveformWindowStyle
         let colorStyle = UserPreferences.shared.waveformWindowColorStyle
         let size = style.size
-        let accentColor = colorStyle.adaptiveColor(for: colorScheme)
+        let colorConfig = colorStyle.colorConfig(for: colorScheme)
+        let barColor = colorConfig.barColor
         let state = manager.state
         
         ZStack {
-            // 紫色主题背景 - 使用紫色作为主要背景色，更显眼
-            RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .background {
-                    // 紫色背景，根据深浅模式调整透明度
-                    RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
-                        .fill(
-                            colorScheme == .dark ? 
-                            accentColor.opacity(0.25) :  // 深色模式下紫色背景
-                            accentColor.opacity(0.15)    // 浅色模式下紫色背景
-                        )
-                }
+            // 背景 - 根据配置使用毛玻璃效果或纯色
+            if colorConfig.useMaterial {
+                RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .background {
+                        RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
+                            .fill(colorConfig.backgroundColor.opacity(colorConfig.backgroundOpacity))
+                    }
+            } else {
+                RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
+                    .fill(colorConfig.backgroundColor.opacity(colorConfig.backgroundOpacity))
+            }
             
             // 根据状态显示不同内容 - 使用动画过渡
             Group {
@@ -300,9 +302,9 @@ struct WaveformView: View {
                                     // 更丰富的渐变层次
                                     LinearGradient(
                                         colors: [
-                                            accentColor.opacity(0.9),
-                                            accentColor.opacity(0.7),
-                                            accentColor.opacity(0.5)
+                                            barColor.opacity(0.9),
+                                            barColor.opacity(0.7),
+                                            barColor.opacity(0.5)
                                         ],
                                         startPoint: .top,
                                         endPoint: .bottom
@@ -310,7 +312,7 @@ struct WaveformView: View {
                                 )
                                 .frame(width: style.barWidth, height: bars[index] * style.maxBarHeight)
                                 // 添加微妙的发光效果
-                                .shadow(color: accentColor.opacity(0.3), radius: 2, x: 0, y: 0)
+                                .shadow(color: barColor.opacity(0.3), radius: 2, x: 0, y: 0)
                         }
                     }
                     .padding(.horizontal, style.horizontalPadding)
@@ -318,7 +320,7 @@ struct WaveformView: View {
                     .onAppear {
                         animateBars()
                     }
-                    .onChange(of: manager.audioLevel) { newLevel in
+                    .onChange(of: manager.audioLevel) { _, newLevel in
                         updateBars(with: newLevel)
                     }
                     // 更自然的过渡效果
@@ -333,7 +335,7 @@ struct WaveformView: View {
                         ZStack {
                             // 背景圆环 - 更细腻
                             Circle()
-                                .stroke(accentColor.opacity(0.25), lineWidth: 2.5)
+                                .stroke(barColor.opacity(0.25), lineWidth: 2.5)
                                 .frame(width: style.spinnerSize, height: style.spinnerSize)
                             
                             // 旋转的渐变圆环 - 更丰富的渐变
@@ -342,11 +344,11 @@ struct WaveformView: View {
                                 .stroke(
                                     AngularGradient(
                                         gradient: Gradient(colors: [
-                                            accentColor.opacity(1.0),
-                                            accentColor.opacity(0.85),
-                                            accentColor.opacity(0.6),
-                                            accentColor.opacity(0.35),
-                                            accentColor.opacity(0.15)
+                                            barColor.opacity(1.0),
+                                            barColor.opacity(0.85),
+                                            barColor.opacity(0.6),
+                                            barColor.opacity(0.35),
+                                            barColor.opacity(0.15)
                                         ]),
                                         center: .center,
                                         startAngle: .degrees(0),
@@ -357,12 +359,12 @@ struct WaveformView: View {
                                 .frame(width: style.spinnerSize, height: style.spinnerSize)
                                 .rotationEffect(.degrees(rotationAngle))
                                 // 添加微妙的发光效果
-                                .shadow(color: accentColor.opacity(0.45), radius: 4, x: 0, y: 0)
+                                .shadow(color: barColor.opacity(0.45), radius: 4, x: 0, y: 0)
                             
                             // 额外的高光层，增强存在感
                             Circle()
                                 .trim(from: 0.0, to: 0.35)
-                                .stroke(accentColor.opacity(0.5), lineWidth: 1.2)
+                                .stroke(barColor.opacity(0.5), lineWidth: 1.2)
                                 .frame(width: style.spinnerSize + 4, height: style.spinnerSize + 4)
                                 .blur(radius: 1.5)
                                 .opacity(0.8)
@@ -371,7 +373,7 @@ struct WaveformView: View {
                             // 立即启动转圈动画，不等待
                             startTranscribingAnimation()
                         }
-                        .onChange(of: state) { newState in
+                        .onChange(of: state) { _, newState in
                             // 当状态切换到转文字时，立即启动动画
                             if newState == .transcribing {
                                 startTranscribingAnimation()
