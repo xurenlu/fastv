@@ -381,8 +381,16 @@ struct fastvApp: App {
             var text = try await SpeechTranscriber.transcribe(recording: recording)
             print("✅ [fastvApp] 语音转文字成功: \(text.prefix(50))...")
             
-            // AI 优化（如果启用且按了Ctrl键）
+            // 快速纠错（如果启用，毫秒级，非常快）
             let preferences = UserPreferences.shared
+            if preferences.enableFastCorrection {
+                let correctionStartTime = Date()
+                text = TextCorrectionService.shared.correctText(text)
+                let correctionDuration = Date().timeIntervalSince(correctionStartTime) * 1000 // 转换为毫秒
+                print("✅ [fastvApp] 快速纠错完成，耗时: \(String(format: "%.2f", correctionDuration))毫秒")
+            }
+            
+            // AI 优化（如果启用且按了Ctrl键）
             if hasCtrl && preferences.enableAIOptimization {
                 print("🤖 [fastvApp] AI 优化已启用，开始优化文本（超时: \(preferences.aiTimeout)秒）...")
                 let aiStartTime = Date()

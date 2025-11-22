@@ -34,6 +34,8 @@ class UserPreferences: ObservableObject {
         static let aiAPIToken = "aiAPIToken"
         static let aiTimeout = "aiTimeout"
         static let aiSystemPrompt = "aiSystemPrompt"
+        // 快速纠错相关
+        static let enableFastCorrection = "enableFastCorrection"
         // 模型下载相关
         static let modelDownloadURL = "modelDownloadURL"
         static let modelDownloaded = "modelDownloaded"
@@ -98,6 +100,11 @@ class UserPreferences: ObservableObject {
     
     @Published var aiSystemPrompt: String {
         willSet { defaults.set(newValue, forKey: Keys.aiSystemPrompt) }
+    }
+    
+    // 快速纠错相关
+    @Published var enableFastCorrection: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.enableFastCorrection) }
     }
     
     // 模型下载相关
@@ -184,6 +191,9 @@ class UserPreferences: ObservableObject {
         aiModel = defaults.string(forKey: Keys.aiModel) ?? "gemma2:2b"
         aiAPIToken = defaults.string(forKey: Keys.aiAPIToken) ?? ""
         aiTimeout = defaults.object(forKey: Keys.aiTimeout) as? Double ?? 5.0 // 默认 5 秒超时
+        
+        // 快速纠错设置，默认启用（毫秒级，非常快）
+        enableFastCorrection = defaults.object(forKey: Keys.enableFastCorrection) as? Bool ?? true
         
         // 默认系统提示词
         let defaultSystemPrompt = """

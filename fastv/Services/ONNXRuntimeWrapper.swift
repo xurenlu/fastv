@@ -320,10 +320,11 @@ class ONNXRuntimeWrapper {
         
         // 4. textnorm 输入（文本规范化）
         // C# 代码: textnormDict = { "withitn": 14, "woitn": 15 }
-        // C# 示例使用: textnormId = 15 (woitn)
-        // Python 示例：use_itn=False，对应 textnorm="woitn" -> 15
+        // Python 示例：use_itn=True，对应 textnorm="withitn" -> 14（包含标点符号）
+        // use_itn=False，对应 textnorm="woitn" -> 15（不包含标点符号）
+        // 我们需要标点符号，所以使用 14 (withitn)
         var textnormTensor: OpaquePointer?
-        let textnormDataValue: Int32 = 15 // 15 = woitn (without ITN，对应 use_itn=False)
+        let textnormDataValue: Int32 = 14 // 14 = withitn (with ITN，对应 use_itn=True，包含标点符号)
         let textnormData: [Int32] = [textnormDataValue]
         textnormData.withUnsafeBufferPointer { buffer in
             let shape: [Int64] = [batchSize]

@@ -266,6 +266,14 @@ struct SettingsView: View {
                 }
                 
                 Section {
+                    Toggle("快速纠错（毫秒级，推荐）", isOn: $preferences.enableFastCorrection)
+                } header: {
+                    Text("文本纠错")
+                } footer: {
+                    Text("启用后会自动纠正语音识别中的常见错别字，速度极快（毫秒级），无需等待。")
+                }
+                
+                Section {
                     Toggle(NSLocalizedString("ai.optimization.enable", comment: ""), isOn: $preferences.enableAIOptimization)
                     
                     if preferences.enableAIOptimization {
@@ -504,6 +512,18 @@ struct SettingsView: View {
                     }
                     .keyboardShortcut(.defaultAction)
                 }
+            }
+            .safeAreaInset(edge: .bottom) {
+                // 版本信息显示在底部
+                HStack {
+                    Spacer()
+                    Text("\(AppVersionManager.appName) \(AppVersionManager.fullVersion)")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                    Spacer()
+                }
+                .padding(.vertical, 8)
+                .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
             }
             .frame(minWidth: 520, minHeight: 480)
         }

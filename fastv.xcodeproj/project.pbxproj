@@ -457,9 +457,11 @@
 					"$(SRCROOT)/Libraries/onnxruntime/current/include",
 					"$(SRCROOT)/ThirdParty",
 				);
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "FastV 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
+				INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)";
+				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "妙打 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "FastV 需要访问您的麦克风以进行语音输入和语音转文字功能。";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "妙打 需要访问您的麦克风以进行语音输入和语音转文字功能。";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -506,9 +508,11 @@
 					"$(SRCROOT)/Libraries/onnxruntime/current/include",
 					"$(SRCROOT)/ThirdParty",
 				);
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "FastV 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
+				INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)";
+				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "妙打 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "FastV 需要访问您的麦克风以进行语音输入和语音转文字功能。";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "妙打 需要访问您的麦克风以进行语音输入和语音转文字功能。";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

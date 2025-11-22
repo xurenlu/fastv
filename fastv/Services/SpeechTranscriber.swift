@@ -16,81 +16,46 @@ struct SpeechTranscriber {
         return appDir.appendingPathComponent("Models/sensevoice-small")
     }
     
-    // 使用下载的模型文件，如果不存在则使用Bundle中的模型
+    // 统一使用下载的模型文件，不再使用Bundle中的文件
     private static var modelPath: URL? {
-        // 首先尝试使用下载的模型文件
         let downloadedPath = getModelDirectory().appendingPathComponent("model.onnx")
         if FileManager.default.fileExists(atPath: downloadedPath.path) {
             return downloadedPath
         }
-        
-        // 如果不存在，尝试在Bundle中查找
-        if let url = Bundle.main.url(forResource: "model", withExtension: "onnx", subdirectory: "Models/sensevoice-small") {
-            return url
-        }
-        return Bundle.main.url(forResource: "model", withExtension: "onnx")
+        // 如果不存在，返回 nil（不再回退到 Bundle）
+        return nil
     }
     
     private static var tokensPath: URL? {
-        // 首先尝试使用下载的文件
         let downloadedPath = getModelDirectory().appendingPathComponent("tokens.json")
         if FileManager.default.fileExists(atPath: downloadedPath.path) {
             return downloadedPath
         }
-        
-        // 如果不存在，尝试在Bundle中查找
-        if let url = Bundle.main.url(forResource: "tokens", withExtension: "json", subdirectory: "Models/sensevoice-small") {
-            return url
-        }
-        return Bundle.main.url(forResource: "tokens", withExtension: "json")
+        // 如果不存在，返回 nil（不再回退到 Bundle）
+        return nil
     }
     
     private static var configPath: URL? {
-        // 首先尝试使用下载的文件
         let downloadedPath = getModelDirectory().appendingPathComponent("config.yaml")
         if FileManager.default.fileExists(atPath: downloadedPath.path) {
             return downloadedPath
         }
-        
-        // 如果不存在，尝试在Bundle中查找
-        if let url = Bundle.main.url(forResource: "config", withExtension: "yaml", subdirectory: "Models/sensevoice-small") {
-            return url
-        }
-        return Bundle.main.url(forResource: "config", withExtension: "yaml")
+        // 如果不存在，返回 nil（不再回退到 Bundle）
+        return nil
     }
     
     // 缓存 token 映射
     private static var tokenMap: [Int: String]?
     
     private static func resolveCMVNURL() -> URL? {
-        // 首先尝试使用下载的文件
+        // 统一使用下载的文件，不再使用Bundle中的文件
         let downloadedPath = getModelDirectory().appendingPathComponent("am.mvn")
         if FileManager.default.fileExists(atPath: downloadedPath.path) {
             return downloadedPath
         }
-        
-        // 如果不存在，尝试在Bundle中查找
-        // 方式1: 使用子目录
-        if let url = Bundle.main.url(forResource: "am", withExtension: "mvn", subdirectory: "sensevoice-small") {
-            return url
-        }
-        // 方式2: 根目录
-        if let url = Bundle.main.url(forResource: "am", withExtension: "mvn") {
-            return url
-        }
-        // 方式3: 手动拼路径
-        if let resourcePath = Bundle.main.resourcePath {
-            let sensevoicePath = (resourcePath as NSString).appendingPathComponent("sensevoice-small/am.mvn")
-            if FileManager.default.fileExists(atPath: sensevoicePath) {
-                return URL(fileURLWithPath: sensevoicePath)
-            }
-            let fallbackPath = (resourcePath as NSString).appendingPathComponent("am.mvn")
-            if FileManager.default.fileExists(atPath: fallbackPath) {
-                return URL(fileURLWithPath: fallbackPath)
-            }
-        }
+        // 如果不存在，返回 nil（不再回退到 Bundle）
         #if DEBUG
-        print("警告：未找到 am.mvn 文件，特征可能未归一化")
+        print("警告：未找到下载的 am.mvn 文件，特征可能未归一化")
         #endif
         return nil
     }
@@ -294,15 +259,19 @@ struct SpeechTranscriber {
         
         // 使用 ONNX Runtime（通过 C wrapper）
         guard let modelPath = modelPath else {
+            let modelDir = getModelDirectory()
             throw VideoProcessingError.modelLoadFailed(
                 """
                 模型文件未找到。
                 
-                请确认：
-                1. model.onnx 文件在 fastv/Resources/Models/sensevoice-small/ 目录中
-                2. 文件已添加到 Xcode 项目的 Target Membership
+                请先在设置中下载模型文件。
+                模型文件应位于：\(modelDir.path)
                 
-                详细说明请参考：INSTALL_GUIDE.md
+                需要的文件：
+                - model.onnx
+                - tokens.json
+                - config.yaml
+                - am.mvn
                 """
             )
         }
