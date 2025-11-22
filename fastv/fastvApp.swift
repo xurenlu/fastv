@@ -22,6 +22,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // 设置应用不自动退出（关闭窗口时保留在后台）
         NSApplication.shared.setActivationPolicy(.regular)
+        
+        // 设置窗口标题为多语言的 APP 名称
+        DispatchQueue.main.async {
+            self.setWindowTitle()
+        }
+    }
+    
+    /// 设置窗口标题为多语言的 APP 名称
+    private func setWindowTitle() {
+        // 获取多语言的 APP 名称
+        let appName = AppVersionManager.appName
+        
+        // 设置所有窗口的标题
+        for window in NSApplication.shared.windows {
+            window.title = appName
+        }
+        
+        // 监听新窗口创建，自动设置标题
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
+            if let window = notification.object as? NSWindow {
+                window.title = appName
+            }
+        }
     }
     
     func applicationWillTerminate(_ notification: Notification) {
@@ -71,6 +98,11 @@ struct fastvApp: App {
                         
                         // 确保状态栏已初始化
                         StatusBarManager.shared.show()
+                        
+                        // 设置窗口标题为多语言的 APP 名称
+                        if let window = NSApplication.shared.windows.first {
+                            window.title = AppVersionManager.appName
+                        }
                         
                         // 延迟初始化，确保窗口已显示
                         try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
