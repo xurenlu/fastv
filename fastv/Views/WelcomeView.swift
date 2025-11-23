@@ -38,11 +38,26 @@ struct WelcomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     // 功能介绍
-                    FeatureSection(
-                        icon: "keyboard",
-                        title: NSLocalizedString("welcome.feature.global.shortcut", comment: ""),
-                        description: NSLocalizedString("welcome.feature.global.shortcut.desc", comment: "")
-                    )
+                    VStack(spacing: 12) {
+                        FeatureSection(
+                            icon: "keyboard",
+                            title: NSLocalizedString("welcome.feature.global.shortcut", comment: ""),
+                            description: NSLocalizedString("welcome.feature.global.shortcut.desc", comment: "")
+                        )
+                        
+                        // 重要提示
+                        HStack(spacing: 12) {
+                            Image(systemName: "lightbulb.fill")
+                                .font(.subheadline)
+                                .foregroundStyle(.orange)
+                            
+                            Text(NSLocalizedString("welcome.feature.global.shortcut.highlight", comment: ""))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.leading)
+                        }
+                        .padding(.leading, 48)
+                    }
                     
                     FeatureSection(
                         icon: "waveform",

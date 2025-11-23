@@ -65,16 +65,37 @@ struct VoiceInputView: View {
             }
             
             // 测试输入框区域
-            VStack(alignment: .leading, spacing: 8) {
-                Text(NSLocalizedString("test.input.label", comment: ""))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 12) {
+                // 重要提示
+                HStack(spacing: 8) {
+                    Image(systemName: "lightbulb.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(.orange)
+                    
+                    Text(NSLocalizedString("main.usage.hint", comment: ""))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color.orange.opacity(0.1))
+                }
                 
-                TextField(NSLocalizedString("test.input.placeholder", comment: ""), text: $testInputText, axis: .vertical)
-                    .textFieldStyle(.roundedBorder)
-                    .lineLimit(2...2)
-                    .focused($isTestInputFocused)
-                    .frame(height: 50)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(NSLocalizedString("test.input.label", comment: ""))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    TextField(NSLocalizedString("test.input.placeholder", comment: ""), text: $testInputText, axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(2...2)
+                        .focused($isTestInputFocused)
+                        .frame(height: 50)
+                }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
