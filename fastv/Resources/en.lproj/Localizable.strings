@@ -25,6 +25,7 @@
 "clear.all.confirm.message" = "This will delete all history records and cannot be undone.\n\nAre you sure you want to continue?";
 "test.input.label" = "Test Input Field";
 "test.input.placeholder" = "Press shortcut key here to test voice input";
+"main.usage.hint" = "💡 Tip: While this app is running, you can press the shortcut key in any other app's text field to use voice input!";
 "model.not.downloaded.title" = "Model File Not Downloaded";
 "model.not.downloaded.message" = "Click here to download the model file to use voice input";
 "records" = "records";
@@ -98,6 +99,7 @@
 "onboarding.model.ready" = "Model File Ready";
 "onboarding.usage.guide.title" = "Get Started";
 "onboarding.usage.guide.description" = "Setup complete! You can now use voice input in other applications' text fields.";
+"onboarding.usage.guide.highlight" = "💡 Important: While this app is running, you can not only use it within this app, but more importantly, you can press the shortcut key in any other app's text field to speak and input text!";
 "onboarding.usage.guide.chinese" = "Press the shortcut key in a Chinese text field to speak, and the system will automatically recognize Chinese and insert text.";
 "onboarding.usage.guide.english" = "Press the shortcut key in an English text field to speak, and the system will automatically recognize English and insert text.";
 "onboarding.usage.guide.cantonese" = "Press the shortcut key in a Cantonese text field to speak, and the system will automatically recognize Cantonese and insert text.";
@@ -122,6 +124,7 @@
 // Model Download
 "model.download.status.preparing" = "Preparing download...";
 "model.download.status.downloading" = "Downloading %@... %d%%";
+"model.download.status.processing" = "Processing file...";
 "model.download.status.complete" = "%@ download complete";
 "model.download.status.failed" = "Download %@ failed: %@";
 "model.download.status.all.complete" = "Download Complete";
@@ -148,7 +151,8 @@
 "welcome.title" = "Welcome to typecho";
 "welcome.subtitle" = "Smart Voice Input";
 "welcome.feature.global.shortcut" = "Global Shortcut";
-"welcome.feature.global.shortcut.desc" = "Set shortcuts to quickly start voice input in any application";
+"welcome.feature.global.shortcut.desc" = "Set shortcuts to press in any app's text field to speak and input text";
+"welcome.feature.global.shortcut.highlight" = "💡 While this app is running, you can press the shortcut key in any other app's text field to use voice input!";
 "welcome.feature.real.time" = "Real-time Voice Recognition";
 "welcome.feature.real.time.desc" = "Use local AI models to quickly and accurately convert speech to text";
 "welcome.feature.ai.optimization" = "AI Smart Optimization";

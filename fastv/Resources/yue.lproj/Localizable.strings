@@ -1,0 +1,233 @@
+/* 
+  Localizable.strings
+  妙打
+
+  粵語（繁體中文）
+*/
+
+// 通用
+"app.name" = "妙打";
+"ok" = "確定";
+"cancel" = "取消";
+"save" = "儲存";
+"delete" = "刪除";
+"copy" = "複製";
+"settings" = "設定";
+"help" = "說明";
+"error" = "錯誤";
+"history" = "歷史記錄";
+"copied" = "已複製";
+"more.options" = "更多選項";
+"not.set" = "未設定";
+"clear" = "清空";
+"clear.all" = "清空所有";
+"clear.all.confirm.title" = "確認清空所有記錄";
+"clear.all.confirm.message" = "此操作將刪除所有歷史記錄，且無法恢復。\n\n確定要繼續嗎？";
+"test.input.label" = "測試輸入框";
+"test.input.placeholder" = "在此處按快捷鍵測試語音輸入";
+"main.usage.hint" = "💡 提示：本應用運行時，可以在任何其他應用的輸入框中按下快捷鍵進行語音輸入！";
+"model.not.downloaded.title" = "模型檔案未下載";
+"model.not.downloaded.message" = "點擊此處下載模型檔案以使用語音輸入功能";
+"records" = "條記錄";
+
+// 語音輸入
+"voice.input" = "語音輸入";
+"voice.input.history" = "歷史記錄";
+"no.records" = "暫無記錄";
+"press.shortcut.to.start" = "按下快捷鍵開始語音輸入";
+"press.shortcut.to.speak" = "按下快捷鍵開始說話";
+"to.speak" = "開始說話";
+"press.and.hold.to.speak" = "按住開始說話，鬆開後結束";
+"press.and.hold" = "按著說：";
+"enable.voice.input.in.settings" = "請在設定中啟用語音輸入法功能";
+"transcribing" = "轉文字中...";
+
+// 設定
+"enable.voice.input" = "啟用語音輸入法";
+"global.shortcut" = "全域快捷鍵";
+"current.shortcut" = "當前快捷鍵：";
+"click.to.capture.shortcut" = "點擊錄製快捷鍵";
+"press.to.capture.shortcut" = "請按下快捷鍵...";
+"set.shortcut" = "設定快捷鍵";
+"language" = "語言";
+"recognition.language" = "識別語言";
+"default.language" = "預設語言";
+"auto.detect" = "自動檢測";
+"auto.detect.hint" = "提示：如果自動檢測不準確，建議明確選擇對應的語言以獲得更好的識別效果";
+"chinese" = "中文";
+"english" = "英文";
+"cantonese" = "粵語";
+"japanese" = "日語";
+"korean" = "韓語";
+"waveform.window.position" = "懸浮工具列位置";
+"waveform.window.size" = "懸浮工具列大小";
+"waveform.window.color" = "懸浮工具列顏色";
+"permission.test" = "權限測試";
+"test.microphone.permission" = "測試麥克風權限";
+"test.show.toolbar" = "測試顯示工具列";
+"cleanup.toolbar.window" = "清理工具列視窗";
+"voice.input.section" = "語音輸入法";
+"voice.input.description" = "按下快捷鍵開始語音輸入，鬆開時自動識別並插入文字。需要麥克風和輔助功能權限。";
+"fn.key.hint" = "提示：單獨按FN鍵僅進行語音輸入，FN+Ctrl組合會在語音輸入後自動進行AI優化（去除語氣詞、添加標點、修正錯別字）。";
+
+// 統計
+"total.duration" = "總時長";
+"total.characters" = "總字數";
+"characters.per.minute" = "字/分";
+"minutes" = "分";
+"hours" = "小時";
+"characters" = "字";
+"key" = "鍵";
+"minute" = "分";
+
+// 引導流程
+"onboarding.welcome" = "歡迎使用 妙打";
+"onboarding.set.shortcut.title" = "設定快捷鍵";
+"onboarding.set.shortcut.description" = "請設定一個全域快捷鍵來啟動語音輸入";
+"onboarding.select.language.title" = "選擇預設語言";
+"onboarding.select.language.description" = "選擇您最常用的語音輸入語言。您可以在設定中隨時更改。";
+"onboarding.download.model.title" = "下載模型檔案";
+"onboarding.download.model.description" = "首次使用需要下載語音識別模型檔案";
+"onboarding.model.size.warning" = "模型檔案較大（894MB），請耐心等待";
+"onboarding.model.other.files" = "其他配置檔案將使用內建資源";
+"onboarding.downloading" = "正在下載";
+"onboarding.download.complete" = "下載完成";
+"onboarding.start.download" = "開始下載";
+"onboarding.previous" = "上一步";
+"onboarding.next" = "下一步";
+"onboarding.complete" = "完成";
+"onboarding.model.ready" = "模型檔案已就緒";
+"onboarding.usage.guide.title" = "開始使用";
+"onboarding.usage.guide.description" = "設定已完成！現在您可以在其他應用的輸入框中使用語音輸入功能了。";
+"onboarding.usage.guide.highlight" = "💡 重要提示：本應用運行時，不僅可以在本應用內使用，更重要的是可以在任何其他應用的輸入框中，按下快捷鍵即可說話輸入文字！";
+"onboarding.usage.guide.chinese" = "請在中文輸入框中按快捷鍵說話，系統會自動識別中文並插入文字。";
+"onboarding.usage.guide.english" = "請在英文輸入框中按快捷鍵說話，系統會自動識別英文並插入文字。";
+"onboarding.usage.guide.cantonese" = "請在粵語輸入框中按快捷鍵說話，系統會自動識別粵語並插入文字。";
+"onboarding.usage.guide.japanese" = "請在日文輸入框中按快捷鍵說話，系統會自動識別日文並插入文字。";
+"onboarding.usage.guide.korean" = "請在韓文輸入框中按快捷鍵說話，系統會自動識別韓文並插入文字。";
+"onboarding.usage.guide.auto" = "可以在任何輸入框中按快捷鍵說話，系統會自動檢測語言並插入文字。";
+
+// 快捷鍵設定視窗
+"shortcut.capture.title" = "設定快捷鍵";
+"shortcut.capture.description" = "請按下您想要設定的快捷鍵組合";
+"shortcut.capture.current" = "當前快捷鍵：";
+"shortcut.capture.not.set" = "未設定";
+"shortcut.capture.hint" = "提示：建議使用FN鍵或FN+Control鍵。";
+"shortcut.capture.stop" = "停止捕獲（按下要設定的快捷鍵）";
+"shortcut.capture.click" = "點擊設定快捷鍵";
+"shortcut.capture.press.hint" = "請按下要設定的快捷鍵（支援FN鍵）";
+
+// 語言選擇
+"select.language" = "選擇語言";
+"language.description" = "這將是您語音輸入的預設語言。";
+
+// 模型下載
+"model.download.status.preparing" = "準備下載...";
+"model.download.status.downloading" = "正在下載 %@... %d%%";
+"model.download.status.processing" = "正在處理檔案...";
+"model.download.status.complete" = "%@ 下載完成";
+"model.download.status.failed" = "下載 %@ 失敗：%@";
+"model.download.status.all.complete" = "下載完成";
+"model.download.cancel" = "取消下載";
+"model.download.error" = "錯誤：%@";
+"model.download.error.invalid.url" = "無效的URL";
+"model.download.error.temp.file.not.found" = "臨時下載檔案不存在";
+"model.download.error.404" = "檔案未找到 (404)";
+"model.download.error.500" = "伺服器錯誤 (500)";
+"model.download.error.403" = "禁止存取 (403)";
+"model.download.error.http" = "HTTP錯誤 %d";
+"model.download.error.timeout" = "下載逾時，請檢查網路連線";
+"model.download.error.no.internet" = "網路連線失敗，請檢查網路設定";
+"model.download.error.connection.lost" = "網路連線中斷";
+"model.download.error.cannot.connect" = "無法連接到伺服器";
+"model.download.error.file.too.small" = "下載的檔案大小異常（僅 %@ MB），可能是下載失敗或檔案損壞，請重新下載";
+"model.download.error.cannot.get.file.size" = "無法取得檔案大小，下載可能失敗";
+"model.download.already.exists" = "%@ 已存在，跳過";
+"model.download.url.label" = "下載地址：";
+"model.download.edit.url" = "修改地址";
+"model.download.url.placeholder" = "請輸入模型下載地址";
+
+// 歡迎頁面
+"welcome.title" = "歡迎使用 妙打";
+"welcome.subtitle" = "智能語音輸入法";
+"welcome.feature.global.shortcut" = "全域快捷鍵";
+"welcome.feature.global.shortcut.desc" = "設定快捷鍵，在任何應用的輸入框中按下快捷鍵即可說話輸入文字";
+"welcome.feature.global.shortcut.highlight" = "💡 本應用運行時，可以在任何其他應用的輸入框中按下快捷鍵進行語音輸入！";
+"welcome.feature.real.time" = "即時語音識別";
+"welcome.feature.real.time.desc" = "使用本機AI模型，快速準確地將語音轉換為文字";
+"welcome.feature.ai.optimization" = "AI智能優化";
+"welcome.feature.ai.optimization.desc" = "自動去除語氣詞、添加標點符號、修正錯別字";
+"welcome.feature.multilanguage" = "多語言支援";
+"welcome.feature.multilanguage.desc" = "支援中文、英文、日語等多種語言";
+"welcome.start.using" = "開始使用";
+
+// 權限相關
+"microphone.permission.required" = "需要麥克風權限";
+"microphone.permission.description" = "語音輸入功能需要存取麥克風。\n\n請按以下步驟授權：\n1. 開啟「系統設定」\n2. 進入「隱私與安全性」 > 「麥克風」\n3. 找到 妙打 並勾選\n4. 重新啟動應用";
+"open.system.settings" = "開啟系統設定";
+"later" = "稍後";
+"microphone.in.use" = "麥克風正在使用中";
+"microphone.in.use.description" = "麥克風正被其他應用使用（如閃電說）。\n\n解決方法：\n1. 關閉其他語音輸入應用\n2. 或使用不同的快捷鍵避免衝突\n3. 或在其他應用不錄音時使用本應用";
+"got.it" = "知道了";
+
+// 按鍵名稱
+"key.left.control" = "左Control";
+"key.fn" = "FN";
+"key.space" = "Space";
+"key.return" = "Return";
+"key.esc" = "Esc";
+
+// AI 優化設定
+"ai.optimization.enable" = "啟用 AI 文字優化";
+"ai.optimization.section" = "AI 文字優化";
+"ai.optimization.description" = "啟用後，語音識別完成的文字會透過 AI 進行優化，去除口頭禪、添加標點符號、修正錯別字。";
+"ai.optimization.description.detail" = "預設使用本機的 Ollama 服務（http://127.0.0.1:11434），也可以設定為其他相容的 API 端點。";
+"ai.shortcut.usage.hint" = "重要：即使啟用了 AI 優化，也需要按特定快捷鍵組合才能觸發 AI 糾正功能。";
+"ai.shortcut.normal" = "普通語音輸入：";
+"ai.shortcut.with.ai" = "AI 優化語音輸入：";
+"ai.api.endpoint" = "API 端點";
+"ai.model.name" = "模型名稱";
+"ai.model.example" = "例如：gemma2:2b";
+"ai.api.token" = "API Token（可選）";
+"ai.api.token.placeholder" = "留空表示不使用";
+"ai.timeout" = "逾時時間";
+"ai.timeout.seconds" = "秒";
+"ai.timeout.hint" = "建議本機模型使用 2-5 秒，遠端 API 使用 10-30 秒";
+"ai.system.prompt" = "系統提示詞";
+"ai.system.prompt.reset" = "恢復預設";
+"ai.system.prompt.reset.help" = "恢復預設的系統提示詞";
+"ai.system.prompt.hint" = "自訂系統提示詞可以控制 AI 的優化行為。提示詞中可以使用 {text} 佔位符表示原始文字（可選）。";
+"ai.test.connection" = "測試連線";
+"ai.test.connection.help" = "測試與 Ollama API 的連線";
+"ai.fetch.models" = "取得模型列表";
+"ai.fetch.models.help" = "從 Ollama 取得可用的模型列表";
+"ai.test.optimization" = "測試文字優化";
+"ai.test.optimization.help" = "發送測試文字，驗證 AI 優化功能是否正常運作";
+"settings.title" = "設定";
+"settings.done" = "完成";
+
+// 權限相關Alert
+"permission.test.trigger" = "嘗試觸發權限請求";
+"permission.test.description" = "即將嘗試存取麥克風以觸發系統權限對話框。\n\n如果彈出權限對話框，請點擊「允許」。";
+"permission.request.title" = "請求麥克風權限";
+"permission.request.description" = "系統將彈出權限請求對話框。\n\n請點擊「允許」以授權 妙打 存取麥克風。";
+"permission.granted.title" = "✅ 麥克風權限已授權";
+"permission.granted.description" = "您已成功授權麥克風權限！\n\n現在可以使用語音輸入功能了。";
+"permission.already.granted.title" = "✅ 麥克風權限已授權";
+"permission.already.granted.description" = "您已經授權了麥克風權限。\n\n可以直接使用語音輸入功能。";
+"permission.denied.title" = "⚠️ 麥克風權限被拒絕";
+"permission.denied.description" = "語音輸入功能需要麥克風權限。\n\n請按以下步驟手動授權：\n1. 開啟「系統設定」\n2. 進入「隱私與安全性」 > 「麥克風」\n3. 找到 妙打 並勾選";
+"continue" = "繼續";
+"great" = "太好了";
+
+// AI測試相關Alert
+"ai.connection.success.title" = "✅ 連線成功";
+"ai.connection.success.description" = "成功連接到 Ollama API！\n\n端點：%@";
+"ai.connection.failed.title" = "❌ 連線失敗";
+"ai.connection.failed.description" = "無法連接到 Ollama API。\n\n錯誤訊息：%@\n\n請檢查：\n1. Ollama 是否正在運行\n2. API 端點地址是否正確\n3. 如果使用了 API Token，請確認其有效性";
+"ai.models.list.title" = "📋 可用模型列表";
+"ai.models.list.empty" = "未找到任何模型。\n\n請先使用 'ollama pull' 命令下載模型。";
+"ai.models.list.found" = "找到 %d 個可用模型：\n\n• %@\n\n您可以將模型名稱複製到上方的「模型名稱」欄位中。";
+"ai.test.success.title" = "✅ 測試成功";
+"ai.test.success.description" = "AI 優化功能正常運作！\n\n原始文字：\n%@\n\n優化後：\n%@\n\n耗時：%@ 秒";
+

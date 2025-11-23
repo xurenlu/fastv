@@ -1,0 +1,233 @@
+/* 
+  Localizable.strings
+  妙打
+
+  한국어
+*/
+
+// 일반
+"app.name" = "妙打";
+"ok" = "확인";
+"cancel" = "취소";
+"save" = "저장";
+"delete" = "삭제";
+"copy" = "복사";
+"settings" = "설정";
+"help" = "도움말";
+"error" = "오류";
+"history" = "기록";
+"copied" = "복사됨";
+"more.options" = "더 많은 옵션";
+"not.set" = "설정 안 됨";
+"clear" = "지우기";
+"clear.all" = "모두 지우기";
+"clear.all.confirm.title" = "모든 기록 삭제 확인";
+"clear.all.confirm.message" = "이 작업은 모든 기록을 삭제하며 복구할 수 없습니다.\n\n계속하시겠습니까?";
+"test.input.label" = "테스트 입력 필드";
+"test.input.placeholder" = "여기서 단축키를 눌러 음성 입력을 테스트하세요";
+"main.usage.hint" = "💡 팁: 이 앱이 실행 중일 때, 다른 앱의 입력 필드에서 단축키를 눌러 음성 입력을 사용할 수 있습니다!";
+"model.not.downloaded.title" = "모델 파일 미다운로드";
+"model.not.downloaded.message" = "음성 입력 기능을 사용하려면 여기를 클릭하여 모델 파일을 다운로드하세요";
+"records" = "개 기록";
+
+// 음성 입력
+"voice.input" = "음성 입력";
+"voice.input.history" = "기록";
+"no.records" = "기록 없음";
+"press.shortcut.to.start" = "단축키를 눌러 음성 입력 시작";
+"press.shortcut.to.speak" = "단축키를 눌러 말하기";
+"to.speak" = "말하기";
+"press.and.hold.to.speak" = "누르고 있으면 말하기 시작, 놓으면 종료";
+"press.and.hold" = "누르고 말하기:";
+"enable.voice.input.in.settings" = "설정에서 음성 입력 기능을 활성화하세요";
+"transcribing" = "텍스트 변환 중...";
+
+// 설정
+"enable.voice.input" = "음성 입력 활성화";
+"global.shortcut" = "전역 단축키";
+"current.shortcut" = "현재 단축키:";
+"click.to.capture.shortcut" = "단축키 캡처 클릭";
+"press.to.capture.shortcut" = "단축키를 누르세요...";
+"set.shortcut" = "단축키 설정";
+"language" = "언어";
+"recognition.language" = "인식 언어";
+"default.language" = "기본 언어";
+"auto.detect" = "자동 감지";
+"auto.detect.hint" = "팁: 자동 감지가 부정확한 경우, 더 나은 인식 효과를 위해 해당 언어를 명시적으로 선택하는 것이 좋습니다";
+"chinese" = "중국어";
+"english" = "영어";
+"cantonese" = "광동어";
+"japanese" = "일본어";
+"korean" = "한국어";
+"waveform.window.position" = "도구 모음 위치";
+"waveform.window.size" = "도구 모음 크기";
+"waveform.window.color" = "도구 모음 색상";
+"permission.test" = "권한 테스트";
+"test.microphone.permission" = "마이크 권한 테스트";
+"test.show.toolbar" = "도구 모음 표시 테스트";
+"cleanup.toolbar.window" = "도구 모음 창 정리";
+"voice.input.section" = "음성 입력";
+"voice.input.description" = "단축키를 눌러 음성 입력을 시작하고, 놓으면 자동으로 인식하여 텍스트를 삽입합니다. 마이크 및 접근성 권한이 필요합니다.";
+"fn.key.hint" = "팁: FN 키만 누르면 음성 입력만 수행하고, FN+Ctrl 조합은 음성 입력 후 자동으로 AI 최적화를 수행합니다(말버릇 제거, 구두점 추가, 오타 수정).";
+
+// 통계
+"total.duration" = "총 시간";
+"total.characters" = "총 글자 수";
+"characters.per.minute" = "자/분";
+"minutes" = "분";
+"hours" = "시간";
+"characters" = "자";
+"key" = "키";
+"minute" = "분";
+
+// 온보딩
+"onboarding.welcome" = "妙打에 오신 것을 환영합니다";
+"onboarding.set.shortcut.title" = "단축키 설정";
+"onboarding.set.shortcut.description" = "음성 입력을 시작할 전역 단축키를 설정하세요";
+"onboarding.select.language.title" = "기본 언어 선택";
+"onboarding.select.language.description" = "가장 자주 사용하는 음성 입력 언어를 선택하세요. 설정에서 언제든지 변경할 수 있습니다.";
+"onboarding.download.model.title" = "모델 파일 다운로드";
+"onboarding.download.model.description" = "처음 사용 시 음성 인식 모델 파일을 다운로드해야 합니다";
+"onboarding.model.size.warning" = "모델 파일이 큽니다(894MB), 잠시 기다려 주세요";
+"onboarding.model.other.files" = "다른 구성 파일은 내장 리소스를 사용합니다";
+"onboarding.downloading" = "다운로드 중";
+"onboarding.download.complete" = "다운로드 완료";
+"onboarding.start.download" = "다운로드 시작";
+"onboarding.previous" = "이전";
+"onboarding.next" = "다음";
+"onboarding.complete" = "완료";
+"onboarding.model.ready" = "모델 파일 준비 완료";
+"onboarding.usage.guide.title" = "시작하기";
+"onboarding.usage.guide.description" = "설정이 완료되었습니다! 이제 다른 앱의 입력 필드에서 음성 입력 기능을 사용할 수 있습니다.";
+"onboarding.usage.guide.highlight" = "💡 중요 팁: 이 앱이 실행 중일 때, 이 앱 내에서만 사용할 수 있을 뿐만 아니라, 더 중요한 것은 다른 앱의 입력 필드에서 단축키를 누르면 말하고 텍스트를 입력할 수 있다는 것입니다!";
+"onboarding.usage.guide.chinese" = "중국어 입력 필드에서 단축키를 눌러 말하면 시스템이 자동으로 중국어를 인식하고 텍스트를 삽입합니다.";
+"onboarding.usage.guide.english" = "영어 입력 필드에서 단축키를 눌러 말하면 시스템이 자동으로 영어를 인식하고 텍스트를 삽입합니다.";
+"onboarding.usage.guide.cantonese" = "광동어 입력 필드에서 단축키를 눌러 말하면 시스템이 자동으로 광동어를 인식하고 텍스트를 삽입합니다.";
+"onboarding.usage.guide.japanese" = "일본어 입력 필드에서 단축키를 눌러 말하면 시스템이 자동으로 일본어를 인식하고 텍스트를 삽입합니다.";
+"onboarding.usage.guide.korean" = "한국어 입력 필드에서 단축키를 눌러 말하면 시스템이 자동으로 한국어를 인식하고 텍스트를 삽입합니다.";
+"onboarding.usage.guide.auto" = "모든 입력 필드에서 단축키를 눌러 말하면 시스템이 자동으로 언어를 감지하고 텍스트를 삽입합니다.";
+
+// 단축키 캡처 창
+"shortcut.capture.title" = "단축키 설정";
+"shortcut.capture.description" = "설정하려는 단축키 조합을 누르세요";
+"shortcut.capture.current" = "현재 단축키:";
+"shortcut.capture.not.set" = "설정 안 됨";
+"shortcut.capture.hint" = "팁: FN 키 또는 FN+Control 키 사용을 권장합니다.";
+"shortcut.capture.stop" = "캡처 중지(설정할 단축키 누르기)";
+"shortcut.capture.click" = "단축키 설정 클릭";
+"shortcut.capture.press.hint" = "설정할 단축키를 누르세요(FN 키 지원)";
+
+// 언어 선택
+"select.language" = "언어 선택";
+"language.description" = "이것이 음성 입력의 기본 언어가 됩니다.";
+
+// 모델 다운로드
+"model.download.status.preparing" = "다운로드 준비 중...";
+"model.download.status.downloading" = "%@ 다운로드 중... %d%%";
+"model.download.status.processing" = "파일 처리 중...";
+"model.download.status.complete" = "%@ 다운로드 완료";
+"model.download.status.failed" = "%@ 다운로드 실패: %@";
+"model.download.status.all.complete" = "다운로드 완료";
+"model.download.cancel" = "다운로드 취소";
+"model.download.error" = "오류: %@";
+"model.download.error.invalid.url" = "잘못된 URL";
+"model.download.error.temp.file.not.found" = "임시 다운로드 파일을 찾을 수 없음";
+"model.download.error.404" = "파일을 찾을 수 없음 (404)";
+"model.download.error.500" = "서버 오류 (500)";
+"model.download.error.403" = "접근 금지 (403)";
+"model.download.error.http" = "HTTP 오류 %d";
+"model.download.error.timeout" = "다운로드 시간 초과, 네트워크 연결을 확인하세요";
+"model.download.error.no.internet" = "네트워크 연결 실패, 네트워크 설정을 확인하세요";
+"model.download.error.connection.lost" = "네트워크 연결 중단";
+"model.download.error.cannot.connect" = "서버에 연결할 수 없음";
+"model.download.error.file.too.small" = "다운로드한 파일 크기가 비정상입니다(단 %@ MB). 다운로드가 실패했거나 파일이 손상되었을 수 있습니다. 다시 다운로드하세요";
+"model.download.error.cannot.get.file.size" = "파일 크기를 가져올 수 없습니다. 다운로드가 실패했을 수 있습니다";
+"model.download.already.exists" = "%@ 이미 존재, 건너뜀";
+"model.download.url.label" = "다운로드 주소:";
+"model.download.edit.url" = "주소 수정";
+"model.download.url.placeholder" = "모델 다운로드 주소를 입력하세요";
+
+// 환영 페이지
+"welcome.title" = "妙打에 오신 것을 환영합니다";
+"welcome.subtitle" = "스마트 음성 입력";
+"welcome.feature.global.shortcut" = "전역 단축키";
+"welcome.feature.global.shortcut.desc" = "단축키를 설정하여 모든 앱의 입력 필드에서 단축키를 눌러 말하고 텍스트를 입력할 수 있습니다";
+"welcome.feature.global.shortcut.highlight" = "💡 이 앱이 실행 중일 때, 다른 앱의 입력 필드에서 단축키를 눌러 음성 입력을 사용할 수 있습니다!";
+"welcome.feature.real.time" = "실시간 음성 인식";
+"welcome.feature.real.time.desc" = "로컬 AI 모델을 사용하여 음성을 빠르고 정확하게 텍스트로 변환";
+"welcome.feature.ai.optimization" = "AI 스마트 최적화";
+"welcome.feature.ai.optimization.desc" = "자동으로 말버릇 제거, 구두점 추가, 오타 수정";
+"welcome.feature.multilanguage" = "다국어 지원";
+"welcome.feature.multilanguage.desc" = "중국어, 영어, 일본어 등 여러 언어 지원";
+"welcome.start.using" = "시작하기";
+
+// 권한 관련
+"microphone.permission.required" = "마이크 권한 필요";
+"microphone.permission.description" = "음성 입력 기능은 마이크 접근이 필요합니다.\n\n다음 단계를 따라 권한을 부여하세요:\n1. \"시스템 설정\" 열기\n2. \"개인정보 보호 및 보안\" > \"마이크\"로 이동\n3. 妙打 찾아서 체크\n4. 앱 재시작";
+"open.system.settings" = "시스템 설정 열기";
+"later" = "나중에";
+"microphone.in.use" = "마이크 사용 중";
+"microphone.in.use.description" = "마이크가 다른 앱에서 사용 중입니다(예: 라이트닝 토크).\n\n해결 방법:\n1. 다른 음성 입력 앱 닫기\n2. 또는 다른 단축키를 사용하여 충돌 방지\n3. 또는 다른 앱이 녹음하지 않을 때 이 앱 사용";
+"got.it" = "알겠습니다";
+
+// 키 이름
+"key.left.control" = "왼쪽 Control";
+"key.fn" = "FN";
+"key.space" = "Space";
+"key.return" = "Return";
+"key.esc" = "Esc";
+
+// AI 최적화 설정
+"ai.optimization.enable" = "AI 텍스트 최적화 활성화";
+"ai.optimization.section" = "AI 텍스트 최적화";
+"ai.optimization.description" = "활성화하면 인식된 텍스트가 AI에 의해 최적화되어 말버릇이 제거되고 구두점이 추가되며 오타가 수정됩니다.";
+"ai.optimization.description.detail" = "기본적으로 로컬 Ollama 서비스(http://127.0.0.1:11434)를 사용하며, 다른 호환 가능한 API 엔드포인트로도 구성할 수 있습니다.";
+"ai.shortcut.usage.hint" = "중요: AI 최적화가 활성화되어 있어도 AI 수정 기능을 트리거하려면 특정 단축키 조합을 눌러야 합니다.";
+"ai.shortcut.normal" = "일반 음성 입력:";
+"ai.shortcut.with.ai" = "AI 최적화 음성 입력:";
+"ai.api.endpoint" = "API 엔드포인트";
+"ai.model.name" = "모델 이름";
+"ai.model.example" = "예: gemma2:2b";
+"ai.api.token" = "API 토큰(선택 사항)";
+"ai.api.token.placeholder" = "사용하지 않으려면 비워두세요";
+"ai.timeout" = "시간 초과";
+"ai.timeout.seconds" = "초";
+"ai.timeout.hint" = "권장: 로컬 모델은 2-5초, 원격 API는 10-30초";
+"ai.system.prompt" = "시스템 프롬프트";
+"ai.system.prompt.reset" = "기본값으로 복원";
+"ai.system.prompt.reset.help" = "기본 시스템 프롬프트로 복원";
+"ai.system.prompt.hint" = "사용자 정의 시스템 프롬프트는 AI 최적화 동작을 제어할 수 있습니다. 프롬프트에서 {text} 플레이스홀더를 사용하여 원본 텍스트를 나타낼 수 있습니다(선택 사항).";
+"ai.test.connection" = "연결 테스트";
+"ai.test.connection.help" = "Ollama API 연결 테스트";
+"ai.fetch.models" = "모델 목록 가져오기";
+"ai.fetch.models.help" = "Ollama에서 사용 가능한 모델 목록 가져오기";
+"ai.test.optimization" = "텍스트 최적화 테스트";
+"ai.test.optimization.help" = "테스트 텍스트를 보내 AI 최적화 기능이 정상적으로 작동하는지 확인";
+"settings.title" = "설정";
+"settings.done" = "완료";
+
+// 권한 관련 알림
+"permission.test.trigger" = "권한 요청 트리거";
+"permission.test.description" = "시스템 권한 대화 상자를 트리거하기 위해 마이크에 액세스를 시도합니다.\n\n권한 대화 상자가 나타나면 \"허용\"을 클릭하세요.";
+"permission.request.title" = "마이크 권한 요청";
+"permission.request.description" = "시스템이 권한 요청 대화 상자를 표시합니다.\n\n\"허용\"을 클릭하여 妙打가 마이크에 액세스할 수 있도록 권한을 부여하세요.";
+"permission.granted.title" = "✅ 마이크 권한 부여됨";
+"permission.granted.description" = "마이크 권한을 성공적으로 부여했습니다!\n\n이제 음성 입력 기능을 사용할 수 있습니다.";
+"permission.already.granted.title" = "✅ 마이크 권한 부여됨";
+"permission.already.granted.description" = "이미 마이크 권한을 부여했습니다.\n\n음성 입력 기능을 직접 사용할 수 있습니다.";
+"permission.denied.title" = "⚠️ 마이크 권한 거부됨";
+"permission.denied.description" = "음성 입력 기능은 마이크 권한이 필요합니다.\n\n다음 단계를 따라 수동으로 권한을 부여하세요:\n1. \"시스템 설정\" 열기\n2. \"개인정보 보호 및 보안\" > \"마이크\"로 이동\n3. 妙打 찾아서 체크";
+"continue" = "계속";
+"great" = "좋습니다";
+
+// AI 테스트 관련 알림
+"ai.connection.success.title" = "✅ 연결 성공";
+"ai.connection.success.description" = "Ollama API에 성공적으로 연결되었습니다!\n\n엔드포인트: %@";
+"ai.connection.failed.title" = "❌ 연결 실패";
+"ai.connection.failed.description" = "Ollama API에 연결할 수 없습니다.\n\n오류: %@\n\n다음을 확인하세요:\n1. Ollama가 실행 중인가요?\n2. API 엔드포인트 주소가 올바른가요?\n3. API 토큰을 사용하는 경우 유효성을 확인하세요";
+"ai.models.list.title" = "📋 사용 가능한 모델 목록";
+"ai.models.list.empty" = "모델을 찾을 수 없습니다.\n\n먼저 'ollama pull' 명령을 사용하여 모델을 다운로드하세요.";
+"ai.models.list.found" = "%d개의 사용 가능한 모델을 찾았습니다:\n\n• %@\n\n모델 이름을 위의 \"모델 이름\" 필드에 복사할 수 있습니다.";
+"ai.test.success.title" = "✅ 테스트 성공";
+"ai.test.success.description" = "AI 최적화 기능이 정상적으로 작동합니다!\n\n원본 텍스트:\n%@\n\n최적화 후:\n%@\n\n소요 시간: %@ 초";
+

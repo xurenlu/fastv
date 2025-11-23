@@ -387,21 +387,11 @@ struct ModelDownloadStep: View {
                             .font(.subheadline)
                             .foregroundStyle(.primary)
                         
-                        HStack(spacing: 16) {
-                            Text("\(Int(downloadProgress * 100))%")
+                        if !downloader.downloadSpeed.isEmpty {
+                            Text(downloader.downloadSpeed)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
-                            
-                            if !downloader.downloadSpeed.isEmpty {
-                                Text("•")
-                                    .foregroundStyle(.secondary)
-                                
-                                Text(downloader.downloadSpeed)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .monospacedDigit()
-                            }
                         }
                     }
                 }
@@ -479,6 +469,27 @@ struct UsageGuideStep: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
+            
+            // 重要提示：可以在其他APP中使用
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    Image(systemName: "lightbulb.fill")
+                        .font(.title3)
+                        .foregroundStyle(.orange)
+                    
+                    Text(NSLocalizedString("onboarding.usage.guide.highlight", comment: ""))
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.leading)
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.orange.opacity(0.1))
+                }
+            }
+            .padding(.horizontal, 40)
             
             // 根据用户选择的识别语言显示相应提示
             VStack(spacing: 16) {

@@ -96,36 +96,51 @@ class ModelDownloader: ObservableObject {
                 throw ModelDownloadError.downloadFailed(NSLocalizedString("model.download.error.temp.file.not.found", comment: ""))
             }
             
-            // 移动文件到目标位置
-            if FileManager.default.fileExists(atPath: destinationURL.path) {
-                try FileManager.default.removeItem(at: destinationURL)
-            }
-            try FileManager.default.moveItem(at: localURL, to: destinationURL)
+            // 更新状态：正在处理文件（在后台线程执行耗时操作）
+            downloadProgress = 0.99
+            downloadStatus = NSLocalizedString("model.download.status.processing", comment: "正在处理文件...")
+            downloadSpeed = ""
             
-            // 校验文件大小（模型文件应该约 894MB，最小不应小于 800MB）
-            let fileAttributes = try FileManager.default.attributesOfItem(atPath: destinationURL.path)
-            if let fileSize = fileAttributes[.size] as? Int64 {
-                let minFileSize: Int64 = 800 * 1024 * 1024 // 800MB
-                let expectedFileSize: Int64 = 894 * 1024 * 1024 // 894MB
-                
-                if fileSize < minFileSize {
-                    // 文件太小，可能是错误页面或下载不完整，删除文件并报错
-                    try? FileManager.default.removeItem(at: destinationURL)
-                    let fileSizeMB = Double(fileSize) / (1024 * 1024)
-                    let errorMessage = String(format: NSLocalizedString("model.download.error.file.too.small", comment: ""), String(format: "%.2f", fileSizeMB))
-                    throw ModelDownloadError.downloadFailed(errorMessage)
+            // 在后台线程执行文件移动和校验操作，避免阻塞UI
+            try await Task.detached(priority: .userInitiated) {
+                // 确保目标目录存在
+                let destinationDir = destinationURL.deletingLastPathComponent()
+                if !FileManager.default.fileExists(atPath: destinationDir.path) {
+                    try FileManager.default.createDirectory(at: destinationDir, withIntermediateDirectories: true)
                 }
                 
-                #if DEBUG
-                let fileSizeMB = Double(fileSize) / (1024 * 1024)
-                print("✅ [ModelDownloader] 文件大小校验通过: \(String(format: "%.2f", fileSizeMB)) MB (期望: ~894 MB)")
-                #endif
-            } else {
-                // 无法获取文件大小，也视为错误
-                try? FileManager.default.removeItem(at: destinationURL)
-                throw ModelDownloadError.downloadFailed(NSLocalizedString("model.download.error.cannot.get.file.size", comment: ""))
-            }
+                // 移动文件到目标位置（894MB文件移动可能耗时）
+                if FileManager.default.fileExists(atPath: destinationURL.path) {
+                    try FileManager.default.removeItem(at: destinationURL)
+                }
+                try FileManager.default.moveItem(at: localURL, to: destinationURL)
+                
+                // 校验文件大小（模型文件应该约 894MB，最小不应小于 800MB）
+                let fileAttributes = try FileManager.default.attributesOfItem(atPath: destinationURL.path)
+                if let fileSize = fileAttributes[.size] as? Int64 {
+                    let minFileSize: Int64 = 800 * 1024 * 1024 // 800MB
+                    let expectedFileSize: Int64 = 894 * 1024 * 1024 // 894MB
+                    
+                    if fileSize < minFileSize {
+                        // 文件太小，可能是错误页面或下载不完整，删除文件并报错
+                        try? FileManager.default.removeItem(at: destinationURL)
+                        let fileSizeMB = Double(fileSize) / (1024 * 1024)
+                        let errorMessage = String(format: NSLocalizedString("model.download.error.file.too.small", comment: ""), String(format: "%.2f", fileSizeMB))
+                        throw ModelDownloadError.downloadFailed(errorMessage)
+                    }
+                    
+                    #if DEBUG
+                    let fileSizeMB = Double(fileSize) / (1024 * 1024)
+                    print("✅ [ModelDownloader] 文件大小校验通过: \(String(format: "%.2f", fileSizeMB)) MB (期望: ~894 MB)")
+                    #endif
+                } else {
+                    // 无法获取文件大小，也视为错误
+                    try? FileManager.default.removeItem(at: destinationURL)
+                    throw ModelDownloadError.downloadFailed(NSLocalizedString("model.download.error.cannot.get.file.size", comment: ""))
+                }
+            }.value
             
+            // 在主线程更新UI状态（成功时）
             downloadProgress = 1.0
             let completeFormat = NSLocalizedString("model.download.status.complete", comment: "")
             downloadStatus = completeFormat.replacingOccurrences(of: "%@", with: filename)

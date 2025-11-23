@@ -25,6 +25,7 @@
 "clear.all.confirm.message" = "この操作により、すべての履歴記録が削除され、元に戻すことはできません。\n\n続行してもよろしいですか？";
 "test.input.label" = "テスト入力フィールド";
 "test.input.placeholder" = "ここでショートカットキーを押して音声入力をテスト";
+"main.usage.hint" = "💡 ヒント：このアプリが実行中の場合、他のアプリのテキストフィールドでショートカットキーを押して音声入力を使用できます！";
 "model.not.downloaded.title" = "モデルファイルがダウンロードされていません";
 "model.not.downloaded.message" = "ここをクリックしてモデルファイルをダウンロードし、音声入力機能を使用";
 "records" = "件の記録";
@@ -98,6 +99,7 @@
 "onboarding.model.ready" = "モデルファイル準備完了";
 "onboarding.usage.guide.title" = "使用開始";
 "onboarding.usage.guide.description" = "設定が完了しました！これで他のアプリケーションのテキストフィールドで音声入力を使用できます。";
+"onboarding.usage.guide.highlight" = "💡 重要なヒント：このアプリが実行中の場合、このアプリ内だけでなく、より重要なのは、他のアプリのテキストフィールドでショートカットキーを押すだけで話してテキストを入力できることです！";
 "onboarding.usage.guide.chinese" = "中国語のテキストフィールドでショートカットキーを押して話すと、システムが自動的に中国語を認識してテキストを挿入します。";
 "onboarding.usage.guide.english" = "英語のテキストフィールドでショートカットキーを押して話すと、システムが自動的に英語を認識してテキストを挿入します。";
 "onboarding.usage.guide.cantonese" = "広東語のテキストフィールドでショートカットキーを押して話すと、システムが自動的に広東語を認識してテキストを挿入します。";
@@ -122,6 +124,7 @@
 // モデルダウンロード
 "model.download.status.preparing" = "ダウンロード準備中...";
 "model.download.status.downloading" = "%@をダウンロード中... %d%%";
+"model.download.status.processing" = "ファイル処理中...";
 "model.download.status.complete" = "%@ダウンロード完了";
 "model.download.status.failed" = "%@のダウンロードに失敗しました: %@";
 "model.download.status.all.complete" = "ダウンロード完了";
@@ -148,7 +151,8 @@
 "welcome.title" = "妙打へようこそ";
 "welcome.subtitle" = "スマート音声入力";
 "welcome.feature.global.shortcut" = "グローバルショートカット";
-"welcome.feature.global.shortcut.desc" = "ショートカットを設定して、どのアプリケーションでも素早く音声入力を開始";
+"welcome.feature.global.shortcut.desc" = "ショートカットを設定して、どのアプリケーションのテキストフィールドでもショートカットを押して話してテキストを入力";
+"welcome.feature.global.shortcut.highlight" = "💡 このアプリが実行中の場合、他のアプリのテキストフィールドでショートカットキーを押して音声入力を使用できます！";
 "welcome.feature.real.time" = "リアルタイム音声認識";
 "welcome.feature.real.time.desc" = "ローカルAIモデルを使用して、音声を迅速かつ正確にテキストに変換";
 "welcome.feature.ai.optimization" = "AIスマート最適化";

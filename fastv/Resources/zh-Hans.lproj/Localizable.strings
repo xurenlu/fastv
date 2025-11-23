@@ -25,6 +25,7 @@
 "clear.all.confirm.message" = "此操作将删除所有历史记录，且无法恢复。\n\n确定要继续吗？";
 "test.input.label" = "测试输入框";
 "test.input.placeholder" = "在此处按快捷键测试语音输入";
+"main.usage.hint" = "💡 提示：本应用运行时，可以在任何其他应用的输入框中按下快捷键进行语音输入！";
 "model.not.downloaded.title" = "模型文件未下载";
 "model.not.downloaded.message" = "点击此处下载模型文件以使用语音输入功能";
 "records" = "条记录";
@@ -98,6 +99,7 @@
 "onboarding.model.ready" = "模型文件已就绪";
 "onboarding.usage.guide.title" = "开始使用";
 "onboarding.usage.guide.description" = "设置已完成！现在您可以在其他应用的输入框中使用语音输入功能了。";
+"onboarding.usage.guide.highlight" = "💡 重要提示：本应用运行时，不仅可以在本应用内使用，更重要的是可以在任何其他应用的输入框中，按下快捷键即可说话输入文字！";
 "onboarding.usage.guide.chinese" = "请在中文输入框中按快捷键说话，系统会自动识别中文并插入文本。";
 "onboarding.usage.guide.english" = "请在英文输入框中按快捷键说话，系统会自动识别英文并插入文本。";
 "onboarding.usage.guide.cantonese" = "请在粤语输入框中按快捷键说话，系统会自动识别粤语并插入文本。";
@@ -122,6 +124,7 @@
 // 模型下载
 "model.download.status.preparing" = "准备下载...";
 "model.download.status.downloading" = "正在下载 %@... %d%%";
+"model.download.status.processing" = "正在处理文件...";
 "model.download.status.complete" = "%@ 下载完成";
 "model.download.status.failed" = "下载 %@ 失败: %@";
 "model.download.status.all.complete" = "下载完成";
@@ -148,7 +151,8 @@
 "welcome.title" = "欢迎使用 妙打";
 "welcome.subtitle" = "智能语音输入法";
 "welcome.feature.global.shortcut" = "全局快捷键";
-"welcome.feature.global.shortcut.desc" = "设置快捷键，在任何应用中快速启动语音输入";
+"welcome.feature.global.shortcut.desc" = "设置快捷键，在任何应用的输入框中按下快捷键即可说话输入文字";
+"welcome.feature.global.shortcut.highlight" = "💡 本应用运行时，可以在任何其他应用的输入框中按下快捷键进行语音输入！";
 "welcome.feature.real.time" = "实时语音识别";
 "welcome.feature.real.time.desc" = "使用本地AI模型，快速准确地将语音转换为文字";
 "welcome.feature.ai.optimization" = "AI智能优化";
