@@ -183,6 +183,11 @@ struct fastvApp: App {
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
         print("🎤 [fastvApp] 当前麦克风权限状态: \(status.rawValue) - \(microphoneStatusDescription(status))")
         
+        // 添加 Bundle ID 诊断信息
+        if let bundleId = Bundle.main.bundleIdentifier {
+            print("🔍 [fastvApp] Bundle ID: \(bundleId)")
+        }
+        
         switch status {
         case .notDetermined:
             print("🎤 [fastvApp] 权限未确定，请求麦克风权限...")
@@ -197,7 +202,10 @@ struct fastvApp: App {
                         print("💡 [fastvApp] 现在可以使用语音输入功能了")
                 } else {
                         print("❌ [fastvApp] 用户拒绝了麦克风权限")
-                        print("💡 [fastvApp] 如需使用语音输入，请在'系统设置 > 隐私与安全性 > 麦克风'中手动授权 妙打")
+                        print("💡 [fastvApp] 如需使用语音输入，请在'系统设置 > 隐私与安全性 > 麦克风'中手动授权应用")
+                        if let bundleId = Bundle.main.bundleIdentifier {
+                            print("💡 [fastvApp] 请确保系统设置中授权的是 Bundle ID: \(bundleId)")
+                        }
                         
                         // 显示提示对话框
                         self.showMicrophonePermissionDeniedAlert()
@@ -206,9 +214,14 @@ struct fastvApp: App {
             }
         case .authorized:
             print("✅ [fastvApp] 麦克风权限已授权")
+            // 权限已授权，不需要再次请求
         case .denied, .restricted:
             print("⚠️ [fastvApp] 麦克风权限被拒绝或受限")
-            print("💡 [fastvApp] 提示：请在'系统设置 > 隐私与安全性 > 麦克风'中找到 妙打 并勾选")
+            print("💡 [fastvApp] 提示：请在'系统设置 > 隐私与安全性 > 麦克风'中找到应用并勾选")
+            if let bundleId = Bundle.main.bundleIdentifier {
+                print("💡 [fastvApp] 请确保系统设置中授权的是 Bundle ID: \(bundleId)")
+                print("💡 [fastvApp] 如果系统设置中显示的是不同的应用名称，可能是 Bundle ID 不匹配")
+            }
             
             // 显示提示对话框
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {

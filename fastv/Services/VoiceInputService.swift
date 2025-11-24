@@ -39,30 +39,44 @@ class VoiceInputService: ObservableObject {
             return
         }
         
-        // 请求麦克风权限
+        // 检查麦克风权限
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
         print("🎤 [VoiceInputService] 麦克风权限状态: \(status.rawValue) (\(statusDescription(status)))")
         
-        if status == .notDetermined {
-            print("🎤 [VoiceInputService] 请求麦克风权限...")
+        // 添加 Bundle ID 诊断信息
+        if let bundleId = Bundle.main.bundleIdentifier {
+            print("🔍 [VoiceInputService] Bundle ID: \(bundleId)")
+        }
+        
+        // 如果权限已授权，直接继续，不要再次请求
+        if status == .authorized {
+            print("✅ [VoiceInputService] 麦克风权限已授权，继续录音设置")
+        } else if status == .notDetermined {
+            // 只有在权限未确定时才请求
+            print("🎤 [VoiceInputService] 权限未确定，请求麦克风权限...")
+            print("💡 [VoiceInputService] 注意：如果系统设置中已授权但这里显示未确定，可能是 Bundle ID 不匹配")
             AVCaptureDevice.requestAccess(for: .audio) { granted in
                 print("🎤 [VoiceInputService] 麦克风权限请求结果: \(granted)")
                 Task { @MainActor in
                     if granted {
+                        // 权限已授权，重新尝试录音
                         try? self.startRecording()
+                    } else {
+                        print("❌ [VoiceInputService] 用户拒绝了麦克风权限")
+                        print("💡 [VoiceInputService] 请在'系统设置 > 隐私与安全性 > 麦克风'中授权应用")
                     }
                 }
             }
             return
-        }
-        
-        guard status == .authorized else {
+        } else {
+            // 权限被拒绝或受限
             print("❌ [VoiceInputService] 麦克风权限未授权: \(statusDescription(status))")
-            print("💡 [VoiceInputService] 请在'系统设置 > 隐私与安全性 > 麦克风'中授权 typecho")
+            print("💡 [VoiceInputService] 请在'系统设置 > 隐私与安全性 > 麦克风'中找到应用并勾选")
+            if let bundleId = Bundle.main.bundleIdentifier {
+                print("💡 [VoiceInputService] 请确保系统设置中授权的是 Bundle ID: \(bundleId)")
+            }
             throw VoiceInputError.microphonePermissionDenied
         }
-        
-        print("✅ [VoiceInputService] 麦克风权限已授权，继续录音设置")
         
         // 创建音频引擎
         let engine = AVAudioEngine()

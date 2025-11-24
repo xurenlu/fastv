@@ -72,13 +72,14 @@ struct OnboardingView: View {
                         preferences.markOnboardingCompleted()
                         dismiss()
                     } else if currentStep == 2 {
-                        // 从模型下载步骤进入下一步时，检查模型是否已下载
-                        // 统一使用 checkModelFilesExist() 检查，并同步 preferences.modelDownloaded
-                        let modelExists = ModelDownloader.shared.checkModelFilesExist()
-                        if modelExists {
-                            preferences.modelDownloaded = true
-                            withAnimation {
-                                currentStep += 1
+                        // 从模型下载步骤进入下一步时，异步检查模型是否已下载
+                        Task { @MainActor in
+                            let modelExists = await ModelDownloader.shared.checkModelFilesExistAsync()
+                            if modelExists {
+                                preferences.modelDownloaded = true
+                                withAnimation {
+                                    currentStep += 1
+                                }
                             }
                         }
                     } else {
@@ -89,7 +90,7 @@ struct OnboardingView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .disabled(currentStep == 2 && !ModelDownloader.shared.checkModelFilesExist())
+                .disabled(currentStep == 2 && !preferences.modelDownloaded)
             }
             .padding(20)
         }
@@ -112,10 +113,12 @@ struct OnboardingView: View {
                 LocalizationManager.shared.currentLanguage = preferences.defaultLanguage
             }
             
-            // 如果模型已下载，同步状态
-            let modelExists = ModelDownloader.shared.checkModelFilesExist()
-            if modelExists {
-                preferences.modelDownloaded = true
+            // 异步检查模型文件，避免阻塞UI
+            Task { @MainActor in
+                let modelExists = await ModelDownloader.shared.checkModelFilesExistAsync()
+                if modelExists {
+                    preferences.modelDownloaded = true
+                }
             }
         }
     }
@@ -396,27 +399,19 @@ struct ModelDownloadStep: View {
                     }
                 }
                 .padding(.horizontal, 40)
-            } else if ModelDownloader.shared.checkModelFilesExist() {
-                // 统一使用 checkModelFilesExist() 检查，并同步状态
-                let _ = {
-                    preferences.modelDownloaded = true
-                }()
-                HStack {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    Text("onboarding.model.ready")
-                        .font(.body)
-                }
             } else {
-                Button(action: {
-                    Task {
-                        await startDownload()
+                // 使用状态变量管理模型检查，避免在视图渲染时阻塞
+                ModelDownloadStatusContentView(
+                    isDownloading: $isDownloading,
+                    downloadProgress: $downloadProgress,
+                    downloadStatus: $downloadStatus,
+                    downloadError: $downloadError,
+                    onStartDownload: {
+                        Task {
+                            await startDownload()
+                        }
                     }
-                }) {
-                    Text("onboarding.start.download")
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                )
             }
             
             if let error = downloadError {
@@ -637,6 +632,62 @@ struct ShortcutCaptureSheetView: View {
                 .padding(.bottom, 20)
             }
             .frame(width: 500, height: 400)
+        }
+    }
+}
+
+// MARK: - 模型下载状态内容视图（异步检查，避免阻塞UI）
+struct ModelDownloadStatusContentView: View {
+    @Binding var isDownloading: Bool
+    @Binding var downloadProgress: Double
+    @Binding var downloadStatus: String
+    @Binding var downloadError: Error?
+    let onStartDownload: () -> Void
+    
+    @ObservedObject private var preferences = UserPreferences.shared
+    @State private var modelExists: Bool? = nil
+    @State private var isChecking: Bool = false
+    
+    var body: some View {
+        Group {
+            if isChecking {
+                // 检查中
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .padding()
+            } else if modelExists == true {
+                // 模型已存在
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("onboarding.model.ready")
+                        .font(.body)
+                }
+            } else {
+                // 模型不存在，显示下载按钮
+                Button(action: onStartDownload) {
+                    Text("onboarding.start.download")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            }
+        }
+        .task {
+            // 视图出现时异步检查模型文件
+            await checkModelAsync()
+        }
+    }
+    
+    private func checkModelAsync() async {
+        isChecking = true
+        defer { isChecking = false }
+        
+        let exists = await ModelDownloader.shared.checkModelFilesExistAsync()
+        await MainActor.run {
+            modelExists = exists
+            if exists {
+                preferences.modelDownloaded = true
+            }
         }
     }
 }

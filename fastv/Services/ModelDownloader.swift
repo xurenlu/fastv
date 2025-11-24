@@ -26,7 +26,54 @@ class ModelDownloader: ObservableObject {
     private var lastDownloadedBytes: Int64 = 0
     private var lastSpeedCheckTime: Date = Date()
     
-    private init() {}
+    private init() {
+        // 应用启动时检查是否有未完成的下载
+        Task { @MainActor in
+            await checkAndRecoverDownloadState()
+        }
+    }
+    
+    /// 检查并恢复下载状态（应用重启后）
+    private func checkAndRecoverDownloadState() async {
+        // 检查是否有临时下载文件
+        let modelDir = getModelDirectory()
+        let destinationURL = modelDir.appendingPathComponent("model.onnx")
+        
+        // 如果目标文件已存在且完整，不需要恢复
+        if FileManager.default.fileExists(atPath: destinationURL.path) {
+            // 检查文件大小是否合理（至少800MB）
+            if let attributes = try? FileManager.default.attributesOfItem(atPath: destinationURL.path),
+               let fileSize = attributes[.size] as? Int64,
+               fileSize >= 800 * 1024 * 1024 {
+                // 文件完整，清除下载状态
+                isDownloading = false
+                downloadProgress = 0.0
+                downloadStatus = ""
+                return
+            }
+        }
+        
+        // 检查临时目录中是否有未完成的下载
+        let tempDir = FileManager.default.temporaryDirectory
+        do {
+            let tempFiles = try FileManager.default.contentsOfDirectory(at: tempDir, includingPropertiesForKeys: [.fileSizeKey])
+            let onnxTempFiles = tempFiles.filter { $0.pathExtension == "onnx" }
+            
+            // 如果有临时文件，可能是未完成的下载
+            if !onnxTempFiles.isEmpty {
+                // 不清除下载状态，让用户知道可能需要重新下载
+                // 但也不自动恢复，因为URLSession任务已经丢失
+                print("⚠️ [ModelDownloader] 发现未完成的下载临时文件，但无法恢复下载任务")
+            }
+        } catch {
+            // 忽略错误
+        }
+        
+        // 确保下载状态已清除
+        isDownloading = false
+        downloadProgress = 0.0
+        downloadStatus = ""
+    }
     
     /// 下载模型文件（支持断点续传和速度显示）
     func downloadModel(baseURL: String, progressHandler: @escaping (Double, String, String) -> Void) async throws {
@@ -56,13 +103,29 @@ class ModelDownloader: ObservableObject {
         let filename = "model.onnx"
         let destinationURL = modelDir.appendingPathComponent(filename)
         
-        // 检查文件是否已存在
+        // 检查文件是否已存在且大小正确
         if FileManager.default.fileExists(atPath: destinationURL.path) {
-            let existsFormat = NSLocalizedString("model.download.already.exists", comment: "")
-            downloadStatus = existsFormat.replacingOccurrences(of: "%@", with: filename)
-            downloadProgress = 1.0
-            UserPreferences.shared.modelDownloaded = true
-            return
+            // 验证文件大小是否正确
+            if let attributes = try? FileManager.default.attributesOfItem(atPath: destinationURL.path),
+               let fileSize = attributes[.size] as? Int64 {
+                let expectedFileSize: Int64 = 937615562
+                let tolerance: Int64 = 1024 // 允许1KB误差
+                
+                if abs(fileSize - expectedFileSize) <= tolerance {
+                    // 文件存在且大小正确
+                    let existsFormat = NSLocalizedString("model.download.already.exists", comment: "")
+                    downloadStatus = existsFormat.replacingOccurrences(of: "%@", with: filename)
+                    downloadProgress = 1.0
+                    UserPreferences.shared.modelDownloaded = true
+                    return
+                } else {
+                    // 文件存在但大小不正确，删除并重新下载
+                    try? FileManager.default.removeItem(at: destinationURL)
+                    #if DEBUG
+                    print("⚠️ [ModelDownloader] 文件大小不正确 (\(fileSize) 字节)，已删除，将重新下载")
+                    #endif
+                }
+            }
         }
         
         downloadStatus = String(format: NSLocalizedString("model.download.status.downloading", comment: ""), filename, 0).replacingOccurrences(of: "%@", with: filename).replacingOccurrences(of: "%d", with: "0")
@@ -115,23 +178,24 @@ class ModelDownloader: ObservableObject {
                 }
                 try FileManager.default.moveItem(at: localURL, to: destinationURL)
                 
-                // 校验文件大小（模型文件应该约 894MB，最小不应小于 800MB）
+                // 校验文件大小（精确校验：937615562 字节）
                 let fileAttributes = try FileManager.default.attributesOfItem(atPath: destinationURL.path)
                 if let fileSize = fileAttributes[.size] as? Int64 {
-                    let minFileSize: Int64 = 800 * 1024 * 1024 // 800MB
-                    let expectedFileSize: Int64 = 894 * 1024 * 1024 // 894MB
+                    let expectedFileSize: Int64 = 937615562 // 精确的文件大小
+                    let tolerance: Int64 = 1024 // 允许1KB的误差（避免因文件系统差异导致校验失败）
                     
-                    if fileSize < minFileSize {
-                        // 文件太小，可能是错误页面或下载不完整，删除文件并报错
+                    if abs(fileSize - expectedFileSize) > tolerance {
+                        // 文件大小不匹配，删除文件并报错
                         try? FileManager.default.removeItem(at: destinationURL)
                         let fileSizeMB = Double(fileSize) / (1024 * 1024)
-                        let errorMessage = String(format: NSLocalizedString("model.download.error.file.too.small", comment: ""), String(format: "%.2f", fileSizeMB))
+                        let expectedSizeMB = Double(expectedFileSize) / (1024 * 1024)
+                        let errorMessage = String(format: NSLocalizedString("model.download.error.file.size.mismatch", comment: "文件大小不匹配：实际 %@ MB，期望 %@ MB"), String(format: "%.2f", fileSizeMB), String(format: "%.2f", expectedSizeMB))
                         throw ModelDownloadError.downloadFailed(errorMessage)
                     }
                     
                     #if DEBUG
                     let fileSizeMB = Double(fileSize) / (1024 * 1024)
-                    print("✅ [ModelDownloader] 文件大小校验通过: \(String(format: "%.2f", fileSizeMB)) MB (期望: ~894 MB)")
+                    print("✅ [ModelDownloader] 文件大小校验通过: \(fileSize) 字节 (\(String(format: "%.2f", fileSizeMB)) MB)")
                     #endif
                 } else {
                     // 无法获取文件大小，也视为错误
@@ -255,11 +319,64 @@ class ModelDownloader: ObservableObject {
         return appDir.appendingPathComponent("Models/sensevoice-small")
     }
     
+    // 缓存文件检查结果，避免重复检查
+    private var cachedModelExists: Bool?
+    private var lastCheckTime: Date?
+    private let cacheTimeout: TimeInterval = 5.0 // 5秒缓存
+    
     /// 检查模型文件是否存在（只检查 model.onnx）
+    /// 使用缓存避免频繁的文件系统访问
     func checkModelFilesExist() -> Bool {
+        // 如果缓存有效，直接返回
+        if let cached = cachedModelExists,
+           let lastCheck = lastCheckTime,
+           Date().timeIntervalSince(lastCheck) < cacheTimeout {
+            return cached
+        }
+        
+        // 在后台线程检查文件，避免阻塞UI
         let modelDir = getModelDirectory()
         let modelFileURL = modelDir.appendingPathComponent("model.onnx")
-        return FileManager.default.fileExists(atPath: modelFileURL.path)
+        
+        // 使用同步检查（文件系统操作通常很快，但为了安全可以改为异步）
+        let exists = FileManager.default.fileExists(atPath: modelFileURL.path)
+        
+        // 更新缓存
+        cachedModelExists = exists
+        lastCheckTime = Date()
+        
+        return exists
+    }
+    
+    /// 异步检查模型文件是否存在（不阻塞UI）
+    func checkModelFilesExistAsync() async -> Bool {
+        // 如果缓存有效，直接返回
+        if let cached = cachedModelExists,
+           let lastCheck = lastCheckTime,
+           Date().timeIntervalSince(lastCheck) < cacheTimeout {
+            return cached
+        }
+        
+        // 在后台线程检查文件
+        let modelDir = getModelDirectory()
+        let exists = await Task.detached(priority: .userInitiated) { [modelDir] in
+            let modelFileURL = modelDir.appendingPathComponent("model.onnx")
+            return FileManager.default.fileExists(atPath: modelFileURL.path)
+        }.value
+        
+        // 更新缓存（在主线程）
+        await MainActor.run {
+            cachedModelExists = exists
+            lastCheckTime = Date()
+        }
+        
+        return exists
+    }
+    
+    /// 清除缓存，强制重新检查
+    func invalidateCache() {
+        cachedModelExists = nil
+        lastCheckTime = nil
     }
 }
 

@@ -141,6 +141,7 @@
 "model.download.error.connection.lost" = "網路連線中斷";
 "model.download.error.cannot.connect" = "無法連接到伺服器";
 "model.download.error.file.too.small" = "下載的檔案大小異常（僅 %@ MB），可能是下載失敗或檔案損壞，請重新下載";
+"model.download.error.file.size.mismatch" = "檔案大小不匹配：實際 %@ MB，期望 %@ MB，請重新下載";
 "model.download.error.cannot.get.file.size" = "無法取得檔案大小，下載可能失敗";
 "model.download.already.exists" = "%@ 已存在，跳過";
 "model.download.url.label" = "下載地址：";

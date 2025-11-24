@@ -141,6 +141,7 @@
 "model.download.error.connection.lost" = "ネットワーク接続が中断されました";
 "model.download.error.cannot.connect" = "サーバーに接続できません";
 "model.download.error.file.too.small" = "ダウンロードしたファイルサイズが異常です（%@ MBのみ）。ダウンロードが失敗したか、ファイルが破損している可能性があります。再度ダウンロードしてください";
+"model.download.error.file.size.mismatch" = "ファイルサイズが一致しません：実際 %@ MB、期待値 %@ MB。再度ダウンロードしてください";
 "model.download.error.cannot.get.file.size" = "ファイルサイズを取得できません。ダウンロードが失敗した可能性があります";
 "model.download.already.exists" = "%@は既に存在します。スキップします";
 "model.download.url.label" = "ダウンロードURL:";

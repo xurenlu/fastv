@@ -141,6 +141,7 @@
 "model.download.error.connection.lost" = "Network connection interrupted";
 "model.download.error.cannot.connect" = "Cannot connect to server";
 "model.download.error.file.too.small" = "Downloaded file size is abnormal (only %@ MB), download may have failed or file is corrupted, please download again";
+"model.download.error.file.size.mismatch" = "File size mismatch: actual %@ MB, expected %@ MB, please download again";
 "model.download.error.cannot.get.file.size" = "Cannot get file size, download may have failed";
 "model.download.already.exists" = "%@ already exists, skipping";
 "model.download.url.label" = "Download URL:";
