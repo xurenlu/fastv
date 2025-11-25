@@ -1,0 +1,83 @@
+{
+  "buildCommand" : {
+    "command" : "build",
+    "skipDependencies" : false,
+    "style" : "buildAndRun"
+  },
+  "configuredTargets" : [
+    {
+      "guid" : "ab884a58010cb67c557a72c2858c059839fda6acb349cdf249e56ad9b3c0034c"
+    }
+  ],
+  "containerPath" : "/Users/rocky/Sites/fastv/fastv.xcodeproj",
+  "continueBuildingAfterErrors" : false,
+  "dependencyScope" : "workspace",
+  "enableIndexBuildArena" : false,
+  "hideShellScriptEnvironment" : false,
+  "parameters" : {
+    "action" : "install",
+    "activeArchitecture" : "undefined_arch",
+    "activeRunDestination" : {
+      "disableOnlyActiveArch" : true,
+      "platform" : "macosx",
+      "sdk" : "macosx26.0",
+      "sdkVariant" : "macos",
+      "supportedArchitectures" : [
+        "arm64",
+        "arm64e",
+        "x86_64",
+        "x86_64h"
+      ],
+      "targetArchitecture" : "undefined_arch"
+    },
+    "arenaInfo" : {
+      "buildIntermediatesPath" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex",
+      "buildProductsPath" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Products",
+      "derivedDataPath" : "/Users/rocky/Sites/fastv/build/DerivedData",
+      "indexDataStoreFolderPath" : "/Users/rocky/Sites/fastv/build/DerivedData/Index.noindex/DataStore",
+      "indexEnableDataStore" : true,
+      "indexPCHPath" : "/Users/rocky/Sites/fastv/build/DerivedData/Index.noindex/PrecompiledHeaders",
+      "pchPath" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/PrecompiledHeaders"
+    },
+    "configurationName" : "Release",
+    "overrides" : {
+      "commandLine" : {
+        "table" : {
+          "CODE_SIGN_IDENTITY" : "Developer ID Application: Beijing Alibaba information Technology Co., Ltd. (ZH2S7D6PL6)",
+          "CODE_SIGN_STYLE" : "Manual",
+          "DEVELOPMENT_TEAM" : "ZH2S7D6PL6"
+        }
+      },
+      "synthesized" : {
+        "table" : {
+          "ACTION" : "install",
+          "ASSET_PACK_FOLDER_PATH" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/InstallationBuildProductsLocation/OnDemandResources",
+          "ASSETCATALOG_COMPILER_FLATTENED_APP_ICON_PATH" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/BuildProductsPath/ProductIcon.png",
+          "DEPLOYMENT_LOCATION" : "YES",
+          "DEPLOYMENT_POSTPROCESSING" : "YES",
+          "DSTROOT" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/InstallationBuildProductsLocation",
+          "EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE" : "NO",
+          "ENABLE_PREVIEWS" : "NO",
+          "ENABLE_SIGNATURE_AGGREGATION" : "YES",
+          "ENABLE_XOJIT_PREVIEWS" : "YES",
+          "INDEX_ENABLE_DATA_STORE" : "NO",
+          "MESSAGES_APPLICATION_EXTENSION_SUPPORT_FOLDER_PATH" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/BuildProductsPath/MessagesApplicationExtensionSupport",
+          "MESSAGES_APPLICATION_SUPPORT_FOLDER_PATH" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/BuildProductsPath/MessagesApplicationSupport",
+          "OBJROOT" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath",
+          "ONLY_ACTIVE_ARCH" : "YES",
+          "SHARED_PRECOMPS_DIR" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/PrecompiledHeaders",
+          "SIGNATURE_METADATA_FOLDER_PATH" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/BuildProductsPath/Signatures",
+          "SWIFT_STDLIB_TOOL_UNSIGNED_DESTINATION_DIR" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/BuildProductsPath/SwiftSupport",
+          "SYMROOT" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/BuildProductsPath",
+          "WATCHKIT_2_SUPPORT_FOLDER_PATH" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/BuildProductsPath/WatchKitSupport2"
+        }
+      }
+    }
+  },
+  "schemeCommand" : "archive",
+  "showNonLoggedProgress" : true,
+  "useDryRun" : false,
+  "useImplicitDependencies" : true,
+  "useLegacyBuildLocations" : false,
+  "useParallelTargets" : true
+}

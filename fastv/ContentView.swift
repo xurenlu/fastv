@@ -17,32 +17,16 @@ struct ContentView: View {
         if !preferences.hasCompletedOnboarding {
             OnboardingView()
         } else {
-            NavigationStack {
-                VoiceInputView()
-            }
-            .toolbar {
-                ToolbarItem(placement: .automatic) {
-                    Button(action: { showWelcome = true }) {
-                        Label(NSLocalizedString("help", comment: ""), systemImage: "questionmark.circle")
-                    }
-                    .help(NSLocalizedString("help", comment: ""))
-                }
-                
-                ToolbarItem(placement: .automatic) {
-                    Button(action: { showSettings = true }) {
-                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
-                    }
-                    .help(NSLocalizedString("settings", comment: ""))
-                }
-            }
+            // 使用新的主界面
+            MainDashboardView()
             .sheet(isPresented: $showSettings) {
                 SettingsView()
             }
             .sheet(isPresented: $showWelcome) {
                 WelcomeView()
                     .frame(width: 600, height: 650)
-        }
-        .frame(minWidth: 720, minHeight: 520)
+            }
+            .frame(minWidth: 900, minHeight: 700)
         .onAppear {
             // 延迟显示欢迎窗口，确保界面已加载完成
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {

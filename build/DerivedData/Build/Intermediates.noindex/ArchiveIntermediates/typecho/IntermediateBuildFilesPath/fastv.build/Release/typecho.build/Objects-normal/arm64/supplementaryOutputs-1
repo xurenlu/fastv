@@ -1,0 +1,12 @@
+{
+  "/Users/rocky/Sites/fastv/fastv/Models/AppState.swift" : {
+    "abi-baseline-json" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/arm64/typecho.abi.json",
+    "const-values" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/arm64/typecho-primary.swiftconstvalues",
+    "dependencies" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/arm64/typecho-primary.d",
+    "diagnostics" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/arm64/typecho-primary.dia",
+    "objc-header" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/arm64/typecho-Swift.h",
+    "swiftdoc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/arm64/typecho.swiftdoc",
+    "swiftmodule" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/arm64/typecho.swiftmodule",
+    "swiftsourceinfo" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/arm64/typecho.swiftsourceinfo"
+  }
+}

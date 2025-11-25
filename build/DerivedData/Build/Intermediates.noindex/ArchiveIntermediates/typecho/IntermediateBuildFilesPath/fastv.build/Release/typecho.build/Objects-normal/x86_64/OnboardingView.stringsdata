@@ -1,0 +1,176 @@
+{
+  "source": "/Users/rocky/Sites/fastv/fastv/Views/OnboardingView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "onboarding.select.language.title",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 137
+        }
+      },
+      {
+        "comment": "",
+        "key": "onboarding.select.language.description",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 141
+        }
+      },
+      {
+        "comment": "",
+        "key": "onboarding.set.shortcut.title",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 195
+        }
+      },
+      {
+        "comment": "",
+        "key": "onboarding.set.shortcut.description",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 199
+        }
+      },
+      {
+        "comment": "",
+        "key": "current.shortcut",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 206
+        }
+      },
+      {
+        "comment": "",
+        "key": "⌃",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 212
+        }
+      },
+      {
+        "comment": "",
+        "key": "⌥",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 216
+        }
+      },
+      {
+        "comment": "",
+        "key": "⇧",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 220
+        }
+      },
+      {
+        "comment": "",
+        "key": "⌘",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 224
+        }
+      },
+      {
+        "comment": "",
+        "key": "onboarding.download.model.title",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 296
+        }
+      },
+      {
+        "comment": "",
+        "key": "onboarding.download.model.description",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 300
+        }
+      },
+      {
+        "comment": "",
+        "key": "onboarding.model.other.files",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 322
+        }
+      },
+      {
+        "comment": "",
+        "key": "onboarding.model.size.warning",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 310
+        }
+      },
+      {
+        "comment": "",
+        "key": "⌃",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 510
+        }
+      },
+      {
+        "comment": "",
+        "key": "⌥",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 514
+        }
+      },
+      {
+        "comment": "",
+        "key": "⇧",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 518
+        }
+      },
+      {
+        "comment": "",
+        "key": "⌘",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 522
+        }
+      },
+      {
+        "comment": "",
+        "key": "shortcut.capture.title",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 596
+        }
+      },
+      {
+        "comment": "",
+        "key": "shortcut.capture.description",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 600
+        }
+      },
+      {
+        "comment": "",
+        "key": "onboarding.model.ready",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 663
+        }
+      },
+      {
+        "comment": "",
+        "key": "onboarding.start.download",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 669
+        }
+      }
+    ]
+  },
+  "version": 1
+}

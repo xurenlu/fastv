@@ -1,0 +1,181 @@
+{
+  "" : {
+    "const-values" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/typecho-primary.swiftconstvalues",
+    "dependencies" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/typecho-primary.d",
+    "diagnostics" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/typecho-primary.dia",
+    "emit-module-dependencies" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/typecho-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/typecho-primary-emit-module.dia",
+    "pch" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/typecho-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/typecho-primary.swiftdeps"
+  },
+  "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/GeneratedAssetSymbols.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/ContentView.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/ContentView.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/ContentView.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/ContentView.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Models/AppState.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/AppState.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/AppState.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/AppState.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Models/DownloadState.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/DownloadState.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/DownloadState.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/DownloadState.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Models/TranscriptLanguage.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/TranscriptLanguage.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/TranscriptLanguage.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/TranscriptLanguage.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Models/UserPreferences.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/UserPreferences.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/UserPreferences.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/UserPreferences.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Models/VideoProcessingError.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/VideoProcessingError.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/VideoProcessingError.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/VideoProcessingError.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Models/VoiceInputHistory.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/VoiceInputHistory.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/VoiceInputHistory.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/VoiceInputHistory.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Models/VoiceRecording.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/VoiceRecording.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/VoiceRecording.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/VoiceRecording.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Models/WaveformWindowColorStyle.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/WaveformWindowColorStyle.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/WaveformWindowColorStyle.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/WaveformWindowColorStyle.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Models/WaveformWindowPosition.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/WaveformWindowPosition.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/WaveformWindowPosition.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/WaveformWindowPosition.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Models/WaveformWindowStyle.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/WaveformWindowStyle.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/WaveformWindowStyle.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/WaveformWindowStyle.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Services/AudioFeatureExtractor.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/AudioFeatureExtractor.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/AudioFeatureExtractor.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/AudioFeatureExtractor.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Services/CoreMLWrapper.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/CoreMLWrapper.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/CoreMLWrapper.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/CoreMLWrapper.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Services/GlobalShortcutMonitor.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/GlobalShortcutMonitor.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/GlobalShortcutMonitor.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/GlobalShortcutMonitor.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Services/KaldiFbankWrapper.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/KaldiFbankWrapper.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/KaldiFbankWrapper.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/KaldiFbankWrapper.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Services/ModelDownloader.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/ModelDownloader.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/ModelDownloader.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/ModelDownloader.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeCWrapper.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/ONNXRuntimeCWrapper.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/ONNXRuntimeCWrapper.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/ONNXRuntimeCWrapper.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeWrapper.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/ONNXRuntimeWrapper.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/ONNXRuntimeWrapper.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/ONNXRuntimeWrapper.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Services/OllamaService.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/OllamaService.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/OllamaService.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/OllamaService.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Services/SpeechTranscriber.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/SpeechTranscriber.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/SpeechTranscriber.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/SpeechTranscriber.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Services/StatusBarManager.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/StatusBarManager.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/StatusBarManager.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/StatusBarManager.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Services/TextCorrectionService.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/TextCorrectionService.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/TextCorrectionService.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/TextCorrectionService.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Services/TextInsertionService.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/TextInsertionService.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/TextInsertionService.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/TextInsertionService.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Services/VoiceInputService.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/VoiceInputService.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/VoiceInputService.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/VoiceInputService.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Utils/AppVersionManager.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/AppVersionManager.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/AppVersionManager.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/AppVersionManager.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Utils/FileManager+Extensions.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/FileManager+Extensions.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/FileManager+Extensions.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/FileManager+Extensions.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Utils/LocalizationManager.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/LocalizationManager.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/LocalizationManager.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/LocalizationManager.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Views/OnboardingView.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/OnboardingView.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/OnboardingView.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/OnboardingView.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Views/SettingsView.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/SettingsView.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/SettingsView.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/SettingsView.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Views/VoiceInputView.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/VoiceInputView.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/VoiceInputView.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/VoiceInputView.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Views/WaveformView.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/WaveformView.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/WaveformView.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/WaveformView.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/Views/WelcomeView.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/WelcomeView.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/WelcomeView.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/WelcomeView.o"
+  },
+  "/Users/rocky/Sites/fastv/fastv/fastvApp.swift" : {
+    "index-unit-output-path" : "/fastv.build/Release/typecho.build/Objects-normal/x86_64/fastvApp.o",
+    "llvm-bc" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/fastvApp.bc",
+    "object" : "/Users/rocky/Sites/fastv/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/typecho/IntermediateBuildFilesPath/fastv.build/Release/typecho.build/Objects-normal/x86_64/fastvApp.o"
+  }
+}

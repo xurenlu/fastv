@@ -1,0 +1,32 @@
+{
+  "source": "/Users/rocky/Sites/fastv/fastv/Views/WelcomeView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "welcome.title",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 22
+        }
+      },
+      {
+        "comment": "",
+        "key": "welcome.subtitle",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 25
+        }
+      },
+      {
+        "comment": "",
+        "key": "welcome.start.using",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 91
+        }
+      }
+    ]
+  },
+  "version": 1
+}

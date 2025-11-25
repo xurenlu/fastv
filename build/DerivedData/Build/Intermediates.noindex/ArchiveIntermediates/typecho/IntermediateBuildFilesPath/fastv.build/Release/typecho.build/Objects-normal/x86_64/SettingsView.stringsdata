@@ -1,0 +1,264 @@
+{
+  "source": "/Users/rocky/Sites/fastv/fastv/Views/SettingsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "启用后可通过快捷键进行语音输入",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 287
+        }
+      },
+      {
+        "comment": "",
+        "key": "当前快捷键：%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 280
+        }
+      },
+      {
+        "comment": "",
+        "key": "推荐：单独按左Control键是一个很好的选择，不容易与其他应用冲突。",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 257
+        }
+      },
+      {
+        "comment": "",
+        "key": "使用说明：\n• 单独按下左Control键开始录音\n• 如果同时按了其他键（如Ctrl+C），不会触发录音\n• 松开Control键后自动识别并插入文本",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 266
+        }
+      },
+      {
+        "comment": "",
+        "key": "快速纠错（毫秒级，推荐）",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 310
+        }
+      },
+      {
+        "comment": "",
+        "key": "文本纠错",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 312
+        }
+      },
+      {
+        "comment": "",
+        "key": "启用后会自动纠正语音识别中的常见错别字，速度极快（毫秒级），无需等待。",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 314
+        }
+      },
+      {
+        "comment": "",
+        "key": "http://127.0.0.1:11434",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 380
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 419
+        }
+      },
+      {
+        "comment": "",
+        "key": "模型文件",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 551
+        }
+      },
+      {
+        "comment": "",
+        "key": "语音识别模型文件，首次使用需要下载（约 894MB）",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 553
+        }
+      },
+      {
+        "comment": "",
+        "key": "官方支持页",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 563
+        }
+      },
+      {
+        "comment": "",
+        "key": "推荐应用",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 575
+        }
+      },
+      {
+        "comment": "",
+        "key": "妙墨",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 585
+        }
+      },
+      {
+        "comment": "",
+        "key": "Markdown 笔记软件",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 587
+        }
+      },
+      {
+        "comment": "",
+        "key": "时间帐单",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 604
+        }
+      },
+      {
+        "comment": "",
+        "key": "个人时间记录工具",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 606
+        }
+      },
+      {
+        "comment": "",
+        "key": "支持与推荐",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 618
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 635
+        }
+      },
+      {
+        "comment": "",
+        "key": "模型文件状态",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1439
+        }
+      },
+      {
+        "comment": "",
+        "key": "已下载",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 1442
+        }
+      },
+      {
+        "comment": "",
+        "key": "未下载",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 1442
+        }
+      },
+      {
+        "comment": "",
+        "key": "下载模型",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1455
+        }
+      },
+      {
+        "comment": "",
+        "key": "模型文件已就绪，可以使用语音输入功能",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1468
+        }
+      },
+      {
+        "comment": "",
+        "key": "首次使用需要下载模型文件（约 894MB）",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1477
+        }
+      },
+      {
+        "comment": "",
+        "key": "麦克风权限",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1535
+        }
+      },
+      {
+        "comment": "",
+        "key": "申请权限",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 1546
+        }
+      },
+      {
+        "comment": "",
+        "key": "打开设置",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 1553
+        }
+      },
+      {
+        "comment": "",
+        "key": "辅助功能权限",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1567
+        }
+      },
+      {
+        "comment": "",
+        "key": "已授权",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 1572
+        }
+      },
+      {
+        "comment": "",
+        "key": "未授权",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 1572
+        }
+      },
+      {
+        "comment": "",
+        "key": "打开设置",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1577
+        }
+      }
+    ]
+  },
+  "version": 1
+}

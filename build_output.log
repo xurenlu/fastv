@@ -1,0 +1,2033 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -workspace fastv.xcodeproj/project.xcworkspace -scheme fastv -configuration Debug clean build
+
+2025-11-22 21:00:03.145 xcodebuild[69878:6939489] [MT] IDERunDestination: Supported platforms for the buildables in the current scheme is empty.
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00008112-000C103C3AF9401E, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00008112-000C103C3AF9401E, name:My Mac }
+{ platform:macOS, name:Any Mac }
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+** CLEAN SUCCEEDED **
+
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00008112-000C103C3AF9401E, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00008112-000C103C3AF9401E, name:My Mac }
+{ platform:macOS, name:Any Mac }
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'fastv' in project 'fastv' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk -x objective-c++ -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 1c4f3456e73c21576d1e20f5ce0420da
+Build description path: /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/XCBuildData/1c4f3456e73c21576d1e20f5ce0420da.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk /Users/rocky/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx26.0-25A352-28806144b0707e398aac92880fa50324.sdkstatcache
+    cd /Users/rocky/Sites/fastv/fastv.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk -o /Users/rocky/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx26.0-25A352-28806144b0707e398aac92880fa50324.sdkstatcache
+
+CreateBuildDirectory /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products
+    cd /Users/rocky/Sites/fastv/fastv.xcodeproj
+    builtin-create-build-directory /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products
+
+CreateBuildDirectory /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex
+    cd /Users/rocky/Sites/fastv/fastv.xcodeproj
+    builtin-create-build-directory /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex
+
+CreateBuildDirectory /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+    cd /Users/rocky/Sites/fastv/fastv.xcodeproj
+    builtin-create-build-directory /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+CreateBuildDirectory /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/ExplicitPrecompiledModules
+    cd /Users/rocky/Sites/fastv/fastv.xcodeproj
+    builtin-create-build-directory /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv-ab884a58010cb67c557a72c2858c0598-VFS/all-product-headers.yaml
+    cd /Users/rocky/Sites/fastv/fastv.xcodeproj
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv-ab884a58010cb67c557a72c2858c0598-VFS/all-product-headers.yaml
+
+CreateBuildDirectory /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/EagerLinkingTBDs/Debug
+    cd /Users/rocky/Sites/fastv/fastv.xcodeproj
+    builtin-create-build-directory /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/EagerLinkingTBDs/Debug
+
+CreateBuildDirectory /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug
+    cd /Users/rocky/Sites/fastv/fastv.xcodeproj
+    builtin-create-build-directory /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-own-target-headers.hmap (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-own-target-headers.hmap
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-generated-files.hmap (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-generated-files.hmap
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-all-non-framework-target-headers.hmap (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv.DependencyStaticMetadataFileList (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv.hmap (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv.hmap
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-project-headers.hmap (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-project-headers.hmap
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-all-target-headers.hmap (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-all-target-headers.hmap
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv.DependencyMetadataFileList (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv.DependencyMetadataFileList
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-DebugDylibPath-normal-arm64.txt (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-DebugDylibPath-normal-arm64.txt
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-DebugDylibInstallName-normal-arm64.txt (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-DebugDylibInstallName-normal-arm64.txt
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Script-5C0423AD2ECD793000821B50.sh (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Script-5C0423AD2ECD793000821B50.sh
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/empty-fastv.plist (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/empty-fastv.plist
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Script-5C0423AC2ECD793000821B50.sh (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Script-5C0423AC2ECD793000821B50.sh
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv_const_extract_protocols.json (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv_const_extract_protocols.json
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.SwiftFileList (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.SwiftFileList
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.SwiftConstValuesFileList (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.LinkFileList (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.LinkFileList
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv-OutputFileMap.json (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv-OutputFileMap.json
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/af3fcb34312c57c0f52879cdce924b91-common-args.resp (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/af3fcb34312c57c0f52879cdce924b91-common-args.resp
+-target arm64-apple-macos26.0 '-std=gnu++20' -fobjc-arc -fobjc-weak -fmodules -fno-cxx-modules -gmodules '-fmodules-cache-path=/Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex' '-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_DEBUG' -fpascal-strings -O0 -fno-common '-DDEBUG=1' '-DOBJC_OLD_DISPATCH_PROTOTYPES=0' -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk -g -fvisibility-inlines-hidden -fprofile-instr-generate -fcoverage-mapping -iquote /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-generated-files.hmap -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-own-target-headers.hmap -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-all-target-headers.hmap -iquote /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-project-headers.hmap -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/include -I/Users/rocky/Sites/fastv/Libraries/onnxruntime/current/include -I/Users/rocky/Sites/fastv/ThirdParty -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources-normal/arm64 -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources/arm64 -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources -F/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug
+
+WriteAuxiliaryFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources/Entitlements.plist (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    write-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources/Entitlements.plist
+
+MkDir /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    /bin/mkdir -p /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources
+
+MkDir /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    /bin/mkdir -p /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS
+
+MkDir /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Frameworks (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    /bin/mkdir -p /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Frameworks
+
+MkDir /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    /bin/mkdir -p /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents
+
+MkDir /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    /bin/mkdir -p /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app
+
+ProcessProductPackaging /Users/rocky/Sites/fastv/fastv/fastv.entitlements /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv.app.xcent (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+    Entitlements:
+    
+    {
+    "com.apple.security.automation.apple-events" = 1;
+    "com.apple.security.device.audio-input" = 1;
+    "com.apple.security.get-task-allow" = 1;
+}
+    
+    builtin-productPackagingUtility /Users/rocky/Sites/fastv/fastv/fastv.entitlements -entitlements -format xml -o /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv.app.xcent
+
+ProcessProductPackagingDER /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv.app.xcent /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv.app.xcent.der (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    /usr/bin/derq query -f xml -i /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv.app.xcent -o /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv.app.xcent.der --raw
+
+Ld /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS/__preview.dylib normal (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos26.0 -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk -O0 -L/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug -L/Users/rocky/Sites/fastv/Libraries/onnxruntime/current/lib -F/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug -install_name @rpath/fastv.debug.dylib -rdynamic -Xlinker -no_deduplicate -Xlinker -debug_variant -Xlinker -dependency_info -Xlinker /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv_dependency_info.dat -Xlinker -no_adhoc_codesign -o /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS/__preview.dylib
+
+MkDir /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_output/unthinned (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    /bin/mkdir -p /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_output/unthinned
+
+GenerateAssetSymbols /Users/rocky/Sites/fastv/fastv/Assets.xcassets (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/rocky/Sites/fastv/fastv/Assets.xcassets --compile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources --output-format human-readable-text --notices --warnings --export-dependency-info /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_dependencies --output-partial-info-plist /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_generated_info.plist --app-icon AppIcon --accent-color AccentColor --enable-on-demand-resources NO --development-region en --target-device mac --minimum-deployment-target 26.0 --platform macosx --bundle-identifier com.wxside.typecho --generate-swift-asset-symbols /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources/GeneratedAssetSymbols.swift --generate-objc-asset-symbols /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources/GeneratedAssetSymbols.h --generate-asset-symbol-index /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/* com.apple.actool.compilation-results */
+/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources/GeneratedAssetSymbols.h
+/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources/GeneratedAssetSymbols.swift
+
+
+CpResource /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources/tokens.json /Users/rocky/Sites/fastv/fastv/Resources/Models/sensevoice-small/tokens.json (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/rocky/Sites/fastv/fastv/Resources/Models/sensevoice-small/tokens.json /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources
+
+MkDir /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_output/thinned (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    /bin/mkdir -p /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_output/thinned
+
+CpResource /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources/config.yaml /Users/rocky/Sites/fastv/fastv/Resources/Models/sensevoice-small/config.yaml (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/rocky/Sites/fastv/fastv/Resources/Models/sensevoice-small/config.yaml /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources
+
+CpResource /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources/am.mvn /Users/rocky/Sites/fastv/fastv/Resources/Models/sensevoice-small/am.mvn (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/rocky/Sites/fastv/fastv/Resources/Models/sensevoice-small/am.mvn /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources
+
+CopyStringsFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources/zh-Hans.lproj/InfoPlist.strings /Users/rocky/Sites/fastv/fastv/Resources/zh-Hans.lproj/InfoPlist.strings (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-copyStrings --validate --outputencoding UTF-16 --outfilename InfoPlist.strings --outdir /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources/zh-Hans.lproj -- /Users/rocky/Sites/fastv/fastv/Resources/zh-Hans.lproj/InfoPlist.strings
+/Users/rocky/Sites/fastv/fastv/Resources/zh-Hans.lproj/InfoPlist.strings:1:1: note: detected encoding of input file as Unicode (UTF-8) (in target 'fastv' from project 'fastv')
+
+CopyStringsFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources/zh-Hans.lproj/Localizable.strings /Users/rocky/Sites/fastv/fastv/Resources/zh-Hans.lproj/Localizable.strings (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-copyStrings --validate --outputencoding UTF-16 --outfilename Localizable.strings --outdir /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources/zh-Hans.lproj -- /Users/rocky/Sites/fastv/fastv/Resources/zh-Hans.lproj/Localizable.strings
+/Users/rocky/Sites/fastv/fastv/Resources/zh-Hans.lproj/Localizable.strings:1:1: note: detected encoding of input file as Unicode (UTF-8) (in target 'fastv' from project 'fastv')
+
+CopyStringsFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources/ja.lproj/Localizable.strings /Users/rocky/Sites/fastv/fastv/Resources/ja.lproj/Localizable.strings (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-copyStrings --validate --outputencoding UTF-16 --outfilename Localizable.strings --outdir /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources/ja.lproj -- /Users/rocky/Sites/fastv/fastv/Resources/ja.lproj/Localizable.strings
+/Users/rocky/Sites/fastv/fastv/Resources/ja.lproj/Localizable.strings:1:1: note: detected encoding of input file as Unicode (UTF-8) (in target 'fastv' from project 'fastv')
+
+CopyStringsFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources/ja.lproj/InfoPlist.strings /Users/rocky/Sites/fastv/fastv/Resources/ja.lproj/InfoPlist.strings (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-copyStrings --validate --outputencoding UTF-16 --outfilename InfoPlist.strings --outdir /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources/ja.lproj -- /Users/rocky/Sites/fastv/fastv/Resources/ja.lproj/InfoPlist.strings
+/Users/rocky/Sites/fastv/fastv/Resources/ja.lproj/InfoPlist.strings:1:1: note: detected encoding of input file as Unicode (UTF-8) (in target 'fastv' from project 'fastv')
+
+CopyStringsFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources/en.lproj/Localizable.strings /Users/rocky/Sites/fastv/fastv/Resources/en.lproj/Localizable.strings (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-copyStrings --validate --outputencoding UTF-16 --outfilename Localizable.strings --outdir /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources/en.lproj -- /Users/rocky/Sites/fastv/fastv/Resources/en.lproj/Localizable.strings
+/Users/rocky/Sites/fastv/fastv/Resources/en.lproj/Localizable.strings:1:1: note: detected encoding of input file as Unicode (UTF-8) (in target 'fastv' from project 'fastv')
+
+CopyStringsFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources/en.lproj/InfoPlist.strings /Users/rocky/Sites/fastv/fastv/Resources/en.lproj/InfoPlist.strings (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-copyStrings --validate --outputencoding UTF-16 --outfilename InfoPlist.strings --outdir /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources/en.lproj -- /Users/rocky/Sites/fastv/fastv/Resources/en.lproj/InfoPlist.strings
+/Users/rocky/Sites/fastv/fastv/Resources/en.lproj/InfoPlist.strings:1:1: note: detected encoding of input file as Unicode (UTF-8) (in target 'fastv' from project 'fastv')
+
+CopyPlistFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources/Info.plist /Users/rocky/Sites/fastv/fastv/Info.plist (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-copyPlist --outdir /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources -- /Users/rocky/Sites/fastv/fastv/Info.plist
+
+CompileAssetCatalogVariant thinned /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources /Users/rocky/Sites/fastv/fastv/Assets.xcassets (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/rocky/Sites/fastv/fastv/Assets.xcassets --compile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_output/thinned --output-format human-readable-text --notices --warnings --export-dependency-info /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_dependencies_thinned --output-partial-info-plist /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_generated_info.plist_thinned --app-icon AppIcon --accent-color AccentColor --enable-on-demand-resources NO --development-region en --target-device mac --minimum-deployment-target 26.0 --platform macosx
+/* com.apple.actool.compilation-results */
+/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_generated_info.plist_thinned
+
+
+SwiftDriver fastv normal arm64 com.apple.xcode.tools.swift.compiler (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name fastv -Onone -enforce-exclusivity\=checked @/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.SwiftFileList -DDEBUG -default-isolation\=MainActor -enable-bare-slash-regex -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk -target arm64-apple-macos26.0 -g -module-cache-path /Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug -F /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug -emit-localized-strings -emit-localized-strings-path /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/rocky/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx26.0-25A352-28806144b0707e398aac92880fa50324.sdkstatcache -output-file-map /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv_const_extract_protocols.json -Xcc -iquote -Xcc /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-generated-files.hmap -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-own-target-headers.hmap -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-all-target-headers.hmap -Xcc -iquote -Xcc /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-project-headers.hmap -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/include -Xcc -I/Users/rocky/Sites/fastv/Libraries/onnxruntime/current/include -Xcc -I/Users/rocky/Sites/fastv/ThirdParty -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources-normal/arm64 -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources/arm64 -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv-Swift.h -import-objc-header /Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeBridge.h -working-directory /Users/rocky/Sites/fastv -experimental-emit-module-separately -disable-cmo
+
+SwiftGeneratePch normal arm64 Compiling\ bridging\ header (in target 'fastv' from project 'fastv')
+
+SwiftDriverJobDiscovery normal arm64 Compiling bridging header (in target 'fastv' from project 'fastv')
+
+SwiftCompile normal arm64 Compiling\ VoiceInputService.swift,\ AppVersionManager.swift,\ FileManager+Extensions.swift,\ LocalizationManager.swift /Users/rocky/Sites/fastv/fastv/Services/VoiceInputService.swift /Users/rocky/Sites/fastv/fastv/Utils/AppVersionManager.swift /Users/rocky/Sites/fastv/fastv/Utils/FileManager+Extensions.swift /Users/rocky/Sites/fastv/fastv/Utils/LocalizationManager.swift (in target 'fastv' from project 'fastv')
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Services/VoiceInputService.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+/Users/rocky/Sites/fastv/fastv/Services/VoiceInputService.swift:115:26: warning: main actor-isolated property 'recordedBuffers' can not be mutated from a Sendable closure
+                    self.recordedBuffers.append(data)
+                         ^
+/Users/rocky/Sites/fastv/fastv/Services/VoiceInputService.swift:22:17: note: mutation of this property is only permitted within the actor
+    private var recordedBuffers: [Data] = []
+                ^
+/Users/rocky/Sites/fastv/fastv/Services/VoiceInputService.swift:133:35: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode
+                    if let self = self, !self.isRecording {
+                                  ^
+/Users/rocky/Sites/fastv/fastv/Services/VoiceInputService.swift:78:11: warning: 'catch' block is unreachable because no errors are thrown in 'do' block
+        } catch {
+          ^
+/Users/rocky/Sites/fastv/fastv/Services/VoiceInputService.swift:262:16: warning: reference to captured var 'inputExhausted' in concurrently-executing code; this is an error in the Swift 6 language mode
+            if inputExhausted {
+               ^
+/Users/rocky/Sites/fastv/fastv/Services/VoiceInputService.swift:267:13: warning: mutation of captured var 'inputExhausted' in concurrently-executing code; this is an error in the Swift 6 language mode
+            inputExhausted = true
+            ^
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Utils/AppVersionManager.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Utils/FileManager+Extensions.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Utils/LocalizationManager.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 Compiling\ OnboardingView.swift,\ SettingsView.swift,\ VoiceInputView.swift,\ WaveformView.swift /Users/rocky/Sites/fastv/fastv/Views/OnboardingView.swift /Users/rocky/Sites/fastv/fastv/Views/SettingsView.swift /Users/rocky/Sites/fastv/fastv/Views/VoiceInputView.swift /Users/rocky/Sites/fastv/fastv/Views/WaveformView.swift (in target 'fastv' from project 'fastv')
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Views/OnboardingView.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Views/SettingsView.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Views/VoiceInputView.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Views/WaveformView.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+/Users/rocky/Sites/fastv/fastv/Views/WaveformView.swift:256:10: warning: instance method 'windowDidClose' nearly matches optional requirement 'windowDidExpose' of protocol 'NSWindowDelegate'
+    func windowDidClose(_ notification: Notification) {
+         ^
+/Users/rocky/Sites/fastv/fastv/Views/WaveformView.swift:256:10: note: rename to 'windowDidExpose' to satisfy this requirement
+    func windowDidClose(_ notification: Notification) {
+         ^~~~~~~~~~~~~~
+         windowDidExpose
+/Users/rocky/Sites/fastv/fastv/Views/WaveformView.swift:256:10: note: move 'windowDidClose' to an extension to silence this warning
+    func windowDidClose(_ notification: Notification) {
+         ^
+/Users/rocky/Sites/fastv/fastv/Views/WaveformView.swift:256:10: note: make 'windowDidClose' private to silence this warning
+    func windowDidClose(_ notification: Notification) {
+         ^
+    private 
+AppKit.NSWindowDelegate.windowDidExpose:3:28: note: requirement 'windowDidExpose' declared here
+  @MainActor optional func windowDidExpose(_ notification: Notification)}
+                           ^
+/Users/rocky/Sites/fastv/fastv/Views/WaveformView.swift:321:22: warning: 'onChange(of:perform:)' was deprecated in macOS 14.0: Use `onChange` with a two or zero parameter action closure instead.
+                    .onChange(of: manager.audioLevel) { newLevel in
+                     ^
+/Users/rocky/Sites/fastv/fastv/Views/WaveformView.swift:374:26: warning: 'onChange(of:perform:)' was deprecated in macOS 14.0: Use `onChange` with a two or zero parameter action closure instead.
+                        .onChange(of: state) { newState in
+                         ^
+
+SwiftCompile normal arm64 Compiling\ AudioFeatureExtractor.swift,\ CoreMLWrapper.swift,\ GlobalShortcutMonitor.swift,\ KaldiFbankWrapper.swift /Users/rocky/Sites/fastv/fastv/Services/AudioFeatureExtractor.swift /Users/rocky/Sites/fastv/fastv/Services/CoreMLWrapper.swift /Users/rocky/Sites/fastv/fastv/Services/GlobalShortcutMonitor.swift /Users/rocky/Sites/fastv/fastv/Services/KaldiFbankWrapper.swift (in target 'fastv' from project 'fastv')
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Services/AudioFeatureExtractor.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+/Users/rocky/Sites/fastv/fastv/Services/AudioFeatureExtractor.swift:79:21: warning: 'init(url:)' was deprecated in macOS 15.0: Use AVURLAsset(url:) instead
+        let asset = AVAsset(url: audioURL)
+                    ^
+/Users/rocky/Sites/fastv/fastv/Services/AudioFeatureExtractor.swift:306:63: warning: cannot use inout expression here; argument 'realp' must be a pointer that outlives the call to 'init(realp:imagp:)'
+                    var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
+                                                              ^~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/AudioFeatureExtractor.swift:306:63: note: implicit argument conversion from '[Float]' to 'UnsafeMutablePointer<Float>' produces a pointer valid only for the duration of the call to 'init(realp:imagp:)'
+                    var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
+                                                              ^~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/AudioFeatureExtractor.swift:306:63: note: use the 'withUnsafeMutableBufferPointer' method on Array in order to explicitly convert argument to buffer pointer valid for a defined scope
+                    var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
+                                                              ^
+/Users/rocky/Sites/fastv/fastv/Services/AudioFeatureExtractor.swift:306:82: warning: cannot use inout expression here; argument 'imagp' must be a pointer that outlives the call to 'init(realp:imagp:)'
+                    var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
+                                                                                 ^~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/AudioFeatureExtractor.swift:306:82: note: implicit argument conversion from '[Float]' to 'UnsafeMutablePointer<Float>' produces a pointer valid only for the duration of the call to 'init(realp:imagp:)'
+                    var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
+                                                                                 ^~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/AudioFeatureExtractor.swift:306:82: note: use the 'withUnsafeMutableBufferPointer' method on Array in order to explicitly convert argument to buffer pointer valid for a defined scope
+                    var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
+                                                                                 ^
+/Users/rocky/Sites/fastv/fastv/Services/AudioFeatureExtractor.swift:312:55: warning: cannot use inout expression here; argument 'realp' must be a pointer that outlives the call to 'init(realp:imagp:)'
+            var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
+                                                      ^~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/AudioFeatureExtractor.swift:312:55: note: implicit argument conversion from '[Float]' to 'UnsafeMutablePointer<Float>' produces a pointer valid only for the duration of the call to 'init(realp:imagp:)'
+            var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
+                                                      ^~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/AudioFeatureExtractor.swift:312:55: note: use the 'withUnsafeMutableBufferPointer' method on Array in order to explicitly convert argument to buffer pointer valid for a defined scope
+            var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
+                                                      ^
+/Users/rocky/Sites/fastv/fastv/Services/AudioFeatureExtractor.swift:312:74: warning: cannot use inout expression here; argument 'imagp' must be a pointer that outlives the call to 'init(realp:imagp:)'
+            var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
+                                                                         ^~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/AudioFeatureExtractor.swift:312:74: note: implicit argument conversion from '[Float]' to 'UnsafeMutablePointer<Float>' produces a pointer valid only for the duration of the call to 'init(realp:imagp:)'
+            var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
+                                                                         ^~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/AudioFeatureExtractor.swift:312:74: note: use the 'withUnsafeMutableBufferPointer' method on Array in order to explicitly convert argument to buffer pointer valid for a defined scope
+            var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
+                                                                         ^
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Services/CoreMLWrapper.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Services/GlobalShortcutMonitor.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Services/KaldiFbankWrapper.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 Compiling\ WelcomeView.swift,\ ContentView.swift,\ fastvApp.swift,\ GeneratedAssetSymbols.swift /Users/rocky/Sites/fastv/fastv/Views/WelcomeView.swift /Users/rocky/Sites/fastv/fastv/ContentView.swift /Users/rocky/Sites/fastv/fastv/fastvApp.swift /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'fastv' from project 'fastv')
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Views/WelcomeView.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/ContentView.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/fastvApp.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 Compiling\ VoiceInputHistory.swift,\ VoiceRecording.swift,\ WaveformWindowColorStyle.swift,\ WaveformWindowPosition.swift,\ WaveformWindowStyle.swift /Users/rocky/Sites/fastv/fastv/Models/VoiceInputHistory.swift /Users/rocky/Sites/fastv/fastv/Models/VoiceRecording.swift /Users/rocky/Sites/fastv/fastv/Models/WaveformWindowColorStyle.swift /Users/rocky/Sites/fastv/fastv/Models/WaveformWindowPosition.swift /Users/rocky/Sites/fastv/fastv/Models/WaveformWindowStyle.swift (in target 'fastv' from project 'fastv')
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Models/VoiceInputHistory.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Models/VoiceRecording.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Models/WaveformWindowColorStyle.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Models/WaveformWindowPosition.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Models/WaveformWindowStyle.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ fastv (in target 'fastv' from project 'fastv')
+
+EmitSwiftModule normal arm64 (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+/Users/rocky/Sites/fastv/fastv/Views/WaveformView.swift:256:10: warning: instance method 'windowDidClose' nearly matches optional requirement 'windowDidExpose' of protocol 'NSWindowDelegate'
+    func windowDidClose(_ notification: Notification) {
+         ^
+/Users/rocky/Sites/fastv/fastv/Views/WaveformView.swift:256:10: note: rename to 'windowDidExpose' to satisfy this requirement
+    func windowDidClose(_ notification: Notification) {
+         ^~~~~~~~~~~~~~
+         windowDidExpose
+/Users/rocky/Sites/fastv/fastv/Views/WaveformView.swift:256:10: note: move 'windowDidClose' to an extension to silence this warning
+    func windowDidClose(_ notification: Notification) {
+         ^
+/Users/rocky/Sites/fastv/fastv/Views/WaveformView.swift:256:10: note: make 'windowDidClose' private to silence this warning
+    func windowDidClose(_ notification: Notification) {
+         ^
+    private 
+AppKit.NSWindowDelegate.windowDidExpose:3:28: note: requirement 'windowDidExpose' declared here
+  @MainActor optional func windowDidExpose(_ notification: Notification)}
+                           ^
+
+SwiftCompile normal arm64 Compiling\ AppState.swift,\ DownloadState.swift,\ TranscriptLanguage.swift,\ UserPreferences.swift,\ VideoProcessingError.swift /Users/rocky/Sites/fastv/fastv/Models/AppState.swift /Users/rocky/Sites/fastv/fastv/Models/DownloadState.swift /Users/rocky/Sites/fastv/fastv/Models/TranscriptLanguage.swift /Users/rocky/Sites/fastv/fastv/Models/UserPreferences.swift /Users/rocky/Sites/fastv/fastv/Models/VideoProcessingError.swift (in target 'fastv' from project 'fastv')
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Models/AppState.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Models/DownloadState.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Models/TranscriptLanguage.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Models/UserPreferences.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Models/VideoProcessingError.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 Compiling\ ModelDownloader.swift,\ OllamaService.swift,\ ONNXRuntimeCWrapper.swift,\ ONNXRuntimeWrapper.swift /Users/rocky/Sites/fastv/fastv/Services/ModelDownloader.swift /Users/rocky/Sites/fastv/fastv/Services/OllamaService.swift /Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeCWrapper.swift /Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeWrapper.swift (in target 'fastv' from project 'fastv')
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Services/ModelDownloader.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+/Users/rocky/Sites/fastv/fastv/Services/ModelDownloader.swift:57:13: warning: initialization of immutable value 'fileSizeMB' was never used; consider replacing with assignment to '_' or removing it
+        let fileSizeMB = 894.0
+        ~~~~^~~~~~~~~~
+        _
+/Users/rocky/Sites/fastv/fastv/Services/ModelDownloader.swift:159:63: warning: main actor-isolated property 'lastSpeedCheckTime' can not be referenced from a Sendable closure
+                let timeInterval = now.timeIntervalSince(self.lastSpeedCheckTime)
+                                                              ^
+/Users/rocky/Sites/fastv/fastv/Services/ModelDownloader.swift:27:17: note: property declared here
+    private var lastSpeedCheckTime: Date = Date()
+                ^
+/Users/rocky/Sites/fastv/fastv/Services/ModelDownloader.swift:162:57: warning: main actor-isolated property 'lastDownloadedBytes' can not be referenced from a Sendable closure
+                    let bytesDiff = currentBytes - self.lastDownloadedBytes
+                                                        ^
+/Users/rocky/Sites/fastv/fastv/Services/ModelDownloader.swift:26:17: note: property declared here
+    private var lastDownloadedBytes: Int64 = 0
+                ^
+/Users/rocky/Sites/fastv/fastv/Services/ModelDownloader.swift:164:44: warning: call to main actor-isolated instance method 'formatSpeed(bytesPerSecond:)' in a synchronous nonisolated context
+                    let speedString = self.formatSpeed(bytesPerSecond: speed)
+                                           ^
+/Users/rocky/Sites/fastv/fastv/Services/ModelDownloader.swift:177:18: note: calls to instance method 'formatSpeed(bytesPerSecond:)' from outside of its actor context are implicitly asynchronous
+    private func formatSpeed(bytesPerSecond: Double) -> String {
+                 ^
+/Users/rocky/Sites/fastv/fastv/Services/ModelDownloader.swift:165:26: warning: main actor-isolated property 'downloadSpeed' can not be mutated from a Sendable closure
+                    self.downloadSpeed = speedString
+                         ^
+/Users/rocky/Sites/fastv/fastv/Services/ModelDownloader.swift:19:20: note: mutation of this property is only permitted within the actor
+    @Published var downloadSpeed: String = ""
+                   ^
+/Users/rocky/Sites/fastv/fastv/Services/ModelDownloader.swift:166:26: warning: main actor-isolated property 'lastDownloadedBytes' can not be mutated from a Sendable closure
+                    self.lastDownloadedBytes = currentBytes
+                         ^
+/Users/rocky/Sites/fastv/fastv/Services/ModelDownloader.swift:26:17: note: mutation of this property is only permitted within the actor
+    private var lastDownloadedBytes: Int64 = 0
+                ^
+/Users/rocky/Sites/fastv/fastv/Services/ModelDownloader.swift:167:26: warning: main actor-isolated property 'lastSpeedCheckTime' can not be mutated from a Sendable closure
+                    self.lastSpeedCheckTime = now
+                         ^
+/Users/rocky/Sites/fastv/fastv/Services/ModelDownloader.swift:27:17: note: mutation of this property is only permitted within the actor
+    private var lastSpeedCheckTime: Date = Date()
+                ^
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Services/OllamaService.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeCWrapper.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeWrapper.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+/Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeWrapper.swift:434:78: warning: initialization of 'UnsafePointer<CChar>' (aka 'UnsafePointer<Int8>') results in a dangling pointer
+        var inputNamePtrs: [UnsafePointer<CChar>?] = inputNameCStrings.map { UnsafePointer($0) }
+                                                                             ^~~~~~~~~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeWrapper.swift:434:92: note: implicit argument conversion from '[CChar]' (aka 'Array<Int8>') to 'UnsafePointer<CChar>' (aka 'UnsafePointer<Int8>') produces a pointer valid only for the duration of the call to 'init(_:)'
+        var inputNamePtrs: [UnsafePointer<CChar>?] = inputNameCStrings.map { UnsafePointer($0) }
+                                                                                           ^~
+/Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeWrapper.swift:434:92: note: use the 'withUnsafeBufferPointer' method on Array in order to explicitly convert argument to buffer pointer valid for a defined scope
+        var inputNamePtrs: [UnsafePointer<CChar>?] = inputNameCStrings.map { UnsafePointer($0) }
+                                                                                           ^
+/Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeWrapper.swift:438:56: warning: initialization of 'UnsafePointer<CChar>' (aka 'UnsafePointer<Int8>') results in a dangling pointer
+        var outputNamePtrs: [UnsafePointer<CChar>?] = [UnsafePointer(ctcLogitsCString)]
+                                                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeWrapper.swift:438:70: note: implicit argument conversion from '[CChar]' (aka 'Array<Int8>') to 'UnsafePointer<CChar>' (aka 'UnsafePointer<Int8>') produces a pointer valid only for the duration of the call to 'init(_:)'
+        var outputNamePtrs: [UnsafePointer<CChar>?] = [UnsafePointer(ctcLogitsCString)]
+                                                                     ^~~~~~~~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeWrapper.swift:438:70: note: use the 'withUnsafeBufferPointer' method on Array in order to explicitly convert argument to buffer pointer valid for a defined scope
+        var outputNamePtrs: [UnsafePointer<CChar>?] = [UnsafePointer(ctcLogitsCString)]
+                                                                     ^
+/Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeWrapper.swift:442:35: warning: initialization of 'UnsafePointer<CChar>' (aka 'UnsafePointer<Int8>') results in a dangling pointer
+            outputNamePtrs.append(UnsafePointer(encoderOutLensCString!))
+                                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeWrapper.swift:442:70: note: implicit argument conversion from '[CChar]' (aka 'Array<Int8>') to 'UnsafePointer<CChar>' (aka 'UnsafePointer<Int8>') produces a pointer valid only for the duration of the call to 'init(_:)'
+            outputNamePtrs.append(UnsafePointer(encoderOutLensCString!))
+                                                ~~~~~~~~~~~~~~~~~~~~~^
+/Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeWrapper.swift:442:70: note: use the 'withUnsafeBufferPointer' method on Array in order to explicitly convert argument to buffer pointer valid for a defined scope
+            outputNamePtrs.append(UnsafePointer(encoderOutLensCString!))
+                                                                     ^
+/Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeWrapper.swift:275:13: warning: variable 'languageDataValue' was never mutated; consider changing to 'let' constant
+        var languageDataValue: Int32 = language.languageID
+        ~~~ ^
+        let
+/Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeWrapper.swift:790:17: warning: initialization of immutable value 'batchSize' was never used; consider replacing with assignment to '_' or removing it
+            let batchSize = dims.count > 0 ? Int(dims[0]) : 1
+            ~~~~^~~~~~~~~
+            _
+
+LinkAssetCatalog /Users/rocky/Sites/fastv/fastv/Assets.xcassets (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-linkAssetCatalog --thinned /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_output/thinned --thinned-dependencies /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_dependencies_thinned --thinned-info-plist-content /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_generated_info.plist_thinned --unthinned /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_output/unthinned --unthinned-dependencies /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_dependencies_unthinned --unthinned-info-plist-content /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_generated_info.plist_unthinned --output /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources --plist-output /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_generated_info.plist
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for fastv (in target 'fastv' from project 'fastv')
+
+SwiftDriver\ Compilation\ Requirements fastv normal arm64 com.apple.xcode.tools.swift.compiler (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name fastv -Onone -enforce-exclusivity\=checked @/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.SwiftFileList -DDEBUG -default-isolation\=MainActor -enable-bare-slash-regex -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk -target arm64-apple-macos26.0 -g -module-cache-path /Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug -F /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug -emit-localized-strings -emit-localized-strings-path /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/rocky/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx26.0-25A352-28806144b0707e398aac92880fa50324.sdkstatcache -output-file-map /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv_const_extract_protocols.json -Xcc -iquote -Xcc /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-generated-files.hmap -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-own-target-headers.hmap -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-all-target-headers.hmap -Xcc -iquote -Xcc /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-project-headers.hmap -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/include -Xcc -I/Users/rocky/Sites/fastv/Libraries/onnxruntime/current/include -Xcc -I/Users/rocky/Sites/fastv/ThirdParty -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources-normal/arm64 -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources/arm64 -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv-Swift.h -import-objc-header /Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeBridge.h -working-directory /Users/rocky/Sites/fastv -experimental-emit-module-separately -disable-cmo
+
+ProcessInfoPlistFile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Info.plist /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/empty-fastv.plist (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-infoPlistUtility /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/empty-fastv.plist -producttype com.apple.product-type.application -genpkginfo /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/PkgInfo -expandbuildsettings -platform macosx -additionalcontentfile /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/assetcatalog_generated_info.plist -o /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Info.plist
+
+SwiftMergeGeneratedHeaders /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources/fastv-Swift.h /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv-Swift.h (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-swiftHeaderTool -arch arm64 /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv-Swift.h -o /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources/fastv-Swift.h
+
+Copy /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.swiftmodule/arm64-apple-macos.swiftmodule /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.swiftmodule (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.swiftmodule /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.swiftmodule/arm64-apple-macos.swiftmodule
+
+Copy /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.swiftmodule/arm64-apple-macos.swiftdoc /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.swiftdoc (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.swiftdoc /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.swiftmodule/arm64-apple-macos.swiftdoc
+
+Copy /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.swiftmodule/arm64-apple-macos.abi.json /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.abi.json (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.abi.json /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.swiftmodule/arm64-apple-macos.abi.json
+
+Copy /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.swiftsourceinfo (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.swiftsourceinfo /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
+SwiftCompile normal arm64 Compiling\ SpeechTranscriber.swift,\ StatusBarManager.swift,\ TextCorrectionService.swift,\ TextInsertionService.swift /Users/rocky/Sites/fastv/fastv/Services/SpeechTranscriber.swift /Users/rocky/Sites/fastv/fastv/Services/StatusBarManager.swift /Users/rocky/Sites/fastv/fastv/Services/TextCorrectionService.swift /Users/rocky/Sites/fastv/fastv/Services/TextInsertionService.swift (in target 'fastv' from project 'fastv')
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Services/SpeechTranscriber.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+/Users/rocky/Sites/fastv/fastv/Services/SpeechTranscriber.swift:119:21: warning: 'init(url:)' was deprecated in macOS 15.0: Use AVURLAsset(url:) instead
+        let asset = AVAsset(url: audioURL)
+                    ^
+/Users/rocky/Sites/fastv/fastv/Services/SpeechTranscriber.swift:180:68: warning: forced cast of 'CMAudioFormatDescription' (aka 'CMFormatDescription') to same type has no effect
+                    let audioFormatDescription = formatDescription as! CMAudioFormatDescription
+                                                                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                                                                   
+/Users/rocky/Sites/fastv/fastv/Services/SpeechTranscriber.swift:230:23: warning: capture of 'audioInput' with non-Sendable type 'AVAssetWriterInput' in a '@Sendable' closure
+                while audioInput.isReadyForMoreMediaData {
+                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/System/Library/Frameworks/AVFoundation.framework/Headers/AVAssetWriterInput.h:39:12: note: class 'AVAssetWriterInput' does not conform to the 'Sendable' protocol
+@interface AVAssetWriterInput : NSObject
+           ^
+/Users/rocky/Sites/fastv/fastv/Services/SpeechTranscriber.swift:231:46: warning: capture of 'audioOutput' with non-Sendable type 'AVAssetReaderAudioMixOutput' in a '@Sendable' closure
+                    guard let sampleBuffer = audioOutput.copyNextSampleBuffer() else {
+                                             ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/System/Library/Frameworks/AVFoundation.framework/Headers/AVAssetReaderOutput.h:334:12: note: class 'AVAssetReaderAudioMixOutput' does not conform to the 'Sendable' protocol
+@interface AVAssetReaderAudioMixOutput : AVAssetReaderOutput
+           ^
+/Users/rocky/Sites/fastv/fastv/Services/SpeechTranscriber.swift:233:25: warning: capture of 'writer' with non-Sendable type 'AVAssetWriter' in a '@Sendable' closure
+                        writer.finishWriting {
+                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/System/Library/Frameworks/AVFoundation.framework/Headers/AVAssetWriter.h:66:12: note: class 'AVAssetWriter' does not conform to the 'Sendable' protocol
+@interface AVAssetWriter : NSObject
+           ^
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Services/StatusBarManager.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Services/TextCorrectionService.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftCompile normal arm64 /Users/rocky/Sites/fastv/fastv/Services/TextInsertionService.swift (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling VoiceInputHistory.swift, VoiceRecording.swift, WaveformWindowColorStyle.swift, WaveformWindowPosition.swift, WaveformWindowStyle.swift (in target 'fastv' from project 'fastv')
+
+CompileC /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/KaldiFbankBridge.o /Users/rocky/Sites/fastv/fastv/Services/KaldiFbankBridge.mm normal arm64 objective-c++ com.apple.compilers.llvm.clang.1_0.compiler (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+    Using response file: /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/af3fcb34312c57c0f52879cdce924b91-common-args.resp
+    
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x objective-c++ -ivfsstatcache /Users/rocky/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx26.0-25A352-28806144b0707e398aac92880fa50324.sdkstatcache -fmessage-length\=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit\=0 -fno-color-diagnostics -fmodules-prune-interval\=86400 -fmodules-prune-after\=345600 -fbuild-session-file\=/Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -fmodules-validate-once-per-build-session -Wnon-modular-include-in-framework-module -Werror\=non-modular-include-in-framework-module -Wno-trigraphs -Wno-missing-field-initializers -Wno-missing-prototypes -Werror\=return-type -Wdocumentation -Wunreachable-code -Wquoted-include-in-framework-header -Wno-implicit-atomic-properties -Werror\=deprecated-objc-isa-usage -Wno-objc-interface-ivars -Werror\=objc-root-class -Wno-arc-repeated-use-of-weak -Wimplicit-retain-self -Wno-non-virtual-dtor -Wno-overloaded-virtual -Wno-exit-time-destructors -Wduplicate-method-match -Wno-missing-braces -Wparentheses -Wswitch -Wunused-function -Wno-unused-label -Wno-unused-parameter -Wunused-variable -Wunused-value -Wempty-body -Wuninitialized -Wconditional-uninitialized -Wno-unknown-pragmas -Wno-shadow -Wno-four-char-constants -Wno-conversion -Wconstant-conversion -Wint-conversion -Wbool-conversion -Wenum-conversion -Wno-float-conversion -Wnon-literal-null-conversion -Wobjc-literal-conversion -Wshorten-64-to-32 -Wno-newline-eof -Wno-selector -Wno-strict-selector-match -Wundeclared-selector -Wdeprecated-implementations -Wno-c++11-extensions -Wno-implicit-fallthrough -fstrict-aliasing -Wprotocol -Wdeprecated-declarations -Winvalid-offsetof -Wno-sign-conversion -Winfinite-recursion -Wmove -Wcomma -Wblock-capture-autoreleasing -Wstrict-prototypes -Wrange-loop-analysis -Wno-semicolon-before-method-body -Wunguarded-availability -index-store-path /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Index.noindex/DataStore @/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/af3fcb34312c57c0f52879cdce924b91-common-args.resp -MMD -MT dependencies -MF /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/KaldiFbankBridge.d --serialize-diagnostics /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/KaldiFbankBridge.dia -c /Users/rocky/Sites/fastv/fastv/Services/KaldiFbankBridge.mm -o /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/KaldiFbankBridge.o -index-unit-output-path /fastv.build/Debug/fastv.build/Objects-normal/arm64/KaldiFbankBridge.o
+In file included from /Users/rocky/Sites/fastv/fastv/Services/KaldiFbankBridge.mm:17:
+In file included from /Users/rocky/Sites/fastv/fastv/Services/../../ThirdParty/kaldi-native-fbank/csrc/online-feature.h:28:
+In file included from /Users/rocky/Sites/fastv/ThirdParty/kaldi-native-fbank/csrc/feature-fbank.h:28:
+/Users/rocky/Sites/fastv/ThirdParty/kaldi-native-fbank/csrc/feature-window.h:93:12: warning: empty paragraph passed to '@param' command [-Wdocumentation]
+   93 |    * @param
+      |      ~~~~~~^
+   94 |    */
+In file included from /Users/rocky/Sites/fastv/fastv/Services/KaldiFbankBridge.mm:17:
+In file included from /Users/rocky/Sites/fastv/fastv/Services/../../ThirdParty/kaldi-native-fbank/csrc/online-feature.h:28:
+In file included from /Users/rocky/Sites/fastv/ThirdParty/kaldi-native-fbank/csrc/feature-fbank.h:29:
+/Users/rocky/Sites/fastv/ThirdParty/kaldi-native-fbank/csrc/mel-computations.h:99:42: warning: implicit conversion loses integer precision: 'size_type' (aka 'unsigned long') to 'int32_t' (aka 'int') [-Wshorten-64-to-32]
+   99 |   int32_t NumBins() const { return bins_.size(); }
+      |                             ~~~~~~ ~~~~~~^~~~~~
+In file included from /Users/rocky/Sites/fastv/fastv/Services/KaldiFbankBridge.mm:21:
+/Users/rocky/Sites/fastv/fastv/Services/../../ThirdParty/kaldi-native-fbank/csrc/feature-window.cc:58:33: warning: implicit conversion loses integer precision: 'size_type' (aka 'unsigned long') to 'int32_t' (aka 'int') [-Wshorten-64-to-32]
+   58 |   int32_t window_size = window_.size();
+      |           ~~~~~~~~~~~   ~~~~~~~~^~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/../../ThirdParty/kaldi-native-fbank/csrc/feature-window.cc:87:17: warning: implicit conversion loses integer precision: 'int64_t' (aka 'long long') to 'int32_t' (aka 'int') [-Wshorten-64-to-32]
+   87 |       return (1 + ((num_samples - frame_length) / frame_shift));
+      |       ~~~~~~  ~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/../../ThirdParty/kaldi-native-fbank/csrc/feature-window.cc:102:60: warning: implicit conversion loses integer precision: 'int64_t' (aka 'long long') to 'int32_t' (aka 'int') [-Wshorten-64-to-32]
+  102 |     int32_t num_frames = (num_samples + (frame_shift / 2)) / frame_shift;
+      |             ~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/../../ThirdParty/kaldi-native-fbank/csrc/feature-window.cc:131:11: warning: unused variable 'num_samples' [-Wunused-variable]
+  131 |   int64_t num_samples = sample_offset + wave.size();
+      |           ^~~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/../../ThirdParty/kaldi-native-fbank/csrc/feature-window.cc:133:11: warning: unused variable 'end_sample' [-Wunused-variable]
+  133 |   int64_t end_sample = start_sample + frame_length;
+      |           ^~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/../../ThirdParty/kaldi-native-fbank/csrc/feature-window.cc:158:29: warning: implicit conversion loses integer precision: 'size_type' (aka 'unsigned long') to 'int32_t' (aka 'int') [-Wshorten-64-to-32]
+  158 |     int32_t wave_dim = wave.size();
+      |             ~~~~~~~~   ~~~~~^~~~~~
+In file included from /Users/rocky/Sites/fastv/fastv/Services/KaldiFbankBridge.mm:22:
+/Users/rocky/Sites/fastv/fastv/Services/../../ThirdParty/kaldi-native-fbank/csrc/feature-functions.cc:29:30: warning: implicit conversion loses integer precision: 'size_type' (aka 'unsigned long') to 'int32_t' (aka 'int') [-Wshorten-64-to-32]
+   29 |   int32_t dim = complex_fft->size();
+      |           ~~~   ~~~~~~~~~~~~~^~~~~~
+In file included from /Users/rocky/Sites/fastv/fastv/Services/KaldiFbankBridge.mm:23:
+/Users/rocky/Sites/fastv/fastv/Services/../../ThirdParty/kaldi-native-fbank/csrc/mel-computations.cc:226:28: warning: implicit conversion loses integer precision: 'size_type' (aka 'unsigned long') to 'int32_t' (aka 'int') [-Wshorten-64-to-32]
+  226 |   int32_t num_bins = bins_.size();
+      |           ~~~~~~~~   ~~~~~~^~~~~~
+In file included from /Users/rocky/Sites/fastv/fastv/Services/KaldiFbankBridge.mm:24:
+/Users/rocky/Sites/fastv/fastv/Services/../../ThirdParty/kaldi-native-fbank/csrc/feature-fbank.cc:83:52: warning: implicit conversion loses integer precision: 'size_type' (aka 'unsigned long') to 'int32_t' (aka 'int') [-Wshorten-64-to-32]
+   82 |         std::max<float>(InnerProduct(signal_frame->data(), signal_frame->data(),
+      |                         ~~~~~~~~~~~~
+   83 |                                      signal_frame->size()),
+      |                                      ~~~~~~~~~~~~~~^~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/../../ThirdParty/kaldi-native-fbank/csrc/feature-fbank.cc:91:57: warning: implicit conversion loses integer precision: 'size_type' (aka 'unsigned long') to 'int32_t' (aka 'int') [-Wshorten-64-to-32]
+   91 |     Sqrt(signal_frame->data(), signal_frame->size() / 2 + 1);
+      |     ~~~~                       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~
+In file included from /Users/rocky/Sites/fastv/fastv/Services/KaldiFbankBridge.mm:26:
+/Users/rocky/Sites/fastv/fastv/Services/../../ThirdParty/kaldi-native-fbank/csrc/online-feature.cc:140:59: warning: implicit conversion loses integer precision: 'int64_t' (aka 'long long') to 'int32_t' (aka 'int') [-Wshorten-64-to-32]
+  140 |   int32_t samples_to_discard = first_sample_of_next_frame - waveform_offset_;
+      |           ~~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+/Users/rocky/Sites/fastv/fastv/Services/../../ThirdParty/kaldi-native-fbank/csrc/online-feature.cc:163:16: note: in instantiation of member function 'knf::OnlineGenericBaseFeature<knf::FbankComputer>::ComputeFeatures' requested here
+  163 | template class OnlineGenericBaseFeature<FbankComputer>;
+      |                ^
+In file included from /Users/rocky/Sites/fastv/fastv/Services/KaldiFbankBridge.mm:20:
+/Users/rocky/Sites/fastv/fastv/Services/../../ThirdParty/kaldi-native-fbank/csrc/log.cc:51:13: warning: unused function 'LocateSymbolRange' [-Wunused-function]
+   51 | static bool LocateSymbolRange(const std::string &trace_name, std::size_t *begin,
+      |             ^~~~~~~~~~~~~~~~~
+14 warnings generated.
+
+SwiftDriverJobDiscovery normal arm64 Compiling AppState.swift, DownloadState.swift, TranscriptLanguage.swift, UserPreferences.swift, VideoProcessingError.swift (in target 'fastv' from project 'fastv')
+
+SwiftDriverJobDiscovery normal arm64 Compiling WelcomeView.swift, ContentView.swift, fastvApp.swift, GeneratedAssetSymbols.swift (in target 'fastv' from project 'fastv')
+
+SwiftDriverJobDiscovery normal arm64 Compiling VoiceInputService.swift, AppVersionManager.swift, FileManager+Extensions.swift, LocalizationManager.swift (in target 'fastv' from project 'fastv')
+
+SwiftDriverJobDiscovery normal arm64 Compiling SpeechTranscriber.swift, StatusBarManager.swift, TextCorrectionService.swift, TextInsertionService.swift (in target 'fastv' from project 'fastv')
+
+SwiftDriverJobDiscovery normal arm64 Compiling ModelDownloader.swift, OllamaService.swift, ONNXRuntimeCWrapper.swift, ONNXRuntimeWrapper.swift (in target 'fastv' from project 'fastv')
+
+SwiftDriverJobDiscovery normal arm64 Compiling AudioFeatureExtractor.swift, CoreMLWrapper.swift, GlobalShortcutMonitor.swift, KaldiFbankWrapper.swift (in target 'fastv' from project 'fastv')
+
+SwiftDriverJobDiscovery normal arm64 Compiling OnboardingView.swift, SettingsView.swift, VoiceInputView.swift, WaveformView.swift (in target 'fastv' from project 'fastv')
+
+SwiftDriver\ Compilation fastv normal arm64 com.apple.xcode.tools.swift.compiler (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name fastv -Onone -enforce-exclusivity\=checked @/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.SwiftFileList -DDEBUG -default-isolation\=MainActor -enable-bare-slash-regex -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk -target arm64-apple-macos26.0 -g -module-cache-path /Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug -F /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug -emit-localized-strings -emit-localized-strings-path /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/rocky/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx26.0-25A352-28806144b0707e398aac92880fa50324.sdkstatcache -output-file-map /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv_const_extract_protocols.json -Xcc -iquote -Xcc /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-generated-files.hmap -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-own-target-headers.hmap -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-all-target-headers.hmap -Xcc -iquote -Xcc /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-project-headers.hmap -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/include -Xcc -I/Users/rocky/Sites/fastv/Libraries/onnxruntime/current/include -Xcc -I/Users/rocky/Sites/fastv/ThirdParty -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources-normal/arm64 -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources/arm64 -Xcc -I/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv-Swift.h -import-objc-header /Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeBridge.h -working-directory /Users/rocky/Sites/fastv -experimental-emit-module-separately -disable-cmo
+
+Ld /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS/fastv.debug.dylib normal (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++ -Xlinker -reproducible -target arm64-apple-macos26.0 -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk -O0 -L/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -L/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug -L/Users/rocky/Sites/fastv/Libraries/onnxruntime/current/lib -F/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug -filelist /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.LinkFileList -install_name @rpath/fastv.debug.dylib -Xlinker -rpath -Xlinker @executable_path/../Frameworks -Xlinker -rpath -Xlinker /Users/rocky/Sites/fastv/Libraries/onnxruntime/current/lib -Xlinker -object_path_lto -Xlinker /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -debug_variant -Xlinker -dependency_info -Xlinker /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv_dependency_info.dat -fobjc-arc -fobjc-link-runtime -fprofile-instr-generate -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.swiftmodule @/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv-linker-args.resp -lonnxruntime -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -Xlinker -no_adhoc_codesign -o /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS/fastv.debug.dylib
+
+ConstructStubExecutorLinkFileList /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-ExecutorLinkFileList-normal-arm64.txt (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    construct-stub-executor-link-file-list /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS/fastv.debug.dylib /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-ExecutorLinkFileList-normal-arm64.txt
+note: Using stub executor library with Swift entry point. (in target 'fastv' from project 'fastv')
+
+Ld /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS/fastv normal (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++ -Xlinker -reproducible -target arm64-apple-macos26.0 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk -O0 -L/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug -L/Users/rocky/Sites/fastv/Libraries/onnxruntime/current/lib -F/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker @executable_path/../Frameworks -Xlinker -rpath -Xlinker /Users/rocky/Sites/fastv/Libraries/onnxruntime/current/lib -rdynamic -Xlinker -no_deduplicate -Xlinker -debug_variant -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-ExecutorLinkFileList-normal-arm64.txt /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS/fastv.debug.dylib -Xlinker -no_adhoc_codesign -o /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS/fastv
+
+PhaseScriptExecution Copy\ ONNX\ Runtime\ Library /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Script-5C0423AC2ECD793000821B50.sh (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    export ACTION\=build
+    export AD_HOC_CODE_SIGNING_ALLOWED\=YES
+    export AGGREGATE_TRACKED_DOMAINS\=YES
+    export ALLOW_BUILD_REQUEST_OVERRIDES\=NO
+    export ALLOW_TARGET_PLATFORM_SPECIALIZATION\=NO
+    export ALTERNATE_GROUP\=staff
+    export ALTERNATE_MODE\=u+w,go-w,a+rX
+    export ALTERNATE_OWNER\=rocky
+    export ALTERNATIVE_DISTRIBUTION_WEB\=NO
+    export ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES\=NO
+    export ALWAYS_SEARCH_USER_PATHS\=NO
+    export ALWAYS_USE_SEPARATE_HEADERMAPS\=NO
+    export APPLICATION_EXTENSION_API_ONLY\=NO
+    export APPLY_RULES_IN_COPY_FILES\=NO
+    export APPLY_RULES_IN_COPY_HEADERS\=NO
+    export APP_SHORTCUTS_ENABLE_FLEXIBLE_MATCHING\=YES
+    export ARCHS\=arm64
+    export ARCHS_STANDARD\=arm64\ x86_64
+    export ARCHS_STANDARD_32_64_BIT\=arm64\ x86_64\ i386
+    export ARCHS_STANDARD_32_BIT\=i386
+    export ARCHS_STANDARD_64_BIT\=arm64\ x86_64
+    export ARCHS_STANDARD_INCLUDING_64_BIT\=arm64\ x86_64
+    export ASSETCATALOG_COMPILER_APPICON_NAME\=AppIcon
+    export ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS\=YES
+    export ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME\=AccentColor
+    export AUTOMATICALLY_MERGE_DEPENDENCIES\=NO
+    export AUTOMATION_APPLE_EVENTS\=NO
+    export AVAILABLE_PLATFORMS\=android\ appletvos\ appletvsimulator\ driverkit\ iphoneos\ iphonesimulator\ macosx\ qnx\ watchos\ watchsimulator\ webassembly\ xros\ xrsimulator
+    export AppIdentifierPrefix\=W49B66SUW3.
+    export BUILD_ACTIVE_RESOURCES_ONLY\=NO
+    export BUILD_COMPONENTS\=headers\ build
+    export BUILD_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products
+    export BUILD_LIBRARY_FOR_DISTRIBUTION\=NO
+    export BUILD_ROOT\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products
+    export BUILD_STYLE\=
+    export BUILD_VARIANTS\=normal
+    export BUILT_PRODUCTS_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug
+    export BUNDLE_CONTENTS_FOLDER_PATH\=Contents/
+    export BUNDLE_CONTENTS_FOLDER_PATH_deep\=Contents/
+    export BUNDLE_EXECUTABLE_FOLDER_NAME_deep\=MacOS
+    export BUNDLE_EXECUTABLE_FOLDER_PATH\=Contents/MacOS
+    export BUNDLE_EXTENSIONS_FOLDER_PATH\=Contents/Extensions
+    export BUNDLE_FORMAT\=deep
+    export BUNDLE_FRAMEWORKS_FOLDER_PATH\=Contents/Frameworks
+    export BUNDLE_PLUGINS_FOLDER_PATH\=Contents/PlugIns
+    export BUNDLE_PRIVATE_HEADERS_FOLDER_PATH\=Contents/PrivateHeaders
+    export BUNDLE_PUBLIC_HEADERS_FOLDER_PATH\=Contents/Headers
+    export CACHE_ROOT\=/var/folders/np/rjc0y5w52x324x21pv6g33440000gp/C/com.apple.DeveloperTools/26.0.1-17A400/Xcode
+    export CCHROOT\=/var/folders/np/rjc0y5w52x324x21pv6g33440000gp/C/com.apple.DeveloperTools/26.0.1-17A400/Xcode
+    export CHMOD\=/bin/chmod
+    export CHOWN\=/usr/sbin/chown
+    export CLANG_ANALYZER_NONNULL\=YES
+    export CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION\=YES_AGGRESSIVE
+    export CLANG_CACHE_FINE_GRAINED_OUTPUTS\=YES
+    export CLANG_COVERAGE_MAPPING\=YES
+    export CLANG_CXX_LANGUAGE_STANDARD\=gnu++20
+    export CLANG_ENABLE_EXPLICIT_MODULES\=YES
+    export CLANG_ENABLE_MODULES\=YES
+    export CLANG_ENABLE_OBJC_ARC\=YES
+    export CLANG_ENABLE_OBJC_WEAK\=YES
+    export CLANG_MODULES_BUILD_SESSION_FILE\=/Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation
+    export CLANG_PROFILE_DATA_DIRECTORY\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/ProfileData
+    export CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING\=YES
+    export CLANG_WARN_BOOL_CONVERSION\=YES
+    export CLANG_WARN_COMMA\=YES
+    export CLANG_WARN_CONSTANT_CONVERSION\=YES
+    export CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS\=YES
+    export CLANG_WARN_DIRECT_OBJC_ISA_USAGE\=YES_ERROR
+    export CLANG_WARN_DOCUMENTATION_COMMENTS\=YES
+    export CLANG_WARN_EMPTY_BODY\=YES
+    export CLANG_WARN_ENUM_CONVERSION\=YES
+    export CLANG_WARN_INFINITE_RECURSION\=YES
+    export CLANG_WARN_INT_CONVERSION\=YES
+    export CLANG_WARN_NON_LITERAL_NULL_CONVERSION\=YES
+    export CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF\=YES
+    export CLANG_WARN_OBJC_LITERAL_CONVERSION\=YES
+    export CLANG_WARN_OBJC_ROOT_CLASS\=YES_ERROR
+    export CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER\=YES
+    export CLANG_WARN_RANGE_LOOP_ANALYSIS\=YES
+    export CLANG_WARN_STRICT_PROTOTYPES\=YES
+    export CLANG_WARN_SUSPICIOUS_MOVE\=YES
+    export CLANG_WARN_UNGUARDED_AVAILABILITY\=YES_AGGRESSIVE
+    export CLANG_WARN_UNREACHABLE_CODE\=YES
+    export CLANG_WARN__DUPLICATE_METHOD_MATCH\=YES
+    export CLASS_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/JavaClasses
+    export CLEAN_PRECOMPS\=YES
+    export CLONE_HEADERS\=NO
+    export CODESIGNING_FOLDER_PATH\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app
+    export CODE_SIGNING_ALLOWED\=YES
+    export CODE_SIGNING_REQUIRED\=YES
+    export CODE_SIGN_ENTITLEMENTS\=fastv/fastv.entitlements
+    export CODE_SIGN_IDENTITY\=Apple\ Development
+    export CODE_SIGN_IDENTITY_NO\=Apple\ Development
+    export CODE_SIGN_IDENTITY_YES\=-
+    export CODE_SIGN_INJECT_BASE_ENTITLEMENTS\=YES
+    export CODE_SIGN_STYLE\=Automatic
+    export COLOR_DIAGNOSTICS\=NO
+    export COMBINE_HIDPI_IMAGES\=YES
+    export COMPILATION_CACHE_CAS_PATH\=/Users/rocky/Library/Developer/Xcode/DerivedData/CompilationCache.noindex
+    export COMPILATION_CACHE_KEEP_CAS_DIRECTORY\=YES
+    export COMPILER_INDEX_STORE_ENABLE\=Default
+    export COMPOSITE_SDK_DIRS\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/CompositeSDKs
+    export COMPRESS_PNG_FILES\=NO
+    export CONFIGURATION\=Debug
+    export CONFIGURATION_BUILD_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug
+    export CONFIGURATION_TEMP_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug
+    export CONTENTS_FOLDER_PATH\=fastv.app/Contents
+    export CONTENTS_FOLDER_PATH_SHALLOW_BUNDLE_NO\=fastv.app/Contents
+    export CONTENTS_FOLDER_PATH_SHALLOW_BUNDLE_YES\=fastv.app
+    export COPYING_PRESERVES_HFS_DATA\=NO
+    export COPY_HEADERS_RUN_UNIFDEF\=NO
+    export COPY_PHASE_STRIP\=NO
+    export CP\=/bin/cp
+    export CREATE_INFOPLIST_SECTION_IN_BINARY\=NO
+    export CURRENT_ARCH\=undefined_arch
+    export CURRENT_PROJECT_VERSION\=1
+    export CURRENT_VARIANT\=normal
+    export DEAD_CODE_STRIPPING\=NO
+    export DEBUGGING_SYMBOLS\=YES
+    export DEBUG_INFORMATION_FORMAT\=dwarf
+    export DEBUG_INFORMATION_VERSION\=compiler-default
+    export DEFAULT_COMPILER\=com.apple.compilers.llvm.clang.1_0
+    export DEFAULT_DEXT_INSTALL_PATH\=/System/Library/DriverExtensions
+    export DEFAULT_KEXT_INSTALL_PATH\=/System/Library/Extensions
+    export DEFINES_MODULE\=NO
+    export DEPLOYMENT_LOCATION\=NO
+    export DEPLOYMENT_POSTPROCESSING\=NO
+    export DEPLOYMENT_TARGET_SETTING_NAME\=MACOSX_DEPLOYMENT_TARGET
+    export DEPLOYMENT_TARGET_SUGGESTED_VALUES\=10.13\ 10.14\ 10.15\ 11.0\ 11.1\ 11.2\ 11.3\ 11.4\ 11.5\ 12.0\ 12.2\ 12.3\ 12.4\ 13.0\ 13.1\ 13.2\ 13.3\ 13.4\ 13.5\ 14.0\ 14.1\ 14.2\ 14.3\ 14.4\ 14.5\ 14.6\ 15.0\ 15.1\ 15.2\ 15.3\ 15.4\ 15.5\ 15.6\ 26.0
+    export DERIVED_FILES_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources
+    export DERIVED_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources
+    export DERIVED_SOURCES_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources
+    export DEVELOPER_APPLICATIONS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications
+    export DEVELOPER_BIN_DIR\=/Applications/Xcode.app/Contents/Developer/usr/bin
+    export DEVELOPER_DIR\=/Applications/Xcode.app/Contents/Developer
+    export DEVELOPER_FRAMEWORKS_DIR\=/Applications/Xcode.app/Contents/Developer/Library/Frameworks
+    export DEVELOPER_FRAMEWORKS_DIR_QUOTED\=/Applications/Xcode.app/Contents/Developer/Library/Frameworks
+    export DEVELOPER_LIBRARY_DIR\=/Applications/Xcode.app/Contents/Developer/Library
+    export DEVELOPER_SDK_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs
+    export DEVELOPER_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Tools
+    export DEVELOPER_USR_DIR\=/Applications/Xcode.app/Contents/Developer/usr
+    export DEVELOPMENT_LANGUAGE\=en
+    export DEVELOPMENT_TEAM\=W49B66SUW3
+    export DIAGNOSE_MISSING_TARGET_DEPENDENCIES\=YES
+    export DIFF\=/usr/bin/diff
+    export DOCUMENTATION_FOLDER_PATH\=fastv.app/Contents/Resources/en.lproj/Documentation
+    export DONT_GENERATE_INFOPLIST_FILE\=NO
+    export DSTROOT\=/tmp/fastv.dst
+    export DT_TOOLCHAIN_DIR\=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain
+    export DWARF_DSYM_FILE_NAME\=fastv.app.dSYM
+    export DWARF_DSYM_FILE_SHOULD_ACCOMPANY_PRODUCT\=NO
+    export DWARF_DSYM_FOLDER_PATH\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug
+    export DYNAMIC_LIBRARY_EXTENSION\=dylib
+    export EAGER_COMPILATION_ALLOW_SCRIPTS\=NO
+    export EAGER_LINKING\=NO
+    export EMBEDDED_CONTENT_CONTAINS_SWIFT\=NO
+    export EMBEDDED_PROFILE_NAME\=embedded.provisionprofile
+    export EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE\=NO
+    export ENABLE_APP_SANDBOX\=NO
+    export ENABLE_CODE_COVERAGE\=YES
+    export ENABLE_CPLUSPLUS_BOUNDS_SAFE_BUFFERS\=NO
+    export ENABLE_C_BOUNDS_SAFETY\=NO
+    export ENABLE_DEBUG_DYLIB\=YES
+    export ENABLE_DEFAULT_HEADER_SEARCH_PATHS\=YES
+    export ENABLE_DEFAULT_SEARCH_PATHS\=YES
+    export ENABLE_ENHANCED_SECURITY\=NO
+    export ENABLE_HARDENED_RUNTIME\=YES
+    export ENABLE_HEADER_DEPENDENCIES\=YES
+    export ENABLE_INCOMING_NETWORK_CONNECTIONS\=NO
+    export ENABLE_ON_DEMAND_RESOURCES\=NO
+    export ENABLE_OUTGOING_NETWORK_CONNECTIONS\=NO
+    export ENABLE_POINTER_AUTHENTICATION\=NO
+    export ENABLE_PREVIEWS\=NO
+    export ENABLE_RESOURCE_ACCESS_AUDIO_INPUT\=NO
+    export ENABLE_RESOURCE_ACCESS_BLUETOOTH\=NO
+    export ENABLE_RESOURCE_ACCESS_CALENDARS\=NO
+    export ENABLE_RESOURCE_ACCESS_CAMERA\=NO
+    export ENABLE_RESOURCE_ACCESS_CONTACTS\=NO
+    export ENABLE_RESOURCE_ACCESS_LOCATION\=NO
+    export ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY\=NO
+    export ENABLE_RESOURCE_ACCESS_PRINTING\=NO
+    export ENABLE_RESOURCE_ACCESS_USB\=NO
+    export ENABLE_SDK_IMPORTS\=NO
+    export ENABLE_SECURITY_COMPILER_WARNINGS\=NO
+    export ENABLE_STRICT_OBJC_MSGSEND\=YES
+    export ENABLE_TESTABILITY\=YES
+    export ENABLE_TESTING_SEARCH_PATHS\=NO
+    export ENABLE_USER_SCRIPT_SANDBOXING\=NO
+    export ENABLE_XOJIT_PREVIEWS\=YES
+    export ENFORCE_VALID_ARCHS\=YES
+    export ENTITLEMENTS_ALLOWED\=YES
+    export ENTITLEMENTS_DESTINATION\=Signature
+    export ENTITLEMENTS_REQUIRED\=NO
+    export EXCLUDED_INSTALLSRC_SUBDIRECTORY_PATTERNS\=.DS_Store\ .svn\ .git\ .hg\ CVS
+    export EXCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES\=\*.nib\ \*.lproj\ \*.framework\ \*.gch\ \*.xcode\*\ \*.xcassets\ \*.icon\ \(\*\)\ .DS_Store\ CVS\ .svn\ .git\ .hg\ \*.pbproj\ \*.pbxproj
+    export EXECUTABLES_FOLDER_PATH\=fastv.app/Contents/Executables
+    export EXECUTABLE_BLANK_INJECTION_DYLIB_PATH\=fastv.app/Contents/MacOS/__preview.dylib
+    export EXECUTABLE_DEBUG_DYLIB_INSTALL_NAME\=@rpath/fastv.debug.dylib
+    export EXECUTABLE_DEBUG_DYLIB_PATH\=fastv.app/Contents/MacOS/fastv.debug.dylib
+    export EXECUTABLE_FOLDER_PATH\=fastv.app/Contents/MacOS
+    export EXECUTABLE_FOLDER_PATH_SHALLOW_BUNDLE_NO\=fastv.app/Contents/MacOS
+    export EXECUTABLE_FOLDER_PATH_SHALLOW_BUNDLE_YES\=fastv.app/Contents
+    export EXECUTABLE_NAME\=fastv
+    export EXECUTABLE_PATH\=fastv.app/Contents/MacOS/fastv
+    export EXPANDED_CODE_SIGN_IDENTITY\=03CC6DE756E360BB56BEBFEA4D0C13038F8CF21A
+    export EXPANDED_CODE_SIGN_IDENTITY_NAME\=Apple\ Development:\ suhang\ hu\ \(9K5FH5XTHD\)
+    export EXTENSIONS_FOLDER_PATH\=fastv.app/Contents/Extensions
+    export FILE_LIST\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects/LinkFileList
+    export FIXED_FILES_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/FixedFiles
+    export FRAMEWORKS_FOLDER_PATH\=fastv.app/Contents/Frameworks
+    export FRAMEWORK_FLAG_PREFIX\=-framework
+    export FRAMEWORK_SEARCH_PATHS\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug\ 
+    export FRAMEWORK_VERSION\=A
+    export FULL_PRODUCT_NAME\=fastv.app
+    export FUSE_BUILD_PHASES\=YES
+    export FUSE_BUILD_SCRIPT_PHASES\=NO
+    export GCC3_VERSION\=3.3
+    export GCC_C_LANGUAGE_STANDARD\=gnu17
+    export GCC_DYNAMIC_NO_PIC\=NO
+    export GCC_INLINES_ARE_PRIVATE_EXTERN\=YES
+    export GCC_NO_COMMON_BLOCKS\=YES
+    export GCC_OPTIMIZATION_LEVEL\=0
+    export GCC_PFE_FILE_C_DIALECTS\=c\ objective-c\ c++\ objective-c++
+    export GCC_PREPROCESSOR_DEFINITIONS\=DEBUG\=1\ 
+    export GCC_SYMBOLS_PRIVATE_EXTERN\=NO
+    export GCC_TREAT_WARNINGS_AS_ERRORS\=NO
+    export GCC_VERSION\=com.apple.compilers.llvm.clang.1_0
+    export GCC_VERSION_IDENTIFIER\=com_apple_compilers_llvm_clang_1_0
+    export GCC_WARN_64_TO_32_BIT_CONVERSION\=YES
+    export GCC_WARN_ABOUT_RETURN_TYPE\=YES_ERROR
+    export GCC_WARN_UNDECLARED_SELECTOR\=YES
+    export GCC_WARN_UNINITIALIZED_AUTOS\=YES_AGGRESSIVE
+    export GCC_WARN_UNUSED_FUNCTION\=YES
+    export GCC_WARN_UNUSED_VARIABLE\=YES
+    export GENERATED_MODULEMAP_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/GeneratedModuleMaps
+    export GENERATE_INFOPLIST_FILE\=YES
+    export GENERATE_INTERMEDIATE_TEXT_BASED_STUBS\=YES
+    export GENERATE_PKGINFO_FILE\=YES
+    export GENERATE_PRELINK_OBJECT_FILE\=NO
+    export GENERATE_PROFILING_CODE\=NO
+    export GENERATE_TEXT_BASED_STUBS\=NO
+    export GID\=20
+    export GROUP\=staff
+    export HEADERMAP_INCLUDES_FLAT_ENTRIES_FOR_TARGET_BEING_BUILT\=YES
+    export HEADERMAP_INCLUDES_FRAMEWORK_ENTRIES_FOR_ALL_PRODUCT_TYPES\=YES
+    export HEADERMAP_INCLUDES_FRAMEWORK_ENTRIES_FOR_TARGETS_NOT_BEING_BUILT\=YES
+    export HEADERMAP_INCLUDES_NONPUBLIC_NONPRIVATE_HEADERS\=YES
+    export HEADERMAP_INCLUDES_PROJECT_HEADERS\=YES
+    export HEADERMAP_USES_FRAMEWORK_PREFIX_ENTRIES\=YES
+    export HEADERMAP_USES_VFS\=NO
+    export HEADER_SEARCH_PATHS\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/include\ \ /Users/rocky/Sites/fastv/Libraries/onnxruntime/current/include\ /Users/rocky/Sites/fastv/ThirdParty
+    export HOME\=/Users/rocky
+    export HOST_ARCH\=arm64
+    export HOST_PLATFORM\=macosx
+    export ICONV\=/usr/bin/iconv
+    export IMPLICIT_DEPENDENCY_DOMAIN\=default
+    export INFOPLIST_ENABLE_CFBUNDLEICONS_MERGE\=YES
+    export INFOPLIST_EXPAND_BUILD_SETTINGS\=YES
+    export INFOPLIST_KEY_CFBundleShortVersionString\=1.0
+    export INFOPLIST_KEY_CFBundleVersion\=1
+    export INFOPLIST_KEY_NSAppleEventsUsageDescription\=妙打\ 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。
+    export INFOPLIST_KEY_NSMicrophoneUsageDescription\=妙打\ 需要访问您的麦克风以进行语音输入和语音转文字功能。
+    export INFOPLIST_OUTPUT_FORMAT\=same-as-input
+    export INFOPLIST_PATH\=fastv.app/Contents/Info.plist
+    export INFOPLIST_PREPROCESS\=NO
+    export INFOSTRINGS_PATH\=fastv.app/Contents/Resources/en.lproj/InfoPlist.strings
+    export INLINE_PRIVATE_FRAMEWORKS\=NO
+    export INSTALLAPI_IGNORE_SKIP_INSTALL\=YES
+    export INSTALLHDRS_COPY_PHASE\=NO
+    export INSTALLHDRS_SCRIPT_PHASE\=NO
+    export INSTALL_DIR\=/tmp/fastv.dst/Applications
+    export INSTALL_GROUP\=staff
+    export INSTALL_MODE_FLAG\=u+w,go-w,a+rX
+    export INSTALL_OWNER\=rocky
+    export INSTALL_PATH\=/Applications
+    export INSTALL_ROOT\=/tmp/fastv.dst
+    export IOS_UNZIPPERED_TWIN_PREFIX_PATH\=/System/iOSSupport
+    export IS_MACCATALYST\=NO
+    export IS_UNOPTIMIZED_BUILD\=YES
+    export JAVAC_DEFAULT_FLAGS\=-J-Xms64m\ -J-XX:NewSize\=4M\ -J-Dfile.encoding\=UTF8
+    export JAVA_APP_STUB\=/System/Library/Frameworks/JavaVM.framework/Resources/MacOS/JavaApplicationStub
+    export JAVA_ARCHIVE_CLASSES\=YES
+    export JAVA_ARCHIVE_TYPE\=JAR
+    export JAVA_COMPILER\=/usr/bin/javac
+    export JAVA_FOLDER_PATH\=fastv.app/Contents/Resources/Java
+    export JAVA_FRAMEWORK_RESOURCES_DIRS\=Resources
+    export JAVA_JAR_FLAGS\=cv
+    export JAVA_SOURCE_SUBDIR\=.
+    export JAVA_USE_DEPENDENCIES\=YES
+    export JAVA_ZIP_FLAGS\=-urg
+    export JIKES_DEFAULT_FLAGS\=+E\ +OLDCSO
+    export KASAN_CFLAGS_CLASSIC\=-DKASAN\=1\ -DKASAN_CLASSIC\=1\ -fsanitize\=address\ -mllvm\ -asan-globals-live-support\ -mllvm\ -asan-force-dynamic-shadow
+    export KASAN_CFLAGS_TBI\=-DKASAN\=1\ -DKASAN_TBI\=1\ -fsanitize\=kernel-hwaddress\ -mllvm\ -hwasan-recover\=0\ -mllvm\ -hwasan-instrument-atomics\=0\ -mllvm\ -hwasan-instrument-stack\=1\ -mllvm\ -hwasan-generate-tags-with-calls\=1\ -mllvm\ -hwasan-instrument-with-calls\=1\ -mllvm\ -hwasan-use-short-granules\=0\ -mllvm\ -hwasan-memory-access-callback-prefix\=__asan_
+    export KASAN_DEFAULT_CFLAGS\=-DKASAN\=1\ -DKASAN_CLASSIC\=1\ -fsanitize\=address\ -mllvm\ -asan-globals-live-support\ -mllvm\ -asan-force-dynamic-shadow
+    export KEEP_PRIVATE_EXTERNS\=NO
+    export LD_DEPENDENCY_INFO_FILE\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/undefined_arch/fastv_dependency_info.dat
+    export LD_EXPORT_SYMBOLS\=YES
+    export LD_GENERATE_MAP_FILE\=NO
+    export LD_MAP_FILE_PATH\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-LinkMap-normal-undefined_arch.txt
+    export LD_NO_PIE\=NO
+    export LD_QUOTE_LINKER_ARGUMENTS_FOR_COMPILER_DRIVER\=YES
+    export LD_RUNPATH_SEARCH_PATHS\=\ @executable_path/../Frameworks\ /Users/rocky/Sites/fastv/Libraries/onnxruntime/current/lib
+    export LD_RUNPATH_SEARCH_PATHS_YES\=@loader_path/../Frameworks
+    export LD_SHARED_CACHE_ELIGIBLE\=Automatic
+    export LD_WARN_DUPLICATE_LIBRARIES\=NO
+    export LD_WARN_UNUSED_DYLIBS\=NO
+    export LEGACY_DEVELOPER_DIR\=/Applications/Xcode.app/Contents/PlugIns/Xcode3Core.ideplugin/Contents/SharedSupport/Developer
+    export LEX\=lex
+    export LIBRARY_DEXT_INSTALL_PATH\=/Library/DriverExtensions
+    export LIBRARY_FLAG_NOSPACE\=YES
+    export LIBRARY_FLAG_PREFIX\=-l
+    export LIBRARY_KEXT_INSTALL_PATH\=/Library/Extensions
+    export LIBRARY_SEARCH_PATHS\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug\ \ /Users/rocky/Sites/fastv/Libraries/onnxruntime/current/lib
+    export LINKER_DISPLAYS_MANGLED_NAMES\=NO
+    export LINK_FILE_LIST_normal_arm64\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.LinkFileList
+    export LINK_OBJC_RUNTIME\=YES
+    export LINK_WITH_STANDARD_LIBRARIES\=YES
+    export LLVM_TARGET_TRIPLE_OS_VERSION\=macos26.0
+    export LLVM_TARGET_TRIPLE_OS_VERSION_NO\=macos26.0
+    export LLVM_TARGET_TRIPLE_OS_VERSION_YES\=macos26.0
+    export LLVM_TARGET_TRIPLE_VENDOR\=apple
+    export LM_AUX_CONST_METADATA_LIST_PATH_normal_arm64\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.SwiftConstValuesFileList
+    export LOCALIZATION_EXPORT_SUPPORTED\=YES
+    export LOCALIZATION_PREFERS_STRING_CATALOGS\=YES
+    export LOCALIZED_RESOURCES_FOLDER_PATH\=fastv.app/Contents/Resources/en.lproj
+    export LOCALIZED_STRING_MACRO_NAMES\=NSLocalizedString\ CFCopyLocalizedString
+    export LOCALIZED_STRING_SWIFTUI_SUPPORT\=YES
+    export LOCAL_ADMIN_APPS_DIR\=/Applications/Utilities
+    export LOCAL_APPS_DIR\=/Applications
+    export LOCAL_DEVELOPER_DIR\=/Library/Developer
+    export LOCAL_LIBRARY_DIR\=/Library
+    export LOCROOT\=/Users/rocky/Sites/fastv
+    export LOCSYMROOT\=/Users/rocky/Sites/fastv
+    export MACH_O_TYPE\=mh_execute
+    export MACOSX_DEPLOYMENT_TARGET\=26.0
+    export MAC_OS_X_PRODUCT_BUILD_VERSION\=25B78
+    export MAC_OS_X_VERSION_ACTUAL\=260100
+    export MAC_OS_X_VERSION_MAJOR\=260000
+    export MAC_OS_X_VERSION_MINOR\=260100
+    export MAKE_MERGEABLE\=NO
+    export MARKETING_VERSION\=1.0
+    export MERGEABLE_LIBRARY\=NO
+    export MERGED_BINARY_TYPE\=none
+    export MERGE_LINKED_LIBRARIES\=NO
+    export METAL_LIBRARY_FILE_BASE\=default
+    export METAL_LIBRARY_OUTPUT_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources
+    export MODULES_FOLDER_PATH\=fastv.app/Contents/Modules
+    export MODULE_CACHE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex
+    export MTL_ENABLE_DEBUG_INFO\=INCLUDE_SOURCE
+    export MTL_FAST_MATH\=YES
+    export NATIVE_ARCH\=arm64
+    export NATIVE_ARCH_32_BIT\=arm
+    export NATIVE_ARCH_64_BIT\=arm64
+    export NATIVE_ARCH_ACTUAL\=arm64
+    export NO_COMMON\=YES
+    export OBJECT_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects
+    export OBJECT_FILE_DIR_normal\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal
+    export OBJROOT\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex
+    export ONLY_ACTIVE_ARCH\=YES
+    export OS\=MACOS
+    export OSAC\=/usr/bin/osacompile
+    export OTHER_LDFLAGS\=\ -lonnxruntime
+    export PACKAGE_TYPE\=com.apple.package-type.wrapper.application
+    export PASCAL_STRINGS\=YES
+    export PATH\=/Applications/Xcode.app/Contents/SharedFrameworks/SwiftBuild.framework/Versions/A/PlugIns/SWBBuildService.bundle/Contents/PlugIns/SWBUniversalPlatformPlugin.bundle/Contents/Frameworks/SWBUniversalPlatform.framework/Resources:/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin:/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/local/bin:/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/libexec:/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/usr/bin:/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/usr/local/bin:/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin:/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/local/bin:/Applications/Xcode.app/Contents/Developer/usr/bin:/Applications/Xcode.app/Contents/Developer/usr/local/bin:/opt/homebrew/opt/mysql@8.0/bin:/Users/rocky/bin:/Users/rocky/.local/bin:/usr/local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/opt/pmk/env/global/bin:/Library/Apple/usr/bin:/Applications/VMware\ Fusion.app/Contents/Public:/Users/rocky/.orbstack/bin:/Users/rocky/.cursor/extensions/ms-python.debugpy-2025.14.1-darwin-arm64/bundled/scripts/noConfigScripts
+    export PATH_PREFIXES_EXCLUDED_FROM_HEADER_DEPENDENCIES\=/usr/include\ /usr/local/include\ /System/Library/Frameworks\ /System/Library/PrivateFrameworks\ /Applications/Xcode.app/Contents/Developer/Headers\ /Applications/Xcode.app/Contents/Developer/SDKs\ /Applications/Xcode.app/Contents/Developer/Platforms
+    export PBDEVELOPMENTPLIST_PATH\=fastv.app/Contents/pbdevelopment.plist
+    export PER_ARCH_MODULE_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/undefined_arch
+    export PER_ARCH_OBJECT_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/undefined_arch
+    export PER_VARIANT_OBJECT_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal
+    export PKGINFO_FILE_PATH\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/PkgInfo
+    export PKGINFO_PATH\=fastv.app/Contents/PkgInfo
+    export PLATFORM_DEVELOPER_APPLICATIONS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications
+    export PLATFORM_DEVELOPER_BIN_DIR\=/Applications/Xcode.app/Contents/Developer/usr/bin
+    export PLATFORM_DEVELOPER_LIBRARY_DIR\=/Applications/Xcode.app/Contents/Developer/Library
+    export PLATFORM_DEVELOPER_SDK_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs
+    export PLATFORM_DEVELOPER_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Tools
+    export PLATFORM_DEVELOPER_USR_DIR\=/Applications/Xcode.app/Contents/Developer/usr
+    export PLATFORM_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform
+    export PLATFORM_DISPLAY_NAME\=macOS
+    export PLATFORM_FAMILY_NAME\=macOS
+    export PLATFORM_NAME\=macosx
+    export PLATFORM_PREFERRED_ARCH\=x86_64
+    export PLATFORM_PRODUCT_BUILD_VERSION\=25A352
+    export PLATFORM_REQUIRES_SWIFT_AUTOLINK_EXTRACT\=NO
+    export PLATFORM_REQUIRES_SWIFT_MODULEWRAP\=NO
+    export PLIST_FILE_OUTPUT_FORMAT\=same-as-input
+    export PLUGINS_FOLDER_PATH\=fastv.app/Contents/PlugIns
+    export PRECOMPS_INCLUDE_HEADERS_FROM_BUILT_PRODUCTS_DIR\=YES
+    export PRECOMP_DESTINATION_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/PrefixHeaders
+    export PRIVATE_HEADERS_FOLDER_PATH\=fastv.app/Contents/PrivateHeaders
+    export PROCESSED_INFOPLIST_PATH\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/undefined_arch/Processed-Info.plist
+    export PRODUCT_BUNDLE_IDENTIFIER\=com.wxside.typecho
+    export PRODUCT_BUNDLE_PACKAGE_TYPE\=APPL
+    export PRODUCT_MODULE_NAME\=fastv
+    export PRODUCT_NAME\=fastv
+    export PRODUCT_SETTINGS_PATH\=
+    export PRODUCT_TYPE\=com.apple.product-type.application
+    export PROFILING_CODE\=NO
+    export PROJECT\=fastv
+    export PROJECT_DERIVED_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/DerivedSources
+    export PROJECT_DIR\=/Users/rocky/Sites/fastv
+    export PROJECT_FILE_PATH\=/Users/rocky/Sites/fastv/fastv.xcodeproj
+    export PROJECT_GUID\=ab884a58010cb67c557a72c2858c0598
+    export PROJECT_NAME\=fastv
+    export PROJECT_TEMP_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build
+    export PROJECT_TEMP_ROOT\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex
+    export PROVISIONING_PROFILE_REQUIRED\=NO
+    export PROVISIONING_PROFILE_REQUIRED_YES_YES\=YES
+    export PROVISIONING_PROFILE_SUPPORTED\=YES
+    export PUBLIC_HEADERS_FOLDER_PATH\=fastv.app/Contents/Headers
+    export RECOMMENDED_MACOSX_DEPLOYMENT_TARGET\=11.0
+    export RECURSIVE_SEARCH_PATHS_FOLLOW_SYMLINKS\=YES
+    export REGISTER_APP_GROUPS\=YES
+    export REMOVE_CVS_FROM_RESOURCES\=YES
+    export REMOVE_GIT_FROM_RESOURCES\=YES
+    export REMOVE_HEADERS_FROM_EMBEDDED_BUNDLES\=YES
+    export REMOVE_HG_FROM_RESOURCES\=YES
+    export REMOVE_STATIC_EXECUTABLES_FROM_EMBEDDED_BUNDLES\=YES
+    export REMOVE_SVN_FROM_RESOURCES\=YES
+    export RESCHEDULE_INDEPENDENT_HEADERS_PHASES\=YES
+    export REZ_COLLECTOR_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/ResourceManagerResources
+    export REZ_OBJECTS_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/ResourceManagerResources/Objects
+    export REZ_SEARCH_PATHS\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug\ 
+    export RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES\=NO
+    export RUNTIME_EXCEPTION_ALLOW_JIT\=NO
+    export RUNTIME_EXCEPTION_ALLOW_UNSIGNED_EXECUTABLE_MEMORY\=NO
+    export RUNTIME_EXCEPTION_DEBUGGING_TOOL\=NO
+    export RUNTIME_EXCEPTION_DISABLE_EXECUTABLE_PAGE_PROTECTION\=NO
+    export RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION\=NO
+    export SCAN_ALL_SOURCE_FILES_FOR_INCLUDES\=NO
+    export SCRIPTS_FOLDER_PATH\=fastv.app/Contents/Resources/Scripts
+    export SCRIPT_INPUT_FILE_0\=/Users/rocky/Sites/fastv/Libraries/onnxruntime/current/lib/libonnxruntime.1.23.2.dylib
+    export SCRIPT_INPUT_FILE_COUNT\=1
+    export SCRIPT_INPUT_FILE_LIST_COUNT\=0
+    export SCRIPT_OUTPUT_FILE_0\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Frameworks/libonnxruntime.1.23.2.dylib
+    export SCRIPT_OUTPUT_FILE_COUNT\=1
+    export SCRIPT_OUTPUT_FILE_LIST_COUNT\=0
+    export SDKROOT\=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk
+    export SDK_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk
+    export SDK_DIR_macosx\=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk
+    export SDK_DIR_macosx26_0\=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk
+    export SDK_NAME\=macosx26.0
+    export SDK_NAMES\=macosx26.0
+    export SDK_PRODUCT_BUILD_VERSION\=25A352
+    export SDK_STAT_CACHE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData
+    export SDK_STAT_CACHE_ENABLE\=YES
+    export SDK_STAT_CACHE_PATH\=/Users/rocky/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx26.0-25A352-28806144b0707e398aac92880fa50324.sdkstatcache
+    export SDK_VERSION\=26.0
+    export SDK_VERSION_ACTUAL\=260000
+    export SDK_VERSION_MAJOR\=260000
+    export SDK_VERSION_MINOR\=260000
+    export SED\=/usr/bin/sed
+    export SEPARATE_STRIP\=NO
+    export SEPARATE_SYMBOL_EDIT\=NO
+    export SET_DIR_MODE_OWNER_GROUP\=YES
+    export SET_FILE_MODE_OWNER_GROUP\=NO
+    export SHALLOW_BUNDLE\=NO
+    export SHALLOW_BUNDLE_PLATFORM\=NO
+    export SHALLOW_BUNDLE_TRIPLE\=macos
+    export SHALLOW_BUNDLE_ios_macabi\=NO
+    export SHALLOW_BUNDLE_macos\=NO
+    export SHARED_DERIVED_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/DerivedSources
+    export SHARED_FRAMEWORKS_FOLDER_PATH\=fastv.app/Contents/SharedFrameworks
+    export SHARED_PRECOMPS_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/PrecompiledHeaders
+    export SHARED_SUPPORT_FOLDER_PATH\=fastv.app/Contents/SharedSupport
+    export SKIP_INSTALL\=NO
+    export SOURCE_ROOT\=/Users/rocky/Sites/fastv
+    export SRCROOT\=/Users/rocky/Sites/fastv
+    export STRINGSDATA_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/undefined_arch
+    export STRINGSDATA_ROOT\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build
+    export STRINGS_FILE_INFOPLIST_RENAME\=YES
+    export STRINGS_FILE_OUTPUT_ENCODING\=UTF-16
+    export STRING_CATALOG_GENERATE_SYMBOLS\=YES
+    export STRIP_BITCODE_FROM_COPIED_FILES\=NO
+    export STRIP_INSTALLED_PRODUCT\=NO
+    export STRIP_PNG_TEXT\=NO
+    export STRIP_STYLE\=all
+    export STRIP_SWIFT_SYMBOLS\=YES
+    export SUPPORTED_PLATFORMS\=macosx
+    export SUPPORTS_MACCATALYST\=NO
+    export SUPPORTS_ON_DEMAND_RESOURCES\=NO
+    export SUPPORTS_TEXT_BASED_API\=NO
+    export SUPPRESS_WARNINGS\=NO
+    export SWIFT_ACTIVE_COMPILATION_CONDITIONS\=DEBUG\ 
+    export SWIFT_APPROACHABLE_CONCURRENCY\=YES
+    export SWIFT_DEFAULT_ACTOR_ISOLATION\=MainActor
+    export SWIFT_EMIT_CONST_VALUE_PROTOCOLS\=AppIntent\ EntityQuery\ AppEntity\ TransientEntity\ AppEnum\ AppShortcutProviding\ AppShortcutsProvider\ AnyResolverProviding\ AppIntentsPackage\ DynamicOptionsProvider\ _IntentValueRepresentable\ _AssistantIntentsProvider\ _GenerativeFunctionExtractable\ IntentValueQuery\ Resolver\ AppExtension\ ExtensionPointDefining
+    export SWIFT_EMIT_LOC_STRINGS\=YES
+    export SWIFT_ENABLE_EXPLICIT_MODULES\=YES
+    export SWIFT_OBJC_BRIDGING_HEADER\=/Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeBridge.h
+    export SWIFT_OPTIMIZATION_LEVEL\=-Onone
+    export SWIFT_PLATFORM_TARGET_PREFIX\=macos
+    export SWIFT_RESPONSE_FILE_PATH_normal_arm64\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.SwiftFileList
+    export SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY\=YES
+    export SWIFT_VERSION\=5.0
+    export SYMROOT\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products
+    export SYSTEM_ADMIN_APPS_DIR\=/Applications/Utilities
+    export SYSTEM_APPS_DIR\=/Applications
+    export SYSTEM_CORE_SERVICES_DIR\=/System/Library/CoreServices
+    export SYSTEM_DEMOS_DIR\=/Applications/Extras
+    export SYSTEM_DEVELOPER_APPS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications
+    export SYSTEM_DEVELOPER_BIN_DIR\=/Applications/Xcode.app/Contents/Developer/usr/bin
+    export SYSTEM_DEVELOPER_DEMOS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Utilities/Built\ Examples
+    export SYSTEM_DEVELOPER_DIR\=/Applications/Xcode.app/Contents/Developer
+    export SYSTEM_DEVELOPER_DOC_DIR\=/Applications/Xcode.app/Contents/Developer/ADC\ Reference\ Library
+    export SYSTEM_DEVELOPER_GRAPHICS_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Graphics\ Tools
+    export SYSTEM_DEVELOPER_JAVA_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Java\ Tools
+    export SYSTEM_DEVELOPER_PERFORMANCE_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Performance\ Tools
+    export SYSTEM_DEVELOPER_RELEASENOTES_DIR\=/Applications/Xcode.app/Contents/Developer/ADC\ Reference\ Library/releasenotes
+    export SYSTEM_DEVELOPER_TOOLS\=/Applications/Xcode.app/Contents/Developer/Tools
+    export SYSTEM_DEVELOPER_TOOLS_DOC_DIR\=/Applications/Xcode.app/Contents/Developer/ADC\ Reference\ Library/documentation/DeveloperTools
+    export SYSTEM_DEVELOPER_TOOLS_RELEASENOTES_DIR\=/Applications/Xcode.app/Contents/Developer/ADC\ Reference\ Library/releasenotes/DeveloperTools
+    export SYSTEM_DEVELOPER_USR_DIR\=/Applications/Xcode.app/Contents/Developer/usr
+    export SYSTEM_DEVELOPER_UTILITIES_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Utilities
+    export SYSTEM_DEXT_INSTALL_PATH\=/System/Library/DriverExtensions
+    export SYSTEM_DOCUMENTATION_DIR\=/Library/Documentation
+    export SYSTEM_EXTENSIONS_FOLDER_PATH\=fastv.app/Contents/Library/SystemExtensions
+    export SYSTEM_EXTENSIONS_FOLDER_PATH_SHALLOW_BUNDLE_NO\=fastv.app/Contents/Library/SystemExtensions
+    export SYSTEM_EXTENSIONS_FOLDER_PATH_SHALLOW_BUNDLE_YES\=fastv.app/Contents/SystemExtensions
+    export SYSTEM_KEXT_INSTALL_PATH\=/System/Library/Extensions
+    export SYSTEM_LIBRARY_DIR\=/System/Library
+    export TAPI_DEMANGLE\=YES
+    export TAPI_ENABLE_PROJECT_HEADERS\=NO
+    export TAPI_LANGUAGE\=objective-c
+    export TAPI_LANGUAGE_STANDARD\=compiler-default
+    export TAPI_USE_SRCROOT\=YES
+    export TAPI_VERIFY_MODE\=Pedantic
+    export TARGETNAME\=fastv
+    export TARGET_BUILD_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug
+    export TARGET_NAME\=fastv
+    export TARGET_TEMP_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build
+    export TEMP_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build
+    export TEMP_FILES_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build
+    export TEMP_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build
+    export TEMP_ROOT\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex
+    export TEMP_SANDBOX_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/TemporaryTaskSandboxes
+    export TEST_FRAMEWORK_SEARCH_PATHS\=\ /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks
+    export TEST_LIBRARY_SEARCH_PATHS\=\ /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib
+    export TOOLCHAINS\=com.apple.dt.toolchain.XcodeDefault
+    export TOOLCHAIN_DIR\=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain
+    export TREAT_MISSING_BASELINES_AS_TEST_FAILURES\=NO
+    export TREAT_MISSING_SCRIPT_PHASE_OUTPUTS_AS_ERRORS\=NO
+    export TeamIdentifierPrefix\=W49B66SUW3.
+    export UID\=502
+    export UNINSTALLED_PRODUCTS_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/UninstalledProducts
+    export UNLOCALIZED_RESOURCES_FOLDER_PATH\=fastv.app/Contents/Resources
+    export UNLOCALIZED_RESOURCES_FOLDER_PATH_SHALLOW_BUNDLE_NO\=fastv.app/Contents/Resources
+    export UNLOCALIZED_RESOURCES_FOLDER_PATH_SHALLOW_BUNDLE_YES\=fastv.app/Contents
+    export UNSTRIPPED_PRODUCT\=NO
+    export USER\=rocky
+    export USER_APPS_DIR\=/Users/rocky/Applications
+    export USER_LIBRARY_DIR\=/Users/rocky/Library
+    export USE_DYNAMIC_NO_PIC\=YES
+    export USE_HEADERMAP\=YES
+    export USE_HEADER_SYMLINKS\=NO
+    export VALIDATE_DEVELOPMENT_ASSET_PATHS\=YES_ERROR
+    export VALIDATE_PRODUCT\=NO
+    export VALID_ARCHS\=arm64\ arm64e\ i386\ x86_64
+    export VERBOSE_PBXCP\=NO
+    export VERSIONPLIST_PATH\=fastv.app/Contents/version.plist
+    export VERSION_INFO_BUILDER\=rocky
+    export VERSION_INFO_FILE\=fastv_vers.c
+    export VERSION_INFO_STRING\=\"@\(\#\)PROGRAM:fastv\ \ PROJECT:fastv-1\"
+    export WORKSPACE_DIR\=/Users/rocky/Sites/fastv/fastv.xcodeproj
+    export WRAPPER_EXTENSION\=app
+    export WRAPPER_NAME\=fastv.app
+    export WRAPPER_SUFFIX\=.app
+    export WRAP_ASSET_PACKS_IN_SEPARATE_DIRECTORIES\=NO
+    export XCODE_APP_SUPPORT_DIR\=/Applications/Xcode.app/Contents/Developer/Library/Xcode
+    export XCODE_PRODUCT_BUILD_VERSION\=17A400
+    export XCODE_VERSION_ACTUAL\=2601
+    export XCODE_VERSION_MAJOR\=2600
+    export XCODE_VERSION_MINOR\=2600
+    export XPCSERVICES_FOLDER_PATH\=fastv.app/Contents/XPCServices
+    export YACC\=yacc
+    export _BOOL_\=NO
+    export _BOOL_NO\=NO
+    export _BOOL_YES\=YES
+    export _DEVELOPMENT_TEAM_IS_EMPTY\=NO
+    export _DISCOVER_COMMAND_LINE_LINKER_INPUTS\=YES
+    export _DISCOVER_COMMAND_LINE_LINKER_INPUTS_INCLUDE_WL\=YES
+    export _IS_EMPTY_\=YES
+    export _LD_MULTIARCH\=YES
+    export _MACOSX_DEPLOYMENT_TARGET_IS_EMPTY\=NO
+    export _WRAPPER_CONTENTS_DIR\=/Contents
+    export _WRAPPER_CONTENTS_DIR_SHALLOW_BUNDLE_NO\=/Contents
+    export _WRAPPER_PARENT_PATH\=/..
+    export _WRAPPER_PARENT_PATH_SHALLOW_BUNDLE_NO\=/..
+    export _WRAPPER_RESOURCES_DIR\=/Resources
+    export _WRAPPER_RESOURCES_DIR_SHALLOW_BUNDLE_NO\=/Resources
+    export __DIAGNOSE_DEPRECATED_ARCHS\=YES
+    export __IS_NOT_MACOS\=NO
+    export __IS_NOT_MACOS_macosx\=NO
+    export __IS_NOT_SIMULATOR\=YES
+    export __IS_NOT_SIMULATOR_simulator\=NO
+    export arch\=undefined_arch
+    export variant\=normal
+    /bin/sh -c /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Script-5C0423AC2ECD793000821B50.sh
+✅ 库文件已使用 Apple Development 签名
+
+PhaseScriptExecution Sign\ ONNX\ Runtime\ Library /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Script-5C0423AD2ECD793000821B50.sh (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    export ACTION\=build
+    export AD_HOC_CODE_SIGNING_ALLOWED\=YES
+    export AGGREGATE_TRACKED_DOMAINS\=YES
+    export ALLOW_BUILD_REQUEST_OVERRIDES\=NO
+    export ALLOW_TARGET_PLATFORM_SPECIALIZATION\=NO
+    export ALTERNATE_GROUP\=staff
+    export ALTERNATE_MODE\=u+w,go-w,a+rX
+    export ALTERNATE_OWNER\=rocky
+    export ALTERNATIVE_DISTRIBUTION_WEB\=NO
+    export ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES\=NO
+    export ALWAYS_SEARCH_USER_PATHS\=NO
+    export ALWAYS_USE_SEPARATE_HEADERMAPS\=NO
+    export APPLICATION_EXTENSION_API_ONLY\=NO
+    export APPLY_RULES_IN_COPY_FILES\=NO
+    export APPLY_RULES_IN_COPY_HEADERS\=NO
+    export APP_SHORTCUTS_ENABLE_FLEXIBLE_MATCHING\=YES
+    export ARCHS\=arm64
+    export ARCHS_STANDARD\=arm64\ x86_64
+    export ARCHS_STANDARD_32_64_BIT\=arm64\ x86_64\ i386
+    export ARCHS_STANDARD_32_BIT\=i386
+    export ARCHS_STANDARD_64_BIT\=arm64\ x86_64
+    export ARCHS_STANDARD_INCLUDING_64_BIT\=arm64\ x86_64
+    export ASSETCATALOG_COMPILER_APPICON_NAME\=AppIcon
+    export ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS\=YES
+    export ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME\=AccentColor
+    export AUTOMATICALLY_MERGE_DEPENDENCIES\=NO
+    export AUTOMATION_APPLE_EVENTS\=NO
+    export AVAILABLE_PLATFORMS\=android\ appletvos\ appletvsimulator\ driverkit\ iphoneos\ iphonesimulator\ macosx\ qnx\ watchos\ watchsimulator\ webassembly\ xros\ xrsimulator
+    export AppIdentifierPrefix\=W49B66SUW3.
+    export BUILD_ACTIVE_RESOURCES_ONLY\=NO
+    export BUILD_COMPONENTS\=headers\ build
+    export BUILD_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products
+    export BUILD_LIBRARY_FOR_DISTRIBUTION\=NO
+    export BUILD_ROOT\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products
+    export BUILD_STYLE\=
+    export BUILD_VARIANTS\=normal
+    export BUILT_PRODUCTS_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug
+    export BUNDLE_CONTENTS_FOLDER_PATH\=Contents/
+    export BUNDLE_CONTENTS_FOLDER_PATH_deep\=Contents/
+    export BUNDLE_EXECUTABLE_FOLDER_NAME_deep\=MacOS
+    export BUNDLE_EXECUTABLE_FOLDER_PATH\=Contents/MacOS
+    export BUNDLE_EXTENSIONS_FOLDER_PATH\=Contents/Extensions
+    export BUNDLE_FORMAT\=deep
+    export BUNDLE_FRAMEWORKS_FOLDER_PATH\=Contents/Frameworks
+    export BUNDLE_PLUGINS_FOLDER_PATH\=Contents/PlugIns
+    export BUNDLE_PRIVATE_HEADERS_FOLDER_PATH\=Contents/PrivateHeaders
+    export BUNDLE_PUBLIC_HEADERS_FOLDER_PATH\=Contents/Headers
+    export CACHE_ROOT\=/var/folders/np/rjc0y5w52x324x21pv6g33440000gp/C/com.apple.DeveloperTools/26.0.1-17A400/Xcode
+    export CCHROOT\=/var/folders/np/rjc0y5w52x324x21pv6g33440000gp/C/com.apple.DeveloperTools/26.0.1-17A400/Xcode
+    export CHMOD\=/bin/chmod
+    export CHOWN\=/usr/sbin/chown
+    export CLANG_ANALYZER_NONNULL\=YES
+    export CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION\=YES_AGGRESSIVE
+    export CLANG_CACHE_FINE_GRAINED_OUTPUTS\=YES
+    export CLANG_COVERAGE_MAPPING\=YES
+    export CLANG_CXX_LANGUAGE_STANDARD\=gnu++20
+    export CLANG_ENABLE_EXPLICIT_MODULES\=YES
+    export CLANG_ENABLE_MODULES\=YES
+    export CLANG_ENABLE_OBJC_ARC\=YES
+    export CLANG_ENABLE_OBJC_WEAK\=YES
+    export CLANG_MODULES_BUILD_SESSION_FILE\=/Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation
+    export CLANG_PROFILE_DATA_DIRECTORY\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/ProfileData
+    export CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING\=YES
+    export CLANG_WARN_BOOL_CONVERSION\=YES
+    export CLANG_WARN_COMMA\=YES
+    export CLANG_WARN_CONSTANT_CONVERSION\=YES
+    export CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS\=YES
+    export CLANG_WARN_DIRECT_OBJC_ISA_USAGE\=YES_ERROR
+    export CLANG_WARN_DOCUMENTATION_COMMENTS\=YES
+    export CLANG_WARN_EMPTY_BODY\=YES
+    export CLANG_WARN_ENUM_CONVERSION\=YES
+    export CLANG_WARN_INFINITE_RECURSION\=YES
+    export CLANG_WARN_INT_CONVERSION\=YES
+    export CLANG_WARN_NON_LITERAL_NULL_CONVERSION\=YES
+    export CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF\=YES
+    export CLANG_WARN_OBJC_LITERAL_CONVERSION\=YES
+    export CLANG_WARN_OBJC_ROOT_CLASS\=YES_ERROR
+    export CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER\=YES
+    export CLANG_WARN_RANGE_LOOP_ANALYSIS\=YES
+    export CLANG_WARN_STRICT_PROTOTYPES\=YES
+    export CLANG_WARN_SUSPICIOUS_MOVE\=YES
+    export CLANG_WARN_UNGUARDED_AVAILABILITY\=YES_AGGRESSIVE
+    export CLANG_WARN_UNREACHABLE_CODE\=YES
+    export CLANG_WARN__DUPLICATE_METHOD_MATCH\=YES
+    export CLASS_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/JavaClasses
+    export CLEAN_PRECOMPS\=YES
+    export CLONE_HEADERS\=NO
+    export CODESIGNING_FOLDER_PATH\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app
+    export CODE_SIGNING_ALLOWED\=YES
+    export CODE_SIGNING_REQUIRED\=YES
+    export CODE_SIGN_ENTITLEMENTS\=fastv/fastv.entitlements
+    export CODE_SIGN_IDENTITY\=Apple\ Development
+    export CODE_SIGN_IDENTITY_NO\=Apple\ Development
+    export CODE_SIGN_IDENTITY_YES\=-
+    export CODE_SIGN_INJECT_BASE_ENTITLEMENTS\=YES
+    export CODE_SIGN_STYLE\=Automatic
+    export COLOR_DIAGNOSTICS\=NO
+    export COMBINE_HIDPI_IMAGES\=YES
+    export COMPILATION_CACHE_CAS_PATH\=/Users/rocky/Library/Developer/Xcode/DerivedData/CompilationCache.noindex
+    export COMPILATION_CACHE_KEEP_CAS_DIRECTORY\=YES
+    export COMPILER_INDEX_STORE_ENABLE\=Default
+    export COMPOSITE_SDK_DIRS\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/CompositeSDKs
+    export COMPRESS_PNG_FILES\=NO
+    export CONFIGURATION\=Debug
+    export CONFIGURATION_BUILD_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug
+    export CONFIGURATION_TEMP_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug
+    export CONTENTS_FOLDER_PATH\=fastv.app/Contents
+    export CONTENTS_FOLDER_PATH_SHALLOW_BUNDLE_NO\=fastv.app/Contents
+    export CONTENTS_FOLDER_PATH_SHALLOW_BUNDLE_YES\=fastv.app
+    export COPYING_PRESERVES_HFS_DATA\=NO
+    export COPY_HEADERS_RUN_UNIFDEF\=NO
+    export COPY_PHASE_STRIP\=NO
+    export CP\=/bin/cp
+    export CREATE_INFOPLIST_SECTION_IN_BINARY\=NO
+    export CURRENT_ARCH\=undefined_arch
+    export CURRENT_PROJECT_VERSION\=1
+    export CURRENT_VARIANT\=normal
+    export DEAD_CODE_STRIPPING\=NO
+    export DEBUGGING_SYMBOLS\=YES
+    export DEBUG_INFORMATION_FORMAT\=dwarf
+    export DEBUG_INFORMATION_VERSION\=compiler-default
+    export DEFAULT_COMPILER\=com.apple.compilers.llvm.clang.1_0
+    export DEFAULT_DEXT_INSTALL_PATH\=/System/Library/DriverExtensions
+    export DEFAULT_KEXT_INSTALL_PATH\=/System/Library/Extensions
+    export DEFINES_MODULE\=NO
+    export DEPLOYMENT_LOCATION\=NO
+    export DEPLOYMENT_POSTPROCESSING\=NO
+    export DEPLOYMENT_TARGET_SETTING_NAME\=MACOSX_DEPLOYMENT_TARGET
+    export DEPLOYMENT_TARGET_SUGGESTED_VALUES\=10.13\ 10.14\ 10.15\ 11.0\ 11.1\ 11.2\ 11.3\ 11.4\ 11.5\ 12.0\ 12.2\ 12.3\ 12.4\ 13.0\ 13.1\ 13.2\ 13.3\ 13.4\ 13.5\ 14.0\ 14.1\ 14.2\ 14.3\ 14.4\ 14.5\ 14.6\ 15.0\ 15.1\ 15.2\ 15.3\ 15.4\ 15.5\ 15.6\ 26.0
+    export DERIVED_FILES_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources
+    export DERIVED_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources
+    export DERIVED_SOURCES_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/DerivedSources
+    export DEVELOPER_APPLICATIONS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications
+    export DEVELOPER_BIN_DIR\=/Applications/Xcode.app/Contents/Developer/usr/bin
+    export DEVELOPER_DIR\=/Applications/Xcode.app/Contents/Developer
+    export DEVELOPER_FRAMEWORKS_DIR\=/Applications/Xcode.app/Contents/Developer/Library/Frameworks
+    export DEVELOPER_FRAMEWORKS_DIR_QUOTED\=/Applications/Xcode.app/Contents/Developer/Library/Frameworks
+    export DEVELOPER_LIBRARY_DIR\=/Applications/Xcode.app/Contents/Developer/Library
+    export DEVELOPER_SDK_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs
+    export DEVELOPER_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Tools
+    export DEVELOPER_USR_DIR\=/Applications/Xcode.app/Contents/Developer/usr
+    export DEVELOPMENT_LANGUAGE\=en
+    export DEVELOPMENT_TEAM\=W49B66SUW3
+    export DIAGNOSE_MISSING_TARGET_DEPENDENCIES\=YES
+    export DIFF\=/usr/bin/diff
+    export DOCUMENTATION_FOLDER_PATH\=fastv.app/Contents/Resources/en.lproj/Documentation
+    export DONT_GENERATE_INFOPLIST_FILE\=NO
+    export DSTROOT\=/tmp/fastv.dst
+    export DT_TOOLCHAIN_DIR\=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain
+    export DWARF_DSYM_FILE_NAME\=fastv.app.dSYM
+    export DWARF_DSYM_FILE_SHOULD_ACCOMPANY_PRODUCT\=NO
+    export DWARF_DSYM_FOLDER_PATH\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug
+    export DYNAMIC_LIBRARY_EXTENSION\=dylib
+    export EAGER_COMPILATION_ALLOW_SCRIPTS\=NO
+    export EAGER_LINKING\=NO
+    export EMBEDDED_CONTENT_CONTAINS_SWIFT\=NO
+    export EMBEDDED_PROFILE_NAME\=embedded.provisionprofile
+    export EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE\=NO
+    export ENABLE_APP_SANDBOX\=NO
+    export ENABLE_CODE_COVERAGE\=YES
+    export ENABLE_CPLUSPLUS_BOUNDS_SAFE_BUFFERS\=NO
+    export ENABLE_C_BOUNDS_SAFETY\=NO
+    export ENABLE_DEBUG_DYLIB\=YES
+    export ENABLE_DEFAULT_HEADER_SEARCH_PATHS\=YES
+    export ENABLE_DEFAULT_SEARCH_PATHS\=YES
+    export ENABLE_ENHANCED_SECURITY\=NO
+    export ENABLE_HARDENED_RUNTIME\=YES
+    export ENABLE_HEADER_DEPENDENCIES\=YES
+    export ENABLE_INCOMING_NETWORK_CONNECTIONS\=NO
+    export ENABLE_ON_DEMAND_RESOURCES\=NO
+    export ENABLE_OUTGOING_NETWORK_CONNECTIONS\=NO
+    export ENABLE_POINTER_AUTHENTICATION\=NO
+    export ENABLE_PREVIEWS\=NO
+    export ENABLE_RESOURCE_ACCESS_AUDIO_INPUT\=NO
+    export ENABLE_RESOURCE_ACCESS_BLUETOOTH\=NO
+    export ENABLE_RESOURCE_ACCESS_CALENDARS\=NO
+    export ENABLE_RESOURCE_ACCESS_CAMERA\=NO
+    export ENABLE_RESOURCE_ACCESS_CONTACTS\=NO
+    export ENABLE_RESOURCE_ACCESS_LOCATION\=NO
+    export ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY\=NO
+    export ENABLE_RESOURCE_ACCESS_PRINTING\=NO
+    export ENABLE_RESOURCE_ACCESS_USB\=NO
+    export ENABLE_SDK_IMPORTS\=NO
+    export ENABLE_SECURITY_COMPILER_WARNINGS\=NO
+    export ENABLE_STRICT_OBJC_MSGSEND\=YES
+    export ENABLE_TESTABILITY\=YES
+    export ENABLE_TESTING_SEARCH_PATHS\=NO
+    export ENABLE_USER_SCRIPT_SANDBOXING\=NO
+    export ENABLE_XOJIT_PREVIEWS\=YES
+    export ENFORCE_VALID_ARCHS\=YES
+    export ENTITLEMENTS_ALLOWED\=YES
+    export ENTITLEMENTS_DESTINATION\=Signature
+    export ENTITLEMENTS_REQUIRED\=NO
+    export EXCLUDED_INSTALLSRC_SUBDIRECTORY_PATTERNS\=.DS_Store\ .svn\ .git\ .hg\ CVS
+    export EXCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES\=\*.nib\ \*.lproj\ \*.framework\ \*.gch\ \*.xcode\*\ \*.xcassets\ \*.icon\ \(\*\)\ .DS_Store\ CVS\ .svn\ .git\ .hg\ \*.pbproj\ \*.pbxproj
+    export EXECUTABLES_FOLDER_PATH\=fastv.app/Contents/Executables
+    export EXECUTABLE_BLANK_INJECTION_DYLIB_PATH\=fastv.app/Contents/MacOS/__preview.dylib
+    export EXECUTABLE_DEBUG_DYLIB_INSTALL_NAME\=@rpath/fastv.debug.dylib
+    export EXECUTABLE_DEBUG_DYLIB_PATH\=fastv.app/Contents/MacOS/fastv.debug.dylib
+    export EXECUTABLE_FOLDER_PATH\=fastv.app/Contents/MacOS
+    export EXECUTABLE_FOLDER_PATH_SHALLOW_BUNDLE_NO\=fastv.app/Contents/MacOS
+    export EXECUTABLE_FOLDER_PATH_SHALLOW_BUNDLE_YES\=fastv.app/Contents
+    export EXECUTABLE_NAME\=fastv
+    export EXECUTABLE_PATH\=fastv.app/Contents/MacOS/fastv
+    export EXPANDED_CODE_SIGN_IDENTITY\=03CC6DE756E360BB56BEBFEA4D0C13038F8CF21A
+    export EXPANDED_CODE_SIGN_IDENTITY_NAME\=Apple\ Development:\ suhang\ hu\ \(9K5FH5XTHD\)
+    export EXTENSIONS_FOLDER_PATH\=fastv.app/Contents/Extensions
+    export FILE_LIST\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects/LinkFileList
+    export FIXED_FILES_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/FixedFiles
+    export FRAMEWORKS_FOLDER_PATH\=fastv.app/Contents/Frameworks
+    export FRAMEWORK_FLAG_PREFIX\=-framework
+    export FRAMEWORK_SEARCH_PATHS\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug\ 
+    export FRAMEWORK_VERSION\=A
+    export FULL_PRODUCT_NAME\=fastv.app
+    export FUSE_BUILD_PHASES\=YES
+    export FUSE_BUILD_SCRIPT_PHASES\=NO
+    export GCC3_VERSION\=3.3
+    export GCC_C_LANGUAGE_STANDARD\=gnu17
+    export GCC_DYNAMIC_NO_PIC\=NO
+    export GCC_INLINES_ARE_PRIVATE_EXTERN\=YES
+    export GCC_NO_COMMON_BLOCKS\=YES
+    export GCC_OPTIMIZATION_LEVEL\=0
+    export GCC_PFE_FILE_C_DIALECTS\=c\ objective-c\ c++\ objective-c++
+    export GCC_PREPROCESSOR_DEFINITIONS\=DEBUG\=1\ 
+    export GCC_SYMBOLS_PRIVATE_EXTERN\=NO
+    export GCC_TREAT_WARNINGS_AS_ERRORS\=NO
+    export GCC_VERSION\=com.apple.compilers.llvm.clang.1_0
+    export GCC_VERSION_IDENTIFIER\=com_apple_compilers_llvm_clang_1_0
+    export GCC_WARN_64_TO_32_BIT_CONVERSION\=YES
+    export GCC_WARN_ABOUT_RETURN_TYPE\=YES_ERROR
+    export GCC_WARN_UNDECLARED_SELECTOR\=YES
+    export GCC_WARN_UNINITIALIZED_AUTOS\=YES_AGGRESSIVE
+    export GCC_WARN_UNUSED_FUNCTION\=YES
+    export GCC_WARN_UNUSED_VARIABLE\=YES
+    export GENERATED_MODULEMAP_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/GeneratedModuleMaps
+    export GENERATE_INFOPLIST_FILE\=YES
+    export GENERATE_INTERMEDIATE_TEXT_BASED_STUBS\=YES
+    export GENERATE_PKGINFO_FILE\=YES
+    export GENERATE_PRELINK_OBJECT_FILE\=NO
+    export GENERATE_PROFILING_CODE\=NO
+    export GENERATE_TEXT_BASED_STUBS\=NO
+    export GID\=20
+    export GROUP\=staff
+    export HEADERMAP_INCLUDES_FLAT_ENTRIES_FOR_TARGET_BEING_BUILT\=YES
+    export HEADERMAP_INCLUDES_FRAMEWORK_ENTRIES_FOR_ALL_PRODUCT_TYPES\=YES
+    export HEADERMAP_INCLUDES_FRAMEWORK_ENTRIES_FOR_TARGETS_NOT_BEING_BUILT\=YES
+    export HEADERMAP_INCLUDES_NONPUBLIC_NONPRIVATE_HEADERS\=YES
+    export HEADERMAP_INCLUDES_PROJECT_HEADERS\=YES
+    export HEADERMAP_USES_FRAMEWORK_PREFIX_ENTRIES\=YES
+    export HEADERMAP_USES_VFS\=NO
+    export HEADER_SEARCH_PATHS\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/include\ \ /Users/rocky/Sites/fastv/Libraries/onnxruntime/current/include\ /Users/rocky/Sites/fastv/ThirdParty
+    export HOME\=/Users/rocky
+    export HOST_ARCH\=arm64
+    export HOST_PLATFORM\=macosx
+    export ICONV\=/usr/bin/iconv
+    export IMPLICIT_DEPENDENCY_DOMAIN\=default
+    export INFOPLIST_ENABLE_CFBUNDLEICONS_MERGE\=YES
+    export INFOPLIST_EXPAND_BUILD_SETTINGS\=YES
+    export INFOPLIST_KEY_CFBundleShortVersionString\=1.0
+    export INFOPLIST_KEY_CFBundleVersion\=1
+    export INFOPLIST_KEY_NSAppleEventsUsageDescription\=妙打\ 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。
+    export INFOPLIST_KEY_NSMicrophoneUsageDescription\=妙打\ 需要访问您的麦克风以进行语音输入和语音转文字功能。
+    export INFOPLIST_OUTPUT_FORMAT\=same-as-input
+    export INFOPLIST_PATH\=fastv.app/Contents/Info.plist
+    export INFOPLIST_PREPROCESS\=NO
+    export INFOSTRINGS_PATH\=fastv.app/Contents/Resources/en.lproj/InfoPlist.strings
+    export INLINE_PRIVATE_FRAMEWORKS\=NO
+    export INSTALLAPI_IGNORE_SKIP_INSTALL\=YES
+    export INSTALLHDRS_COPY_PHASE\=NO
+    export INSTALLHDRS_SCRIPT_PHASE\=NO
+    export INSTALL_DIR\=/tmp/fastv.dst/Applications
+    export INSTALL_GROUP\=staff
+    export INSTALL_MODE_FLAG\=u+w,go-w,a+rX
+    export INSTALL_OWNER\=rocky
+    export INSTALL_PATH\=/Applications
+    export INSTALL_ROOT\=/tmp/fastv.dst
+    export IOS_UNZIPPERED_TWIN_PREFIX_PATH\=/System/iOSSupport
+    export IS_MACCATALYST\=NO
+    export IS_UNOPTIMIZED_BUILD\=YES
+    export JAVAC_DEFAULT_FLAGS\=-J-Xms64m\ -J-XX:NewSize\=4M\ -J-Dfile.encoding\=UTF8
+    export JAVA_APP_STUB\=/System/Library/Frameworks/JavaVM.framework/Resources/MacOS/JavaApplicationStub
+    export JAVA_ARCHIVE_CLASSES\=YES
+    export JAVA_ARCHIVE_TYPE\=JAR
+    export JAVA_COMPILER\=/usr/bin/javac
+    export JAVA_FOLDER_PATH\=fastv.app/Contents/Resources/Java
+    export JAVA_FRAMEWORK_RESOURCES_DIRS\=Resources
+    export JAVA_JAR_FLAGS\=cv
+    export JAVA_SOURCE_SUBDIR\=.
+    export JAVA_USE_DEPENDENCIES\=YES
+    export JAVA_ZIP_FLAGS\=-urg
+    export JIKES_DEFAULT_FLAGS\=+E\ +OLDCSO
+    export KASAN_CFLAGS_CLASSIC\=-DKASAN\=1\ -DKASAN_CLASSIC\=1\ -fsanitize\=address\ -mllvm\ -asan-globals-live-support\ -mllvm\ -asan-force-dynamic-shadow
+    export KASAN_CFLAGS_TBI\=-DKASAN\=1\ -DKASAN_TBI\=1\ -fsanitize\=kernel-hwaddress\ -mllvm\ -hwasan-recover\=0\ -mllvm\ -hwasan-instrument-atomics\=0\ -mllvm\ -hwasan-instrument-stack\=1\ -mllvm\ -hwasan-generate-tags-with-calls\=1\ -mllvm\ -hwasan-instrument-with-calls\=1\ -mllvm\ -hwasan-use-short-granules\=0\ -mllvm\ -hwasan-memory-access-callback-prefix\=__asan_
+    export KASAN_DEFAULT_CFLAGS\=-DKASAN\=1\ -DKASAN_CLASSIC\=1\ -fsanitize\=address\ -mllvm\ -asan-globals-live-support\ -mllvm\ -asan-force-dynamic-shadow
+    export KEEP_PRIVATE_EXTERNS\=NO
+    export LD_DEPENDENCY_INFO_FILE\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/undefined_arch/fastv_dependency_info.dat
+    export LD_EXPORT_SYMBOLS\=YES
+    export LD_GENERATE_MAP_FILE\=NO
+    export LD_MAP_FILE_PATH\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv-LinkMap-normal-undefined_arch.txt
+    export LD_NO_PIE\=NO
+    export LD_QUOTE_LINKER_ARGUMENTS_FOR_COMPILER_DRIVER\=YES
+    export LD_RUNPATH_SEARCH_PATHS\=\ @executable_path/../Frameworks\ /Users/rocky/Sites/fastv/Libraries/onnxruntime/current/lib
+    export LD_RUNPATH_SEARCH_PATHS_YES\=@loader_path/../Frameworks
+    export LD_SHARED_CACHE_ELIGIBLE\=Automatic
+    export LD_WARN_DUPLICATE_LIBRARIES\=NO
+    export LD_WARN_UNUSED_DYLIBS\=NO
+    export LEGACY_DEVELOPER_DIR\=/Applications/Xcode.app/Contents/PlugIns/Xcode3Core.ideplugin/Contents/SharedSupport/Developer
+    export LEX\=lex
+    export LIBRARY_DEXT_INSTALL_PATH\=/Library/DriverExtensions
+    export LIBRARY_FLAG_NOSPACE\=YES
+    export LIBRARY_FLAG_PREFIX\=-l
+    export LIBRARY_KEXT_INSTALL_PATH\=/Library/Extensions
+    export LIBRARY_SEARCH_PATHS\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug\ \ /Users/rocky/Sites/fastv/Libraries/onnxruntime/current/lib
+    export LINKER_DISPLAYS_MANGLED_NAMES\=NO
+    export LINK_FILE_LIST_normal_arm64\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.LinkFileList
+    export LINK_OBJC_RUNTIME\=YES
+    export LINK_WITH_STANDARD_LIBRARIES\=YES
+    export LLVM_TARGET_TRIPLE_OS_VERSION\=macos26.0
+    export LLVM_TARGET_TRIPLE_OS_VERSION_NO\=macos26.0
+    export LLVM_TARGET_TRIPLE_OS_VERSION_YES\=macos26.0
+    export LLVM_TARGET_TRIPLE_VENDOR\=apple
+    export LM_AUX_CONST_METADATA_LIST_PATH_normal_arm64\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.SwiftConstValuesFileList
+    export LOCALIZATION_EXPORT_SUPPORTED\=YES
+    export LOCALIZATION_PREFERS_STRING_CATALOGS\=YES
+    export LOCALIZED_RESOURCES_FOLDER_PATH\=fastv.app/Contents/Resources/en.lproj
+    export LOCALIZED_STRING_MACRO_NAMES\=NSLocalizedString\ CFCopyLocalizedString
+    export LOCALIZED_STRING_SWIFTUI_SUPPORT\=YES
+    export LOCAL_ADMIN_APPS_DIR\=/Applications/Utilities
+    export LOCAL_APPS_DIR\=/Applications
+    export LOCAL_DEVELOPER_DIR\=/Library/Developer
+    export LOCAL_LIBRARY_DIR\=/Library
+    export LOCROOT\=/Users/rocky/Sites/fastv
+    export LOCSYMROOT\=/Users/rocky/Sites/fastv
+    export MACH_O_TYPE\=mh_execute
+    export MACOSX_DEPLOYMENT_TARGET\=26.0
+    export MAC_OS_X_PRODUCT_BUILD_VERSION\=25B78
+    export MAC_OS_X_VERSION_ACTUAL\=260100
+    export MAC_OS_X_VERSION_MAJOR\=260000
+    export MAC_OS_X_VERSION_MINOR\=260100
+    export MAKE_MERGEABLE\=NO
+    export MARKETING_VERSION\=1.0
+    export MERGEABLE_LIBRARY\=NO
+    export MERGED_BINARY_TYPE\=none
+    export MERGE_LINKED_LIBRARIES\=NO
+    export METAL_LIBRARY_FILE_BASE\=default
+    export METAL_LIBRARY_OUTPUT_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources
+    export MODULES_FOLDER_PATH\=fastv.app/Contents/Modules
+    export MODULE_CACHE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/ModuleCache.noindex
+    export MTL_ENABLE_DEBUG_INFO\=INCLUDE_SOURCE
+    export MTL_FAST_MATH\=YES
+    export NATIVE_ARCH\=arm64
+    export NATIVE_ARCH_32_BIT\=arm
+    export NATIVE_ARCH_64_BIT\=arm64
+    export NATIVE_ARCH_ACTUAL\=arm64
+    export NO_COMMON\=YES
+    export OBJECT_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects
+    export OBJECT_FILE_DIR_normal\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal
+    export OBJROOT\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex
+    export ONLY_ACTIVE_ARCH\=YES
+    export OS\=MACOS
+    export OSAC\=/usr/bin/osacompile
+    export OTHER_LDFLAGS\=\ -lonnxruntime
+    export PACKAGE_TYPE\=com.apple.package-type.wrapper.application
+    export PASCAL_STRINGS\=YES
+    export PATH\=/Applications/Xcode.app/Contents/SharedFrameworks/SwiftBuild.framework/Versions/A/PlugIns/SWBBuildService.bundle/Contents/PlugIns/SWBUniversalPlatformPlugin.bundle/Contents/Frameworks/SWBUniversalPlatform.framework/Resources:/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin:/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/local/bin:/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/libexec:/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/usr/bin:/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/usr/local/bin:/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin:/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/local/bin:/Applications/Xcode.app/Contents/Developer/usr/bin:/Applications/Xcode.app/Contents/Developer/usr/local/bin:/opt/homebrew/opt/mysql@8.0/bin:/Users/rocky/bin:/Users/rocky/.local/bin:/usr/local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/opt/pmk/env/global/bin:/Library/Apple/usr/bin:/Applications/VMware\ Fusion.app/Contents/Public:/Users/rocky/.orbstack/bin:/Users/rocky/.cursor/extensions/ms-python.debugpy-2025.14.1-darwin-arm64/bundled/scripts/noConfigScripts
+    export PATH_PREFIXES_EXCLUDED_FROM_HEADER_DEPENDENCIES\=/usr/include\ /usr/local/include\ /System/Library/Frameworks\ /System/Library/PrivateFrameworks\ /Applications/Xcode.app/Contents/Developer/Headers\ /Applications/Xcode.app/Contents/Developer/SDKs\ /Applications/Xcode.app/Contents/Developer/Platforms
+    export PBDEVELOPMENTPLIST_PATH\=fastv.app/Contents/pbdevelopment.plist
+    export PER_ARCH_MODULE_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/undefined_arch
+    export PER_ARCH_OBJECT_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/undefined_arch
+    export PER_VARIANT_OBJECT_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal
+    export PKGINFO_FILE_PATH\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/PkgInfo
+    export PKGINFO_PATH\=fastv.app/Contents/PkgInfo
+    export PLATFORM_DEVELOPER_APPLICATIONS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications
+    export PLATFORM_DEVELOPER_BIN_DIR\=/Applications/Xcode.app/Contents/Developer/usr/bin
+    export PLATFORM_DEVELOPER_LIBRARY_DIR\=/Applications/Xcode.app/Contents/Developer/Library
+    export PLATFORM_DEVELOPER_SDK_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs
+    export PLATFORM_DEVELOPER_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Tools
+    export PLATFORM_DEVELOPER_USR_DIR\=/Applications/Xcode.app/Contents/Developer/usr
+    export PLATFORM_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform
+    export PLATFORM_DISPLAY_NAME\=macOS
+    export PLATFORM_FAMILY_NAME\=macOS
+    export PLATFORM_NAME\=macosx
+    export PLATFORM_PREFERRED_ARCH\=x86_64
+    export PLATFORM_PRODUCT_BUILD_VERSION\=25A352
+    export PLATFORM_REQUIRES_SWIFT_AUTOLINK_EXTRACT\=NO
+    export PLATFORM_REQUIRES_SWIFT_MODULEWRAP\=NO
+    export PLIST_FILE_OUTPUT_FORMAT\=same-as-input
+    export PLUGINS_FOLDER_PATH\=fastv.app/Contents/PlugIns
+    export PRECOMPS_INCLUDE_HEADERS_FROM_BUILT_PRODUCTS_DIR\=YES
+    export PRECOMP_DESTINATION_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/PrefixHeaders
+    export PRIVATE_HEADERS_FOLDER_PATH\=fastv.app/Contents/PrivateHeaders
+    export PROCESSED_INFOPLIST_PATH\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/undefined_arch/Processed-Info.plist
+    export PRODUCT_BUNDLE_IDENTIFIER\=com.wxside.typecho
+    export PRODUCT_BUNDLE_PACKAGE_TYPE\=APPL
+    export PRODUCT_MODULE_NAME\=fastv
+    export PRODUCT_NAME\=fastv
+    export PRODUCT_SETTINGS_PATH\=
+    export PRODUCT_TYPE\=com.apple.product-type.application
+    export PROFILING_CODE\=NO
+    export PROJECT\=fastv
+    export PROJECT_DERIVED_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/DerivedSources
+    export PROJECT_DIR\=/Users/rocky/Sites/fastv
+    export PROJECT_FILE_PATH\=/Users/rocky/Sites/fastv/fastv.xcodeproj
+    export PROJECT_GUID\=ab884a58010cb67c557a72c2858c0598
+    export PROJECT_NAME\=fastv
+    export PROJECT_TEMP_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build
+    export PROJECT_TEMP_ROOT\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex
+    export PROVISIONING_PROFILE_REQUIRED\=NO
+    export PROVISIONING_PROFILE_REQUIRED_YES_YES\=YES
+    export PROVISIONING_PROFILE_SUPPORTED\=YES
+    export PUBLIC_HEADERS_FOLDER_PATH\=fastv.app/Contents/Headers
+    export RECOMMENDED_MACOSX_DEPLOYMENT_TARGET\=11.0
+    export RECURSIVE_SEARCH_PATHS_FOLLOW_SYMLINKS\=YES
+    export REGISTER_APP_GROUPS\=YES
+    export REMOVE_CVS_FROM_RESOURCES\=YES
+    export REMOVE_GIT_FROM_RESOURCES\=YES
+    export REMOVE_HEADERS_FROM_EMBEDDED_BUNDLES\=YES
+    export REMOVE_HG_FROM_RESOURCES\=YES
+    export REMOVE_STATIC_EXECUTABLES_FROM_EMBEDDED_BUNDLES\=YES
+    export REMOVE_SVN_FROM_RESOURCES\=YES
+    export RESCHEDULE_INDEPENDENT_HEADERS_PHASES\=YES
+    export REZ_COLLECTOR_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/ResourceManagerResources
+    export REZ_OBJECTS_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/ResourceManagerResources/Objects
+    export REZ_SEARCH_PATHS\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug\ 
+    export RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES\=NO
+    export RUNTIME_EXCEPTION_ALLOW_JIT\=NO
+    export RUNTIME_EXCEPTION_ALLOW_UNSIGNED_EXECUTABLE_MEMORY\=NO
+    export RUNTIME_EXCEPTION_DEBUGGING_TOOL\=NO
+    export RUNTIME_EXCEPTION_DISABLE_EXECUTABLE_PAGE_PROTECTION\=NO
+    export RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION\=NO
+    export SCAN_ALL_SOURCE_FILES_FOR_INCLUDES\=NO
+    export SCRIPTS_FOLDER_PATH\=fastv.app/Contents/Resources/Scripts
+    export SCRIPT_INPUT_FILE_0\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Frameworks/libonnxruntime.1.23.2.dylib
+    export SCRIPT_INPUT_FILE_1\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app
+    export SCRIPT_INPUT_FILE_COUNT\=2
+    export SCRIPT_INPUT_FILE_LIST_COUNT\=0
+    export SCRIPT_OUTPUT_FILE_COUNT\=0
+    export SCRIPT_OUTPUT_FILE_LIST_COUNT\=0
+    export SDKROOT\=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk
+    export SDK_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk
+    export SDK_DIR_macosx\=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk
+    export SDK_DIR_macosx26_0\=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk
+    export SDK_NAME\=macosx26.0
+    export SDK_NAMES\=macosx26.0
+    export SDK_PRODUCT_BUILD_VERSION\=25A352
+    export SDK_STAT_CACHE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData
+    export SDK_STAT_CACHE_ENABLE\=YES
+    export SDK_STAT_CACHE_PATH\=/Users/rocky/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx26.0-25A352-28806144b0707e398aac92880fa50324.sdkstatcache
+    export SDK_VERSION\=26.0
+    export SDK_VERSION_ACTUAL\=260000
+    export SDK_VERSION_MAJOR\=260000
+    export SDK_VERSION_MINOR\=260000
+    export SED\=/usr/bin/sed
+    export SEPARATE_STRIP\=NO
+    export SEPARATE_SYMBOL_EDIT\=NO
+    export SET_DIR_MODE_OWNER_GROUP\=YES
+    export SET_FILE_MODE_OWNER_GROUP\=NO
+    export SHALLOW_BUNDLE\=NO
+    export SHALLOW_BUNDLE_PLATFORM\=NO
+    export SHALLOW_BUNDLE_TRIPLE\=macos
+    export SHALLOW_BUNDLE_ios_macabi\=NO
+    export SHALLOW_BUNDLE_macos\=NO
+    export SHARED_DERIVED_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/DerivedSources
+    export SHARED_FRAMEWORKS_FOLDER_PATH\=fastv.app/Contents/SharedFrameworks
+    export SHARED_PRECOMPS_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/PrecompiledHeaders
+    export SHARED_SUPPORT_FOLDER_PATH\=fastv.app/Contents/SharedSupport
+    export SKIP_INSTALL\=NO
+    export SOURCE_ROOT\=/Users/rocky/Sites/fastv
+    export SRCROOT\=/Users/rocky/Sites/fastv
+    export STRINGSDATA_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/undefined_arch
+    export STRINGSDATA_ROOT\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build
+    export STRINGS_FILE_INFOPLIST_RENAME\=YES
+    export STRINGS_FILE_OUTPUT_ENCODING\=UTF-16
+    export STRING_CATALOG_GENERATE_SYMBOLS\=YES
+    export STRIP_BITCODE_FROM_COPIED_FILES\=NO
+    export STRIP_INSTALLED_PRODUCT\=NO
+    export STRIP_PNG_TEXT\=NO
+    export STRIP_STYLE\=all
+    export STRIP_SWIFT_SYMBOLS\=YES
+    export SUPPORTED_PLATFORMS\=macosx
+    export SUPPORTS_MACCATALYST\=NO
+    export SUPPORTS_ON_DEMAND_RESOURCES\=NO
+    export SUPPORTS_TEXT_BASED_API\=NO
+    export SUPPRESS_WARNINGS\=NO
+    export SWIFT_ACTIVE_COMPILATION_CONDITIONS\=DEBUG\ 
+    export SWIFT_APPROACHABLE_CONCURRENCY\=YES
+    export SWIFT_DEFAULT_ACTOR_ISOLATION\=MainActor
+    export SWIFT_EMIT_CONST_VALUE_PROTOCOLS\=AppIntent\ EntityQuery\ AppEntity\ TransientEntity\ AppEnum\ AppShortcutProviding\ AppShortcutsProvider\ AnyResolverProviding\ AppIntentsPackage\ DynamicOptionsProvider\ _IntentValueRepresentable\ _AssistantIntentsProvider\ _GenerativeFunctionExtractable\ IntentValueQuery\ Resolver\ AppExtension\ ExtensionPointDefining
+    export SWIFT_EMIT_LOC_STRINGS\=YES
+    export SWIFT_ENABLE_EXPLICIT_MODULES\=YES
+    export SWIFT_OBJC_BRIDGING_HEADER\=/Users/rocky/Sites/fastv/fastv/Services/ONNXRuntimeBridge.h
+    export SWIFT_OPTIMIZATION_LEVEL\=-Onone
+    export SWIFT_PLATFORM_TARGET_PREFIX\=macos
+    export SWIFT_RESPONSE_FILE_PATH_normal_arm64\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.SwiftFileList
+    export SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY\=YES
+    export SWIFT_VERSION\=5.0
+    export SYMROOT\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products
+    export SYSTEM_ADMIN_APPS_DIR\=/Applications/Utilities
+    export SYSTEM_APPS_DIR\=/Applications
+    export SYSTEM_CORE_SERVICES_DIR\=/System/Library/CoreServices
+    export SYSTEM_DEMOS_DIR\=/Applications/Extras
+    export SYSTEM_DEVELOPER_APPS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications
+    export SYSTEM_DEVELOPER_BIN_DIR\=/Applications/Xcode.app/Contents/Developer/usr/bin
+    export SYSTEM_DEVELOPER_DEMOS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Utilities/Built\ Examples
+    export SYSTEM_DEVELOPER_DIR\=/Applications/Xcode.app/Contents/Developer
+    export SYSTEM_DEVELOPER_DOC_DIR\=/Applications/Xcode.app/Contents/Developer/ADC\ Reference\ Library
+    export SYSTEM_DEVELOPER_GRAPHICS_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Graphics\ Tools
+    export SYSTEM_DEVELOPER_JAVA_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Java\ Tools
+    export SYSTEM_DEVELOPER_PERFORMANCE_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Performance\ Tools
+    export SYSTEM_DEVELOPER_RELEASENOTES_DIR\=/Applications/Xcode.app/Contents/Developer/ADC\ Reference\ Library/releasenotes
+    export SYSTEM_DEVELOPER_TOOLS\=/Applications/Xcode.app/Contents/Developer/Tools
+    export SYSTEM_DEVELOPER_TOOLS_DOC_DIR\=/Applications/Xcode.app/Contents/Developer/ADC\ Reference\ Library/documentation/DeveloperTools
+    export SYSTEM_DEVELOPER_TOOLS_RELEASENOTES_DIR\=/Applications/Xcode.app/Contents/Developer/ADC\ Reference\ Library/releasenotes/DeveloperTools
+    export SYSTEM_DEVELOPER_USR_DIR\=/Applications/Xcode.app/Contents/Developer/usr
+    export SYSTEM_DEVELOPER_UTILITIES_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Utilities
+    export SYSTEM_DEXT_INSTALL_PATH\=/System/Library/DriverExtensions
+    export SYSTEM_DOCUMENTATION_DIR\=/Library/Documentation
+    export SYSTEM_EXTENSIONS_FOLDER_PATH\=fastv.app/Contents/Library/SystemExtensions
+    export SYSTEM_EXTENSIONS_FOLDER_PATH_SHALLOW_BUNDLE_NO\=fastv.app/Contents/Library/SystemExtensions
+    export SYSTEM_EXTENSIONS_FOLDER_PATH_SHALLOW_BUNDLE_YES\=fastv.app/Contents/SystemExtensions
+    export SYSTEM_KEXT_INSTALL_PATH\=/System/Library/Extensions
+    export SYSTEM_LIBRARY_DIR\=/System/Library
+    export TAPI_DEMANGLE\=YES
+    export TAPI_ENABLE_PROJECT_HEADERS\=NO
+    export TAPI_LANGUAGE\=objective-c
+    export TAPI_LANGUAGE_STANDARD\=compiler-default
+    export TAPI_USE_SRCROOT\=YES
+    export TAPI_VERIFY_MODE\=Pedantic
+    export TARGETNAME\=fastv
+    export TARGET_BUILD_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug
+    export TARGET_NAME\=fastv
+    export TARGET_TEMP_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build
+    export TEMP_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build
+    export TEMP_FILES_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build
+    export TEMP_FILE_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build
+    export TEMP_ROOT\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex
+    export TEMP_SANDBOX_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/TemporaryTaskSandboxes
+    export TEST_FRAMEWORK_SEARCH_PATHS\=\ /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks
+    export TEST_LIBRARY_SEARCH_PATHS\=\ /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib
+    export TOOLCHAINS\=com.apple.dt.toolchain.XcodeDefault
+    export TOOLCHAIN_DIR\=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain
+    export TREAT_MISSING_BASELINES_AS_TEST_FAILURES\=NO
+    export TREAT_MISSING_SCRIPT_PHASE_OUTPUTS_AS_ERRORS\=NO
+    export TeamIdentifierPrefix\=W49B66SUW3.
+    export UID\=502
+    export UNINSTALLED_PRODUCTS_DIR\=/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/UninstalledProducts
+    export UNLOCALIZED_RESOURCES_FOLDER_PATH\=fastv.app/Contents/Resources
+    export UNLOCALIZED_RESOURCES_FOLDER_PATH_SHALLOW_BUNDLE_NO\=fastv.app/Contents/Resources
+    export UNLOCALIZED_RESOURCES_FOLDER_PATH_SHALLOW_BUNDLE_YES\=fastv.app/Contents
+    export UNSTRIPPED_PRODUCT\=NO
+    export USER\=rocky
+    export USER_APPS_DIR\=/Users/rocky/Applications
+    export USER_LIBRARY_DIR\=/Users/rocky/Library
+    export USE_DYNAMIC_NO_PIC\=YES
+    export USE_HEADERMAP\=YES
+    export USE_HEADER_SYMLINKS\=NO
+    export VALIDATE_DEVELOPMENT_ASSET_PATHS\=YES_ERROR
+    export VALIDATE_PRODUCT\=NO
+    export VALID_ARCHS\=arm64\ arm64e\ i386\ x86_64
+    export VERBOSE_PBXCP\=NO
+    export VERSIONPLIST_PATH\=fastv.app/Contents/version.plist
+    export VERSION_INFO_BUILDER\=rocky
+    export VERSION_INFO_FILE\=fastv_vers.c
+    export VERSION_INFO_STRING\=\"@\(\#\)PROGRAM:fastv\ \ PROJECT:fastv-1\"
+    export WORKSPACE_DIR\=/Users/rocky/Sites/fastv/fastv.xcodeproj
+    export WRAPPER_EXTENSION\=app
+    export WRAPPER_NAME\=fastv.app
+    export WRAPPER_SUFFIX\=.app
+    export WRAP_ASSET_PACKS_IN_SEPARATE_DIRECTORIES\=NO
+    export XCODE_APP_SUPPORT_DIR\=/Applications/Xcode.app/Contents/Developer/Library/Xcode
+    export XCODE_PRODUCT_BUILD_VERSION\=17A400
+    export XCODE_VERSION_ACTUAL\=2601
+    export XCODE_VERSION_MAJOR\=2600
+    export XCODE_VERSION_MINOR\=2600
+    export XPCSERVICES_FOLDER_PATH\=fastv.app/Contents/XPCServices
+    export YACC\=yacc
+    export _BOOL_\=NO
+    export _BOOL_NO\=NO
+    export _BOOL_YES\=YES
+    export _DEVELOPMENT_TEAM_IS_EMPTY\=NO
+    export _DISCOVER_COMMAND_LINE_LINKER_INPUTS\=YES
+    export _DISCOVER_COMMAND_LINE_LINKER_INPUTS_INCLUDE_WL\=YES
+    export _IS_EMPTY_\=YES
+    export _LD_MULTIARCH\=YES
+    export _MACOSX_DEPLOYMENT_TARGET_IS_EMPTY\=NO
+    export _WRAPPER_CONTENTS_DIR\=/Contents
+    export _WRAPPER_CONTENTS_DIR_SHALLOW_BUNDLE_NO\=/Contents
+    export _WRAPPER_PARENT_PATH\=/..
+    export _WRAPPER_PARENT_PATH_SHALLOW_BUNDLE_NO\=/..
+    export _WRAPPER_RESOURCES_DIR\=/Resources
+    export _WRAPPER_RESOURCES_DIR_SHALLOW_BUNDLE_NO\=/Resources
+    export __DIAGNOSE_DEPRECATED_ARCHS\=YES
+    export __IS_NOT_MACOS\=NO
+    export __IS_NOT_MACOS_macosx\=NO
+    export __IS_NOT_SIMULATOR\=YES
+    export __IS_NOT_SIMULATOR_simulator\=NO
+    export arch\=undefined_arch
+    export variant\=normal
+    /bin/sh -c /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Script-5C0423AD2ECD793000821B50.sh
+✅ 库文件和应用已使用 Apple Development: suhang hu (9K5FH5XTHD) 签名
+
+CopySwiftLibs /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-swiftStdLibTool --copy --verbose --sign 03CC6DE756E360BB56BEBFEA4D0C13038F8CF21A --scan-executable /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS/fastv.debug.dylib --scan-folder /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Frameworks --scan-folder /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/PlugIns --scan-folder /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Library/SystemExtensions --scan-folder /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Extensions --platform macosx --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name fastv --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk --xcode-version 17A400 --platform-family macOS --deployment-target 26.0 --bundle-identifier com.wxside.typecho --output /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/Resources --target-triple arm64-apple-macos26.0 --binary-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS/fastv --dependency-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv_dependency_info.dat --stringsdata-file /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.SwiftFileList --metadata-file-list /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv.DependencyMetadataFileList --static-metadata-file-list /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv.DependencyStaticMetadataFileList --swift-const-vals-list /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/Objects-normal/arm64/fastv.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2025-11-22 21:00:14.819 appintentsmetadataprocessor[70613:6941269] Starting appintentsmetadataprocessor export
+2025-11-22 21:00:14.821 appintentsmetadataprocessor[70613:6941269] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+CodeSign /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS/fastv.debug.dylib (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+    Signing Identity:     "Apple Development: suhang hu (9K5FH5XTHD)"
+    
+    /usr/bin/codesign --force --sign 03CC6DE756E360BB56BEBFEA4D0C13038F8CF21A -o runtime --timestamp\=none --generate-entitlement-der /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS/fastv.debug.dylib
+/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS/fastv.debug.dylib: replacing existing signature
+
+CodeSign /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS/__preview.dylib (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+    Signing Identity:     "Apple Development: suhang hu (9K5FH5XTHD)"
+    
+    /usr/bin/codesign --force --sign 03CC6DE756E360BB56BEBFEA4D0C13038F8CF21A -o runtime --timestamp\=none --generate-entitlement-der /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS/__preview.dylib
+/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app/Contents/MacOS/__preview.dylib: replacing existing signature
+
+CodeSign /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    
+    Signing Identity:     "Apple Development: suhang hu (9K5FH5XTHD)"
+    
+    /usr/bin/codesign --force --sign 03CC6DE756E360BB56BEBFEA4D0C13038F8CF21A -o runtime --entitlements /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Intermediates.noindex/fastv.build/Debug/fastv.build/fastv.app.xcent --timestamp\=none --generate-entitlement-der /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app
+/Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app: replacing existing signature
+
+RegisterExecutionPolicyException /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-RegisterExecutionPolicyException /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app
+
+Validate /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    builtin-validationUtility /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app -no-validate-extension -infoplist-subpath Contents/Info.plist
+
+Touch /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    /usr/bin/touch -c /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app
+
+RegisterWithLaunchServices /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app (in target 'fastv' from project 'fastv')
+    cd /Users/rocky/Sites/fastv
+    /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R -trusted /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/Build/Products/Debug/fastv.app
+
+note: Run script build phase 'Sign ONNX Runtime Library' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'fastv' from project 'fastv')
+note: Run script build phase 'Copy ONNX Runtime Library' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'fastv' from project 'fastv')
+** BUILD SUCCEEDED **
+
