@@ -390,7 +390,21 @@ struct VoiceMemoSceneCard: View {
         .sheet(isPresented: $showNoteList) {
             NoteListView()
         }
+        .overlay(alignment: .topTrailing) {
+            if noteManager.todayCount() > 0 {
+                Text("\(noteManager.todayCount())")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(4)
+                    .background {
+                        Circle()
+                            .fill(.red)
+                    }
+                    .offset(x: -8, y: 8)
+            }
+        }
     }
+}
 
 struct SubtitleSceneCard: View {
     var body: some View {
