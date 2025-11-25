@@ -103,6 +103,13 @@ class VoiceInputHistory: ObservableObject {
         saveHistory() // 清空操作立即保存
     }
     
+    /// 获取今日记录数量
+    func todayCount() -> Int {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        return items.filter { calendar.startOfDay(for: $0.timestamp) == today }.count
+    }
+    
     /// 复制文本到剪贴板
     func copyToPasteboard(_ text: String) {
         let pasteboard = NSPasteboard.general

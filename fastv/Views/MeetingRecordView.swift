@@ -12,14 +12,18 @@ struct MeetingRecordView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var meetingDetector = MeetingDetector.shared
     @ObservedObject private var preferences = UserPreferences.shared
+    @ObservedObject private var recordStorage = MeetingRecordStorage.shared
     @State private var isRecording = false
     @State private var recordingText = ""
-    @State private var meetingRecords: [MeetingRecord] = []
     @State private var accumulatedText = "" // 累积的文本
     @State private var isGeneratingSummary = false
     
     private let voiceService = VoiceInputService.shared
     private let history = VoiceInputHistory.shared
+    
+    private var meetingRecords: [MeetingRecord] {
+        recordStorage.records
+    }
     
     var body: some View {
         NavigationStack {
@@ -99,6 +103,13 @@ struct MeetingRecordView: View {
                     List {
                         ForEach(meetingRecords) { record in
                             MeetingRecordRow(record: record)
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        recordStorage.delete(record)
+                                    } label: {
+                                        Label("删除", systemImage: "trash")
+                                    }
+                                }
                         }
                     }
                 }
@@ -183,7 +194,7 @@ struct MeetingRecordView: View {
                     text: text,
                     createdAt: Date()
                 )
-                meetingRecords.insert(record, at: 0)
+                recordStorage.add(record)
                 
                 // 调用AI总结
                 if preferences.enableAIOptimization && !text.isEmpty {
@@ -212,15 +223,14 @@ struct MeetingRecordView: View {
             )
             
             // 更新记录，添加总结
-            if let index = meetingRecords.firstIndex(where: { $0.id == record.id }) {
-                meetingRecords[index] = MeetingRecord(
-                    id: record.id,
-                    app: record.app,
-                    text: record.text,
-                    summary: summary,
-                    createdAt: record.createdAt
-                )
-            }
+            let updatedRecord = MeetingRecord(
+                id: record.id,
+                app: record.app,
+                text: record.text,
+                summary: summary,
+                createdAt: record.createdAt
+            )
+            recordStorage.update(updatedRecord)
             
             print("✅ [MeetingRecordView] AI总结完成")
         } catch {

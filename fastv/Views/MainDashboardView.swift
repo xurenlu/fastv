@@ -280,6 +280,7 @@ struct StatusIndicator: View {
 // MARK: - 场景卡片组件
 struct VoiceInputSceneCard: View {
     @ObservedObject private var preferences = UserPreferences.shared
+    @ObservedObject private var history = VoiceInputHistory.shared
     
     var body: some View {
         SceneCardView(
@@ -292,6 +293,20 @@ struct VoiceInputSceneCard: View {
                 // 显示快捷键提示
             }
         )
+        .overlay(alignment: .topTrailing) {
+            if history.todayCount() > 0 {
+                Text("\(history.todayCount())")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(4)
+                    .background {
+                        Circle()
+                            .fill(.green)
+                    }
+                    .offset(x: -8, y: 8)
+                .help("今日已输入 \(history.todayCount()) 次")
+            }
+        }
     }
     
     private func formatShortcut() -> String {
@@ -322,6 +337,7 @@ struct VoiceInputSceneCard: View {
 
 struct MeetingRecordSceneCard: View {
     @ObservedObject private var meetingDetector = MeetingDetector.shared
+    @ObservedObject private var recordStorage = MeetingRecordStorage.shared
     @State private var showMeetingRecord = false
     
     var body: some View {
@@ -339,6 +355,19 @@ struct MeetingRecordSceneCard: View {
         )
         .sheet(isPresented: $showMeetingRecord) {
             MeetingRecordView()
+        }
+        .overlay(alignment: .topTrailing) {
+            if recordStorage.todayCount() > 0 {
+                Text("\(recordStorage.todayCount())")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(4)
+                    .background {
+                        Circle()
+                            .fill(.blue)
+                    }
+                    .offset(x: -8, y: 8)
+            }
         }
     }
 }

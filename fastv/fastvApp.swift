@@ -419,6 +419,13 @@ struct fastvApp: App {
                 // 添加空格分隔多段文本
                 textInsertion.insertText(text + " ")
                 print("✅ [fastvApp] 分段文本已插入")
+                
+                // 发送分段转文字完成通知（用于笔记等功能）
+                NotificationCenter.default.post(
+                    name: .voiceInputCompleted,
+                    object: nil,
+                    userInfo: ["text": text, "isSegment": true]
+                )
             }
             
             // 恢复录音状态显示
