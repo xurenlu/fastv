@@ -257,7 +257,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "mkdir -p \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\ncp -f \"${SRCROOT}/Libraries/onnxruntime/current/lib/libonnxruntime.1.23.2.dylib\" \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libonnxruntime.1.23.2.dylib\"\n# 创建符号链接\ncd \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\nrm -f libonnxruntime.dylib\nln -s libonnxruntime.1.23.2.dylib libonnxruntime.dylib\n# 移除旧的代码签名\ncodesign --remove-signature \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libonnxruntime.1.23.2.dylib\" 2>/dev/null || true\n# 查找与 DEVELOPMENT_TEAM 匹配的签名身份\nSIGN_IDENTITY=\"\"\nif [ -n \"${DEVELOPMENT_TEAM}\" ]; then\n    # 查找匹配 Team ID 的证书\n    SIGN_IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep \"${DEVELOPMENT_TEAM}\" | grep -E \"Apple Development|Developer ID\" | head -1 | sed 's/.*\"\\(.*\\)\".*/\1/' || echo \"\")\nfi\n# 如果找不到，尝试使用 CODE_SIGN_IDENTITY\nif [ -z \"${SIGN_IDENTITY}\" ] && [ -n \"${CODE_SIGN_IDENTITY}\" ] && [ \"${CODE_SIGN_IDENTITY}\" != \"-\" ]; then\n    SIGN_IDENTITY=\"${CODE_SIGN_IDENTITY}\"\nfi\n# 签名库文件\nif [ -n \"${SIGN_IDENTITY}\" ]; then\n    codesign --force --sign \"${SIGN_IDENTITY}\" --timestamp=none \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libonnxruntime.1.23.2.dylib\" 2>/dev/null || true\n    echo \"✅ 库文件已使用 ${SIGN_IDENTITY} 签名\"\nelse\n    codesign --force --sign - --timestamp=none \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libonnxruntime.1.23.2.dylib\" 2>/dev/null || true\n    echo \"⚠️  使用 ad-hoc 签名（仅开发）\"\nfi\n";
+			shellScript = "# 复制库文件（不签名，等待应用签名后再签名）\nmkdir -p \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\ncp -f \"${SRCROOT}/Libraries/onnxruntime/current/lib/libonnxruntime.1.23.2.dylib\" \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libonnxruntime.1.23.2.dylib\"\n# 创建符号链接\ncd \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\nrm -f libonnxruntime.dylib\nln -s libonnxruntime.1.23.2.dylib libonnxruntime.dylib\n# 移除旧的代码签名（如果有）\ncodesign --remove-signature \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libonnxruntime.1.23.2.dylib\" 2>/dev/null || true\necho \"✅ 库文件已复制（将在应用签名后重新签名）\"\n";
 		};
 		5C0423AD2ECD793000821B50 /* Sign ONNX Runtime Library */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -269,7 +269,6 @@
 			);
 			inputPaths = (
 				"$(BUILT_PRODUCTS_DIR)/$(FRAMEWORKS_FOLDER_PATH)/libonnxruntime.1.23.2.dylib",
-				"$(BUILT_PRODUCTS_DIR)/$(WRAPPER_NAME)",
 			);
 			name = "Sign ONNX Runtime Library";
 			outputFileListPaths = (
@@ -278,7 +277,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# 在应用签名之后，使用与应用相同的签名重新签名库文件\nLIB_PATH=\"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libonnxruntime.1.23.2.dylib\"\nAPP_PATH=\"${BUILT_PRODUCTS_DIR}/${WRAPPER_NAME}\"\nif [ -f \"${LIB_PATH}\" ] && [ -d \"${APP_PATH}\" ]; then\n    # 首先尝试从应用获取签名身份\n    APP_SIGN=$(codesign -dvv \"${APP_PATH}\" 2>&1 | grep \"Authority=\" | head -1 | sed 's/.*Authority=\\([^)]*)\\).*/\\1/' 2>/dev/null || echo \"\")\n    \n    # 如果应用已签名，使用应用的签名身份\n    if [ -n \"${APP_SIGN}\" ]; then\n        SIGN_IDENTITY=\"${APP_SIGN}\"\n        echo \"🔍 检测到应用签名: ${SIGN_IDENTITY}\"\n    # 否则尝试使用 CODE_SIGN_IDENTITY\n    elif [ -n \"${CODE_SIGN_IDENTITY}\" ] && [ \"${CODE_SIGN_IDENTITY}\" != \"-\" ]; then\n        SIGN_IDENTITY=\"${CODE_SIGN_IDENTITY}\"\n        echo \"🔍 使用 CODE_SIGN_IDENTITY: ${SIGN_IDENTITY}\"\n    # 最后尝试查找开发证书\n    else\n        # 查找与 DEVELOPMENT_TEAM 匹配的证书\n        if [ -n \"${DEVELOPMENT_TEAM}\" ]; then\n            SIGN_IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep \"${DEVELOPMENT_TEAM}\" | grep -E \"Apple Development|Developer ID\" | head -1 | sed 's/.*\"\\(.*\\)\".*/\\1/' || echo \"\")\n        fi\n        # 如果还是找不到，使用 ad-hoc 签名\n        if [ -z \"${SIGN_IDENTITY}\" ]; then\n            SIGN_IDENTITY=\"-\"\n            echo \"⚠️ 未找到签名证书，使用 ad-hoc 签名\"\n        else\n            echo \"🔍 找到签名证书: ${SIGN_IDENTITY}\"\n        fi\n    fi\n    \n    # 移除库文件的旧签名\n    echo \"🔧 移除库文件旧签名...\"\n    codesign --remove-signature \"${LIB_PATH}\" 2>/dev/null || true\n    \n    # 使用相同的签名重新签名库文件\n    echo \"🔧 使用 ${SIGN_IDENTITY} 签名库文件...\"\n    codesign --force --sign \"${SIGN_IDENTITY}\" --timestamp=none \"${LIB_PATH}\" 2>/dev/null || {\n        echo \"❌ 库文件签名失败，尝试 ad-hoc 签名\"\n        codesign --force --sign - --timestamp=none \"${LIB_PATH}\" 2>/dev/null || true\n    }\n    \n    # 如果应用已签名，重新签名整个应用以确保签名一致性\n    if [ -n \"${APP_SIGN}\" ]; then\n        echo \"🔧 重新签名应用以确保签名一致性...\"\n        codesign --force --deep --sign \"${SIGN_IDENTITY}\" --timestamp=none \"${APP_PATH}\" 2>/dev/null || true\n    fi\n    \n    echo \"✅ 库文件签名完成\"\nfi\n";
+			shellScript = "# 在应用签名之前，使用与项目配置相同的签名身份签名库文件\nLIB_PATH=\"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/libonnxruntime.1.23.2.dylib\"\n\nif [ ! -f \"${LIB_PATH}\" ]; then\n    echo \"⚠️  库文件不存在: ${LIB_PATH}\"\n    exit 0\nfi\n\n# 确定签名身份\nSIGN_IDENTITY=\"\"\n\n# 优先使用 EXPANDED_CODE_SIGN_IDENTITY（如果可用，这是 Xcode 选择的完整签名身份）\nif [ -n \"${EXPANDED_CODE_SIGN_IDENTITY}\" ] && [ \"${EXPANDED_CODE_SIGN_IDENTITY}\" != \"-\" ]; then\n    # 如果是哈希值，查找对应的证书名称\n    if echo \"${EXPANDED_CODE_SIGN_IDENTITY}\" | grep -qE '^[0-9A-F]{40}$'; then\n        SIGN_IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep \"${EXPANDED_CODE_SIGN_IDENTITY}\" | sed 's/.*\"\\(.*\\)\".*/\\1/' || echo \"\")\n        if [ -n \"${SIGN_IDENTITY}\" ]; then\n            echo \"🔍 使用 EXPANDED_CODE_SIGN_IDENTITY 对应的证书: ${SIGN_IDENTITY}\"\n        fi\n    else\n        SIGN_IDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY}\"\n        echo \"🔍 使用 EXPANDED_CODE_SIGN_IDENTITY: ${SIGN_IDENTITY}\"\n    fi\n# 否则使用 DEVELOPMENT_TEAM 查找匹配的证书\nelif [ -n \"${DEVELOPMENT_TEAM}\" ]; then\n    # 查找所有证书，然后通过临时签名来检查 Team ID\n    ALL_CERTS=$(security find-identity -v -p codesigning 2>/dev/null | grep -E \"Apple Development|Developer ID\")\n    TEMP_FILE=\"/tmp/test_sign_$$.dylib\"\n    touch \"${TEMP_FILE}\"\n    \n    echo \"${ALL_CERTS}\" | while IFS= read -r cert_line; do\n        cert_hash=$(echo \"${cert_line}\" | sed -n 's/^[[:space:]]*[0-9]*)[[:space:]]*\\([0-9A-F]*\\).*/\\1/p')\n        cert_name=$(echo \"${cert_line}\" | sed -n 's/.*\"\\(.*\\)\".*/\\1/p')\n        if [ -n \"${cert_hash}\" ] && [ -n \"${cert_name}\" ]; then\n            # 尝试使用此证书签名临时文件，然后检查 Team ID\n            if codesign --force --sign \"${cert_hash}\" \"${TEMP_FILE}\" 2>/dev/null; then\n                cert_team=$(codesign -dvv \"${TEMP_FILE}\" 2>&1 | grep \"TeamIdentifier=\" | sed 's/.*TeamIdentifier=\\([^ ]*\\).*/\\1/' || echo \"\")\n                codesign --remove-signature \"${TEMP_FILE}\" 2>/dev/null || true\n                \n                if [ \"${cert_team}\" = \"${DEVELOPMENT_TEAM}\" ]; then\n                    SIGN_IDENTITY=\"${cert_name}\"\n                    echo \"🔍 找到匹配 Team ID ${DEVELOPMENT_TEAM} 的证书: ${SIGN_IDENTITY}\"\n                    break\n                fi\n            fi\n        fi\n    done\n    \n    rm -f \"${TEMP_FILE}\"\nfi\n\n# 如果找不到，尝试使用 CODE_SIGN_IDENTITY（但可能不完整）\nif [ -z \"${SIGN_IDENTITY}\" ] && [ -n \"${CODE_SIGN_IDENTITY}\" ] && [ \"${CODE_SIGN_IDENTITY}\" != \"-\" ]; then\n    # 如果 CODE_SIGN_IDENTITY 包含完整名称，直接使用\n    if echo \"${CODE_SIGN_IDENTITY}\" | grep -q \":\"; then\n        SIGN_IDENTITY=\"${CODE_SIGN_IDENTITY}\"\n        echo \"🔍 使用 CODE_SIGN_IDENTITY: ${SIGN_IDENTITY}\"\n    else\n        # 否则尝试查找完整的签名身份\n        SIGN_IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep \"${CODE_SIGN_IDENTITY}\" | grep -E \"Apple Development|Developer ID\" | head -1 | sed 's/.*\"\\(.*\\)\".*/\\1/' || echo \"\")\n        if [ -n \"${SIGN_IDENTITY}\" ]; then\n            echo \"🔍 找到完整签名证书: ${SIGN_IDENTITY}\"\n        fi\n    fi\nfi\n\n# 如果找不到签名身份，使用 ad-hoc 签名\nif [ -z \"${SIGN_IDENTITY}\" ]; then\n    SIGN_IDENTITY=\"-\"\n    echo \"⚠️  未找到签名证书，使用 ad-hoc 签名（仅开发）\"\nfi\n\n# 移除库文件的旧签名\necho \"🔧 移除库文件旧签名...\"\ncodesign --remove-signature \"${LIB_PATH}\" 2>/dev/null || true\n\n# 使用相同的签名重新签名库文件\necho \"🔧 使用 ${SIGN_IDENTITY} 签名库文件...\"\nSIGN_SUCCESS=false\n\n# 尝试签名（不使用 --options runtime，因为开发证书可能不支持）\nif codesign --force --sign \"${SIGN_IDENTITY}\" --timestamp=none \"${LIB_PATH}\" 2>&1; then\n    SIGN_SUCCESS=true\n    echo \"✅ 库文件签名成功\"\nelse\n    # 如果失败，尝试 ad-hoc 签名\n    echo \"⚠️  签名失败，尝试 ad-hoc 签名...\"\n    if codesign --force --sign - --timestamp=none \"${LIB_PATH}\" 2>&1; then\n        SIGN_SUCCESS=true\n        echo \"✅ 库文件使用 ad-hoc 签名成功\"\n    fi\nfi\n\n# 验证签名\nif [ \"${SIGN_SUCCESS}\" = true ]; then\n    if codesign -v \"${LIB_PATH}\" 2>/dev/null; then\n        LIB_TEAM=$(codesign -dvv \"${LIB_PATH}\" 2>&1 | grep \"TeamIdentifier=\" | sed 's/.*TeamIdentifier=\\([^ ]*\\).*/\\1/' || echo \"\")\n        if [ -n \"${LIB_TEAM}\" ]; then\n            echo \"✅ 库文件签名完成，Team ID: ${LIB_TEAM}\"\n        else\n            echo \"✅ 库文件签名完成（ad-hoc）\"\n        fi\n    else\n        echo \"⚠️  库文件签名验证失败\"\n        exit 1\n    fi\nelse\n    echo \"❌ 库文件签名失败\"\n    exit 1\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -448,7 +447,7 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = W49B66SUW3;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -475,7 +474,7 @@
 					"$(SRCROOT)/Libraries/onnxruntime/current/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
@@ -501,7 +500,7 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = W49B66SUW3;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -528,7 +527,7 @@
 					"$(SRCROOT)/Libraries/onnxruntime/current/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",

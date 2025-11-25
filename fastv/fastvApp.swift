@@ -13,6 +13,14 @@ import AppKit
 // 全局变量：记录语音输入开始时间
 private var voiceInputStartTime: Date?
 
+private struct ShortcutConfig: Equatable {
+    var isEnabled: Bool
+    var keyCode: UInt16
+    var modifiers: NSEvent.ModifierFlags
+}
+
+private var lastShortcutConfig: ShortcutConfig?
+
 /// 应用代理，用于监听应用退出事件
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -161,19 +169,8 @@ struct fastvApp: App {
         ) { _ in
             // 延迟一下，确保 UserPreferences 已经更新
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                // 由于 fastvApp 是 struct，不需要 weak self
-                // 直接调用全局函数或通过 shared 实例访问
                 Task { @MainActor in
-                    // 重新设置快捷键
-                    let preferences = UserPreferences.shared
-                    if preferences.enableVoiceInput {
-                        GlobalShortcutMonitor.shared.startMonitoring(
-                            keyCode: preferences.voiceInputShortcutKeyCode,
-                            modifiers: preferences.voiceInputShortcutModifiers
-                        )
-                    } else {
-                        GlobalShortcutMonitor.shared.stopMonitoring()
-                    }
+                    applyShortcutConfigIfNeeded(reason: "UserDefaults.didChangeNotification")
                 }
             }
         }
@@ -280,13 +277,6 @@ struct fastvApp: App {
         
         print("🔧 [fastvApp] 语音输入设置: enableVoiceInput=\(preferences.enableVoiceInput), keyCode=\(preferences.voiceInputShortcutKeyCode), modifiers=\(preferences.voiceInputShortcutModifiers.rawValue)")
         
-        // 如果未启用语音输入，停止监听
-        guard preferences.enableVoiceInput else {
-            print("ℹ️ [fastvApp] 语音输入未启用，停止快捷键监听")
-            GlobalShortcutMonitor.shared.stopMonitoring()
-            return
-        }
-        
         // 设置快捷键监听回调（使用带Ctrl状态的回调）
         print("🔧 [fastvApp] 设置快捷键回调函数")
         GlobalShortcutMonitor.shared.onShortcutPressedWithCtrl = { hasCtrl in
@@ -303,12 +293,35 @@ struct fastvApp: App {
             }
         }
         
-        // 开始监听
-        print("🔧 [fastvApp] 调用 startMonitoring 开始监听快捷键")
-        GlobalShortcutMonitor.shared.startMonitoring(
+        applyShortcutConfigIfNeeded(reason: "initial setup")
+    }
+    
+    @MainActor
+    private func applyShortcutConfigIfNeeded(reason: String) {
+        let preferences = UserPreferences.shared
+        let newConfig = ShortcutConfig(
+            isEnabled: preferences.enableVoiceInput,
             keyCode: preferences.voiceInputShortcutKeyCode,
             modifiers: preferences.voiceInputShortcutModifiers
         )
+        
+        if newConfig == lastShortcutConfig {
+            print("ℹ️ [fastvApp] 快捷键配置未变化（原因: \(reason)），跳过重新注册")
+            return
+        }
+        
+        lastShortcutConfig = newConfig
+        
+        if newConfig.isEnabled {
+            print("🔧 [fastvApp] 快捷键配置已更新（原因: \(reason)），重新注册监听")
+            GlobalShortcutMonitor.shared.startMonitoring(
+                keyCode: newConfig.keyCode,
+                modifiers: newConfig.modifiers
+            )
+        } else {
+            print("ℹ️ [fastvApp] 语音输入已禁用（原因: \(reason)），停止快捷键监听")
+            GlobalShortcutMonitor.shared.stopMonitoring()
+        }
     }
     
     @MainActor
@@ -440,6 +453,20 @@ struct fastvApp: App {
                 print("✅ [fastvApp] 快速纠错完成，耗时: \(String(format: "%.2f", correctionDuration))毫秒")
             }
             
+            // 常错词自动修正（在AI优化之前）
+            let mistakeManager = CommonMistakeManager.shared
+            if mistakeManager.enableAutoCorrection {
+                let mistakeStartTime = Date()
+                let originalText = text
+                text = mistakeManager.applyCorrections(to: text)
+                if text != originalText {
+                    let mistakeDuration = Date().timeIntervalSince(mistakeStartTime) * 1000
+                    print("✅ [fastvApp] 常错词修正完成，耗时: \(String(format: "%.2f", mistakeDuration))毫秒")
+                    print("📝 [fastvApp] 修正前: \(originalText.prefix(50))...")
+                    print("📝 [fastvApp] 修正后: \(text.prefix(50))...")
+                }
+            }
+            
             // AI 优化（如果启用且按了Ctrl键）
             if hasCtrl && preferences.enableAIOptimization {
                 print("🤖 [fastvApp] AI 优化已启用，开始优化文本（超时: \(preferences.aiTimeout)秒）...")
@@ -466,11 +493,7 @@ struct fastvApp: App {
                 print("ℹ️ [fastvApp] AI 优化未启用，使用原始文本")
             }
             
-            // 保存到历史记录（包含时长）
-            history.add(text, duration: duration)
-            print("✅ [fastvApp] 已保存到历史记录（时长: \(String(format: "%.2f", duration))秒）")
-            
-            // 插入到当前输入框（只有当文本不为空时才插入）
+            // 先插入文本（优先保证用户体验）
             if !text.isEmpty {
                 print("📝 [fastvApp] 插入文本到当前输入框...")
                 textInsertion.insertText(text)
@@ -483,6 +506,10 @@ struct fastvApp: App {
             print("📊 [fastvApp] 转文字完成，隐藏波形窗口...")
             waveformManager.hide()
             print("✅ [fastvApp] 波形窗口已隐藏")
+            
+            // 最后保存到历史记录（延迟保存，不阻塞文本插入）
+            history.add(text, duration: duration)
+            print("✅ [fastvApp] 已保存到历史记录（时长: \(String(format: "%.2f", duration))秒）")
         } catch {
             print("❌ [fastvApp] 语音转文字失败: \(error)")
             // 转文字失败时也要隐藏窗口

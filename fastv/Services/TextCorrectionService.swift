@@ -185,9 +185,12 @@ class TextCorrectionService {
     /// - Parameter text: 原始文本
     /// - Returns: 纠正后的文本
     func correctText(_ text: String) -> String {
+        guard !text.isEmpty else { return text }
+        
         var correctedText = text
         
         // 1. 先处理词语级别的错误（更准确）
+        // 优化：只处理文本中实际存在的错误词
         for (wrong, correct) in wordTypoDict {
             if correctedText.contains(wrong) {
                 correctedText = correctedText.replacingOccurrences(of: wrong, with: correct)
@@ -299,15 +302,17 @@ class TextCorrectionService {
     private func cleanText(_ text: String) -> String {
         var cleaned = text
         
-        // 去除多余的空格
-        while cleaned.contains("  ") {
-            cleaned = cleaned.replacingOccurrences(of: "  ", with: " ")
+        // 去除多余的空格（优化：限制循环次数，避免无限循环）
+        var maxSpaceIterations = 10
+        while cleaned.contains("  ") && maxSpaceIterations > 0 {
+            cleaned = cleaned.replacingOccurrences(of: "  ", with: " ", options: [], range: nil)
+            maxSpaceIterations -= 1
         }
         
         // 去除开头和结尾的空格
         cleaned = cleaned.trimmingCharacters(in: .whitespaces)
         
-        // 去除重复的标点符号（保留一个）
+        // 去除重复的标点符号（保留一个）- 优化：限制循环次数
         let punctuationPatterns = [
             ("。。", "。"),
             ("，，", "，"),
@@ -318,8 +323,10 @@ class TextCorrectionService {
         ]
         
         for (pattern, replacement) in punctuationPatterns {
-            while cleaned.contains(pattern) {
+            var maxIterations = 10 // 限制最大迭代次数
+            while cleaned.contains(pattern) && maxIterations > 0 {
                 cleaned = cleaned.replacingOccurrences(of: pattern, with: replacement)
+                maxIterations -= 1
             }
         }
         

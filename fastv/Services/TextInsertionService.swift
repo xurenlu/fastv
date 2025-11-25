@@ -23,11 +23,11 @@ class TextInsertionService {
         let pasteboard = NSPasteboard.general
         let previousContents = pasteboard.string(forType: .string)
         
-        // 将文本复制到剪贴板
+        // 将文本复制到剪贴板（在主线程执行，但应该很快）
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
         
-        // 模拟 Cmd+V 粘贴
+        // 模拟 Cmd+V 粘贴（这些操作应该很快）
         let source = CGEventSource(stateID: .hidSystemState)
         
         // 按下 Command
@@ -50,7 +50,7 @@ class TextInsertionService {
         cmdUp?.flags = .maskCommand
         cmdUp?.post(tap: .cghidEventTap)
         
-        // 恢复剪贴板内容（延迟执行，确保粘贴完成）
+        // 恢复剪贴板内容（延迟执行，确保粘贴完成，不阻塞）
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             if let previousContents = previousContents {
                 pasteboard.clearContents()

@@ -111,17 +111,25 @@ struct VoiceInputView: View {
                         Text("history")
                             .font(.system(size: 17, weight: .semibold))
                         
-                        if !history.items.isEmpty {
-                            Text("\(history.items.count) \(NSLocalizedString("records", comment: ""))")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.secondary)
+                        if !history.displayedItems.isEmpty {
+                            let totalCount = history.allItems.count
+                            let displayCount = history.displayedItems.count
+                            if totalCount > displayCount {
+                                Text("\(displayCount)/\(totalCount) \(NSLocalizedString("records", comment: ""))")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("\(displayCount) \(NSLocalizedString("records", comment: ""))")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                     
                     Spacer()
                     
                     // 统计信息
-                    if !history.items.isEmpty {
+                    if !history.displayedItems.isEmpty {
                         HStack(spacing: 20) {
                             // 总时长
                             HStack(spacing: 6) {
@@ -159,7 +167,7 @@ struct VoiceInputView: View {
                     }
                     
                     // 清空按钮
-                    if !history.items.isEmpty {
+                    if !history.displayedItems.isEmpty {
                         Button(action: {
                             showClearConfirmation = true
                         }) {
@@ -176,7 +184,7 @@ struct VoiceInputView: View {
                 Divider()
                 
                 // 历史记录列表
-                if history.items.isEmpty {
+                if history.displayedItems.isEmpty {
                     ContentUnavailableView {
                         Label {
                             Text("no.records")
@@ -221,7 +229,7 @@ struct VoiceInputView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 0) {
-                            ForEach(history.items) { item in
+                            ForEach(history.displayedItems) { item in
                                 VoiceInputHistoryRow(item: item)
                                     .padding(.horizontal, 20)
                                     .padding(.vertical, 4)

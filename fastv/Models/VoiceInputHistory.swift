@@ -41,8 +41,21 @@ class VoiceInputHistory: ObservableObject {
     
     @Published private(set) var items: [VoiceInputHistoryItem] = []
     
-    private let maxItems = 100 // 最多保存100条记录
+    private let maxItems = 10000 // 最多保存10000条记录
+    private let displayLimit = 100 // 显示限制100条
     private let storageKey = "voiceInputHistory"
+    private var saveTimer: Timer?
+    private let saveDelay: TimeInterval = 2.0 // 延迟2秒保存，避免频繁写入
+    
+    /// 用于显示的记录（只返回前100条）
+    var displayedItems: [VoiceInputHistoryItem] {
+        Array(items.prefix(displayLimit))
+    }
+    
+    /// 全部记录（用于导出）
+    var allItems: [VoiceInputHistoryItem] {
+        items
+    }
     
     private init() {
         loadHistory()
@@ -57,24 +70,37 @@ class VoiceInputHistory: ObservableObject {
         let item = VoiceInputHistoryItem(text: text, duration: duration)
         items.insert(item, at: 0)
         
-        // 限制记录数量
+        // 限制记录数量（优化：只删除超出部分，避免重建整个数组）
         if items.count > maxItems {
-            items = Array(items.prefix(maxItems))
+            items.removeSubrange(maxItems..<items.count)
         }
         
-        saveHistory()
+        // 延迟保存，避免频繁写入
+        scheduleSave()
+    }
+    
+    /// 延迟保存
+    private func scheduleSave() {
+        saveTimer?.invalidate()
+        saveTimer = Timer.scheduledTimer(withTimeInterval: saveDelay, repeats: false) { [weak self] _ in
+            guard let self = self else { return }
+            Task { @MainActor [weak self] in
+                self?.saveHistory()
+            }
+        }
     }
     
     /// 删除指定记录
     func remove(_ item: VoiceInputHistoryItem) {
         items.removeAll { $0.id == item.id }
-        saveHistory()
+        scheduleSave()
     }
     
     /// 清空所有记录
     func clear() {
         items.removeAll()
-        saveHistory()
+        saveTimer?.invalidate()
+        saveHistory() // 清空操作立即保存
     }
     
     /// 复制文本到剪贴板
@@ -86,18 +112,18 @@ class VoiceInputHistory: ObservableObject {
     
     // MARK: - Statistics
     
-    /// 总字数（不包括空格）
+    /// 总字数（不包括空格）- 使用全部记录
     func totalCharacters() -> Int {
         items.reduce(0) { $0 + $1.characterCount }
     }
     
-    /// 总时长（分钟）
+    /// 总时长（分钟）- 使用全部记录
     func totalDuration() -> Double {
         let totalSeconds = items.reduce(0.0) { $0 + $1.duration }
         return totalSeconds / 60.0
     }
     
-    /// 每分钟字数
+    /// 每分钟字数 - 使用全部记录
     func charactersPerMinute() -> Int {
         let totalChars = totalCharacters()
         let totalMinutes = totalDuration()
