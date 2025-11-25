@@ -572,6 +572,13 @@ struct fastvApp: App {
             // 最后保存到历史记录（延迟保存，不阻塞文本插入）
             history.add(text, duration: duration)
             print("✅ [fastvApp] 已保存到历史记录（时长: \(String(format: "%.2f", duration))秒）")
+            
+            // 发送语音输入完成通知（用于笔记等功能）
+            NotificationCenter.default.post(
+                name: .voiceInputCompleted,
+                object: nil,
+                userInfo: ["text": text]
+            )
         } catch {
             print("❌ [fastvApp] 语音转文字失败: \(error)")
             // 转文字失败时也要隐藏窗口

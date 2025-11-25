@@ -203,21 +203,57 @@ struct NoteDetailView: View {
 struct CreateNoteView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var noteManager = NoteManager.shared
+    @ObservedObject private var preferences = UserPreferences.shared
     @State private var title: String = ""
     @State private var content: String = ""
+    @State private var isRecording = false
+    @State private var showVoiceInput = false
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                // 标题输入
                 TextField("标题", text: $title)
                     .font(.title2)
                     .padding()
                 
                 Divider()
                 
-                TextEditor(text: $content)
-                    .font(.body)
-                    .padding()
+                // 内容输入区域
+                VStack(spacing: 0) {
+                    // 工具栏
+                    HStack {
+                        Button(action: {
+                            showVoiceInput = true
+                        }) {
+                            Label("语音输入", systemImage: "mic.fill")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        
+                        Spacer()
+                        
+                        if preferences.enableAIOptimization {
+                            Button(action: {
+                                optimizeContent()
+                            }) {
+                                Label("AI优化", systemImage: "sparkles")
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .disabled(content.isEmpty)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    
+                    Divider()
+                    
+                    // 文本编辑器
+                    TextEditor(text: $content)
+                        .font(.body)
+                        .padding()
+                }
             }
             .navigationTitle("新建笔记")
             .toolbar {
@@ -236,6 +272,9 @@ struct CreateNoteView: View {
             }
         }
         .frame(width: 600, height: 500)
+        .sheet(isPresented: $showVoiceInput) {
+            VoiceInputForNoteView(content: $content)
+        }
     }
     
     private func saveNote() {
@@ -245,6 +284,109 @@ struct CreateNoteView: View {
         )
         noteManager.add(note)
         dismiss()
+    }
+    
+    private func optimizeContent() {
+        guard !content.isEmpty, preferences.enableAIOptimization else { return }
+        
+        Task {
+            do {
+                let optimized = try await OllamaService.shared.optimizeTranscript(
+                    text: content,
+                    endpoint: preferences.aiAPIEndpoint,
+                    model: preferences.aiModel,
+                    apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken,
+                    timeout: preferences.aiTimeout,
+                    systemPrompt: preferences.aiSystemPrompt
+                )
+                await MainActor.run {
+                    content = optimized
+                }
+            } catch {
+                print("⚠️ [CreateNoteView] AI优化失败: \(error)")
+            }
+        }
+    }
+}
+
+/// 语音输入笔记视图
+struct VoiceInputForNoteView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var content: String
+    @ObservedObject private var preferences = UserPreferences.shared
+    @State private var transcribedText = ""
+    @State private var isTranscribing = false
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("语音输入笔记")
+                .font(.headline)
+            
+            if isTranscribing {
+                ProgressView()
+                Text("正在转文字...")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("按下快捷键开始录音")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            
+            if !transcribedText.isEmpty {
+                ScrollView {
+                    Text(transcribedText)
+                        .font(.body)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                }
+                .frame(maxHeight: 200)
+            }
+            
+            HStack(spacing: 12) {
+                Button("取消") {
+                    dismiss()
+                }
+                .buttonStyle(.bordered)
+                
+                Button("添加到笔记") {
+                    if !transcribedText.isEmpty {
+                        if content.isEmpty {
+                            content = transcribedText
+                        } else {
+                            content += "\n\n" + transcribedText
+                        }
+                    }
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(transcribedText.isEmpty)
+            }
+        }
+        .padding()
+        .frame(width: 500, height: 400)
+        .onAppear {
+            // 监听语音输入完成事件
+            setupVoiceInputListener()
+        }
+    }
+    
+    private func setupVoiceInputListener() {
+        // 监听语音输入完成通知
+        NotificationCenter.default.addObserver(
+            forName: .voiceInputCompleted,
+            object: nil,
+            queue: .main
+        ) { notification in
+            if let text = notification.userInfo?["text"] as? String {
+                self.transcribedText = text
+                self.isTranscribing = false
+            }
+        }
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }
 
