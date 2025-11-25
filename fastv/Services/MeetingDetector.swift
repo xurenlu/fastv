@@ -23,6 +23,7 @@ class MeetingDetector: ObservableObject {
     /// 支持的会议应用
     enum MeetingApp: String, CaseIterable {
         case tencentMeeting = "com.tencent.meeting"
+        case feishu = "com.bytedance.feishu"
         case zoom = "us.zoom.xos"
         case microsoftTeams = "com.microsoft.teams"
         case webex = "com.cisco.webexmeetingsapp"
@@ -32,6 +33,8 @@ class MeetingDetector: ObservableObject {
             switch self {
             case .tencentMeeting:
                 return "腾讯会议"
+            case .feishu:
+                return "飞书会议"
             case .zoom:
                 return "Zoom"
             case .microsoftTeams:
@@ -93,6 +96,22 @@ class MeetingDetector: ObservableObject {
                     if detectedMeetingApp != meetingApp {
                         print("✅ [MeetingDetector] 检测到会议软件: \(meetingApp.displayName)")
                         detectedMeetingApp = meetingApp
+                        
+                        // 显示悬浮工具条
+                        let floatingBar = MeetingRecordFloatingBar.shared
+                        if !floatingBar.isVisible {
+                            floatingBar.show(
+                                meetingAppName: meetingApp.displayName,
+                                onStart: {
+                                    // 开始会议记录
+                                    MeetingRecordService.shared.startRecording(meetingAppName: meetingApp.displayName)
+                                },
+                                onDismiss: {
+                                    // 用户取消，不做任何操作
+                                }
+                            )
+                        }
+                        
                         // 发送通知
                         NotificationCenter.default.post(
                             name: .meetingAppDetected,
@@ -108,12 +127,59 @@ class MeetingDetector: ObservableObject {
         // 没有检测到会议应用
         if detectedMeetingApp != nil {
             print("ℹ️ [MeetingDetector] 会议软件已退出")
+            
+            // 如果正在录音，停止录音
+            let recordService = MeetingRecordService.shared
+            if recordService.isRecording {
+                Task {
+                    if let record = await recordService.stopRecording() {
+                        // 保存记录
+                        MeetingRecordStorage.shared.add(record)
+                        
+                        // 如果启用AI优化，生成总结
+                        if UserPreferences.shared.enableAIOptimization {
+                            await generateSummary(for: record)
+                        }
+                    }
+                }
+            }
+            
+            // 隐藏悬浮工具条
+            MeetingRecordFloatingBar.shared.hide()
+            
             detectedMeetingApp = nil
             // 发送通知
             NotificationCenter.default.post(
                 name: .meetingAppExited,
                 object: nil
             )
+        }
+    }
+    
+    /// 生成会议总结
+    private func generateSummary(for record: MeetingRecord) async {
+        guard !record.segments.isEmpty else { return }
+        
+        do {
+            let summary = try await OllamaService.shared.summarizeMeeting(
+                text: record.text,
+                endpoint: UserPreferences.shared.aiAPIEndpoint,
+                model: UserPreferences.shared.aiModel,
+                apiToken: UserPreferences.shared.aiAPIToken.isEmpty ? nil : UserPreferences.shared.aiAPIToken,
+                timeout: UserPreferences.shared.aiTimeout
+            )
+            
+            var updatedRecord = record
+            updatedRecord = MeetingRecord(
+                id: record.id,
+                app: record.app,
+                segments: record.segments,
+                summary: summary,
+                createdAt: record.createdAt
+            )
+            MeetingRecordStorage.shared.update(updatedRecord)
+        } catch {
+            print("⚠️ [MeetingDetector] AI总结失败: \(error)")
         }
     }
     

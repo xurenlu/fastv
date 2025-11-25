@@ -25,7 +25,7 @@ struct ContentView: View {
             .sheet(isPresented: $showWelcome) {
                 WelcomeView()
                     .frame(width: 600, height: 650)
-            }
+        }
             .frame(minWidth: 900, minHeight: 700)
         .onAppear {
             // 延迟显示欢迎窗口，确保界面已加载完成

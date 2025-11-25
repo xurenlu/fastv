@@ -13,13 +13,16 @@ struct MeetingRecordView: View {
     @ObservedObject private var meetingDetector = MeetingDetector.shared
     @ObservedObject private var preferences = UserPreferences.shared
     @ObservedObject private var recordStorage = MeetingRecordStorage.shared
-    @State private var isRecording = false
-    @State private var recordingText = ""
-    @State private var accumulatedText = "" // 累积的文本
+    @ObservedObject private var recordService = MeetingRecordService.shared
     @State private var isGeneratingSummary = false
     
-    private let voiceService = VoiceInputService.shared
-    private let history = VoiceInputHistory.shared
+    private var isRecording: Bool {
+        recordService.isRecording
+    }
+    
+    private var currentSegments: [MeetingSegment] {
+        recordService.currentSegments
+    }
     
     private var meetingRecords: [MeetingRecord] {
         recordStorage.records
@@ -50,42 +53,56 @@ struct MeetingRecordView: View {
                             Circle()
                                 .fill(.red)
                                 .frame(width: 12, height: 12)
-                            Text("正在录音...")
+                            Text("正在记录中...")
                                 .font(.headline)
                                 .foregroundStyle(.red)
+                            
+                            if !currentSegments.isEmpty {
+                                Text("（已记录 \(currentSegments.count) 段）")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                         
                         Button(action: {
-                            stopRecording()
+                            Task {
+                                await stopRecording()
+                            }
                         }) {
-                            Label("结束录音", systemImage: "stop.circle.fill")
+                            Label("结束记录", systemImage: "stop.circle.fill")
                                 .font(.headline)
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
                     } else {
-                        Button(action: {
-                            startRecording()
-                        }) {
-                            Label("开始录音", systemImage: "record.circle.fill")
-                                .font(.headline)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .disabled(meetingDetector.detectedMeetingApp == nil)
+                        Text("会议记录将自动开始")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .padding()
                 
                 Divider()
                 
-                // 实时文本显示
-                if !recordingText.isEmpty {
+                // 实时对话显示
+                if !currentSegments.isEmpty {
                     ScrollView {
-                        Text(recordingText)
-                            .font(.body)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
+                        VStack(alignment: .leading, spacing: 12) {
+                            ForEach(currentSegments) { segment in
+                                HStack(alignment: .top, spacing: 8) {
+                                    Text(formatTime(segment.timestamp))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 60, alignment: .leading)
+                                    
+                                    Text(segment.text)
+                                        .font(.body)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                        .padding()
                     }
                     .frame(maxHeight: 200)
                     
@@ -130,86 +147,18 @@ struct MeetingRecordView: View {
         .frame(width: 700, height: 600)
     }
     
-    private func startRecording() {
-        guard !isRecording else { return }
-        
-        isRecording = true
-        recordingText = ""
-        accumulatedText = ""
-        
-        // 禁用分段转文字（会议录音需要持续录音，不插入文本）
-        voiceService.enableSegmentTranscription = false
-        
-        // 设置分段回调为空（会议录音不插入文本）
-        voiceService.onSegmentReady = nil
-        
-        do {
-            try voiceService.startRecording()
-            print("🎤 [MeetingRecordView] 开始会议录音")
-            
-            // 设置音频数据回调（用于实时显示）
-            voiceService.onAudioData = { level in
-                // 可以在这里更新UI显示音频电平
-            }
-        } catch {
-            print("❌ [MeetingRecordView] 开始录音失败: \(error)")
-            isRecording = false
-        }
-    }
-    
-    private func stopRecording() {
-        guard isRecording else { return }
-        
-        isRecording = false
-        
-        Task {
-            // 停止录音
-            guard let recording = try? await voiceService.stopRecording() else {
-                print("❌ [MeetingRecordView] 停止录音失败")
-                return
-            }
-            
-            print("✅ [MeetingRecordView] 录音已停止，开始转文字...")
-            
-            // 转文字
-            do {
-                let languageString = preferences.voiceInputLanguage
-                let language = TranscriptLanguage(rawValue: languageString) ?? .zh
-                
-                var text = try await SpeechTranscriber.transcribe(recording: recording, language: language)
-                
-                // 快速纠错
-                if preferences.enableFastCorrection {
-                    text = TextCorrectionService.shared.correctText(text)
-                }
-                
-                // 常错词修正
-                let mistakeManager = CommonMistakeManager.shared
-                if mistakeManager.enableAutoCorrection {
-                    text = mistakeManager.applyCorrections(to: text)
-                }
-                
-                recordingText = text
-                accumulatedText = text
-                
-                // 创建会议记录
-                let record = MeetingRecord(
-                    app: meetingDetector.detectedMeetingApp?.displayName ?? "未知",
-                    text: text,
-                    createdAt: Date()
-                )
-                recordStorage.add(record)
-                
-                // 调用AI总结
-                if preferences.enableAIOptimization && !text.isEmpty {
-                    await generateSummary(for: record)
-                }
-            } catch {
-                print("❌ [MeetingRecordView] 转文字失败: \(error)")
-            }
+    private func stopRecording() async {
+        guard let record = await recordService.stopRecording() else {
+            return
         }
         
-        print("🛑 [MeetingRecordView] 停止会议录音")
+        // 保存记录
+        recordStorage.add(record)
+        
+        // 如果启用AI优化，生成总结
+        if preferences.enableAIOptimization && !record.segments.isEmpty {
+            await generateSummary(for: record)
+        }
     }
     
     private func generateSummary(for record: MeetingRecord) async {
@@ -230,7 +179,7 @@ struct MeetingRecordView: View {
             let updatedRecord = MeetingRecord(
                 id: record.id,
                 app: record.app,
-                text: record.text,
+                segments: record.segments,
                 summary: summary,
                 createdAt: record.createdAt
             )
@@ -243,20 +192,53 @@ struct MeetingRecordView: View {
         
         isGeneratingSummary = false
     }
+    
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter.string(from: date)
+    }
+}
+
+/// 会议对话片段
+struct MeetingSegment: Identifiable, Codable {
+    let id: UUID
+    let text: String
+    let timestamp: Date
+    
+    init(id: UUID = UUID(), text: String, timestamp: Date = Date()) {
+        self.id = id
+        self.text = text
+        self.timestamp = timestamp
+    }
 }
 
 /// 会议记录模型
 struct MeetingRecord: Identifiable, Codable {
     var id: UUID
     var app: String
-    var text: String
+    var segments: [MeetingSegment] // 多段对话
     var summary: String?
     let createdAt: Date
     
+    // 兼容旧版本：从text字段读取
+    var text: String {
+        segments.map { $0.text }.joined(separator: "\n\n")
+    }
+    
+    init(id: UUID = UUID(), app: String, segments: [MeetingSegment] = [], summary: String? = nil, createdAt: Date = Date()) {
+        self.id = id
+        self.app = app
+        self.segments = segments
+        self.summary = summary
+        self.createdAt = createdAt
+    }
+    
+    // 兼容旧版本的初始化方法
     init(id: UUID = UUID(), app: String, text: String, summary: String? = nil, createdAt: Date = Date()) {
         self.id = id
         self.app = app
-        self.text = text
+        self.segments = [MeetingSegment(text: text, timestamp: createdAt)]
         self.summary = summary
         self.createdAt = createdAt
     }
@@ -279,9 +261,33 @@ struct MeetingRecordRow: View {
                     .foregroundStyle(.secondary)
             }
             
-            Text(record.text)
-                .font(.body)
-                .lineLimit(3)
+            // 显示多段对话
+            if record.segments.count > 1 {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(record.segments.prefix(3)) { segment in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text(formatTime(segment.timestamp))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 50, alignment: .leading)
+                            
+                            Text(segment.text)
+                                .font(.body)
+                                .lineLimit(2)
+                        }
+                    }
+                    
+                    if record.segments.count > 3 {
+                        Text("...共 \(record.segments.count) 段对话")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } else {
+                Text(record.text)
+                    .font(.body)
+                    .lineLimit(3)
+            }
             
             if let summary = record.summary {
                 Divider()
@@ -306,6 +312,12 @@ struct MeetingRecordRow: View {
             }
         }
         .padding(.vertical, 4)
+    }
+    
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter.string(from: date)
     }
 }
 

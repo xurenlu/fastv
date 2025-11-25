@@ -276,16 +276,68 @@ struct VoiceInputSceneCard: View {
     @ObservedObject private var history = VoiceInputHistory.shared
     
     var body: some View {
-        SceneCardView(
-            icon: "mic.fill",
-            title: "语音输入",
-            description: "快速语音转文字",
-            status: "就绪",
-            actionText: formatShortcut(),
-            action: {
-                // 显示快捷键提示
+        VStack(alignment: .leading, spacing: 12) {
+            // 图标和标题
+            HStack(spacing: 12) {
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 24))
+                    .foregroundStyle(.blue)
+                    .frame(width: 32, height: 32)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("语音输入")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    
+                    Text("在其他应用的输入框中按下快捷键开始")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
             }
-        )
+            
+            Spacer()
+            
+            // 快捷键显示
+            HStack {
+                Spacer()
+                VStack(spacing: 4) {
+                    Text("快捷键")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(formatShortcut())
+                        .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(.blue)
+                }
+                Spacer()
+            }
+            .padding(.vertical, 8)
+            .background {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.blue.opacity(0.1))
+            }
+            
+            // 状态
+            HStack {
+                Circle()
+                    .fill(.green)
+                    .frame(width: 6, height: 6)
+                
+                Text("就绪")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .frame(height: 180)
+        .background {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(NSColor.controlBackgroundColor))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(Color.secondary.opacity(0.1), lineWidth: 1)
+                }
+        }
         .overlay(alignment: .topTrailing) {
             if history.todayCount() > 0 {
                 Text("\(history.todayCount())")
