@@ -106,7 +106,7 @@ struct MainDashboardView: View {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(selectedScene == scene ? Color.accentColor.opacity(0.15) : Color.clear)
             }
-            .foregroundStyle(selectedScene == scene ? .accentColor : .primary)
+            .foregroundStyle(selectedScene == scene ? .blue : .primary)
         }
         .buttonStyle(.plain)
     }
@@ -445,13 +445,25 @@ struct SceneCardView: View {
     let action: () -> Void
     var isDisabled: Bool = false
     
+    private var iconColor: Color {
+        isDisabled ? Color.secondary : Color.blue
+    }
+    
+    private var buttonBackgroundColor: Color {
+        isDisabled ? Color.secondary.opacity(0.2) : Color.blue.opacity(0.1)
+    }
+    
+    private var buttonForegroundColor: Color {
+        isDisabled ? Color.secondary : Color.blue
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // 图标和标题
             HStack(spacing: 12) {
                 Image(systemName: icon)
                     .font(.system(size: 24))
-                    .foregroundStyle(isDisabled ? .secondary : .accentColor)
+                    .foregroundStyle(iconColor)
                     .frame(width: 32, height: 32)
                 
                 VStack(alignment: .leading, spacing: 4) {
@@ -478,9 +490,9 @@ struct SceneCardView: View {
                 .padding(.vertical, 8)
                 .background {
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(isDisabled ? Color.secondary.opacity(0.2) : Color.accentColor.opacity(0.1))
+                        .fill(buttonBackgroundColor)
                 }
-                .foregroundStyle(isDisabled ? .secondary : .accentColor)
+                .foregroundStyle(buttonForegroundColor)
             }
             .buttonStyle(.plain)
             .disabled(isDisabled)

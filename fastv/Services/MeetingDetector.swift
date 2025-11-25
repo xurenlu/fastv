@@ -52,9 +52,8 @@ class MeetingDetector: ObservableObject {
         startDetection()
     }
     
-    deinit {
-        stopDetection()
-    }
+    // 注意：由于是单例，deinit实际上不会被调用
+    // 如果需要停止检测，可以调用stopDetection()方法
     
     /// 开始检测
     func startDetection() {

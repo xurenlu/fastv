@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 /// 会议记录存储管理器
 @MainActor

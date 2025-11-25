@@ -101,15 +101,19 @@ struct MeetingRecordView: View {
                     }
                 } else {
                     List {
-                        ForEach(meetingRecords) { record in
-                            MeetingRecordRow(record: record)
-                                .swipeActions(edge: .trailing) {
-                                    Button(role: .destructive) {
-                                        recordStorage.delete(record)
-                                    } label: {
-                                        Label("删除", systemImage: "trash")
-                                    }
+                        ForEach(Array(meetingRecords.enumerated()), id: \.element.id) { index, record in
+                            MeetingRecordRow(
+                                record: record,
+                                isGeneratingSummary: isGeneratingSummary,
+                                isFirstRecord: index == 0
+                            )
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    recordStorage.delete(record)
+                                } label: {
+                                    Label("删除", systemImage: "trash")
                                 }
+                            }
                         }
                     }
                 }
@@ -242,7 +246,7 @@ struct MeetingRecordView: View {
 }
 
 /// 会议记录模型
-struct MeetingRecord: Identifiable {
+struct MeetingRecord: Identifiable, Codable {
     var id: UUID
     var app: String
     var text: String
@@ -261,6 +265,8 @@ struct MeetingRecord: Identifiable {
 /// 会议记录行视图
 struct MeetingRecordRow: View {
     let record: MeetingRecord
+    let isGeneratingSummary: Bool
+    let isFirstRecord: Bool
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -288,7 +294,7 @@ struct MeetingRecordRow: View {
                         .font(.subheadline)
                         .foregroundStyle(.primary)
                 }
-            } else if isGeneratingSummary && record.id == meetingRecords.first?.id {
+            } else if isGeneratingSummary && isFirstRecord {
                 Divider()
                 HStack {
                     ProgressView()

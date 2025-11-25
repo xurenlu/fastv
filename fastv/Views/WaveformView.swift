@@ -169,6 +169,12 @@ class WaveformWindowManager: ObservableObject {
         audioLevel = 0.0
     }
     
+    /// 切换到录音状态
+    func setRecording() {
+        print("📊 [WaveformWindowManager] 切换到录音状态")
+        state = .recording
+    }
+    
     /// 强制清理窗口（用于应用退出时的兜底方案）
     func cleanup() {
         print("🧹 [WaveformWindowManager] cleanup() 被调用，强制清理窗口")

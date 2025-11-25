@@ -6,9 +6,10 @@
 //
 
 import Foundation
+import Combine
 
 /// 笔记模型
-struct Note: Identifiable, Codable {
+struct Note: Identifiable, Codable, Hashable {
     let id: UUID
     var title: String
     var content: String

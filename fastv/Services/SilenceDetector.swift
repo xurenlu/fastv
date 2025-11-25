@@ -7,6 +7,7 @@
 
 import Foundation
 import AVFoundation
+import Combine
 
 /// 停顿检测服务
 /// 用于检测音频中的静音/低音量段，实现智能分段转文字

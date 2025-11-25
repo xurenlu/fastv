@@ -56,7 +56,7 @@ struct NoteListView: View {
                     ContentUnavailableView {
                         Label("暂无笔记", systemImage: "note.text")
                     } description: {
-                        Text("点击"新建笔记"开始创建")
+                        Text("点击「新建笔记」开始创建")
                     }
                 } else {
                     List(selection: $selectedNote) {
@@ -316,6 +316,7 @@ struct VoiceInputForNoteView: View {
     @ObservedObject private var preferences = UserPreferences.shared
     @State private var transcribedText = ""
     @State private var isTranscribing = false
+    @State private var notificationObserver: NSObjectProtocol?
     
     var body: some View {
         VStack(spacing: 20) {
@@ -369,24 +370,31 @@ struct VoiceInputForNoteView: View {
             // 监听语音输入完成事件
             setupVoiceInputListener()
         }
+        .onDisappear {
+            // 移除监听
+            removeVoiceInputListener()
+        }
     }
     
     private func setupVoiceInputListener() {
         // 监听语音输入完成通知
-        NotificationCenter.default.addObserver(
+        notificationObserver = NotificationCenter.default.addObserver(
             forName: .voiceInputCompleted,
             object: nil,
             queue: .main
         ) { notification in
             if let text = notification.userInfo?["text"] as? String {
-                self.transcribedText = text
-                self.isTranscribing = false
+                transcribedText = text
+                isTranscribing = false
             }
         }
     }
     
-    deinit {
-        NotificationCenter.default.removeObserver(self)
+    private func removeVoiceInputListener() {
+        if let observer = notificationObserver {
+            NotificationCenter.default.removeObserver(observer)
+            notificationObserver = nil
+        }
     }
 }
 
