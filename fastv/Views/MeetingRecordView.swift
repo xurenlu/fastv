@@ -15,6 +15,11 @@ struct MeetingRecordView: View {
     @State private var isRecording = false
     @State private var recordingText = ""
     @State private var meetingRecords: [MeetingRecord] = []
+    @State private var accumulatedText = "" // 累积的文本
+    @State private var isGeneratingSummary = false
+    
+    private let voiceService = VoiceInputService.shared
+    private let history = VoiceInputHistory.shared
     
     var body: some View {
         NavigationStack {
@@ -111,49 +116,127 @@ struct MeetingRecordView: View {
     }
     
     private func startRecording() {
-        // TODO: 实现会议录音功能
+        guard !isRecording else { return }
+        
         isRecording = true
         recordingText = ""
-        print("🎤 [MeetingRecordView] 开始会议录音")
+        accumulatedText = ""
+        
+        // 禁用分段转文字（会议录音需要持续录音，不插入文本）
+        voiceService.enableSegmentTranscription = false
+        
+        // 设置分段回调为空（会议录音不插入文本）
+        voiceService.onSegmentReady = nil
+        
+        do {
+            try voiceService.startRecording()
+            print("🎤 [MeetingRecordView] 开始会议录音")
+            
+            // 设置音频数据回调（用于实时显示）
+            voiceService.onAudioData = { level in
+                // 可以在这里更新UI显示音频电平
+            }
+        } catch {
+            print("❌ [MeetingRecordView] 开始录音失败: \(error)")
+            isRecording = false
+        }
     }
     
     private func stopRecording() {
-        // TODO: 实现停止录音和AI总结
+        guard isRecording else { return }
+        
         isRecording = false
         
-        if !recordingText.isEmpty {
-            // 创建会议记录
-            let record = MeetingRecord(
-                app: meetingDetector.detectedMeetingApp?.displayName ?? "未知",
-                text: recordingText,
-                createdAt: Date()
-            )
-            meetingRecords.insert(record, at: 0)
+        Task {
+            // 停止录音
+            guard let recording = try? await voiceService.stopRecording() else {
+                print("❌ [MeetingRecordView] 停止录音失败")
+                return
+            }
             
-            // TODO: 调用AI总结
-            if preferences.enableAIOptimization {
-                generateSummary(for: record)
+            print("✅ [MeetingRecordView] 录音已停止，开始转文字...")
+            
+            // 转文字
+            do {
+                let languageString = preferences.voiceInputLanguage
+                let language = TranscriptLanguage(rawValue: languageString) ?? .zh
+                
+                var text = try await SpeechTranscriber.transcribe(recording: recording, language: language)
+                
+                // 快速纠错
+                if preferences.enableFastCorrection {
+                    text = TextCorrectionService.shared.correctText(text)
+                }
+                
+                // 常错词修正
+                let mistakeManager = CommonMistakeManager.shared
+                if mistakeManager.enableAutoCorrection {
+                    text = mistakeManager.applyCorrections(to: text)
+                }
+                
+                recordingText = text
+                accumulatedText = text
+                
+                // 创建会议记录
+                let record = MeetingRecord(
+                    app: meetingDetector.detectedMeetingApp?.displayName ?? "未知",
+                    text: text,
+                    createdAt: Date()
+                )
+                meetingRecords.insert(record, at: 0)
+                
+                // 调用AI总结
+                if preferences.enableAIOptimization && !text.isEmpty {
+                    await generateSummary(for: record)
+                }
+            } catch {
+                print("❌ [MeetingRecordView] 转文字失败: \(error)")
             }
         }
         
-        recordingText = ""
         print("🛑 [MeetingRecordView] 停止会议录音")
     }
     
-    private func generateSummary(for record: MeetingRecord) {
-        // TODO: 实现AI总结功能
-        Task {
-            // 调用AI服务生成总结
+    private func generateSummary(for record: MeetingRecord) async {
+        guard !isGeneratingSummary else { return }
+        
+        isGeneratingSummary = true
+        
+        do {
+            let summary = try await OllamaService.shared.summarizeMeeting(
+                text: record.text,
+                endpoint: preferences.aiAPIEndpoint,
+                model: preferences.aiModel,
+                apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken,
+                timeout: preferences.aiTimeout
+            )
+            
+            // 更新记录，添加总结
+            if let index = meetingRecords.firstIndex(where: { $0.id == record.id }) {
+                meetingRecords[index] = MeetingRecord(
+                    id: record.id,
+                    app: record.app,
+                    text: record.text,
+                    summary: summary,
+                    createdAt: record.createdAt
+                )
+            }
+            
+            print("✅ [MeetingRecordView] AI总结完成")
+        } catch {
+            print("⚠️ [MeetingRecordView] AI总结失败: \(error)")
         }
+        
+        isGeneratingSummary = false
     }
 }
 
 /// 会议记录模型
 struct MeetingRecord: Identifiable {
-    let id: UUID
-    let app: String
-    let text: String
-    let summary: String?
+    var id: UUID
+    var app: String
+    var text: String
+    var summary: String?
     let createdAt: Date
     
     init(id: UUID = UUID(), app: String, text: String, summary: String? = nil, createdAt: Date = Date()) {
@@ -186,10 +269,24 @@ struct MeetingRecordRow: View {
             
             if let summary = record.summary {
                 Divider()
-                Text("总结：\(summary)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .italic()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("AI总结")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
+                    Text(summary)
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                }
+            } else if isGeneratingSummary && record.id == meetingRecords.first?.id {
+                Divider()
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("正在生成总结...")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .padding(.vertical, 4)

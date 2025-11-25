@@ -20,6 +20,10 @@ class VoiceInputService: ObservableObject {
     private var audioEngine: AVAudioEngine?
     private var audioLevelTimer: Timer?
     nonisolated(unsafe) private var recordedBuffers: [Data] = []
+    // 分段录音：当前段的缓冲区
+    nonisolated(unsafe) private var currentSegmentBuffers: [Data] = []
+    // 分段录音：已完成的段（用于最后一段的处理）
+    nonisolated(unsafe) private var completedSegments: [Data] = []
     private var recordingOriginalFormat: AVAudioFormat?
     private let recordingSampleRate: Double = 16000
     private let recordingChannels: AVAudioChannelCount = 1
@@ -27,6 +31,14 @@ class VoiceInputService: ObservableObject {
     
     // 音频数据回调，用于波形显示
     var onAudioData: ((Float) -> Void)?
+    
+    // 分段转文字回调：当检测到停顿时，自动转文字
+    var onSegmentReady: ((VoiceRecording) async -> Void)?
+    
+    // 是否启用智能分段转文字
+    var enableSegmentTranscription: Bool = false
+    
+    private let silenceDetector = SilenceDetector.shared
     
     private init() {}
     
@@ -91,8 +103,22 @@ class VoiceInputService: ObservableObject {
         // 重置录音数据容器并保存原始格式
         recordingDataQueue.sync {
             self.recordedBuffers = []
+            self.currentSegmentBuffers = []
+            self.completedSegments = []
         }
         recordingOriginalFormat = format
+        
+        // 重置停顿检测器
+        silenceDetector.reset()
+        
+        // 设置停顿检测回调
+        if enableSegmentTranscription {
+            silenceDetector.onSilenceDetected = { [weak self] in
+                Task { @MainActor [weak self] in
+                    await self?.processSegment()
+                }
+            }
+        }
         
         // 安装tap来捕获音频数据
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, time in
@@ -110,6 +136,11 @@ class VoiceInputService: ObservableObject {
                 Task { @MainActor in
                     self.audioLevel = rms
                     self.onAudioData?(rms)
+                    
+                    // 处理停顿检测
+                    if self.enableSegmentTranscription {
+                        self.silenceDetector.processAudioLevel(rms)
+                    }
                 }
             }
             
@@ -121,6 +152,10 @@ class VoiceInputService: ObservableObject {
                 let data = Data(bytes: pcmPointer, count: byteCount)
                 self.recordingDataQueue.async {
                     self.recordedBuffers.append(data)
+                    // 如果启用分段转文字，同时保存到当前段
+                    if self.enableSegmentTranscription {
+                        self.currentSegmentBuffers.append(data)
+                    }
                 }
             }
         }
@@ -157,6 +192,49 @@ class VoiceInputService: ObservableObject {
         }
     }
     
+    /// 处理当前段（检测到停顿时调用）
+    private func processSegment() async {
+        guard enableSegmentTranscription else { return }
+        
+        let segmentBuffers: [Data] = recordingDataQueue.sync {
+            guard !self.currentSegmentBuffers.isEmpty else {
+                return []
+            }
+            let buffers = self.currentSegmentBuffers
+            // 保存到已完成段（用于最后合并）
+            self.completedSegments.append(contentsOf: buffers)
+            // 清空当前段，准备下一段
+            self.currentSegmentBuffers = []
+            return buffers
+        }
+        
+        guard !segmentBuffers.isEmpty,
+              let originalFormat = recordingOriginalFormat else {
+            print("⚠️ [VoiceInputService] 段数据为空，跳过")
+            return
+        }
+        
+        let segmentData = segmentBuffers.reduce(Data(), +)
+        
+        do {
+            let segmentRecording = try convertPCMData(
+                segmentData,
+                originalFormat: originalFormat,
+                toSampleRate: recordingSampleRate,
+                toChannels: recordingChannels
+            )
+            
+            print("✅ [VoiceInputService] 检测到停顿，准备转文字，段长度=\(segmentRecording.pcmData.count)字节")
+            
+            // 调用回调进行转文字
+            if let callback = onSegmentReady {
+                await callback(segmentRecording)
+            }
+        } catch {
+            print("⚠️ [VoiceInputService] 段转换失败: \(error)")
+        }
+    }
+    
     /// 停止录音并返回音频数据
     func stopRecording() async throws -> VoiceRecording? {
         print("🎤 [VoiceInputService] stopRecording() 被调用，当前 isRecording=\(isRecording)")
@@ -164,6 +242,35 @@ class VoiceInputService: ObservableObject {
         guard isRecording else {
             print("ℹ️ [VoiceInputService] 未在录音中，返回 nil")
             return nil
+        }
+        
+        // 如果启用分段转文字，处理最后一段
+        if enableSegmentTranscription {
+            let lastSegmentBuffers: [Data] = recordingDataQueue.sync {
+                let buffers = self.currentSegmentBuffers
+                self.currentSegmentBuffers = []
+                return buffers
+            }
+            
+            if !lastSegmentBuffers.isEmpty {
+                print("🎤 [VoiceInputService] 处理最后一段音频")
+                let lastSegmentData = lastSegmentBuffers.reduce(Data(), +)
+                if let originalFormat = recordingOriginalFormat {
+                    do {
+                        let lastSegmentRecording = try convertPCMData(
+                            lastSegmentData,
+                            originalFormat: originalFormat,
+                            toSampleRate: recordingSampleRate,
+                            toChannels: recordingChannels
+                        )
+                        if let callback = onSegmentReady {
+                            await callback(lastSegmentRecording)
+                        }
+                    } catch {
+                        print("⚠️ [VoiceInputService] 最后一段转换失败: \(error)")
+                    }
+                }
+            }
         }
         
         print("🎤 [VoiceInputService] 停止音频引擎和定时器...")
@@ -176,6 +283,9 @@ class VoiceInputService: ObservableObject {
         
         isRecording = false
         audioLevel = 0.0
+        
+        // 重置停顿检测器
+        silenceDetector.reset()
         
         let buffers: [Data] = recordingDataQueue.sync {
             defer { self.recordedBuffers = [] }

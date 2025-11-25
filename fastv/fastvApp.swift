@@ -333,11 +333,23 @@ struct fastvApp: App {
         
         let voiceService = VoiceInputService.shared
         let waveformManager = WaveformWindowManager.shared
+        let preferences = UserPreferences.shared
         
         // 先显示波形窗口（即使录音失败也要显示）
         print("📊 [fastvApp] 显示波形窗口...")
         waveformManager.show()
         print("✅ [fastvApp] 波形窗口已显示")
+        
+        // 启用智能分段转文字（如果用户启用）
+        voiceService.enableSegmentTranscription = preferences.enableSegmentTranscription
+        if preferences.enableSegmentTranscription {
+            SilenceDetector.shared.silenceThreshold = preferences.silenceThreshold
+        }
+        
+        // 设置分段转文字回调
+        voiceService.onSegmentReady = { segmentRecording in
+            await self.processSegment(segmentRecording: segmentRecording)
+        }
         
         // 开始录音
         do {
@@ -365,6 +377,56 @@ struct fastvApp: App {
             // 即使录音失败，也保持窗口显示，让用户知道快捷键已触发
             // 但如果是权限问题，应该隐藏窗口并提示
             waveformManager.hide()
+        }
+    }
+    
+    /// 处理分段转文字（检测到停顿时自动调用）
+    @MainActor
+    private func processSegment(segmentRecording: VoiceRecording) async {
+        print("🔊 [fastvApp] 处理分段转文字，段长度=\(segmentRecording.pcmData.count)字节")
+        
+        let waveformManager = WaveformWindowManager.shared
+        let textInsertion = TextInsertionService.shared
+        let preferences = UserPreferences.shared
+        
+        // 切换到转文字状态
+        waveformManager.setTranscribing()
+        
+        do {
+            // 获取用户设置的识别语言
+            let languageString = preferences.voiceInputLanguage
+            let language = TranscriptLanguage(rawValue: languageString) ?? .zh
+            print("🌐 [fastvApp] 使用识别语言: \(languageString)")
+            
+            // 转文字
+            var text = try await SpeechTranscriber.transcribe(recording: segmentRecording, language: language)
+            print("✅ [fastvApp] 分段转文字成功: \(text.prefix(50))...")
+            
+            // 快速纠错
+            if preferences.enableFastCorrection {
+                text = TextCorrectionService.shared.correctText(text)
+            }
+            
+            // 常错词修正
+            let mistakeManager = CommonMistakeManager.shared
+            if mistakeManager.enableAutoCorrection {
+                text = mistakeManager.applyCorrections(to: text)
+            }
+            
+            // 实时插入文本（不等待AI优化，保证响应速度）
+            if !text.isEmpty {
+                print("📝 [fastvApp] 实时插入分段文本...")
+                // 添加空格分隔多段文本
+                textInsertion.insertText(text + " ")
+                print("✅ [fastvApp] 分段文本已插入")
+            }
+            
+            // 恢复录音状态显示
+            waveformManager.setRecording()
+        } catch {
+            print("❌ [fastvApp] 分段转文字失败: \(error)")
+            // 恢复录音状态显示
+            waveformManager.setRecording()
         }
     }
     

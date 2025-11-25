@@ -36,6 +36,9 @@ class UserPreferences: ObservableObject {
         static let aiSystemPrompt = "aiSystemPrompt"
         // 快速纠错相关
         static let enableFastCorrection = "enableFastCorrection"
+        // 智能分段转文字相关
+        static let enableSegmentTranscription = "enableSegmentTranscription"
+        static let silenceThreshold = "silenceThreshold"
         // 模型下载相关
         static let modelDownloadURL = "modelDownloadURL"
         static let modelDownloaded = "modelDownloaded"
@@ -105,6 +108,15 @@ class UserPreferences: ObservableObject {
     // 快速纠错相关
     @Published var enableFastCorrection: Bool {
         willSet { defaults.set(newValue, forKey: Keys.enableFastCorrection) }
+    }
+    
+    // 智能分段转文字相关
+    @Published var enableSegmentTranscription: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.enableSegmentTranscription) }
+    }
+    
+    @Published var silenceThreshold: TimeInterval {
+        willSet { defaults.set(newValue, forKey: Keys.silenceThreshold) }
     }
     
     // 模型下载相关
@@ -194,6 +206,10 @@ class UserPreferences: ObservableObject {
         
         // 快速纠错设置，默认启用（毫秒级，非常快）
         enableFastCorrection = defaults.object(forKey: Keys.enableFastCorrection) as? Bool ?? true
+        
+        // 智能分段转文字设置，默认启用
+        enableSegmentTranscription = defaults.object(forKey: Keys.enableSegmentTranscription) as? Bool ?? true
+        silenceThreshold = defaults.object(forKey: Keys.silenceThreshold) as? TimeInterval ?? 1.5 // 默认1.5秒
         
         // 默认系统提示词
         let defaultSystemPrompt = """

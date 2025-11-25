@@ -169,6 +169,93 @@ class OllamaService {
         return (optimizedText, duration)
     }
     
+    /// 总结会议记录
+    /// - Parameters:
+    ///   - text: 会议记录文本
+    ///   - endpoint: API 端点地址
+    ///   - model: 使用的模型名称
+    ///   - apiToken: API Token（可选）
+    ///   - timeout: 超时时间（秒）
+    /// - Returns: 会议总结
+    func summarizeMeeting(
+        text: String,
+        endpoint: String,
+        model: String,
+        apiToken: String?,
+        timeout: TimeInterval = 30.0
+    ) async throws -> String {
+        print("🤖 [OllamaService] 开始生成会议总结，文本长度: \(text.count)")
+        
+        let systemPrompt = """
+你是一个专业的会议记录总结助手。你的任务是对会议记录进行总结。
+
+【核心要求】
+1. 提取会议的核心要点和关键决策
+2. 总结会议讨论的主要议题
+3. 记录重要的行动项和责任人（如果有）
+4. 保持总结简洁明了，控制在200字以内
+
+【输出格式】
+- 使用简洁的段落格式
+- 突出关键信息
+- 避免冗余和重复
+
+【注意事项】
+- 只总结会议内容，不要添加个人观点
+- 保持客观中立
+- 如果文本中没有明确信息，不要编造
+"""
+        
+        let requestBody: [String: Any] = [
+            "model": model,
+            "prompt": "请总结以下会议记录：\n\n\(text)",
+            "system": systemPrompt,
+            "stream": false,
+            "options": [
+                "temperature": 0.3,
+                "top_p": 0.9
+            ]
+        ]
+        
+        guard let url = URL(string: "\(endpoint)/api/generate") else {
+            throw OllamaError.invalidEndpoint
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        if let token = apiToken, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        request.timeoutInterval = timeout
+        
+        print("🤖 [OllamaService] 发送总结请求（超时: \(timeout)秒）...")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OllamaError.invalidResponse
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "未知错误"
+            throw OllamaError.requestFailed(httpResponse.statusCode, errorMessage)
+        }
+        
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let summary = json["response"] as? String else {
+            throw OllamaError.invalidResponse
+        }
+        
+        let trimmedSummary = summary.trimmingCharacters(in: .whitespacesAndNewlines)
+        print("✅ [OllamaService] 会议总结生成完成，长度: \(trimmedSummary.count)")
+        
+        return trimmedSummary
+    }
+    
     /// 获取可用的模型列表
     func fetchModels(endpoint: String, apiToken: String?) async throws -> [String] {
         print("🤖 [OllamaService] 获取模型列表: \(endpoint)")

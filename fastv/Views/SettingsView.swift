@@ -315,6 +315,48 @@ struct SettingsView: View {
                 }
                 
                 Section {
+                    Toggle("智能分段转文字", isOn: $preferences.enableSegmentTranscription)
+                    
+                    if preferences.enableSegmentTranscription {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("停顿阈值")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                
+                                Spacer()
+                                
+                                Text("\(String(format: "%.1f", preferences.silenceThreshold)) 秒")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            }
+                            
+                            Slider(value: $preferences.silenceThreshold, in: 0.5...3.0, step: 0.1)
+                            
+                            HStack(spacing: 4) {
+                                Image(systemName: "info.circle")
+                                    .font(.caption)
+                                    .foregroundStyle(.blue)
+                                
+                                Text("检测到停顿超过阈值时，自动将前面的音频转文字并插入，无需等待松开快捷键。")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.leading, 20)
+                    }
+                } header: {
+                    Text("智能分段转文字")
+                } footer: {
+                    if preferences.enableSegmentTranscription {
+                        Text("启用后，在录音过程中检测到较长的停顿时，会自动将前面的音频转文字并插入，实现边说话边转文字的效果。")
+                    } else {
+                        Text("启用后，在录音过程中检测到较长的停顿时，会自动将前面的音频转文字并插入。")
+                    }
+                }
+                
+                Section {
                     Toggle(NSLocalizedString("ai.optimization.enable", comment: ""), isOn: $preferences.enableAIOptimization)
                     
                     if preferences.enableAIOptimization {
