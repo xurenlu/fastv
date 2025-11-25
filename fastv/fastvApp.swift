@@ -587,6 +587,10 @@ struct fastvApp: App {
     }
 }
 
+extension Notification.Name {
+    static let voiceInputCompleted = Notification.Name("voiceInputCompleted")
+}
+
 /// 应用状态管理器
 class AppStateManager: ObservableObject {
     static let shared = AppStateManager()
