@@ -116,7 +116,6 @@ struct MainDashboardView: View {
         ScrollView {
             LazyVGrid(columns: [
                 GridItem(.flexible(), spacing: 16),
-                GridItem(.flexible(), spacing: 16),
                 GridItem(.flexible(), spacing: 16)
             ], spacing: 16) {
                 // 语音输入卡片
@@ -127,12 +126,6 @@ struct MainDashboardView: View {
                 
                 // 语音备忘录卡片
                 VoiceMemoSceneCard()
-                
-                // 实时字幕卡片（占位）
-                SubtitleSceneCard()
-                
-                // AI服务卡片
-                AIServiceSceneCard()
             }
             .padding(20)
         }
@@ -403,35 +396,6 @@ struct VoiceMemoSceneCard: View {
                     .offset(x: -8, y: 8)
             }
         }
-    }
-}
-
-struct SubtitleSceneCard: View {
-    var body: some View {
-        SceneCardView(
-            icon: "captions.bubble.fill",
-            title: "实时字幕",
-            description: "视频播放时显示字幕",
-            status: "待实现",
-            actionText: "待实现",
-            action: {},
-            isDisabled: true
-        )
-    }
-}
-
-struct AIServiceSceneCard: View {
-    @ObservedObject private var preferences = UserPreferences.shared
-    
-    var body: some View {
-        SceneCardView(
-            icon: "sparkles",
-            title: "AI服务",
-            description: "AI优化/总结/翻译",
-            status: preferences.enableAIOptimization ? "已连接" : "未配置",
-            actionText: preferences.enableAIOptimization ? "正常" : "配置",
-            action: {}
-        )
     }
 }
 
