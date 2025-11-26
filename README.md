@@ -1,214 +1,155 @@
-# FastV - 视频处理应用
+# 妙打 - 智能语音输入法
 
-一个功能强大的 macOS 视频处理应用，支持从在线视频平台下载视频、提取帧、提取音频，以及语音转文字功能。
+妙打是一款 macOS 本地化语音转文字输入工具。按住快捷键说话，实时将语音转换为文字并自动输入到当前应用的输入框中。支持多语言识别，内置 AI 优化和快速纠错，识别准确、响应快速，数据本地处理，保护隐私安全。
 
-## 功能特性
+## ✨ 核心功能
 
-### ✅ 已实现功能
+### 🎤 语音输入
+- **全局快捷键**：在其他应用的输入框中按下快捷键（默认 ⌥+V），开始语音输入
+- **实时转文字**：按住快捷键说话，松开后自动将语音转换为文字并插入
+- **智能分段**：检测到停顿时自动分段转文字，无需等待松开快捷键
+- **多语言支持**：支持中文、英文、日文、韩文等多种语言识别
 
-1. **视频下载**
-   - 支持从抖音、快手、B站、微博、Twitter、Instagram、TikTok 等平台下载视频
-   - 自动选择最佳质量视频
-   - 实时下载进度显示
+### 📝 语音备忘录
+- 快速创建语音笔记
+- 支持 AI 优化文本
+- 笔记管理和编辑
 
-2. **视频处理**
-   - 提取视频首尾帧
-   - 提取音频（支持多种格式：M4A、MP3、WAV）
-   - 自定义输出目录
-   - 批量处理多个视频
+### 🎥 会议记录
+- **自动检测**：自动检测腾讯会议、飞书会议等会议应用
+- **悬浮工具条**：检测到会议时自动弹出悬浮工具条，询问是否开始记录
+- **自动分段**：智能检测停顿，自动分段转文字
+- **多段对话**：将多段对话拼接成完整的会议记录
+- **AI 总结**：会议结束后自动生成 AI 总结
 
-3. **语音转文字** ⚠️ 需要添加 ONNX Runtime 依赖
-   - 使用 SenseVoice Small 模型
-   - 支持中文、英文、日文、韩文等多语言
-   - 自动音频预处理和特征提取
-   - Token 解码和文本规范化
+### ⚡ 快速纠错
+- **常用词管理**：自定义常用词替换规则
+- **水词修正**：自动去除"嗯"、"那个"等填充词
+- **AI 优化**：可选启用 AI 文本优化（需要配置 Ollama）
 
-4. **用户界面**
-   - 符合 macOS 设计规范的现代化界面
-   - 拖拽支持
-   - URL 输入框支持在线视频下载
-   - 实时进度显示
-   - 结果预览和复制功能
+## 🚀 快速开始
 
-## 项目结构
+### 1. 安装应用
 
-```
-fastv/
-├── fastv/
-│   ├── Resources/
-│   │   └── Models/
-│   │       └── sensevoice-small/    # 语音识别模型文件
-│   │           ├── model.onnx       # ONNX 模型（894MB）
-│   │           ├── tokens.json      # Token 映射表
-│   │           └── config.yaml      # 模型配置
-│   ├── Services/
-│   │   ├── VideoDownloader.swift           # 视频下载服务
-│   │   ├── AudioExtractor.swift            # 音频提取服务
-│   │   ├── FrameExtractor.swift            # 帧提取服务
-│   │   ├── VideoProcessor.swift            # 视频处理协调器
-│   │   ├── SpeechTranscriber.swift         # 语音转文字服务
-│   │   ├── AudioFeatureExtractor.swift     # 音频特征提取
-│   │   ├── ONNXRuntimeWrapper.swift        # ONNX Runtime 包装（占位）
-│   │   └── ONNXRuntimeWrapper_Implementation.swift  # 完整实现示例
-│   ├── ViewModels/
-│   │   ├── VideoProcessorViewModel.swift   # 单视频处理视图模型
-│   │   └── VideoListViewModel.swift        # 多视频列表视图模型
-│   ├── Views/
-│   │   ├── ContentView.swift              # 主界面
-│   │   ├── DropZoneView.swift             # 拖拽区域（含 URL 输入）
-│   │   ├── ProcessingOptionsView.swift    # 处理选项视图
-│   │   └── ...
-│   └── Models/
-│       ├── VideoItem.swift
-│       ├── UserPreferences.swift
-│       └── ...
-├── INTEGRATION_GUIDE.md      # ONNX Runtime 集成指南
-├── ONNX_RUNTIME_SETUP.md     # ONNX Runtime 设置说明
-└── README.md                 # 本文件
-```
-
-## 快速开始
-
-### 1. 打开项目
+从 [GitHub Releases](https://github.com/xurenlu/fastv/releases) 下载最新版本，或使用 Xcode 编译：
 
 ```bash
-cd /Users/rocky/Sites/fastv
+git clone https://github.com/xurenlu/fastv.git
+cd fastv
 open fastv.xcodeproj
 ```
 
-### 2. 添加 ONNX Runtime 依赖（语音转文字功能需要）
+### 2. 配置权限
 
-**方法 A：Swift Package Manager（推荐）**
+首次运行时，需要在系统设置中授权：
+- **麦克风权限**：用于语音输入
+- **辅助功能权限**：用于全局快捷键和文本插入
 
-1. 在 Xcode 中选择项目文件
-2. 选择 Target "fastv"
-3. 切换到 "Package Dependencies" 标签
-4. 点击 "+" 添加：`https://github.com/microsoft/onnxruntime-swift`
-5. 选择最新版本并添加
+### 3. 设置快捷键
 
-**方法 B：CocoaPods**
+1. 打开应用设置
+2. 在"语音输入法"部分配置快捷键（默认 ⌥+V）
+3. 确保"启用语音输入法"已勾选
 
-```bash
-# 在项目根目录创建 Podfile
-cat > Podfile << EOF
-platform :osx, '11.0'
-use_frameworks!
+### 4. 开始使用
 
-target 'fastv' do
-  pod 'onnxruntime-mobile-objc', '~> 1.15.0'
-end
-EOF
+1. 打开任意应用的输入框（如备忘录、微信、浏览器等）
+2. 按下设置的快捷键（默认 ⌥+V）
+3. 开始说话，松开快捷键后自动转文字并插入
 
-# 安装依赖
-pod install
+## 📖 使用技巧
 
-# 使用 .xcworkspace 打开项目
-open fastv.xcworkspace
-```
+### 智能分段转文字
 
-### 3. 启用 ONNX Runtime 实现
+启用"智能分段转文字"功能后：
+- 检测到停顿（默认 1.5 秒）时，自动将前面的音频转文字并插入
+- 无需等待松开快捷键，实现边说话边转文字的效果
+- 可在设置中调整停顿阈值
 
-添加依赖后：
+### 会议记录
 
-1. 打开 `fastv/Services/ONNXRuntimeWrapper.swift`
-2. 在文件顶部添加：`import onnxruntime`
-3. 参考 `ONNXRuntimeWrapper_Implementation.swift` 中的实现代码
-4. 将实现代码复制到 `ONNXRuntimeWrapper.swift` 替换占位实现
+1. 启动腾讯会议或飞书会议
+2. 应用自动检测到会议应用，弹出悬浮工具条
+3. 点击"开始记录"，自动开始录音和转文字
+4. 会议结束或手动停止后，自动保存记录并生成总结
 
-详细步骤请参考：**INTEGRATION_GUIDE.md**
+### AI 优化
 
-### 4. 验证模型文件
+配置 Ollama 服务后：
+- 按住快捷键时同时按住 ⌃（Control）键，可启用 AI 优化
+- 优化后的文本会自动去除水词、添加标点、修正错别字
 
-确保以下文件已添加到 Xcode 项目中：
-- `fastv/Resources/Models/sensevoice-small/model.onnx`
-- `fastv/Resources/Models/sensevoice-small/tokens.json`
-- `fastv/Resources/Models/sensevoice-small/config.yaml`
+## 🛠️ 技术架构
 
-如果文件未显示在项目中：
-1. 右键点击 `fastv/Resources` 文件夹
-2. 选择 "Add Files to fastv..."
-3. 选择 `Models` 文件夹
-4. 确保勾选 "Copy items if needed" 和 "Create groups"
-5. 确保 "Add to targets" 中勾选了 "fastv"
+- **开发语言**：Swift 5.9+
+- **UI 框架**：SwiftUI
+- **音频处理**：AVFoundation, Accelerate
+- **语音识别**：SenseVoice Small 模型（本地 ONNX 推理）
+- **音频特征提取**：Kaldi Native FBank
+- **平台要求**：macOS 11.0+
 
-### 5. 构建和运行
+## 📦 依赖库
 
-1. 清理构建：`Product` → `Clean Build Folder` (⇧⌘K)
-2. 构建项目：`Product` → `Build` (⌘B)
-3. 运行应用：`Product` → `Run` (⌘R)
+本项目使用了以下优秀的开源库，在此表示感谢：
 
-## 使用说明
+### ONNX Runtime
+- **项目地址**：https://github.com/microsoft/onnxruntime
+- **授权协议**：MIT License
+- **用途**：用于运行 SenseVoice 语音识别模型
+- **感谢**：感谢 Microsoft 提供强大的 ONNX 运行时支持
 
-### 从本地文件处理视频
+### SenseVoice (FunASR)
+- **项目地址**：https://github.com/alibaba-damo-academy/FunASR
+- **授权协议**：Apache 2.0 License
+- **用途**：提供多语言语音识别模型
+- **感谢**：感谢阿里巴巴达摩院开源 SenseVoice 模型，使本地化语音识别成为可能
 
-1. 启动应用
-2. 拖拽视频文件到应用窗口，或点击"选择文件"
-3. 选择处理选项：
-   - ✅ 提取第一帧
-   - ✅ 提取最后一帧
-   - ✅ 提取音频
-   - ✅ 提取文本稿（需要 ONNX Runtime）
-4. 点击"开始处理"
-5. 查看结果并保存
+### Kaldi Native FBank
+- **项目地址**：https://github.com/kaldi-asr/kaldi
+- **授权协议**：Apache 2.0 License
+- **用途**：音频特征提取（Mel 频谱图）
+- **感谢**：感谢 Kaldi 项目提供高效的音频特征提取库
 
-### 从在线平台下载视频
+## 📄 授权协议
 
-1. 在 URL 输入框中粘贴视频链接（支持抖音、快手、B站等）
-2. 点击"下载"按钮
-3. 等待下载完成（自动加载视频）
-4. 按照上述步骤处理视频
+本项目遵循 MIT License。详见 [LICENSE](LICENSE) 文件。
 
-## 技术栈
+## 🙏 致谢
 
-- **语言**：Swift 5.9+
-- **框架**：SwiftUI, AVFoundation, Accelerate
-- **平台**：macOS 11.0+
-- **依赖**：ONNX Runtime（语音转文字功能）
+感谢所有开源社区和开发者为本项目提供的支持：
 
-## 模型信息
+- **Microsoft** - ONNX Runtime
+- **阿里巴巴达摩院** - SenseVoice 模型
+- **Kaldi 团队** - 音频特征提取库
+- **Apple** - Swift 和 SwiftUI 框架
 
-- **模型名称**：SenseVoice Small
-- **模型大小**：894MB
-- **支持语言**：中文、英文、日文、韩文等
-- **输入格式**：16kHz 单声道 PCM 音频
-- **输出格式**：文本转录结果
+## 📝 更新日志
 
-## 故障排除
+### v1.2.0
+- ✨ 全新主界面设计
+- ✨ 智能分段转文字功能
+- ✨ 会议记录自动检测和分段转文字
+- ✨ 语音备忘录功能
+- 🐛 修复多项编译错误
 
-### 模型文件未找到
+### v1.1.0
+- ✨ AI 文本优化功能
+- ✨ 快速纠错功能
+- ✨ 常用词管理
 
-- 检查文件是否在项目资源目录中
-- 确认文件的 Target Membership 设置正确
-- 重新添加文件到项目
+### v1.0.0
+- 🎉 首次发布
+- ✨ 基础语音输入功能
+- ✨ 多语言支持
 
-### ONNX Runtime 未集成
+## 🤝 贡献
 
-- 参考 **INTEGRATION_GUIDE.md** 添加依赖
-- 确保已启用实际实现代码
-- 检查 import 语句是否正确
+欢迎提交 Issue 和 Pull Request！
 
-### 下载失败
+## 📧 联系方式
 
-- 检查网络连接
-- 确认视频链接格式正确
-- 查看控制台错误信息
+如有问题或建议，请通过 GitHub Issues 联系。
 
-## 开发状态
+---
 
-- ✅ 视频下载功能
-- ✅ 帧提取功能
-- ✅ 音频提取功能
-- ✅ 音频特征提取
-- ✅ Token 解码和后处理
-- ⚠️ ONNX Runtime 集成（需要用户添加依赖）
-
-## 许可证
-
-本项目仅供学习和研究使用。
-
-## 参考资源
-
-- [ONNX Runtime Swift](https://github.com/microsoft/onnxruntime-swift)
-- [SenseVoice 项目](https://github.com/alibaba-damo-academy/FunASR)
-- [macOS Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/macos)
-
+**注意**：本项目仅供学习和研究使用。使用第三方库时请遵守相应的授权协议。
