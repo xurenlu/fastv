@@ -1,0 +1,3 @@
+# ONNX模型文件
+*.onnx
+fastv/Resources/Models/**/*.onnx
