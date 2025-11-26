@@ -123,6 +123,12 @@ open fastv.xcodeproj
 - **Kaldi 团队** - 音频特征提取库
 - **Apple** - Swift 和 SwiftUI 框架
 
+## 📚 技术文档
+
+本项目的核心技术实现细节已记录在以下文章中：
+
+- **[从零到一：打造一款高效的语音转文字输入法](https://83d.me/2025/11/22/voice-input-method-from-scratch)** - 详细记录了项目的技术选型、ONNX Runtime 集成、音频特征提取、标点符号支持等核心技术实现过程
+
 ## 📝 更新日志
 
 ### v1.2.0
@@ -148,7 +154,8 @@ open fastv.xcodeproj
 
 ## 📧 联系方式
 
-如有问题或建议，请通过 GitHub Issues 联系。
+- **GitHub Issues**：https://github.com/xurenlu/fastv/issues
+- **技术博客**：https://83d.me/2025/11/22/voice-input-method-from-scratch
 
 ---
 
