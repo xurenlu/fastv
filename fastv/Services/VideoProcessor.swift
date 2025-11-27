@@ -160,8 +160,9 @@ struct VideoProcessor {
             
             sceneChangePoints = try await SceneChangeDetector.detectSceneChanges(
                 from: videoURL,
-                sampleRate: 1.0,
-                threshold: 0.3
+                frameRate: nil,  // 自动从视频获取帧率
+                threshold: 0.3,
+                extractThumbnails: false  // 视频处理中不提取截图以节省时间
             ) { detectionProgress, status in
                 let overallProgress = detectionStart + (detectionProgress * detectionRange)
                 progressHandler(overallProgress, status)

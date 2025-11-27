@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import AppKit
 
 /// 视频画面变更点
 struct SceneChangePoint: Identifiable, Codable {
@@ -15,12 +16,21 @@ struct SceneChangePoint: Identifiable, Codable {
     let changeIntensity: Double  // 变更强度（0-1）
     let description: String      // 描述信息
     
-    init(id: UUID = UUID(), timestamp: TimeInterval, frameNumber: Int, changeIntensity: Double, description: String = "") {
+    // 截图缩略图（不参与 Codable，仅用于运行时显示）
+    var thumbnailImage: NSImage?
+    
+    enum CodingKeys: String, CodingKey {
+        case id, timestamp, frameNumber, changeIntensity, description
+        // thumbnailImage 不参与编码
+    }
+    
+    init(id: UUID = UUID(), timestamp: TimeInterval, frameNumber: Int, changeIntensity: Double, description: String = "", thumbnailImage: NSImage? = nil) {
         self.id = id
         self.timestamp = timestamp
         self.frameNumber = frameNumber
         self.changeIntensity = changeIntensity
         self.description = description.isEmpty ? String(format: "第%.1f秒：画面大幅变更", timestamp) : description
+        self.thumbnailImage = thumbnailImage
     }
     
     /// 格式化时间显示

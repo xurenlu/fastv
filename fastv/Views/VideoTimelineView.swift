@@ -15,8 +15,9 @@ struct VideoTimelineView: View {
     @State private var hoveredPoint: SceneChangePoint?
     @State private var scale: Double = 1.0  // 缩放比例
     
-    private let timelineHeight: CGFloat = 60
-    private let markerHeight: CGFloat = 40
+    private let timelineHeight: CGFloat = 80  // 增加高度以容纳截图
+    private let markerHeight: CGFloat = 60  // 增加标记高度
+    private let thumbnailSize: CGFloat = 50  // 缩略图大小
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -60,7 +61,7 @@ struct VideoTimelineView: View {
                 }
                 .frame(height: timelineHeight + markerHeight)
                 
-                // 变更点列表
+                // 变更点列表（带截图预览）
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(changePoints) { point in
@@ -71,7 +72,7 @@ struct VideoTimelineView: View {
                     }
                     .padding(.vertical, 8)
                 }
-                .frame(maxHeight: 200)
+                .frame(maxHeight: 300)
             }
         }
         .padding(16)
@@ -116,41 +117,65 @@ struct VideoTimelineView: View {
         let width = geometry.size.width
         let position = CGFloat(point.timestamp / duration) * width
         
-        return VStack(spacing: 0) {
+        return VStack(spacing: 4) {
+            // 悬停时显示大图预览
+            if hoveredPoint?.id == point.id, let thumbnailImage = point.thumbnailImage {
+                VStack(spacing: 6) {
+                    Image(nsImage: thumbnailImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 200, height: 150)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .shadow(color: .black.opacity(0.2), radius: 8)
+                    
+                    VStack(spacing: 2) {
+                        Text(point.timeString)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                        Text(String(format: "差异: %.1f%%", point.changeIntensity * 100))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(8)
+                .background {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(.regularMaterial)
+                        .shadow(color: .black.opacity(0.15), radius: 8)
+                }
+                .offset(y: -timelineHeight / 2 - 180)
+            }
+            
             // 标记线
             Rectangle()
                 .fill(Color.blue)
                 .frame(width: 2)
                 .frame(height: timelineHeight)
             
-            // 标记点
-            Circle()
-                .fill(Color.blue)
-                .frame(width: 12, height: 12)
-                .overlay {
-                    Circle()
-                        .stroke(Color.white, lineWidth: 2)
-                }
-                .shadow(color: .black.opacity(0.2), radius: 2)
-                .offset(y: -timelineHeight / 2)
-            
-            // 悬停时显示详情
-            if hoveredPoint?.id == point.id {
-                VStack(spacing: 4) {
-                    Text(point.timeString)
-                        .font(.caption)
-                        .fontWeight(.medium)
-                    Text(String(format: "差异: %.1f%%", point.changeIntensity * 100))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(6)
-                .background {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(.regularMaterial)
-                        .shadow(color: .black.opacity(0.1), radius: 4)
-                }
-                .offset(y: -timelineHeight / 2 - 30)
+            // 截图缩略图（如果有）
+            if let thumbnailImage = point.thumbnailImage {
+                Image(nsImage: thumbnailImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: thumbnailSize, height: thumbnailSize)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .strokeBorder(Color.blue, lineWidth: 2)
+                    }
+                    .shadow(color: .black.opacity(0.2), radius: 4)
+                    .offset(y: -timelineHeight / 2)
+            } else {
+                // 没有截图时显示标记点
+                Circle()
+                    .fill(Color.blue)
+                    .frame(width: 12, height: 12)
+                    .overlay {
+                        Circle()
+                            .stroke(Color.white, lineWidth: 2)
+                    }
+                    .shadow(color: .black.opacity(0.2), radius: 2)
+                    .offset(y: -timelineHeight / 2)
             }
         }
         .position(x: position, y: timelineHeight / 2)
@@ -184,6 +209,28 @@ struct ChangePointRow: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
+                // 截图缩略图
+                if let thumbnailImage = point.thumbnailImage {
+                    Image(nsImage: thumbnailImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 60, height: 45)
+                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .strokeBorder(Color.secondary.opacity(0.2), lineWidth: 1)
+                        }
+                } else {
+                    // 占位符
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(Color.secondary.opacity(0.1))
+                        .frame(width: 60, height: 45)
+                        .overlay {
+                            Image(systemName: "photo")
+                                .foregroundStyle(.secondary)
+                        }
+                }
+                
                 // 时间戳
                 Text(point.timeString)
                     .font(.system(.body, design: .monospaced))

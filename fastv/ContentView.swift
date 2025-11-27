@@ -12,6 +12,7 @@ import UniformTypeIdentifiers
 enum SidebarItem: String, Identifiable, CaseIterable {
     case voiceInput = "语音输入"
     case videoProcessing = "视频处理"
+    case videoSceneAnalysis = "视频场景分析"
     
     var id: String { rawValue }
     
@@ -21,6 +22,8 @@ enum SidebarItem: String, Identifiable, CaseIterable {
             return "mic.fill"
         case .videoProcessing:
             return "video.fill"
+        case .videoSceneAnalysis:
+            return "waveform.path"
         }
     }
 }
@@ -79,6 +82,23 @@ struct ContentView: View {
                                     .help("选择视频文件")
                                 }
                                 
+                                ToolbarItem(placement: .automatic) {
+                                    Button(action: { showWelcome = true }) {
+                                        Label(NSLocalizedString("help", comment: ""), systemImage: "questionmark.circle")
+                                    }
+                                    .help(NSLocalizedString("help", comment: ""))
+                                }
+                                
+                                ToolbarItem(placement: .automatic) {
+                                    Button(action: { showSettings = true }) {
+                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                                    }
+                                    .help(NSLocalizedString("settings", comment: ""))
+                                }
+                            }
+                    case .videoSceneAnalysis:
+                        VideoSceneAnalysisView()
+                            .toolbar {
                                 ToolbarItem(placement: .automatic) {
                                     Button(action: { showWelcome = true }) {
                                         Label(NSLocalizedString("help", comment: ""), systemImage: "questionmark.circle")

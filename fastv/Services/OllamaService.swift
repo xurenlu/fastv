@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import AppKit
 
 /// Ollama AI 服务
 @MainActor
@@ -207,6 +208,206 @@ class OllamaService {
         
         return modelNames
     }
+    
+    /// 分析图片内容（使用视觉模型）
+    /// - Parameters:
+    ///   - image: 要分析的图片
+    ///   - prompt: 分析提示词
+    ///   - endpoint: API 端点地址
+    ///   - model: 视觉模型名称（如 llava, qwen-vl）
+    ///   - apiToken: API Token（可选）
+    ///   - timeout: 超时时间（秒）
+    /// - Returns: AI 对图片的描述和分析
+    func analyzeImage(
+        image: NSImage,
+        prompt: String,
+        endpoint: String,
+        model: String,
+        apiToken: String?,
+        timeout: TimeInterval = 30.0
+    ) async throws -> String {
+        print("🤖 [OllamaService] 开始分析图片，模型: \(model)")
+        
+        // 将 NSImage 转换为 base64
+        guard let imageData = image.tiffRepresentation,
+              let bitmapImage = NSBitmapImageRep(data: imageData),
+              let pngData = bitmapImage.representation(using: .png, properties: [:]) else {
+            throw OllamaError.invalidImage
+        }
+        
+        let base64Image = pngData.base64EncodedString()
+        
+        // 构建请求体（Ollama 视觉模型格式）
+        let requestBody: [String: Any] = [
+            "model": model,
+            "prompt": prompt,
+            "images": [base64Image],
+            "stream": false,
+            "options": [
+                "temperature": 0.2,  // 较低温度以获得更确定的描述
+                "top_p": 0.9
+            ]
+        ]
+        
+        // 构建 URL
+        guard let url = URL(string: "\(endpoint)/api/generate") else {
+            throw OllamaError.invalidEndpoint
+        }
+        
+        // 构建请求
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // 如果有 API Token，添加到请求头
+        if let token = apiToken, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
+        // 设置请求体
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        
+        // 设置超时时间（视觉模型通常需要更长时间）
+        request.timeoutInterval = timeout
+        
+        print("🤖 [OllamaService] 发送图片分析请求（超时: \(timeout)秒）...")
+        
+        // 发送请求
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        // 检查响应状态
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OllamaError.invalidResponse
+        }
+        
+        print("🤖 [OllamaService] 收到响应，状态码: \(httpResponse.statusCode)")
+        
+        guard httpResponse.statusCode == 200 else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "未知错误"
+            print("❌ [OllamaService] 请求失败: \(errorMessage)")
+            throw OllamaError.requestFailed(httpResponse.statusCode, errorMessage)
+        }
+        
+        // 解析响应
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let responseText = json["response"] as? String else {
+            print("❌ [OllamaService] 无法解析响应")
+            throw OllamaError.invalidResponse
+        }
+        
+        let analysis = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        print("✅ [OllamaService] 图片分析完成，描述长度: \(analysis.count)")
+        
+        return analysis
+    }
+    
+    /// 比较两张图片的差异（使用视觉模型）
+    /// - Parameters:
+    ///   - image1: 第一张图片
+    ///   - image2: 第二张图片
+    ///   - endpoint: API 端点地址
+    ///   - model: 视觉模型名称
+    ///   - apiToken: API Token（可选）
+    ///   - timeout: 超时时间（秒）
+    /// - Returns: AI 对两张图片差异的描述
+    func compareImages(
+        image1: NSImage,
+        image2: NSImage,
+        endpoint: String,
+        model: String,
+        apiToken: String?,
+        timeout: TimeInterval = 30.0
+    ) async throws -> String {
+        print("🤖 [OllamaService] 开始比较两张图片，模型: \(model)")
+        
+        // 将两张图片转换为 base64
+        guard let image1Data = image1.tiffRepresentation,
+              let bitmap1 = NSBitmapImageRep(data: image1Data),
+              let png1Data = bitmap1.representation(using: .png, properties: [:]) else {
+            throw OllamaError.invalidImage
+        }
+        
+        guard let image2Data = image2.tiffRepresentation,
+              let bitmap2 = NSBitmapImageRep(data: image2Data),
+              let png2Data = bitmap2.representation(using: .png, properties: [:]) else {
+            throw OllamaError.invalidImage
+        }
+        
+        let base64Image1 = png1Data.base64EncodedString()
+        let base64Image2 = png2Data.base64EncodedString()
+        
+        // 构建比较提示词
+        let prompt = """
+        请仔细比较这两张图片，描述它们之间的主要差异。
+        重点关注：
+        1. 场景或背景的变化
+        2. 人物或物体的出现/消失
+        3. 动作或姿态的变化
+        4. 整体氛围或情绪的变化
+        
+        请用简洁的中文描述主要变化。
+        """
+        
+        // 构建请求体（Ollama 支持多图片输入）
+        let requestBody: [String: Any] = [
+            "model": model,
+            "prompt": prompt,
+            "images": [base64Image1, base64Image2],
+            "stream": false,
+            "options": [
+                "temperature": 0.2,
+                "top_p": 0.9
+            ]
+        ]
+        
+        // 构建 URL
+        guard let url = URL(string: "\(endpoint)/api/generate") else {
+            throw OllamaError.invalidEndpoint
+        }
+        
+        // 构建请求
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        if let token = apiToken, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        request.timeoutInterval = timeout
+        
+        print("🤖 [OllamaService] 发送图片比较请求（超时: \(timeout)秒）...")
+        
+        // 发送请求
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OllamaError.invalidResponse
+        }
+        
+        print("🤖 [OllamaService] 收到响应，状态码: \(httpResponse.statusCode)")
+        
+        guard httpResponse.statusCode == 200 else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "未知错误"
+            print("❌ [OllamaService] 请求失败: \(errorMessage)")
+            throw OllamaError.requestFailed(httpResponse.statusCode, errorMessage)
+        }
+        
+        // 解析响应
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let responseText = json["response"] as? String else {
+            print("❌ [OllamaService] 无法解析响应")
+            throw OllamaError.invalidResponse
+        }
+        
+        let comparison = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        print("✅ [OllamaService] 图片比较完成")
+        
+        return comparison
+    }
 }
 
 /// Ollama 服务错误
@@ -215,6 +416,7 @@ enum OllamaError: LocalizedError {
     case invalidResponse
     case requestFailed(Int, String)
     case networkError(Error)
+    case invalidImage
     
     var errorDescription: String? {
         switch self {
@@ -226,6 +428,8 @@ enum OllamaError: LocalizedError {
             return "请求失败 (状态码: \(code)): \(message)"
         case .networkError(let error):
             return "网络错误: \(error.localizedDescription)"
+        case .invalidImage:
+            return "无效的图片格式"
         }
     }
 }

@@ -11,17 +11,23 @@ import AppKit
 import CoreImage
 
 struct SceneChangeDetector {
-    /// 检测视频画面变更点
+    /// 检测视频画面变更点（支持时间间隔或帧数间隔）
     /// - Parameters:
     ///   - videoURL: 视频文件URL
-    ///   - sampleRate: 采样率（每秒采样帧数，默认1帧/秒）
+    ///   - frameRate: 视频帧率（如果为nil，则从视频中获取）
     ///   - threshold: 变更阈值（0-1，默认0.3，即30%差异）
+    ///   - extractThumbnails: 是否提取关键点的截图（默认true）
+    ///   - analysisInterval: 分析时间间隔（秒，如果为nil且frameSkip也为nil，则使用默认0.1秒）
+    ///   - frameSkip: 跳帧数（每N帧分析一次，如果设置则优先使用此参数）
     ///   - progressHandler: 进度回调
-    /// - Returns: 变更点列表
+    /// - Returns: 变更点列表（包含截图）
     static func detectSceneChanges(
         from videoURL: URL,
-        sampleRate: Double = 1.0,
+        frameRate: Float? = nil,
         threshold: Double = 0.3,
+        extractThumbnails: Bool = true,
+        analysisInterval: Double? = nil,
+        frameSkip: Int? = nil,
         progressHandler: @escaping (Double, String) -> Void
     ) async throws -> [SceneChangePoint] {
         let asset = AVAsset(url: videoURL)
@@ -32,29 +38,63 @@ struct SceneChangeDetector {
             throw VideoProcessingError.invalidVideoFile
         }
         
+        // 获取视频帧率
+        let actualFrameRate: Float
+        if let frameRate = frameRate {
+            actualFrameRate = frameRate
+        } else {
+            // 从视频轨道获取帧率
+            let videoTracks = try await asset.loadTracks(withMediaType: .video)
+            if let videoTrack = videoTracks.first {
+                actualFrameRate = try await videoTrack.load(.nominalFrameRate)
+            } else {
+                throw VideoProcessingError.noVideoTrack
+            }
+        }
+        
+        guard actualFrameRate > 0 else {
+            throw VideoProcessingError.invalidVideoFile
+        }
+        
         let imageGenerator = AVAssetImageGenerator(asset: asset)
         imageGenerator.appliesPreferredTrackTransform = true
         imageGenerator.requestedTimeToleranceAfter = .zero
         imageGenerator.requestedTimeToleranceBefore = .zero
         
-        // 计算采样间隔
-        let sampleInterval = 1.0 / sampleRate
-        let totalSamples = Int(durationSeconds * sampleRate) + 1
+        // 计算需要分析的帧数和间隔
+        let totalFrames = Int(durationSeconds * Double(actualFrameRate)) + 1
+        let skipFrames: Int
+        let totalSamples: Int
+        
+        if let frameSkip = frameSkip, frameSkip > 0 {
+            // 使用帧数间隔
+            skipFrames = frameSkip
+            totalSamples = totalFrames / skipFrames + (totalFrames % skipFrames > 0 ? 1 : 0)
+        } else {
+            // 使用时间间隔
+            let interval = analysisInterval ?? 0.1  // 默认0.1秒
+            skipFrames = max(1, Int(Double(actualFrameRate) * interval))
+            totalSamples = Int(durationSeconds / interval) + 1
+        }
         
         var changePoints: [SceneChangePoint] = []
         var previousHistogram: [Float]?
-        var frameNumber = 0
+        var sampleIndex = 0
         
         // 使用CoreImage进行图像处理
         let context = CIContext()
         
         for i in 0..<totalSamples {
-            let time = CMTime(seconds: Double(i) * sampleInterval, preferredTimescale: 600)
-            let clampedTime = CMTimeClampToRange(time, range: CMTimeRange(start: .zero, duration: duration))
+            // 计算当前分析的帧号
+            let frameIndex = i * skipFrames
+            let time = Double(frameIndex) / Double(actualFrameRate)
+            let timePoint = CMTime(seconds: time, preferredTimescale: 600)
+            let clampedTime = CMTimeClampToRange(timePoint, range: CMTimeRange(start: .zero, duration: duration))
             
             // 更新进度
             let progress = Double(i) / Double(totalSamples)
-            progressHandler(progress, "正在检测画面变更... \(i + 1)/\(totalSamples)")
+            let timestamp = CMTimeGetSeconds(clampedTime)
+            progressHandler(progress, "正在分析... \(i + 1)/\(totalSamples) (时间: \(String(format: "%.1f", timestamp))秒, 每\(skipFrames)帧分析一次)")
             
             // 提取帧
             let cgImage = try await imageGenerator.image(at: clampedTime).image
@@ -68,19 +108,28 @@ struct SceneChangeDetector {
                 
                 // 如果差异超过阈值，记录为变更点
                 if difference >= threshold {
-                    let timestamp = CMTimeGetSeconds(clampedTime)
+                    // 提取该帧的截图（如果需要）
+                    var thumbnailImage: NSImage? = nil
+                    if extractThumbnails {
+                        thumbnailImage = NSImage(cgImage: cgImage, size: .zero)
+                    }
+                    
+                    // 计算实际帧号（基于时间戳和帧率）
+                    let actualFrameNumber = Int(timestamp * Double(actualFrameRate))
+                    
                     let changePoint = SceneChangePoint(
                         timestamp: timestamp,
-                        frameNumber: frameNumber,
+                        frameNumber: actualFrameNumber,
                         changeIntensity: min(difference, 1.0),
-                        description: String(format: "第%.1f秒：画面大幅变更（差异%.1f%%）", timestamp, difference * 100)
+                        description: String(format: "第%.1f秒：画面大幅变更（差异%.1f%%）", timestamp, difference * 100),
+                        thumbnailImage: thumbnailImage
                     )
                     changePoints.append(changePoint)
                 }
             }
             
             previousHistogram = histogram
-            frameNumber += 1
+            sampleIndex += 1
         }
         
         progressHandler(1.0, "检测完成，发现 \(changePoints.count) 个变更点")

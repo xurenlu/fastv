@@ -32,21 +32,21 @@ struct VideoPreviewView: View {
                 if showPlayer, let player = player {
                     // 显示视频播放器
                     AVPlayerViewWrapper(player: player)
-                        .frame(maxHeight: 400)
+                        .frame(maxHeight: 600)
                         .background(Color.black)
                 } else if let previewImage = previewImage {
                     // 显示预览图片
                     Image(nsImage: previewImage)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(maxHeight: 400)
+                        .frame(maxHeight: 600)
                         .background(Color.black)
                 } else if isLoadingPreview {
                     ProgressView()
-                        .frame(maxHeight: 400)
+                        .frame(maxHeight: 600)
                 } else {
                     Color.black
-                        .frame(maxHeight: 400)
+                        .frame(maxHeight: 600)
                 }
                 
                 // 播放按钮覆盖层（仅在显示预览图时显示）
@@ -63,7 +63,7 @@ struct VideoPreviewView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .frame(maxHeight: 400)
+            .frame(minHeight: 200, maxHeight: 400)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)

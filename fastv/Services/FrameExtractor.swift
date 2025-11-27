@@ -49,5 +49,30 @@ struct FrameExtractor {
         
         return NSImage(cgImage: cgImage, size: .zero)
     }
+    
+    /// 提取指定时间点的帧
+    /// - Parameters:
+    ///   - time: 时间点（秒）
+    ///   - videoURL: 视频文件URL
+    /// - Returns: 提取的帧图像
+    static func extractFrame(at time: TimeInterval, from videoURL: URL) async throws -> NSImage {
+        let asset = AVAsset(url: videoURL)
+        let imageGenerator = AVAssetImageGenerator(asset: asset)
+        
+        // 确保正确处理视频方向
+        imageGenerator.appliesPreferredTrackTransform = true
+        
+        // 设置精确的时间容差
+        imageGenerator.requestedTimeToleranceAfter = .zero
+        imageGenerator.requestedTimeToleranceBefore = .zero
+        
+        // 创建时间点
+        let timePoint = CMTime(seconds: time, preferredTimescale: 600)
+        
+        // 提取帧
+        let cgImage = try await imageGenerator.image(at: timePoint).image
+        
+        return NSImage(cgImage: cgImage, size: .zero)
+    }
 }
 
