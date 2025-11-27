@@ -1512,7 +1512,7 @@ struct ModelFileInfoView: View {
                 }
             }
         }
-        .onChange(of: preferences.modelDownloaded) { oldValue, newValue in
+        .onChange(of: preferences.isModelDownloaded) { oldValue, newValue in
             if newValue {
                 checkModelStatus()
                 // 如果模型已下载，关闭 onboarding sheet
@@ -1527,13 +1527,13 @@ struct ModelFileInfoView: View {
     }
     
     private func checkModelStatus() {
-        // 统一使用 checkModelFilesExist() 检查，并同步 preferences.modelDownloaded
+        // 统一使用 checkModelFilesExist() 检查，并同步 preferences.isModelDownloaded
         let modelExists = ModelDownloader.shared.checkModelFilesExist()
         isModelDownloaded = modelExists
         if modelExists {
-            preferences.modelDownloaded = true
+            preferences.isModelDownloaded = true
         } else {
-            preferences.modelDownloaded = false
+            preferences.isModelDownloaded = false
         }
     }
 }

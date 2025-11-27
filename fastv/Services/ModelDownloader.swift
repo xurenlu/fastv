@@ -116,7 +116,7 @@ class ModelDownloader: ObservableObject {
                     let existsFormat = NSLocalizedString("model.download.already.exists", comment: "")
                     downloadStatus = existsFormat.replacingOccurrences(of: "%@", with: filename)
                     downloadProgress = 1.0
-                    UserPreferences.shared.modelDownloaded = true
+                    UserPreferences.shared.isModelDownloaded = true
                     return
                 } else {
                     // 文件存在但大小不正确，删除并重新下载
@@ -219,7 +219,7 @@ class ModelDownloader: ObservableObject {
         downloadSpeed = ""
         
         // 标记模型已下载
-        UserPreferences.shared.modelDownloaded = true
+        UserPreferences.shared.isModelDownloaded = true
     }
     
     /// 下载文件（带进度和速度）

@@ -270,7 +270,7 @@ struct VoiceInputView: View {
         .onAppear {
             checkModelStatus()
         }
-        .onChange(of: preferences.modelDownloaded) { _, newValue in
+        .onChange(of: preferences.isModelDownloaded) { _, newValue in
             checkModelStatus()
         }
         .onChange(of: downloader.isDownloading) { oldValue, newValue in

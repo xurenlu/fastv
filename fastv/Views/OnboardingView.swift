@@ -76,7 +76,7 @@ struct OnboardingView: View {
                         Task { @MainActor in
                             let modelExists = await ModelDownloader.shared.checkModelFilesExistAsync()
                             if modelExists {
-                                preferences.modelDownloaded = true
+                                preferences.isModelDownloaded = true
                                 withAnimation {
                                     currentStep += 1
                                 }
@@ -90,7 +90,7 @@ struct OnboardingView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .disabled(currentStep == 2 && !preferences.modelDownloaded)
+                .disabled(currentStep == 2 && !preferences.isModelDownloaded)
             }
             .padding(20)
         }
@@ -117,7 +117,7 @@ struct OnboardingView: View {
             Task { @MainActor in
                 let modelExists = await ModelDownloader.shared.checkModelFilesExistAsync()
                 if modelExists {
-                    preferences.modelDownloaded = true
+                    preferences.isModelDownloaded = true
                 }
             }
         }
@@ -435,7 +435,7 @@ struct ModelDownloadStep: View {
             }
             // 下载完成后，同步状态
             if ModelDownloader.shared.checkModelFilesExist() {
-                preferences.modelDownloaded = true
+                preferences.isModelDownloaded = true
             }
         } catch {
             downloadError = error
@@ -686,7 +686,7 @@ struct ModelDownloadStatusContentView: View {
         await MainActor.run {
             modelExists = exists
             if exists {
-                preferences.modelDownloaded = true
+                preferences.isModelDownloaded = true
             }
         }
     }

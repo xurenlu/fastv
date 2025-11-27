@@ -11,6 +11,12 @@
 	<!-- 网络访问权限 - 用于下载模型文件 -->
 	<key>com.apple.security.network.client</key>
 	<true/>
+	<!-- 用户选择的文件读取权限 - 用于文件选择器（NSOpenPanel） -->
+	<key>com.apple.security.files.user-selected.read-only</key>
+	<true/>
+	<!-- 用户选择的文件写入权限 - 用于保存文件到用户选择的位置 -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
 	<!-- Debug模式权限 - 仅在Debug构建时使用 -->
 	<key>com.apple.security.get-task-allow</key>
 	<true/>
