@@ -269,14 +269,7 @@ struct MeetingRecordDetailViewWrapper: View {
         MeetingRecordDetailView(record: $mutableRecord)
             .onChange(of: mutableRecord) { oldValue, newValue in
                 // 只在真正有变化时更新
-                if oldValue.id == newValue.id && (
-                    oldValue.title != newValue.title ||
-                    oldValue.correctedText != newValue.correctedText ||
-                    oldValue.summary != newValue.summary ||
-                    oldValue.actionItems != newValue.actionItems
-                ) {
-                    hasChanges = true
-                }
+                checkForChanges(oldValue: oldValue, newValue: newValue)
             }
             .onDisappear {
                 // 关闭时才保存，避免频繁更新
@@ -284,6 +277,22 @@ struct MeetingRecordDetailViewWrapper: View {
                     MeetingRecordManager.shared.update(mutableRecord)
                 }
             }
+    }
+    
+    private func checkForChanges(oldValue: MeetingRecord, newValue: MeetingRecord) {
+        // 确保是同一个记录
+        guard oldValue.id == newValue.id else { return }
+        
+        // 检查各个字段是否有变化
+        let titleChanged = oldValue.title != newValue.title
+        let textChanged = oldValue.correctedText != newValue.correctedText
+        let summaryChanged = oldValue.summary != newValue.summary
+        let actionItemsChanged = oldValue.actionItems != newValue.actionItems
+        
+        // 如果有任何变化，标记为已更改
+        if titleChanged || textChanged || summaryChanged || actionItemsChanged {
+            hasChanges = true
+        }
     }
 }
 
