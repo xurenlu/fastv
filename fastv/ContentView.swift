@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 /// 侧边栏选项
 enum SidebarItem: String, Identifiable, CaseIterable {
     case voiceInput = "语音输入"
+    case meetingRecord = "会议记录"
     case videoProcessing = "视频处理"
     case videoSceneAnalysis = "视频场景分析"
     
@@ -20,6 +21,8 @@ enum SidebarItem: String, Identifiable, CaseIterable {
         switch self {
         case .voiceInput:
             return "mic.fill"
+        case .meetingRecord:
+            return "calendar.badge.clock"
         case .videoProcessing:
             return "video.fill"
         case .videoSceneAnalysis:
@@ -56,6 +59,23 @@ struct ContentView: View {
                     switch selectedSidebarItem {
                     case .voiceInput:
                         VoiceInputView()
+                            .toolbar {
+                                ToolbarItem(placement: .automatic) {
+                                    Button(action: { showWelcome = true }) {
+                                        Label(NSLocalizedString("help", comment: ""), systemImage: "questionmark.circle")
+                                    }
+                                    .help(NSLocalizedString("help", comment: ""))
+                                }
+                                
+                                ToolbarItem(placement: .automatic) {
+                                    Button(action: { showSettings = true }) {
+                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                                    }
+                                    .help(NSLocalizedString("settings", comment: ""))
+                                }
+                            }
+                    case .meetingRecord:
+                        MeetingRecordView()
                             .toolbar {
                                 ToolbarItem(placement: .automatic) {
                                     Button(action: { showWelcome = true }) {

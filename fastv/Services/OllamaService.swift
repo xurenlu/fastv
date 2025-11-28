@@ -408,6 +408,165 @@ class OllamaService {
         
         return comparison
     }
+    
+    /// 生成会议摘要和代办事项
+    /// - Parameters:
+    ///   - text: 会议转录文本
+    ///   - endpoint: API 端点地址
+    ///   - model: 使用的模型名称
+    ///   - apiToken: API Token（可选）
+    ///   - timeout: 超时时间（秒）
+    /// - Returns: (摘要, 代办事项列表)
+    func generateMeetingSummary(
+        text: String,
+        endpoint: String,
+        model: String,
+        apiToken: String?,
+        timeout: TimeInterval = 30.0
+    ) async throws -> (summary: String, actionItems: [String]) {
+        print("🤖 [OllamaService] 开始生成会议摘要，文本长度: \(text.count)")
+        
+        let systemPrompt = """
+        你是一个专业的会议记录助手。请分析以下会议转录文本，生成：
+        1. 简洁的会议摘要（200字以内）
+        2. 明确的代办事项列表（每项一行，使用"- "开头）
+        
+        请以 JSON 格式返回：
+        {
+          "summary": "会议摘要内容",
+          "actionItems": ["代办事项1", "代办事项2"]
+        }
+        
+        只返回 JSON，不要其他内容。
+        """
+        
+        // 构建请求体
+        let requestBody: [String: Any] = [
+            "model": model,
+            "prompt": text,
+            "system": systemPrompt,
+            "stream": false,
+            "options": [
+                "temperature": 0.3,
+                "top_p": 0.9
+            ]
+        ]
+        
+        // 构建 URL
+        guard let url = URL(string: "\(endpoint)/api/generate") else {
+            throw OllamaError.invalidEndpoint
+        }
+        
+        // 构建请求
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // 如果有 API Token，添加到请求头
+        if let token = apiToken, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
+        // 设置请求体
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        
+        // 设置超时时间
+        request.timeoutInterval = timeout
+        
+        print("🤖 [OllamaService] 发送会议摘要生成请求（超时: \(timeout)秒）...")
+        
+        // 发送请求
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        // 检查响应状态
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OllamaError.invalidResponse
+        }
+        
+        print("🤖 [OllamaService] 收到响应，状态码: \(httpResponse.statusCode)")
+        
+        guard httpResponse.statusCode == 200 else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "未知错误"
+            print("❌ [OllamaService] 请求失败: \(errorMessage)")
+            throw OllamaError.requestFailed(httpResponse.statusCode, errorMessage)
+        }
+        
+        // 解析响应
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let responseText = json["response"] as? String else {
+            print("❌ [OllamaService] 无法解析响应")
+            throw OllamaError.invalidResponse
+        }
+        
+        let rawResponse = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // 尝试解析 JSON（可能包含在代码块中）
+        var jsonString = rawResponse
+        
+        // 移除可能的 markdown 代码块标记
+        if jsonString.hasPrefix("```json") {
+            jsonString = String(jsonString.dropFirst(7))
+        } else if jsonString.hasPrefix("```") {
+            jsonString = String(jsonString.dropFirst(3))
+        }
+        if jsonString.hasSuffix("```") {
+            jsonString = String(jsonString.dropLast(3))
+        }
+        jsonString = jsonString.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // 尝试解析 JSON
+        if let jsonData = jsonString.data(using: .utf8),
+           let parsedJson = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+           let summary = parsedJson["summary"] as? String,
+           let actionItems = parsedJson["actionItems"] as? [String] {
+            print("✅ [OllamaService] 会议摘要生成完成")
+            return (summary, actionItems)
+        }
+        
+        // 如果 JSON 解析失败，尝试从文本中提取
+        print("⚠️ [OllamaService] JSON 解析失败，尝试从文本中提取信息")
+        
+        // 降级方案：使用原始响应作为摘要，尝试提取代办事项
+        var summary = rawResponse
+        var actionItems: [String] = []
+        
+        // 尝试提取代办事项（查找以 "- " 开头的行）
+        let lines = rawResponse.components(separatedBy: .newlines)
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.hasPrefix("- ") {
+                let item = String(trimmed.dropFirst(2))
+                if !item.isEmpty {
+                    actionItems.append(item)
+                }
+            } else if trimmed.hasPrefix("• ") {
+                let item = String(trimmed.dropFirst(2))
+                if !item.isEmpty {
+                    actionItems.append(item)
+                }
+            }
+        }
+        
+        // 如果没有找到代办事项，尝试查找包含"代办"、"待办"、"任务"等关键词的行
+        if actionItems.isEmpty {
+            for line in lines {
+                let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.contains("代办") || trimmed.contains("待办") || trimmed.contains("任务") {
+                    if trimmed.count > 5 && trimmed.count < 100 {
+                        actionItems.append(trimmed)
+                    }
+                }
+            }
+        }
+        
+        // 如果还是没有，使用前几行作为摘要
+        if actionItems.isEmpty && summary.count > 200 {
+            summary = String(summary.prefix(200)) + "..."
+        }
+        
+        print("✅ [OllamaService] 会议摘要生成完成（降级模式）")
+        return (summary, actionItems)
+    }
 }
 
 /// Ollama 服务错误
