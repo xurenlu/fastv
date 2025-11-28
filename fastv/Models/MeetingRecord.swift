@@ -8,7 +8,7 @@
 import Foundation
 
 /// 会议记录数据模型
-struct MeetingRecord: Identifiable, Codable {
+struct MeetingRecord: Identifiable, Codable, Equatable {
     let id: UUID
     var title: String
     var originalText: String
