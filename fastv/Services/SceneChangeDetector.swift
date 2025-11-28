@@ -15,7 +15,7 @@ struct SceneChangeDetector {
     /// - Parameters:
     ///   - videoURL: 视频文件URL
     ///   - frameRate: 视频帧率（如果为nil，则从视频中获取）
-    ///   - threshold: 变更阈值（0-1，默认0.3，即30%差异）
+    ///   - threshold: 变更阈值（0-1，默认0.1，即10%差异）
     ///   - extractThumbnails: 是否提取关键点的截图（默认true）
     ///   - analysisInterval: 分析时间间隔（秒，如果为nil且frameSkip也为nil，则使用默认0.1秒）
     ///   - frameSkip: 跳帧数（每N帧分析一次，如果设置则优先使用此参数）
@@ -25,7 +25,7 @@ struct SceneChangeDetector {
     static func detectSceneChanges(
         from videoURL: URL,
         frameRate: Float? = nil,
-        threshold: Double = 0.3,
+        threshold: Double = 0.1,
         extractThumbnails: Bool = true,
         analysisInterval: Double? = nil,
         frameSkip: Int? = nil,
@@ -281,7 +281,7 @@ struct SceneChangeDetector {
     /// - Parameters:
     ///   - videoURL: 视频文件URL
     ///   - frameRate: 视频帧率（如果为nil，则从视频中获取）
-    ///   - threshold: 变更阈值（0-1，默认0.3）
+    ///   - threshold: 变更阈值（0-1，默认0.1，即10%差异）
     ///   - extractThumbnails: 是否提取关键点的截图（默认true）
     ///   - coarseInterval: 粗扫描间隔（秒，默认3.9秒）
     ///   - fineRangeBefore: 精细检测范围：候选节点前多少秒（默认15秒）
@@ -293,7 +293,7 @@ struct SceneChangeDetector {
     static func detectSceneChangesTwoStage(
         from videoURL: URL,
         frameRate: Float? = nil,
-        threshold: Double = 0.3,
+        threshold: Double = 0.1,
         extractThumbnails: Bool = true,
         coarseInterval: Double = 3.9,
         fineRangeBefore: Double = 15.0,

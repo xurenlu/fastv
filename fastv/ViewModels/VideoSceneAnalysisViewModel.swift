@@ -46,7 +46,7 @@ class VideoSceneAnalysisViewModel: ObservableObject {
     @Published var analysisMode: AnalysisMode = .traditional
     
     // 分析参数（传统方法）
-    @Published var threshold: Double = 0.3  // 变更阈值
+    @Published var threshold: Double = 0.1  // 变更阈值（默认10%）
     @Published var extractThumbnails: Bool = true  // 是否提取截图
     @Published var useSmartTwoStage: Bool = true  // 是否使用智能两阶段检测（默认开启）
     
