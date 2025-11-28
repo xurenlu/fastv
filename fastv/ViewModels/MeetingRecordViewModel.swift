@@ -29,6 +29,10 @@ class MeetingRecordViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var canCancelProcessing = false
     
+    // 实时转写相关
+    @Published var realtimeTranscript: String = ""  // 实时转写的文本
+    @Published var transcriptionProgress: String = "" // 转写进度描述
+    
     private var recordingStartTime: Date?
     private var durationTimer: Timer?
     private var processingTask: Task<Void, Never>?
@@ -36,11 +40,30 @@ class MeetingRecordViewModel: ObservableObject {
     private let recordManager = MeetingRecordManager.shared
     private let preferences = UserPreferences.shared
     
+    // 实时转写组件
+    private let silenceDetector = SilenceDetector()
+    private let incrementalTranscription = IncrementalTranscriptionManager()
+    private let sleepWakeNotifier = SleepWakeNotifier.shared
+    
+    private var silenceCheckTask: Task<Void, Never>?
+    private var transcriptUpdateTask: Task<Void, Never>?
+    
     init() {
         // 监听录音状态变化
         voiceService.$isRecording
             .receive(on: DispatchQueue.main)
             .assign(to: &$isRecording)
+        
+        // 监听录音时长变化
+        voiceService.$recordingDuration
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$recordingDuration)
+        
+        // 设置静音检测回调
+        setupSilenceDetection()
+        
+        // 设置睡眠/唤醒监听
+        setupSleepWakeHandling()
     }
     
     /// 开始录音
@@ -56,14 +79,25 @@ class MeetingRecordViewModel: ObservableObject {
             currentRecord = newRecord
             recordingStartTime = Date()
             recordingDuration = 0
+            realtimeTranscript = ""
+            transcriptionProgress = ""
+            
+            // 重置增量转写管理器
+            incrementalTranscription.clear()
+            
+            // 重置静音检测器
+            silenceDetector.reset()
+            
+            // 启用防睡眠断言
+            sleepWakeNotifier.enablePreventSleep(reason: "会议录音中")
             
             // 开始录音
             try voiceService.startRecording()
             
-            // 启动时长计时器
-            startDurationTimer()
+            // 启动静音检测
+            startSilenceDetection()
             
-            print("✅ [MeetingRecordViewModel] 开始录音")
+            print("✅ [MeetingRecordViewModel] 开始录音(已启用防睡眠)")
         } catch {
             errorMessage = error.localizedDescription
             print("❌ [MeetingRecordViewModel] 开始录音失败: \(error)")
@@ -74,8 +108,11 @@ class MeetingRecordViewModel: ObservableObject {
     func stopRecording() {
         guard isRecording, var record = currentRecord else { return }
         
-        // 停止时长计时器
-        stopDurationTimer()
+        // 停止静音检测
+        stopSilenceDetection()
+        
+        // 禁用防睡眠断言
+        sleepWakeNotifier.disablePreventSleep()
         
         // 创建处理任务
         processingTask = Task { @MainActor in
@@ -116,13 +153,36 @@ class MeetingRecordViewModel: ObservableObject {
             return
         }
         
-        // 语音转文字
+        // 语音转文字 - 优先使用增量转写结果
         do {
             let languageString = preferences.voiceInputLanguage
             let language = TranscriptLanguage(rawValue: languageString) ?? .zh
             
             processingProgress = 0.2
-            var text = try await SpeechTranscriber.transcribe(recording: recording, language: language)
+            
+            // 检查是否有增量转写的结果
+            let incrementalText = incrementalTranscription.getFullTranscript()
+            var text: String
+            
+            if !incrementalText.isEmpty {
+                // 使用增量转写的结果
+                print("✅ [MeetingRecordViewModel] 使用增量转写结果,共 \(incrementalTranscription.segments.count) 个段落")
+                text = incrementalText
+                
+                // 只转写最后未完成的部分(如果有的话)
+                if recording.pcmData.count > 1000 {  // 至少有一些数据
+                    print("🔄 [MeetingRecordViewModel] 转写最后剩余部分...")
+                    let lastPartText = try await SpeechTranscriber.transcribe(recording: recording, language: language)
+                    if !lastPartText.isEmpty {
+                        text += "\n" + lastPartText
+                    }
+                }
+            } else {
+                // 没有增量转写结果,进行完整转写
+                print("🔄 [MeetingRecordViewModel] 进行完整转写...")
+                text = try await SpeechTranscriber.transcribe(recording: recording, language: language)
+            }
+            
             record.originalText = text
             
             // 检查是否已取消
@@ -288,11 +348,21 @@ class MeetingRecordViewModel: ObservableObject {
     func cancelRecording() {
         guard isRecording else { return }
         
-        stopDurationTimer()
+        // 停止静音检测
+        stopSilenceDetection()
+        
+        // 禁用防睡眠断言
+        sleepWakeNotifier.disablePreventSleep()
+        
         voiceService.cancelRecording()
         currentRecord = nil
         recordingStartTime = nil
         recordingDuration = 0
+        realtimeTranscript = ""
+        transcriptionProgress = ""
+        
+        // 清空增量转写
+        incrementalTranscription.clear()
         
         // 如果正在处理，也取消处理
         if isProcessing {
@@ -302,16 +372,123 @@ class MeetingRecordViewModel: ObservableObject {
     
     // MARK: - Private Methods
     
-    private func startDurationTimer() {
-        durationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self = self, let startTime = self.recordingStartTime else { return }
-            self.recordingDuration = Date().timeIntervalSince(startTime)
+    /// 设置静音检测
+    private func setupSilenceDetection() {
+        // 当检测到有效静音段时触发
+        silenceDetector.onSilenceDetected = { [weak self] duration in
+            guard let self = self else { return }
+            Task { @MainActor in
+                await self.handleSilenceDetected()
+            }
         }
     }
     
-    private func stopDurationTimer() {
-        durationTimer?.invalidate()
-        durationTimer = nil
+    /// 设置睡眠/唤醒处理
+    private func setupSleepWakeHandling() {
+        sleepWakeNotifier.onSystemWillSleep = { @MainActor [weak self] in
+            guard let self = self else { return }
+            if self.isRecording {
+                print("⚠️ [MeetingRecordViewModel] 系统即将睡眠,但录音中,已启用防睡眠断言应该能阻止")
+            }
+        }
+        
+        sleepWakeNotifier.onSystemDidWake = { @MainActor [weak self] in
+            guard let self = self else { return }
+            if self.isRecording {
+                print("✅ [MeetingRecordViewModel] 系统唤醒,录音继续进行")
+            }
+        }
+    }
+    
+    /// 启动静音检测
+    private func startSilenceDetection() {
+        silenceCheckTask?.cancel()
+        
+        // 连接音频电平回调
+        voiceService.onAudioData = { [weak self] level in
+            guard let self = self else { return }
+            Task { @MainActor in
+                self.silenceDetector.processAudioLevel(level)
+            }
+        }
+        
+        print("✅ [MeetingRecordViewModel] 静音检测已启动")
+    }
+    
+    /// 停止静音检测
+    private func stopSilenceDetection() {
+        silenceCheckTask?.cancel()
+        silenceCheckTask = nil
+        transcriptUpdateTask?.cancel()
+        transcriptUpdateTask = nil
+        voiceService.onAudioData = nil
+        print("✅ [MeetingRecordViewModel] 静音检测已停止")
+    }
+    
+    /// 处理检测到的静音段
+    private func handleSilenceDetected() async {
+        print("🔇 [MeetingRecordViewModel] 检测到静音段,开始提取并转写")
+        
+        do {
+            // 提取当前段落的音频
+            guard let segmentRecording = try await voiceService.extractCurrentSegment() else {
+                print("⚠️ [MeetingRecordViewModel] 段落音频为空,跳过")
+                return
+            }
+            
+            let startTime = voiceService.getLastSegmentTime()
+            let endTime = voiceService.getCurrentDuration()
+            
+            print("📊 [MeetingRecordViewModel] 提取段落: \(String(format: "%.1f", startTime))s - \(String(format: "%.1f", endTime))s")
+            
+            // 获取语言设置
+            let languageString = preferences.voiceInputLanguage
+            let language = TranscriptLanguage(rawValue: languageString) ?? .zh
+            
+            // 添加到增量转写管理器
+            incrementalTranscription.addSegment(
+                audioData: segmentRecording.pcmData,
+                sampleRate: segmentRecording.sampleRate,
+                channelCount: segmentRecording.channelCount,
+                startTime: startTime,
+                endTime: endTime,
+                language: language
+            )
+            
+            // 更新实时转写内容
+            updateRealtimeTranscript()
+            
+        } catch {
+            print("❌ [MeetingRecordViewModel] 提取段落失败: \(error)")
+        }
+    }
+    
+    /// 更新实时转写文本
+    private func updateRealtimeTranscript() {
+        // 获取所有已完成的转写文本
+        let fullText = incrementalTranscription.getFullTranscript()
+        realtimeTranscript = fullText
+        
+        // 更新进度描述
+        transcriptionProgress = incrementalTranscription.getProgressDescription()
+        
+        // 启动定期更新任务(如果还没有启动)
+        if transcriptUpdateTask == nil && isRecording {
+            transcriptUpdateTask = Task { @MainActor in
+                while isRecording {
+                    // 获取所有已完成的转写文本
+                    let fullText = incrementalTranscription.getFullTranscript()
+                    realtimeTranscript = fullText
+                    
+                    // 更新进度描述
+                    transcriptionProgress = incrementalTranscription.getProgressDescription()
+                    
+                    // 每秒更新一次
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                }
+                transcriptUpdateTask = nil
+            }
+        }
     }
 }
 

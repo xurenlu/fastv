@@ -16,6 +16,7 @@ class VoiceInputService: ObservableObject {
     
     @Published private(set) var isRecording = false
     @Published private(set) var audioLevel: Float = 0.0 // 用于波形显示
+    @Published private(set) var recordingDuration: TimeInterval = 0
     
     private var audioEngine: AVAudioEngine?
     private var audioLevelTimer: Timer?
@@ -25,8 +26,16 @@ class VoiceInputService: ObservableObject {
     private let recordingChannels: AVAudioChannelCount = 1
     private let recordingDataQueue = DispatchQueue(label: "voiceInput.recordingDataQueue")
     
+    // 分段录音支持
+    private var recordingStartTime: Date?
+    private var lastSegmentTime: Date?
+    nonisolated(unsafe) private var segmentBuffers: [Data] = []  // 当前段落的缓冲
+    
     // 音频数据回调，用于波形显示
     var onAudioData: ((Float) -> Void)?
+    
+    // 分段回调 - 当检测到静音段时触发
+    var onSegmentReady: ((Data, TimeInterval, TimeInterval) -> Void)?
     
     private init() {}
     
@@ -91,8 +100,12 @@ class VoiceInputService: ObservableObject {
         // 重置录音数据容器并保存原始格式
         recordingDataQueue.sync {
             self.recordedBuffers = []
+            self.segmentBuffers = []
         }
         recordingOriginalFormat = format
+        recordingStartTime = Date()
+        lastSegmentTime = Date()
+        recordingDuration = 0
         
         // 安装tap来捕获音频数据
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, time in
@@ -121,6 +134,7 @@ class VoiceInputService: ObservableObject {
                 let data = Data(bytes: pcmPointer, count: byteCount)
                 self.recordingDataQueue.async {
                     self.recordedBuffers.append(data)
+                    self.segmentBuffers.append(data)  // 同时写入分段缓冲
                 }
             }
         }
@@ -136,7 +150,7 @@ class VoiceInputService: ObservableObject {
             
             // 启动音频电平更新定时器
             audioLevelTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] timer in
-                // 定时器用于平滑音频电平衰减
+                // 定时器用于平滑音频电平衰减和更新录音时长
                 guard let strongSelf = self else {
                     timer.invalidate()
                     return
@@ -146,6 +160,11 @@ class VoiceInputService: ObservableObject {
                         strongSelf.audioLevel *= 0.9
                         if strongSelf.audioLevel < 0.01 {
                             strongSelf.audioLevel = 0.0
+                        }
+                    } else {
+                        // 更新录音时长
+                        if let startTime = strongSelf.recordingStartTime {
+                            strongSelf.recordingDuration = Date().timeIntervalSince(startTime)
                         }
                     }
                 }
@@ -218,11 +237,74 @@ class VoiceInputService: ObservableObject {
             
             recordingDataQueue.sync {
                 self.recordedBuffers = []
+                self.segmentBuffers = []
             }
             
             isRecording = false
             audioLevel = 0.0
+            recordingDuration = 0
+            recordingStartTime = nil
+            lastSegmentTime = nil
         }
+    }
+    
+    /// 提取当前段落的音频数据(用于增量转写)
+    /// - Returns: 当前段落的PCM数据,如果数据为空则返回nil
+    func extractCurrentSegment() async throws -> VoiceRecording? {
+        guard isRecording else {
+            print("⚠️ [VoiceInputService] 未在录音中,无法提取段落")
+            return nil
+        }
+        
+        guard let originalFormat = recordingOriginalFormat else {
+            print("⚠️ [VoiceInputService] 未知录音格式")
+            return nil
+        }
+        
+        // 获取当前段落的缓冲数据
+        let buffers: [Data] = recordingDataQueue.sync {
+            let result = self.segmentBuffers
+            self.segmentBuffers = []  // 清空段落缓冲,开始新段落
+            return result
+        }
+        
+        guard !buffers.isEmpty else {
+            print("⚠️ [VoiceInputService] 段落数据为空")
+            return nil
+        }
+        
+        // 更新段落时间
+        lastSegmentTime = Date()
+        
+        let combinedData = buffers.reduce(Data(), +)
+        print("📊 [VoiceInputService] 提取段落数据: \(combinedData.count) 字节")
+        
+        do {
+            let recording = try convertPCMData(
+                combinedData,
+                originalFormat: originalFormat,
+                toSampleRate: recordingSampleRate,
+                toChannels: recordingChannels
+            )
+            return recording
+        } catch {
+            print("⚠️ [VoiceInputService] 段落PCM转换失败: \(error)")
+            return nil
+        }
+    }
+    
+    /// 获取当前录音的总时长
+    func getCurrentDuration() -> TimeInterval {
+        recordingDuration
+    }
+    
+    /// 获取上一段落结束时的时间点
+    func getLastSegmentTime() -> TimeInterval {
+        guard let startTime = recordingStartTime,
+              let segmentTime = lastSegmentTime else {
+            return 0
+        }
+        return segmentTime.timeIntervalSince(startTime)
     }
     
     private func convertPCMData(_ data: Data, originalFormat: AVAudioFormat, toSampleRate: Double, toChannels: AVAudioChannelCount) throws -> VoiceRecording {

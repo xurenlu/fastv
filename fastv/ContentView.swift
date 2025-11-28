@@ -64,13 +64,6 @@ struct ContentView: View {
                         VoiceInputView()
                             .toolbar {
                                 ToolbarItem(placement: .automatic) {
-                                    Button(action: { showWelcome = true }) {
-                                        Label(NSLocalizedString("help", comment: ""), systemImage: "questionmark.circle")
-                                    }
-                                    .help(NSLocalizedString("help", comment: ""))
-                                }
-                                
-                                ToolbarItem(placement: .automatic) {
                                     Button(action: { showSettings = true }) {
                                         Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
                                     }
@@ -80,13 +73,6 @@ struct ContentView: View {
                     case .meetingRecord:
                         MeetingRecordView()
                             .toolbar {
-                                ToolbarItem(placement: .automatic) {
-                                    Button(action: { showWelcome = true }) {
-                                        Label(NSLocalizedString("help", comment: ""), systemImage: "questionmark.circle")
-                                    }
-                                    .help(NSLocalizedString("help", comment: ""))
-                                }
-                                
                                 ToolbarItem(placement: .automatic) {
                                     Button(action: { showSettings = true }) {
                                         Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
@@ -106,13 +92,6 @@ struct ContentView: View {
                                 }
                                 
                                 ToolbarItem(placement: .automatic) {
-                                    Button(action: { showWelcome = true }) {
-                                        Label(NSLocalizedString("help", comment: ""), systemImage: "questionmark.circle")
-                                    }
-                                    .help(NSLocalizedString("help", comment: ""))
-                                }
-                                
-                                ToolbarItem(placement: .automatic) {
                                     Button(action: { showSettings = true }) {
                                         Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
                                     }
@@ -123,13 +102,6 @@ struct ContentView: View {
                         VideoSceneAnalysisView()
                             .toolbar {
                                 ToolbarItem(placement: .automatic) {
-                                    Button(action: { showWelcome = true }) {
-                                        Label(NSLocalizedString("help", comment: ""), systemImage: "questionmark.circle")
-                                    }
-                                    .help(NSLocalizedString("help", comment: ""))
-                                }
-                                
-                                ToolbarItem(placement: .automatic) {
                                     Button(action: { showSettings = true }) {
                                         Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
                                     }
@@ -139,13 +111,6 @@ struct ContentView: View {
                     case .aiTodo:
                         AITodoView()
                             .toolbar {
-                                ToolbarItem(placement: .automatic) {
-                                    Button(action: { showWelcome = true }) {
-                                        Label(NSLocalizedString("help", comment: ""), systemImage: "questionmark.circle")
-                                    }
-                                    .help(NSLocalizedString("help", comment: ""))
-                                }
-                                
                                 ToolbarItem(placement: .automatic) {
                                     Button(action: { showSettings = true }) {
                                         Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")

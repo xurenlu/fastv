@@ -82,6 +82,56 @@ struct MeetingRecordView: View {
                     }
                 }
                 
+                // 实时转写内容显示(录音中)
+                if viewModel.isRecording && !viewModel.realtimeTranscript.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "waveform.circle.fill")
+                                .foregroundStyle(.blue)
+                                .font(.caption)
+                            
+                            Text("实时转写")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            
+                            if !viewModel.transcriptionProgress.isEmpty {
+                                Text("•")
+                                    .foregroundStyle(.secondary)
+                                    .font(.caption)
+                                Text(viewModel.transcriptionProgress)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                        }
+                        
+                        ScrollView {
+                            Text(viewModel.realtimeTranscript)
+                                .font(.system(size: 13))
+                                .foregroundStyle(.primary)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(8)
+                        }
+                        .frame(maxHeight: 150)
+                        .background {
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(Color(NSColor.textBackgroundColor))
+                        }
+                    }
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .background {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Color.blue.opacity(0.05))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .strokeBorder(Color.blue.opacity(0.3), lineWidth: 1)
+                            }
+                    }
+                }
+                
                 // 处理状态提示
                 if viewModel.isProcessing {
                     VStack(spacing: 12) {
