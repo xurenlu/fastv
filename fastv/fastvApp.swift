@@ -478,7 +478,9 @@ struct fastvApp: App {
                         model: preferences.aiModel,
                         apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken,
                         timeout: preferences.aiTimeout,
-                        systemPrompt: preferences.aiSystemPrompt
+                        systemPrompt: preferences.aiSystemPrompt,
+                        useMistakes: true,
+                        useHighFrequencyWords: true
                     )
                     let aiDuration = Date().timeIntervalSince(aiStartTime)
                     print("✅ [fastvApp] AI 优化完成，耗时: \(String(format: "%.2f", aiDuration))秒")

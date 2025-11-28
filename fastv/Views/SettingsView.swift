@@ -9,9 +9,35 @@ import SwiftUI
 import AVFoundation
 import AppKit
 
+/// API端点预设配置
+struct PresetEndpoint {
+    let name: String
+    let endpoint: String
+    let recommendedModels: [String]
+}
+
 struct SettingsView: View {
     @ObservedObject var preferences = UserPreferences.shared
     @Environment(\.dismiss) private var dismiss
+    
+    // 预设的API端点配置
+    private let presetEndpoints: [PresetEndpoint] = [
+        PresetEndpoint(
+            name: "Ollama (本地)",
+            endpoint: "http://127.0.0.1:11434",
+            recommendedModels: ["gemma2:2b", "deepseek-r1:1.5b", "qwen2.5:7b", "llama3.2:3b"]
+        ),
+        PresetEndpoint(
+            name: "阿里云 DashScope",
+            endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            recommendedModels: ["qwen-flash", "qwen-plus", "qwen-max", "qwen-turbo"]
+        ),
+        PresetEndpoint(
+            name: "OpenAI",
+            endpoint: "https://api.openai.com/v1",
+            recommendedModels: ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
+        )
+    ]
     
     var body: some View {
         NavigationStack {
@@ -308,10 +334,69 @@ struct SettingsView: View {
                 
                 Section {
                     Toggle("快速纠错（毫秒级，推荐）", isOn: $preferences.enableFastCorrection)
+                    
+                    // 常错词管理入口
+                    NavigationLink {
+                        CommonMistakeManagementView()
+                            .navigationTitle("常错词管理")
+                    } label: {
+                        HStack {
+                            Image(systemName: "text.badge.checkmark")
+                            Text("管理常错词")
+                            Spacer()
+                            Text("\(CommonMistakeManager.shared.totalCount()) 个")
+                                .foregroundStyle(.secondary)
+                                .font(.caption)
+                        }
+                    }
+                    
+                    // 高频词提取
+                    HighFrequencyWordExtractionView()
+                        
+                        Divider()
+                        
+                    // AI错误检测配置
+                    VStack(alignment: .leading, spacing: 12) {
+                        Toggle("AI错误检测（智能推理）", isOn: $preferences.enableAICorrectionDetection)
+                        
+                        if preferences.enableAICorrectionDetection {
+                        VStack(alignment: .leading, spacing: 8) {
+                                Text("错误检测模型（推荐使用更强的推理模型）")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                                TextField("例如：deepseek-r1:1.5b", text: Binding(
+                                    get: {
+                                        preferences.correctionDetectionModel.isEmpty ? preferences.aiModel : preferences.correctionDetectionModel
+                                    },
+                                    set: { newValue in
+                                        preferences.correctionDetectionModel = newValue
+                                    }
+                                ))
+                                .textFieldStyle(.roundedBorder)
+                                
+                            HStack {
+                                    Text("超时时间")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                
+                                Spacer()
+                                
+                                    Text("\(String(format: "%.1f", preferences.correctionDetectionTimeout)) 秒")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            }
+                            
+                                Slider(value: $preferences.correctionDetectionTimeout, in: 5.0...30.0, step: 0.5)
+                                }
+                            .padding(.leading, 20)
+                        }
+                    }
                 } header: {
                     Text("文本纠错")
                 } footer: {
-                    Text("启用后会自动纠正语音识别中的常见错别字，速度极快（毫秒级），无需等待。")
+                    Text("启用后会自动纠正语音识别中的常见错别字，速度极快（毫秒级），无需等待。常错词和高频词会在AI优化时使用，提高纠错准确性。AI错误检测使用更强的推理模型来检测识别错误，需要用户确认后添加到常错词。")
                 }
                 
                 // AI 配置（独立于功能开关）
@@ -325,6 +410,35 @@ struct SettingsView: View {
                             
                             TextField("http://127.0.0.1:11434", text: $preferences.aiAPIEndpoint)
                                 .textFieldStyle(.roundedBorder)
+                                .multilineTextAlignment(.leading)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                            // 快捷选择按钮
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(presetEndpoints, id: \.endpoint) { preset in
+                                        Button(action: {
+                                            preferences.aiAPIEndpoint = preset.endpoint
+                                            // 自动填充第一个推荐模型
+                                            if let firstModel = preset.recommendedModels.first {
+                                                preferences.aiModel = firstModel
+                                            }
+                                        }) {
+                                            Text(preset.name)
+                                                .font(.caption)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: 4)
+                                                        .fill(preferences.aiAPIEndpoint == preset.endpoint ? Color.blue.opacity(0.2) : Color.secondary.opacity(0.1))
+                                                )
+                                                .foregroundStyle(preferences.aiAPIEndpoint == preset.endpoint ? .blue : .primary)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
                         }
                         
                         Divider()
@@ -337,6 +451,32 @@ struct SettingsView: View {
                             
                             TextField(NSLocalizedString("ai.model.example", comment: ""), text: $preferences.aiModel)
                                 .textFieldStyle(.roundedBorder)
+                            
+                            // 根据当前端点显示推荐的模型快捷按钮
+                            if let currentPreset = presetEndpoints.first(where: { $0.endpoint == preferences.aiAPIEndpoint }),
+                               !currentPreset.recommendedModels.isEmpty {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 8) {
+                                        ForEach(currentPreset.recommendedModels, id: \.self) { model in
+                                            Button(action: {
+                                                preferences.aiModel = model
+                                            }) {
+                                                Text(model)
+                                                    .font(.caption)
+                                                    .padding(.horizontal, 8)
+                                                    .padding(.vertical, 4)
+                                                    .background(
+                                                        RoundedRectangle(cornerRadius: 4)
+                                                            .fill(preferences.aiModel == model ? Color.blue.opacity(0.2) : Color.secondary.opacity(0.1))
+                                                    )
+                                                    .foregroundStyle(preferences.aiModel == model ? .blue : .primary)
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                    .padding(.vertical, 4)
+                                }
+                            }
                         }
                         
                         Divider()
@@ -371,111 +511,7 @@ struct SettingsView: View {
                             Slider(value: $preferences.aiTimeout, in: 2.0...30.0, step: 0.5)
                             
                             HStack(spacing: 4) {
-                                .font(.caption)
-                                    .foregroundStyle(.blue)
-                                
-                                Text(NSLocalizedString("ai.timeout.hint", comment: ""))
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        
-                        Divider()
-                        
-                        // 测试按钮
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(spacing: 12) {
-                                Button(action: {
-                                    testAIConnection()
-                                }) {
-                                    HStack {
-                                        Image(systemName: "network")
-                                        Text(NSLocalizedString("ai.test.connection", comment: ""))
-                                    }
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                .help(NSLocalizedString("ai.test.connection.help", comment: ""))
-                                
-                                Button(action: {
-                                    fetchAvailableModels()
-                                }) {
-                                    HStack {
-                                        Image(systemName: "list.bullet")
-                                        Text(NSLocalizedString("ai.fetch.models", comment: ""))
-                                    }
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                .help(NSLocalizedString("ai.fetch.models.help", comment: ""))
-                            }
-                        }
-                    }
-                } header: {
-                    Text("AI 服务配置")
-                } footer: {
-                    Text("配置 AI 服务的连接信息，这些设置会被所有使用 AI 的功能共享。")
-                }
-                
-                // AI 文本优化功能开关
-                // AI 服务配置（独立部分，不依赖功能开关）
-                Section {
-                    VStack(alignment: .leading, spacing: 16) {
-                        // API 端点设置
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(NSLocalizedString("ai.api.endpoint", comment: ""))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            
-                            TextField("http://127.0.0.1:11434", text: $preferences.aiAPIEndpoint)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                        
-                        Divider()
-                        
-                        // 模型选择
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(NSLocalizedString("ai.model.name", comment: ""))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            
-                            TextField(NSLocalizedString("ai.model.example", comment: ""), text: $preferences.aiModel)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                        
-                        Divider()
-                        
-                        // API Token（可选）
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(NSLocalizedString("ai.api.token", comment: ""))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            
-                            SecureField(NSLocalizedString("ai.api.token.placeholder", comment: ""), text: $preferences.aiAPIToken)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                        
-                        Divider()
-                        
-                        // 超时设置
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text(NSLocalizedString("ai.timeout", comment: ""))
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                
-                                Spacer()
-                                
-                                Text("\(String(format: "%.1f", preferences.aiTimeout)) \(NSLocalizedString("ai.timeout.seconds", comment: ""))")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(.secondary)
-                                    .monospacedDigit()
-                            }
-                            
-                            Slider(value: $preferences.aiTimeout, in: 2.0...30.0, step: 0.5)
-                            
-                            HStack(spacing: 4) {
-                                Image(systemName: "info.circle")
+                                Image(systemName: "info.circle.fill")
                                     .font(.caption)
                                     .foregroundStyle(.blue)
                                 
@@ -502,6 +538,8 @@ struct SettingsView: View {
                                 .controlSize(.small)
                                 .help(NSLocalizedString("ai.test.connection.help", comment: ""))
                                 
+                                // 只有Ollama服务支持获取模型列表
+                                if supportsModelListFetch(endpoint: preferences.aiAPIEndpoint) {
                                 Button(action: {
                                     fetchAvailableModels()
                                 }) {
@@ -513,6 +551,7 @@ struct SettingsView: View {
                                 .buttonStyle(.bordered)
                                 .controlSize(.small)
                                 .help(NSLocalizedString("ai.fetch.models.help", comment: ""))
+                                }
                             }
                         }
                     }
@@ -665,7 +704,169 @@ struct SettingsView: View {
                 } header: {
                     Text("会议记录")
                 } footer: {
-                    Text("启用后，会议记录会自动使用 AI 生成摘要和代办事项。需要先配置 AI 服务。")
+                    Text("启用后，会议记录会自动使用 AI 生成摘要和待办事项。需要先配置 AI 服务。")
+                }
+                
+                // AI Todo 设置
+                Section {
+                    VStack(alignment: .leading, spacing: 16) {
+                        // API 端点设置
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(NSLocalizedString("ai.todo.endpoint", comment: "API 端点"))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            TextField("留空则使用 AI 优化设置", text: Binding(
+                                get: { preferences.aiTodoEndpoint },
+                                set: { preferences.aiTodoEndpoint = $0 }
+                            ))
+                            .textFieldStyle(.roundedBorder)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                            // 快捷选择按钮
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    Button(action: {
+                                        preferences.aiTodoEndpoint = ""
+                                    }) {
+                                        Text("使用 AI 优化设置")
+                                            .font(.caption)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(preferences.aiTodoEndpoint.isEmpty ? Color.blue.opacity(0.2) : Color.secondary.opacity(0.1))
+                                            )
+                                            .foregroundStyle(preferences.aiTodoEndpoint.isEmpty ? .blue : .primary)
+                                    }
+                                    .buttonStyle(.plain)
+                                    
+                                    ForEach(presetEndpoints, id: \.endpoint) { preset in
+                                        Button(action: {
+                                            preferences.aiTodoEndpoint = preset.endpoint
+                                            // 自动填充第一个推荐模型
+                                            if let firstModel = preset.recommendedModels.first, preferences.aiTodoModel.isEmpty {
+                                                preferences.aiTodoModel = firstModel
+                                            }
+                                        }) {
+                                            Text(preset.name)
+                                                .font(.caption)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: 4)
+                                                        .fill(preferences.aiTodoEndpoint == preset.endpoint ? Color.blue.opacity(0.2) : Color.secondary.opacity(0.1))
+                                                )
+                                                .foregroundStyle(preferences.aiTodoEndpoint == preset.endpoint ? .blue : .primary)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // 模型名称设置
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(NSLocalizedString("ai.todo.model", comment: "模型名称"))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            TextField("留空则使用 AI 优化设置", text: Binding(
+                                get: { preferences.aiTodoModel },
+                                set: { preferences.aiTodoModel = $0 }
+                            ))
+                            .textFieldStyle(.roundedBorder)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                            // 根据当前端点显示推荐的模型快捷按钮
+                            let currentEndpoint = preferences.aiTodoEndpoint.isEmpty ? preferences.aiAPIEndpoint : preferences.aiTodoEndpoint
+                            if let currentPreset = presetEndpoints.first(where: { $0.endpoint == currentEndpoint }),
+                               !currentPreset.recommendedModels.isEmpty {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 8) {
+                                        ForEach(currentPreset.recommendedModels, id: \.self) { model in
+                                            Button(action: {
+                                                preferences.aiTodoModel = model
+                                            }) {
+                                                Text(model)
+                                                    .font(.caption)
+                                                    .padding(.horizontal, 8)
+                                                    .padding(.vertical, 4)
+                                                    .background(
+                                                        RoundedRectangle(cornerRadius: 4)
+                                                            .fill(preferences.aiTodoModel == model ? Color.blue.opacity(0.2) : Color.secondary.opacity(0.1))
+                                                    )
+                                                    .foregroundStyle(preferences.aiTodoModel == model ? .blue : .primary)
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                    .padding(.vertical, 4)
+                                }
+                            }
+                        }
+                        
+                        // 超时时间设置
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(NSLocalizedString("ai.todo.timeout", comment: "超时时间"))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            HStack {
+                                TextField("留空则使用 AI 优化设置", value: Binding(
+                                    get: { preferences.aiTodoTimeout > 0 ? preferences.aiTodoTimeout : nil },
+                                    set: { preferences.aiTodoTimeout = $0 ?? 0 }
+                                ), format: .number)
+                                .textFieldStyle(.roundedBorder)
+                                
+                                Text(NSLocalizedString("ai.timeout.seconds", comment: "秒"))
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Text(NSLocalizedString("ai.timeout.hint", comment: ""))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        // 测试按钮
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 12) {
+                                Button(action: {
+                                    testAITodoConnection()
+                                }) {
+                                    HStack {
+                                        Image(systemName: "network")
+                                        Text(NSLocalizedString("ai.test.connection", comment: ""))
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .help(NSLocalizedString("ai.test.connection.help", comment: ""))
+                                
+                                // 只有Ollama服务支持获取模型列表
+                                let currentEndpoint = preferences.aiTodoEndpoint.isEmpty ? preferences.aiAPIEndpoint : preferences.aiTodoEndpoint
+                                if supportsModelListFetch(endpoint: currentEndpoint) {
+                                    Button(action: {
+                                        fetchAITodoModels()
+                                    }) {
+                                        HStack {
+                                            Image(systemName: "list.bullet")
+                                            Text(NSLocalizedString("ai.fetch.models", comment: ""))
+                                        }
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                    .help(NSLocalizedString("ai.fetch.models.help", comment: ""))
+                                }
+                            }
+                        }
+                    }
+                } header: {
+                    Text(NSLocalizedString("ai.todo.section", comment: "AI Todo"))
+                } footer: {
+                    Text(NSLocalizedString("ai.todo.description", comment: "配置 AI Todo 功能使用的模型和端点。留空则使用 AI 优化设置。"))
                 }
                 
                 // 历史记录 Section
@@ -1053,6 +1254,41 @@ struct SettingsView: View {
         preferences.aiSystemPrompt = defaultSystemPrompt
     }
     
+    /// 判断API端点是否支持获取模型列表
+    /// 目前只有Ollama服务支持，DashScope等不支持
+    private func supportsModelListFetch(endpoint: String) -> Bool {
+        guard let url = URL(string: endpoint.lowercased()) else {
+            return false
+        }
+        
+        let host = url.host ?? ""
+        let port = url.port ?? (url.scheme == "https" ? 443 : 80)
+        
+        // Ollama通常运行在本地，端口11434
+        if host == "localhost" || host == "127.0.0.1" || host == "0.0.0.0" {
+            return true
+        }
+        
+        // 检查是否是Ollama的常见端口
+        if port == 11434 {
+            return true
+        }
+        
+        // DashScope等云服务不支持获取模型列表
+        if host.contains("dashscope") || host.contains("aliyun") {
+            return false
+        }
+        
+        // OpenAI等也不支持Ollama的/api/tags接口
+        if host.contains("openai") || host.contains("anthropic") {
+            return false
+        }
+        
+        // 默认情况下，如果是本地地址或常见Ollama端口，认为支持
+        // 其他情况保守处理，不显示按钮
+        return false
+    }
+    
     /// 获取可用的模型列表
     private func fetchAvailableModels() {
         print("🤖 [SettingsView] 获取模型列表")
@@ -1061,6 +1297,81 @@ struct SettingsView: View {
             do {
                 let models = try await OllamaService.shared.fetchModels(
                     endpoint: preferences.aiAPIEndpoint,
+                    apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken
+                )
+                
+                await MainActor.run {
+                    showModelsListAlert(models: models)
+                }
+            } catch {
+                await MainActor.run {
+                    showAIConnectionFailedAlert(message: "获取模型列表失败: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    /// 测试 AI Todo 连接
+    private func testAITodoConnection() {
+        print("🤖 [SettingsView] 测试 AI Todo 连接")
+        
+        let endpoint = preferences.aiTodoEndpoint.isEmpty ? preferences.aiAPIEndpoint : preferences.aiTodoEndpoint
+        
+        Task {
+            do {
+                let success = try await OllamaService.shared.testConnection(
+                    endpoint: endpoint,
+                    apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken
+                )
+                
+                await MainActor.run {
+                    if success {
+                        showAITodoConnectionSuccessAlert(endpoint: endpoint)
+                    } else {
+                        showAITodoConnectionFailedAlert(message: "连接失败", endpoint: endpoint)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    showAITodoConnectionFailedAlert(message: error.localizedDescription, endpoint: endpoint)
+                }
+            }
+        }
+    }
+    
+    /// 显示 AI Todo 连接成功提示
+    private func showAITodoConnectionSuccessAlert(endpoint: String) {
+        let alert = NSAlert()
+        alert.messageText = NSLocalizedString("ai.connection.success.title", comment: "")
+        let descriptionFormat = NSLocalizedString("ai.connection.success.description", comment: "")
+        alert.informativeText = descriptionFormat.replacingOccurrences(of: "%@", with: endpoint)
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: NSLocalizedString("great", comment: ""))
+        alert.runModal()
+    }
+    
+    /// 显示 AI Todo 连接失败提示
+    private func showAITodoConnectionFailedAlert(message: String, endpoint: String) {
+        let alert = NSAlert()
+        alert.messageText = NSLocalizedString("ai.connection.failed.title", comment: "")
+        let descriptionFormat = NSLocalizedString("ai.connection.failed.description", comment: "")
+        let fullMessage = "端点: \(endpoint)\n\n错误信息: \(message)"
+        alert.informativeText = descriptionFormat.replacingOccurrences(of: "%@", with: fullMessage)
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: NSLocalizedString("got.it", comment: ""))
+        alert.runModal()
+    }
+    
+    /// 获取 AI Todo 模型列表
+    private func fetchAITodoModels() {
+        print("🤖 [SettingsView] 获取 AI Todo 模型列表")
+        
+        let endpoint = preferences.aiTodoEndpoint.isEmpty ? preferences.aiAPIEndpoint : preferences.aiTodoEndpoint
+        
+        Task {
+            do {
+                let models = try await OllamaService.shared.fetchModels(
+                    endpoint: endpoint,
                     apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken
                 )
                 
@@ -2290,6 +2601,116 @@ struct EditMistakeDialog: View {
         }
         .padding(20)
         .frame(width: 400)
+    }
+}
+
+// MARK: - 高频词提取视图
+
+struct HighFrequencyWordExtractionView: View {
+    @ObservedObject private var wordExtractor = HighFrequencyWordExtractor.shared
+    @ObservedObject private var history = VoiceInputHistory.shared
+    @State private var showExtractionAlert = false
+    @State private var extractionMessage = ""
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "chart.bar.fill")
+                Text("高频词提取")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Spacer()
+                
+                if !wordExtractor.highFrequencyWords.isEmpty {
+                    Text("\(wordExtractor.highFrequencyWords.count) 个")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            
+            if wordExtractor.isExtracting {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text(wordExtractor.extractionProgress)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                HStack(spacing: 12) {
+                    Button(action: {
+                        extractHighFrequencyWords()
+                    }) {
+                        HStack {
+                            Image(systemName: "sparkles")
+                            Text("从历史记录提取")
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(history.items.isEmpty)
+                    
+                    if !wordExtractor.highFrequencyWords.isEmpty {
+                        Button(action: {
+                            wordExtractor.clear()
+                            extractionMessage = "高频词已清空"
+                            showExtractionAlert = true
+                        }) {
+                            HStack {
+                                Image(systemName: "trash")
+                                Text("清空")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .foregroundStyle(.red)
+                    }
+                }
+            }
+            
+            if !wordExtractor.highFrequencyWords.isEmpty && !wordExtractor.isExtracting {
+                // 显示前10个高频词
+                let topWords = Array(wordExtractor.highFrequencyWords.prefix(10))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("高频词示例（前10个）：")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(topWords.map { "\($0.word)(\($0.frequency))" }.joined(separator: ", "))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                .padding(.top, 4)
+            }
+        }
+        .padding(.vertical, 8)
+        .alert("提取结果", isPresented: $showExtractionAlert) {
+            Button("确定", role: .cancel) { }
+        } message: {
+            Text(extractionMessage)
+        }
+    }
+    
+    private func extractHighFrequencyWords() {
+        guard !history.items.isEmpty else {
+            extractionMessage = "历史记录为空，无法提取高频词"
+            showExtractionAlert = true
+            return
+        }
+        
+        Task {
+            await wordExtractor.extractFromHistory(history.items)
+            
+            await MainActor.run {
+                if wordExtractor.highFrequencyWords.isEmpty {
+                    extractionMessage = "未找到高频词（需要至少出现3次）"
+                } else {
+                    extractionMessage = "提取完成，共找到 \(wordExtractor.highFrequencyWords.count) 个高频词"
+                }
+                showExtractionAlert = true
+            }
+        }
     }
 }
 

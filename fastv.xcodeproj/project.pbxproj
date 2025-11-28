@@ -464,6 +464,7 @@
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "typecho 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "typecho 需要访问您的麦克风以进行语音输入和语音转文字功能。";
+				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "\"typecho\"需要您的同意，来从系统中导入“提醒”";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -517,6 +518,7 @@
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "typecho 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "typecho 需要访问您的麦克风以进行语音输入和语音转文字功能。";
+				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "\"typecho\"需要您的同意，来从系统中导入“提醒”";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

@@ -223,11 +223,46 @@
 
 // AI测试相关Alert
 "ai.connection.success.title" = "✅ 连接成功";
-"ai.connection.success.description" = "成功连接到 Ollama API！\n\n端点: %@";
+"ai.connection.success.description" = "成功连接到 AI API！\n\n端点: %@";
 "ai.connection.failed.title" = "❌ 连接失败";
-"ai.connection.failed.description" = "无法连接到 Ollama API。\n\n错误信息: %@\n\n请检查：\n1. Ollama 是否正在运行\n2. API 端点地址是否正确\n3. 如果使用了 API Token，请确认其有效性";
+"ai.connection.failed.description" = "无法连接到 AI API。\n\n错误信息: %@\n\n请检查：\n1. API 服务是否正在运行（如 Ollama）\n2. API 端点地址是否正确\n3. 如果使用了 API Token，请确认其有效性\n4. 网络连接是否正常";
 "ai.models.list.title" = "📋 可用模型列表";
 "ai.models.list.empty" = "未找到任何模型。\n\n请先使用 'ollama pull' 命令下载模型。";
 "ai.models.list.found" = "找到 %d 个可用模型：\n\n• %@\n\n您可以将模型名称复制到上方的\"模型名称\"字段中。";
 "ai.test.success.title" = "✅ 测试成功";
 "ai.test.success.description" = "AI 优化功能正常工作！\n\n原始文本：\n%@\n\n优化后：\n%@\n\n耗时：%@ 秒";
+
+// AI Todo
+"ai.todo" = "AI Todo";
+"ai.todo.section" = "AI Todo";
+"ai.todo.description" = "配置 AI Todo 功能使用的模型和端点。留空则使用 AI 优化设置。";
+"ai.todo.endpoint" = "API 端点";
+"ai.todo.model" = "模型名称";
+"ai.todo.timeout" = "超时时间";
+"ai.todo.input.hint" = "💡 提示：可以直接输入文字，或使用语音输入";
+"ai.todo.input.placeholder" = "输入待办事项或语音说话...";
+"ai.todo.empty" = "暂无待办事项";
+"ai.todo.empty.description" = "可以通过文字或语音添加待办事项";
+"ai.todo.active" = "待办事项";
+"ai.todo.archived" = "已归档";
+"todo.priority.important.urgent" = "重要且紧急";
+"todo.priority.important.not.urgent" = "重要但不紧急";
+"todo.priority.not.important.urgent" = "不重要但紧急";
+"todo.priority.not.important.not.urgent" = "不重要且不紧急";
+"mark.as.completed" = "标记为已完成";
+"mark.as.pending" = "标记为待完成";
+"archive" = "归档";
+"restore" = "恢复";
+"add.due.date" = "添加截止时间";
+"due.date" = "截止时间";
+"include.time" = "包含时间";
+"start.recording" = "开始录音";
+"stop.recording" = "停止录音";
+"ai.process" = "AI 解析";
+"sync.from.reminders" = "从提醒事项同步";
+"sync.from.reminders.help" = "从 macOS 提醒事项应用同步待办事项";
+"reminders.permission.denied" = "需要访问提醒事项的权限。请在系统设置 > 隐私与安全性 > 提醒事项中授权。";
+"sync.success" = "成功同步 %d 个待办事项";
+"sync.success.with.skipped" = "成功同步 %d 个待办事项，跳过 %d 个已存在的";
+"sync.all.existed" = "所有 %d 个待办事项已存在，无需同步";
+"sync.no.new.items" = "没有新的待办事项需要同步";

@@ -51,12 +51,20 @@ class UserPreferences: ObservableObject {
         static let aiSystemPrompt = "aiSystemPrompt"
         // 快速纠错相关
         static let enableFastCorrection = "enableFastCorrection"
+        // AI错误检测相关
+        static let enableAICorrectionDetection = "enableAICorrectionDetection"
+        static let correctionDetectionModel = "correctionDetectionModel"
+        static let correctionDetectionTimeout = "correctionDetectionTimeout"
         // 模型下载相关
         static let modelDownloadURL = "modelDownloadURL"
         static let modelStoragePath = "modelStoragePath"
         static let isModelDownloaded = "isModelDownloaded"
         // 多语言相关
         static let defaultLanguage = "defaultLanguage"
+        // AI Todo 相关
+        static let aiTodoEndpoint = "aiTodoEndpoint"
+        static let aiTodoModel = "aiTodoModel"
+        static let aiTodoTimeout = "aiTodoTimeout"
     }
     
     // MARK: - Published Properties
@@ -175,6 +183,19 @@ class UserPreferences: ObservableObject {
         willSet { defaults.set(newValue, forKey: Keys.enableFastCorrection) }
     }
     
+    // AI错误检测相关
+    @Published var enableAICorrectionDetection: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.enableAICorrectionDetection) }
+    }
+    
+    @Published var correctionDetectionModel: String {
+        willSet { defaults.set(newValue, forKey: Keys.correctionDetectionModel) }
+    }
+    
+    @Published var correctionDetectionTimeout: Double {
+        willSet { defaults.set(newValue, forKey: Keys.correctionDetectionTimeout) }
+    }
+    
     // 模型下载相关
     @Published var modelDownloadURL: String {
         willSet { defaults.set(newValue, forKey: Keys.modelDownloadURL) }
@@ -191,6 +212,19 @@ class UserPreferences: ObservableObject {
     // 多语言相关
     @Published var defaultLanguage: String {
         willSet { defaults.set(newValue, forKey: Keys.defaultLanguage) }
+    }
+    
+    // AI Todo 相关
+    @Published var aiTodoEndpoint: String {
+        willSet { defaults.set(newValue, forKey: Keys.aiTodoEndpoint) }
+    }
+    
+    @Published var aiTodoModel: String {
+        willSet { defaults.set(newValue, forKey: Keys.aiTodoModel) }
+    }
+    
+    @Published var aiTodoTimeout: Double {
+        willSet { defaults.set(newValue, forKey: Keys.aiTodoTimeout) }
     }
     
     // 引导流程相关
@@ -293,6 +327,12 @@ class UserPreferences: ObservableObject {
         aiAPIToken = defaults.string(forKey: Keys.aiAPIToken) ?? ""
         aiTimeout = defaults.object(forKey: Keys.aiTimeout) as? Double ?? 5.0 // 默认 5 秒超时
         
+        // AI错误检测设置，默认不启用
+        enableAICorrectionDetection = defaults.object(forKey: Keys.enableAICorrectionDetection) as? Bool ?? false
+        // 默认使用更强的推理模型（如deepseek-r1:1.5b），如果没有配置则使用AI优化模型
+        correctionDetectionModel = defaults.string(forKey: Keys.correctionDetectionModel) ?? ""
+        correctionDetectionTimeout = defaults.object(forKey: Keys.correctionDetectionTimeout) as? Double ?? 10.0 // 默认 10 秒超时（错误检测需要更多时间）
+        
         // 默认系统提示词
         let defaultSystemPrompt = """
 你是一个专业的文本优化助手。你的任务是优化语音转文字的结果。
@@ -351,6 +391,11 @@ class UserPreferences: ObservableObject {
         
         // 多语言设置，默认为中文
         defaultLanguage = defaults.string(forKey: Keys.defaultLanguage) ?? "zh-Hans"
+        
+        // AI Todo 设置，默认继承 AI 优化设置
+        aiTodoEndpoint = defaults.string(forKey: Keys.aiTodoEndpoint) ?? ""
+        aiTodoModel = defaults.string(forKey: Keys.aiTodoModel) ?? ""
+        aiTodoTimeout = defaults.object(forKey: Keys.aiTodoTimeout) as? Double ?? 0.0 // 0 表示使用默认值
         
         // 引导流程设置，默认为未完成
         hasCompletedOnboarding = defaults.bool(forKey: Keys.hasCompletedOnboarding)

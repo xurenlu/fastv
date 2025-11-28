@@ -175,11 +175,11 @@ struct MeetingRecordDetailView: View {
                     }
                 }
                 
-                // 代办事项
+                // 待办事项
                 if !record.actionItems.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
-                            Text("代办事项")
+                            Text("待办事项")
                                 .font(.headline)
                             
                             Spacer()

@@ -162,7 +162,9 @@ class MeetingRecordViewModel: ObservableObject {
                         model: preferences.aiModel,
                         apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken,
                         timeout: preferences.aiTimeout,
-                        systemPrompt: preferences.aiSystemPrompt
+                        systemPrompt: preferences.aiSystemPrompt,
+                        useMistakes: true,
+                        useHighFrequencyWords: true
                     )
                     
                     // 检查是否已取消
@@ -187,7 +189,7 @@ class MeetingRecordViewModel: ObservableObject {
                 }
             }
             
-            // 生成摘要和代办事项（如果启用会议记录 AI 摘要）
+            // 生成摘要和待办事项（如果启用会议记录 AI 摘要）
             if preferences.enableMeetingSummaryAI {
                 processingStage = .summarizing
                 processingProgress = 0.8

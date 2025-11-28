@@ -191,13 +191,16 @@ struct AudioSegmentAnalyzer {
         let preferences = UserPreferences.shared
         let systemPrompt = "你是一个话题分析助手，擅长从文本中提取主要话题。"
         
+        // 注意：这里用于提取主题，不需要使用常错词和高频词
         let topic = try await OllamaService.shared.optimizeTranscript(
             text: prompt,
             endpoint: endpoint,
             model: model,
             apiToken: apiToken,
             timeout: 5.0,
-            systemPrompt: systemPrompt
+            systemPrompt: systemPrompt,
+            useMistakes: false,  // 主题提取不需要常错词
+            useHighFrequencyWords: false  // 主题提取不需要高频词
         )
         
         return topic.trimmingCharacters(in: .whitespacesAndNewlines)

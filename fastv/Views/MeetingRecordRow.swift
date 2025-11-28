@@ -74,7 +74,7 @@ struct MeetingRecordRow: View {
                         .padding(.top, 2)
                 }
                 
-                // 代办事项预览
+                // 待办事项预览
                 if !record.actionItems.isEmpty {
                     HStack(spacing: 4) {
                         Image(systemName: "checkmark.circle")
