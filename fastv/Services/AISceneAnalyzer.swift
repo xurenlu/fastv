@@ -135,6 +135,8 @@ struct AISceneAnalyzer {
         var results: [(timestamp: TimeInterval, description: String, image: NSImage?)] = []
         var previousImage: NSImage? = nil
         var previousDescription: String? = nil
+        var failedFrames = 0  // 记录失败的帧数
+        var aiFailedFrames = 0  // 记录AI分析失败的帧数
         
         for i in 0..<totalSamples {
             let time = Double(i) * frameInterval
@@ -143,35 +145,66 @@ struct AISceneAnalyzer {
             
             let progress = Double(i) / Double(totalSamples)
             let timestamp = CMTimeGetSeconds(clampedTime)
-            progressHandler(progress, "分析帧 \(i + 1)/\(totalSamples) (时间: \(String(format: "%.1f", timestamp))秒)")
             
-            // 提取帧
-            let cgImage = try await imageGenerator.image(at: clampedTime).image
+            // 显示失败帧的统计信息
+            let failInfo = (failedFrames > 0 || aiFailedFrames > 0) ? " (已跳过 \(failedFrames + aiFailedFrames) 个无法处理的帧)" : ""
+            progressHandler(progress, "分析帧 \(i + 1)/\(totalSamples) (时间: \(String(format: "%.1f", timestamp))秒)\(failInfo)")
+            
+            // 提取帧 - 添加错误处理，避免单个帧失败导致整个分析停止
+            var cgImage: CGImage?
+            do {
+                cgImage = try await imageGenerator.image(at: clampedTime).image
+            } catch {
+                // 如果提取帧失败，记录错误并跳过该帧
+                print("⚠️ [AISceneAnalyzer] 无法提取第 \(i + 1) 帧 (时间: \(String(format: "%.1f", timestamp))秒): \(error.localizedDescription)")
+                failedFrames += 1
+                // 跳过该帧，继续分析下一帧
+                continue
+            }
+            
+            guard let cgImage = cgImage else {
+                failedFrames += 1
+                continue
+            }
+            
             let currentImage = NSImage(cgImage: cgImage, size: .zero)
             
-            // 分析当前帧
-            var description: String
-            if let prevImage = previousImage, let prevDesc = previousDescription {
-                // 比较两张图片
-                description = try await OllamaService.shared.compareImages(
-                    image1: prevImage,
-                    image2: currentImage,
-                    endpoint: endpoint,
-                    model: visionModel,
-                    apiToken: apiToken,
-                    timeout: 30.0
-                )
-            } else {
-                // 分析第一帧
-                let prompt = "请描述这张图片中的场景、人物、动作和主要元素。用简洁的中文描述。"
-                description = try await OllamaService.shared.analyzeImage(
-                    image: currentImage,
-                    prompt: prompt,
-                    endpoint: endpoint,
-                    model: visionModel,
-                    apiToken: apiToken,
-                    timeout: 30.0
-                )
+            // 分析当前帧 - 添加错误处理，避免AI分析失败导致整个分析停止
+            var description: String?
+            do {
+                if let prevImage = previousImage, let prevDesc = previousDescription {
+                    // 比较两张图片
+                    description = try await OllamaService.shared.compareImages(
+                        image1: prevImage,
+                        image2: currentImage,
+                        endpoint: endpoint,
+                        model: visionModel,
+                        apiToken: apiToken,
+                        timeout: 30.0
+                    )
+                } else {
+                    // 分析第一帧
+                    let prompt = "请描述这张图片中的场景、人物、动作和主要元素。用简洁的中文描述。"
+                    description = try await OllamaService.shared.analyzeImage(
+                        image: currentImage,
+                        prompt: prompt,
+                        endpoint: endpoint,
+                        model: visionModel,
+                        apiToken: apiToken,
+                        timeout: 30.0
+                    )
+                }
+            } catch {
+                // 如果AI分析失败，记录错误并跳过该帧
+                print("⚠️ [AISceneAnalyzer] AI分析第 \(i + 1) 帧失败 (时间: \(String(format: "%.1f", timestamp))秒): \(error.localizedDescription)")
+                aiFailedFrames += 1
+                // 跳过该帧，继续分析下一帧
+                continue
+            }
+            
+            guard let description = description else {
+                aiFailedFrames += 1
+                continue
             }
             
             // 判断是否有显著变化
@@ -184,6 +217,8 @@ struct AISceneAnalyzer {
             previousImage = currentImage
             previousDescription = description
         }
+        
+        print("✅ [AISceneAnalyzer] 视觉分析完成: 总样本数=\(totalSamples), 成功=\(totalSamples - failedFrames - aiFailedFrames), 提取失败=\(failedFrames), AI分析失败=\(aiFailedFrames), 变化点=\(results.count)")
         
         return results
     }

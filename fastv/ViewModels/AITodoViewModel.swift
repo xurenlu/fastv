@@ -8,6 +8,30 @@
 import Foundation
 import Combine
 
+/// Todo 视图模式
+enum TodoViewMode: String, CaseIterable {
+    case list = "list"              // 列表模式
+    case quadrant = "quadrant"      // 四象限模式
+    
+    var displayName: String {
+        switch self {
+        case .list:
+            return NSLocalizedString("todo.view.mode.list", comment: "列表模式")
+        case .quadrant:
+            return NSLocalizedString("todo.view.mode.quadrant", comment: "四象限模式")
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .list:
+            return "list.bullet"
+        case .quadrant:
+            return "square.grid.2x2"
+        }
+    }
+}
+
 /// AI Todo ViewModel
 @MainActor
 class AITodoViewModel: ObservableObject {
@@ -16,10 +40,27 @@ class AITodoViewModel: ObservableObject {
     @Published var isProcessingAI: Bool = false
     @Published var aiErrorMessage: String?
     @Published var aiSuccessMessage: String?
+    @Published var viewMode: TodoViewMode = .quadrant
     
     private let store = AITodoStore.shared
     private let aiService = AITodoAIService.shared
     private let voiceService = VoiceInputService.shared
+    private var cancellables = Set<AnyCancellable>()
+    
+    init() {
+        // 订阅 store 的变化，确保当 store 更新时，视图能够刷新
+        store.$activeTodos
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+        
+        store.$archivedTodos
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+    }
     
     var activeTodos: [AITodoItem] {
         store.activeTodos
@@ -27,6 +68,39 @@ class AITodoViewModel: ObservableObject {
     
     var archivedTodos: [AITodoItem] {
         store.archivedTodos
+    }
+    
+    // MARK: - Quadrant Data
+    
+    /// 获取指定优先级的活跃 Todo
+    func activeTodos(forPriority priority: AITodoPriority) -> [AITodoItem] {
+        store.activeTodos.filter { $0.priority == priority }
+    }
+    
+    /// 重要且紧急
+    var importantUrgentTodos: [AITodoItem] {
+        activeTodos(forPriority: .importantUrgent)
+    }
+    
+    /// 重要但不紧急
+    var importantNotUrgentTodos: [AITodoItem] {
+        activeTodos(forPriority: .importantNotUrgent)
+    }
+    
+    /// 不重要但紧急
+    var notImportantUrgentTodos: [AITodoItem] {
+        activeTodos(forPriority: .notImportantUrgent)
+    }
+    
+    /// 不重要且不紧急
+    var notImportantNotUrgentTodos: [AITodoItem] {
+        activeTodos(forPriority: .notImportantNotUrgent)
+    }
+    
+    // MARK: - View Mode
+    
+    func toggleViewMode() {
+        viewMode = viewMode == .list ? .quadrant : .list
     }
     
     // MARK: - Basic CRUD
@@ -54,10 +128,25 @@ class AITodoViewModel: ObservableObject {
     }
     
     func updateTodoPriority(_ todo: AITodoItem, priority: AITodoPriority) {
+        print("🔄 [AITodoViewModel] updateTodoPriority 被调用")
+        print("   Todo ID: \(todo.id)")
+        print("   当前优先级: \(todo.priority.displayName)")
+        print("   新优先级: \(priority.displayName)")
+        
         var updated = todo
         updated.priority = priority
         updated.updatedAt = Date()
+        
+        print("   更新后的 todo priority: \(updated.priority.displayName)")
+        
         store.update(updated)
+        
+        // 验证更新是否成功
+        if let verifyTodo = store.activeTodos.first(where: { $0.id == todo.id }) {
+            print("   ✅ 验证：store 中的优先级已更新为: \(verifyTodo.priority.displayName)")
+        } else {
+            print("   ⚠️ 警告：更新后在 store 中未找到该 todo")
+        }
     }
     
     func updateTodoDueDate(_ todo: AITodoItem, dueDate: Date?) {

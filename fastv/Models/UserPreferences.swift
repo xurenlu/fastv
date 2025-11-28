@@ -65,6 +65,17 @@ class UserPreferences: ObservableObject {
         static let aiTodoEndpoint = "aiTodoEndpoint"
         static let aiTodoModel = "aiTodoModel"
         static let aiTodoTimeout = "aiTodoTimeout"
+        // 说话人分离相关
+        static let enableSpeakerDiarization = "enableSpeakerDiarization"
+        static let diarizationMinSpeakers = "diarizationMinSpeakers"
+        static let diarizationMaxSpeakers = "diarizationMaxSpeakers"
+        // AI 聊天参数相关
+        static let chatTopP = "chatTopP"
+        static let chatTopK = "chatTopK"
+        static let chatTemperature = "chatTemperature"
+        static let chatMaxTokens = "chatMaxTokens"
+        static let chatEnableSearch = "chatEnableSearch"
+        static let chatEnableThinking = "chatEnableThinking"
     }
     
     // MARK: - Published Properties
@@ -225,6 +236,44 @@ class UserPreferences: ObservableObject {
     
     @Published var aiTodoTimeout: Double {
         willSet { defaults.set(newValue, forKey: Keys.aiTodoTimeout) }
+    }
+    
+    // 说话人分离相关
+    @Published var enableSpeakerDiarization: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.enableSpeakerDiarization) }
+    }
+    
+    @Published var diarizationMinSpeakers: Int? {
+        willSet { defaults.set(newValue ?? 0, forKey: Keys.diarizationMinSpeakers) }
+    }
+    
+    @Published var diarizationMaxSpeakers: Int? {
+        willSet { defaults.set(newValue ?? 0, forKey: Keys.diarizationMaxSpeakers) }
+    }
+    
+    // AI 聊天参数相关
+    @Published var chatTopP: Double {
+        willSet { defaults.set(newValue, forKey: Keys.chatTopP) }
+    }
+    
+    @Published var chatTopK: Int {
+        willSet { defaults.set(newValue, forKey: Keys.chatTopK) }
+    }
+    
+    @Published var chatTemperature: Double {
+        willSet { defaults.set(newValue, forKey: Keys.chatTemperature) }
+    }
+    
+    @Published var chatMaxTokens: Int {
+        willSet { defaults.set(newValue, forKey: Keys.chatMaxTokens) }
+    }
+    
+    @Published var chatEnableSearch: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.chatEnableSearch) }
+    }
+    
+    @Published var chatEnableThinking: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.chatEnableThinking) }
     }
     
     // 引导流程相关
@@ -396,6 +445,21 @@ class UserPreferences: ObservableObject {
         aiTodoEndpoint = defaults.string(forKey: Keys.aiTodoEndpoint) ?? ""
         aiTodoModel = defaults.string(forKey: Keys.aiTodoModel) ?? ""
         aiTodoTimeout = defaults.object(forKey: Keys.aiTodoTimeout) as? Double ?? 0.0 // 0 表示使用默认值
+        
+        // 说话人分离设置，默认不启用
+        enableSpeakerDiarization = defaults.object(forKey: Keys.enableSpeakerDiarization) as? Bool ?? false
+        let minSpeakers = defaults.object(forKey: Keys.diarizationMinSpeakers) as? Int ?? 0
+        diarizationMinSpeakers = minSpeakers > 0 ? minSpeakers : nil
+        let maxSpeakers = defaults.object(forKey: Keys.diarizationMaxSpeakers) as? Int ?? 0
+        diarizationMaxSpeakers = maxSpeakers > 0 ? maxSpeakers : nil
+        
+        // AI 聊天参数设置
+        chatTopP = defaults.object(forKey: Keys.chatTopP) as? Double ?? 0.9
+        chatTopK = defaults.object(forKey: Keys.chatTopK) as? Int ?? 0  // 0 表示不设置
+        chatTemperature = defaults.object(forKey: Keys.chatTemperature) as? Double ?? 0.7
+        chatMaxTokens = defaults.object(forKey: Keys.chatMaxTokens) as? Int ?? 10240
+        chatEnableSearch = defaults.object(forKey: Keys.chatEnableSearch) as? Bool ?? true
+        chatEnableThinking = defaults.object(forKey: Keys.chatEnableThinking) as? Bool ?? false
         
         // 引导流程设置，默认为未完成
         hasCompletedOnboarding = defaults.bool(forKey: Keys.hasCompletedOnboarding)

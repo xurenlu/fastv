@@ -12,9 +12,11 @@ import UniformTypeIdentifiers
 enum SidebarItem: String, Identifiable, CaseIterable {
     case voiceInput = "语音输入"
     case meetingRecord = "会议记录"
+    case liveTranscription = "直播转录"
     case videoProcessing = "视频处理"
     case videoSceneAnalysis = "视频场景分析"
     case aiTodo = "AI Todo"
+    case aiChat = "AI Chat"
     
     var id: String { rawValue }
     
@@ -24,12 +26,16 @@ enum SidebarItem: String, Identifiable, CaseIterable {
             return "mic.fill"
         case .meetingRecord:
             return "calendar.badge.clock"
+        case .liveTranscription:
+            return "waveform.circle.fill"
         case .videoProcessing:
             return "video.fill"
         case .videoSceneAnalysis:
             return "waveform.path"
         case .aiTodo:
             return "checklist"
+        case .aiChat:
+            return "message.fill"
         }
     }
 }
@@ -50,12 +56,13 @@ struct ContentView: View {
                 // 左侧侧边栏
                 List(selection: $selectedSidebarItem) {
                     ForEach(SidebarItem.allCases) { item in
-                        Label(item.rawValue, systemImage: item.icon)
+                        SidebarItemRow(item: item, isSelected: selectedSidebarItem == item)
                             .tag(item)
                     }
                 }
+                .listStyle(.sidebar)
                 .navigationTitle("功能")
-                .frame(minWidth: 180)
+                .frame(minWidth: 200, idealWidth: 220)
             } detail: {
                 // 右侧内容区域
                 Group {
@@ -72,6 +79,16 @@ struct ContentView: View {
                             }
                     case .meetingRecord:
                         MeetingRecordView()
+                            .toolbar {
+                                ToolbarItem(placement: .automatic) {
+                                    Button(action: { showSettings = true }) {
+                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                                    }
+                                    .help(NSLocalizedString("settings", comment: ""))
+                                }
+                            }
+                    case .liveTranscription:
+                        LiveTranscriptionView()
                             .toolbar {
                                 ToolbarItem(placement: .automatic) {
                                     Button(action: { showSettings = true }) {
@@ -110,6 +127,16 @@ struct ContentView: View {
                             }
                     case .aiTodo:
                         AITodoView()
+                            .toolbar {
+                                ToolbarItem(placement: .automatic) {
+                                    Button(action: { showSettings = true }) {
+                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                                    }
+                                    .help(NSLocalizedString("settings", comment: ""))
+                                }
+                            }
+                    case .aiChat:
+                        AIChatView()
                             .toolbar {
                                 ToolbarItem(placement: .automatic) {
                                     Button(action: { showSettings = true }) {
@@ -407,6 +434,44 @@ struct FrameThumbnail: View {
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+}
+
+// MARK: - Sidebar Item Row
+
+struct SidebarItemRow: View {
+    let item: SidebarItem
+    let isSelected: Bool
+    @State private var isHovered = false
+    
+    var body: some View {
+        HStack(spacing: 10) {
+            // 图标
+            Image(systemName: item.icon)
+                .font(.system(size: 16, weight: isSelected ? .semibold : .regular))
+                .foregroundStyle(isSelected ? .primary : .secondary)
+                .frame(width: 20, alignment: .center)
+                .symbolEffect(.bounce, value: isSelected)
+            
+            // 文字
+            Text(item.rawValue)
+                .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                .foregroundStyle(isSelected ? .primary : .secondary)
+            
+            Spacer()
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(isSelected ? Color.accentColor.opacity(0.15) : (isHovered ? Color.secondary.opacity(0.08) : Color.clear))
+        }
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
         }
     }
 }

@@ -13,6 +13,7 @@ enum ProcessingStage: String {
     case transcribing = "正在转文字..."
     case correcting = "正在修正文本..."
     case optimizing = "正在优化文本..."
+    case diarizing = "正在分离说话人..."
     case summarizing = "正在生成摘要..."
     case saving = "正在保存..."
 }
@@ -45,6 +46,14 @@ class MeetingRecordViewModel: ObservableObject {
     private let incrementalTranscription = IncrementalTranscriptionManager()
     private let sleepWakeNotifier = SleepWakeNotifier.shared
     
+    // 会议检测和系统音频捕获
+    private let meetingDetector = MeetingSoftwareDetector.shared
+    private let systemAudioCapture = SystemAudioCaptureService.shared
+    @Published var showMeetingDetectionAlert = false
+    @Published var detectedMeeting: MeetingSoftware?
+    @Published var shouldCaptureSystemAudio = false
+    private var systemAudioFileURL: URL?
+    
     private var silenceCheckTask: Task<Void, Never>?
     private var transcriptUpdateTask: Task<Void, Never>?
     
@@ -64,6 +73,79 @@ class MeetingRecordViewModel: ObservableObject {
         
         // 设置睡眠/唤醒监听
         setupSleepWakeHandling()
+        
+        // 设置会议检测回调
+        setupMeetingDetection()
+    }
+    
+    /// 设置会议检测
+    private func setupMeetingDetection() {
+        meetingDetector.setOnMeetingDetected { [weak self] meeting in
+            Task { @MainActor in
+                // 如果已经在录音，不提示
+                guard let self = self, !self.isRecording else { return }
+                
+                self.detectedMeeting = meeting
+                self.showMeetingDetectionAlert = true
+                
+                // 显示提示窗口
+                self.showMeetingDetectionWindow()
+            }
+        }
+    }
+    
+    /// 处理会议检测提示 - 开始记录
+    func handleMeetingDetectionStart(captureSystemAudio: Bool) {
+        guard let meeting = detectedMeeting else { return }
+        
+        shouldCaptureSystemAudio = captureSystemAudio
+        
+        // 如果启用系统音频捕获，先启动
+        if captureSystemAudio && systemAudioCapture.isBlackHoleAvailable {
+            Task {
+                do {
+                    let tempDir = FileManager.default.temporaryDirectory
+                    let systemAudioURL = tempDir.appendingPathComponent("system_audio_\(UUID().uuidString).wav")
+                    self.systemAudioFileURL = systemAudioURL
+                    
+                    try await systemAudioCapture.startCapture(to: systemAudioURL)
+                    print("✅ [MeetingRecordViewModel] 系统音频捕获已启动")
+                } catch {
+                    print("⚠️ [MeetingRecordViewModel] 系统音频捕获启动失败: \(error)")
+                    // 即使系统音频捕获失败，也继续录音
+                }
+                
+                // 开始正常录音
+                startRecording()
+            }
+        } else {
+            // 直接开始录音
+            startRecording()
+        }
+        
+        showMeetingDetectionAlert = false
+        detectedMeeting = nil
+    }
+    
+    /// 处理会议检测提示 - 取消
+    func handleMeetingDetectionCancel() {
+        showMeetingDetectionAlert = false
+        detectedMeeting = nil
+    }
+    
+    /// 显示会议检测提示窗口
+    func showMeetingDetectionWindow() {
+        guard let meeting = detectedMeeting else { return }
+        
+        MeetingDetectionWindowManager.shared.showAlert(
+            meeting: meeting,
+            onStartRecording: { [weak self] captureSystemAudio in
+                self?.handleMeetingDetectionStart(captureSystemAudio: captureSystemAudio)
+            },
+            onDismiss: { [weak self] in
+                self?.handleMeetingDetectionCancel()
+            }
+        )
     }
     
     /// 开始录音
@@ -114,10 +196,52 @@ class MeetingRecordViewModel: ObservableObject {
         // 禁用防睡眠断言
         sleepWakeNotifier.disablePreventSleep()
         
+        // 停止系统音频捕获（如果有）
+        if systemAudioCapture.isCapturing {
+            systemAudioCapture.stopCapture()
+        }
+        
         // 创建处理任务
         processingTask = Task { @MainActor in
             await processRecording(record: &record)
         }
+    }
+    
+    /// 将录音保存为 WAV 文件
+    private func saveRecordingToWAV(recording: VoiceRecording, to url: URL) async throws {
+        // WAV 文件头结构
+        let sampleRate = UInt32(recording.sampleRate)
+        let channels = UInt16(recording.channelCount)
+        let bitsPerSample: UInt16 = 16
+        let byteRate = sampleRate * UInt32(channels) * UInt32(bitsPerSample) / 8
+        let blockAlign = channels * bitsPerSample / 8
+        let dataSize = UInt32(recording.pcmData.count)
+        let fileSize = 36 + dataSize
+        
+        var wavData = Data()
+        
+        // RIFF header
+        wavData.append("RIFF".data(using: .ascii)!)
+        wavData.append(contentsOf: withUnsafeBytes(of: fileSize.littleEndian) { Data($0) })
+        wavData.append("WAVE".data(using: .ascii)!)
+        
+        // fmt chunk
+        wavData.append("fmt ".data(using: .ascii)!)
+        wavData.append(contentsOf: withUnsafeBytes(of: UInt32(16).littleEndian) { Data($0) }) // fmt chunk size
+        wavData.append(contentsOf: withUnsafeBytes(of: UInt16(1).littleEndian) { Data($0) }) // audio format (PCM)
+        wavData.append(contentsOf: withUnsafeBytes(of: channels.littleEndian) { Data($0) })
+        wavData.append(contentsOf: withUnsafeBytes(of: sampleRate.littleEndian) { Data($0) })
+        wavData.append(contentsOf: withUnsafeBytes(of: byteRate.littleEndian) { Data($0) })
+        wavData.append(contentsOf: withUnsafeBytes(of: blockAlign.littleEndian) { Data($0) })
+        wavData.append(contentsOf: withUnsafeBytes(of: bitsPerSample.littleEndian) { Data($0) })
+        
+        // data chunk
+        wavData.append("data".data(using: .ascii)!)
+        wavData.append(contentsOf: withUnsafeBytes(of: dataSize.littleEndian) { Data($0) })
+        wavData.append(recording.pcmData)
+        
+        // 写入文件
+        try wavData.write(to: url)
     }
     
     /// 处理录音（内部方法）
@@ -246,6 +370,53 @@ class MeetingRecordViewModel: ObservableObject {
                         return
                     }
                     print("⚠️ [MeetingRecordViewModel] AI 修正失败，使用原始文本: \(error.localizedDescription)")
+                }
+            }
+            
+            // 说话人分离（如果启用）
+            if preferences.enableSpeakerDiarization {
+                processingStage = .diarizing
+                processingProgress = 0.65
+                
+                do {
+                    // 保存录音到临时文件
+                    let tempDir = FileManager.default.temporaryDirectory
+                    let audioURL = tempDir.appendingPathComponent("\(record.id.uuidString).wav")
+                    
+                    // 将录音数据保存为 WAV 文件
+                    try await saveRecordingToWAV(recording: recording, to: audioURL)
+                    
+                    // 执行说话人分离
+                    let segments = try await SpeakerDiarizationService.shared.diarize(
+                        audioURL: audioURL,
+                        minSpeakers: preferences.diarizationMinSpeakers,
+                        maxSpeakers: preferences.diarizationMaxSpeakers
+                    )
+                    
+                    // 转换为 SpeakerSegmentInfo
+                    record.speakerSegments = segments.map { segment in
+                        SpeakerSegmentInfo(
+                            start: segment.start,
+                            end: segment.end,
+                            speaker: segment.speaker,
+                            duration: segment.duration
+                        )
+                    }
+                    
+                    // 清理临时文件
+                    try? FileManager.default.removeItem(at: audioURL)
+                    
+                    print("✅ [MeetingRecordViewModel] 说话人分离完成，识别到 \(record.speakerSegments.count) 个片段")
+                } catch {
+                    if Task.isCancelled {
+                        currentRecord = nil
+                        isProcessing = false
+                        canCancelProcessing = false
+                        processingStage = nil
+                        return
+                    }
+                    print("⚠️ [MeetingRecordViewModel] 说话人分离失败: \(error.localizedDescription)")
+                    // 说话人分离失败不影响保存记录
                 }
             }
             

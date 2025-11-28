@@ -231,3 +231,59 @@
 "ai.models.list.found" = "Found %d available models:\n\n• %@\n\nYou can copy model names to the \"Model Name\" field above.";
 "ai.test.success.title" = "✅ Test Successful";
 "ai.test.success.description" = "AI optimization is working correctly!\n\nOriginal Text:\n%@\n\nOptimized:\n%@\n\nDuration: %@ seconds";
+
+// AI Todo
+"ai.todo" = "AI Todo";
+"ai.todo.section" = "AI Todo";
+"ai.todo.description" = "Configure AI Todo API endpoint and model. Leave blank to use AI optimization settings.";
+"ai.todo.endpoint" = "API Endpoint";
+"ai.todo.model" = "Model Name";
+"ai.todo.timeout" = "Timeout";
+"ai.todo.input.hint" = "💡 Tip: You can type text directly or use voice input";
+"ai.todo.input.placeholder" = "Enter todo or speak...";
+"ai.todo.empty" = "No todos";
+"ai.todo.empty.description" = "Add todos using text or voice input";
+"ai.todo.active" = "Active Todos";
+"ai.todo.archived" = "Archived";
+"todo.priority.important.urgent" = "Important & Urgent";
+"todo.priority.important.not.urgent" = "Important & Not Urgent";
+"todo.priority.not.important.urgent" = "Not Important & Urgent";
+"todo.priority.not.important.not.urgent" = "Not Important & Not Urgent";
+"mark.as.completed" = "Mark as Completed";
+"mark.as.pending" = "Mark as Pending";
+"archive" = "Archive";
+"restore" = "Restore";
+"add.due.date" = "Add Due Date";
+"due.date" = "Due Date";
+"include.time" = "Include Time";
+"start.recording" = "Start Recording";
+"stop.recording" = "Stop Recording";
+"ai.process" = "AI Process";
+"sync.from.reminders" = "Sync from Reminders";
+"sync.from.reminders.help" = "Sync todos from macOS Reminders app";
+"reminders.permission.denied" = "Reminders access required. Please authorize in System Settings > Privacy & Security > Reminders.";
+"sync.success" = "Successfully synced %d todos";
+"sync.success.with.skipped" = "Successfully synced %d todos, skipped %d existing";
+"sync.all.existed" = "All %d todos already exist, no sync needed";
+"sync.no.new.items" = "No new todos to sync";
+"today" = "Today";
+"tomorrow" = "Tomorrow";
+"today.at.time" = "Today at %@";
+"tomorrow.at.time" = "Tomorrow at %@";
+
+// Todo View Modes
+"todo.view.mode.list" = "List View";
+"todo.view.mode.quadrant" = "Quadrant View";
+"todo.view.mode.list.desc" = "All todos displayed as a list";
+"todo.view.mode.quadrant.desc" = "Organized by importance and urgency";
+
+// Quadrants
+"todo.quadrant.important.urgent" = "Important & Urgent";
+"todo.quadrant.important.urgent.desc" = "Do First";
+"todo.quadrant.important.not.urgent" = "Important & Not Urgent";
+"todo.quadrant.important.not.urgent.desc" = "Schedule";
+"todo.quadrant.not.important.urgent" = "Not Important & Urgent";
+"todo.quadrant.not.important.urgent.desc" = "Delegate";
+"todo.quadrant.not.important.not.urgent" = "Not Important & Not Urgent";
+"todo.quadrant.not.important.not.urgent.desc" = "Eliminate";
+"todo.quadrant.empty" = "No tasks";

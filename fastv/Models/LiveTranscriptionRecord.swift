@@ -1,5 +1,5 @@
 //
-//  MeetingRecord.swift
+//  LiveTranscriptionRecord.swift
 //  fastv
 //
 //  Created by rocky on 2025/01/XX.
@@ -7,70 +7,64 @@
 
 import Foundation
 
-/// 说话人片段信息
-struct SpeakerSegmentInfo: Codable, Equatable {
-    let start: TimeInterval
-    let end: TimeInterval
-    let speaker: String
-    let duration: TimeInterval
-}
-
-/// 会议记录数据模型
-struct MeetingRecord: Identifiable, Codable, Equatable {
+/// 直播转录记录数据模型
+struct LiveTranscriptionRecord: Identifiable, Codable, Equatable {
     let id: UUID
     var title: String
-    var originalText: String
-    var correctedText: String
-    var summary: String
-    var actionItems: [String]
-    var speakerSegments: [SpeakerSegmentInfo] // 说话人分离结果
+    var transcript: String  // 转录文本（原始）
+    var optimizedTranscript: String?  // AI优化后的文本（包含标点、修正错别字、分段）
+    var summary: String?  // 摘要
     let startTime: Date
     var endTime: Date?
     var duration: Double
-    var isRecording: Bool
+    var isTranscribing: Bool
+    var isOptimizing: Bool = false  // 是否正在AI优化中
     let createdAt: Date
     var updatedAt: Date
     
     init(
         id: UUID = UUID(),
         title: String = "",
-        originalText: String = "",
-        correctedText: String = "",
-        summary: String = "",
-        actionItems: [String] = [],
-        speakerSegments: [SpeakerSegmentInfo] = [],
+        transcript: String = "",
+        optimizedTranscript: String? = nil,
+        summary: String? = nil,
         startTime: Date = Date(),
         endTime: Date? = nil,
         duration: Double = 0,
-        isRecording: Bool = false,
+        isTranscribing: Bool = false,
+        isOptimizing: Bool = false,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
         self.id = id
         self.title = title
-        self.originalText = originalText
-        self.correctedText = correctedText
+        self.transcript = transcript
+        self.optimizedTranscript = optimizedTranscript
         self.summary = summary
-        self.actionItems = actionItems
-        self.speakerSegments = speakerSegments
         self.startTime = startTime
         self.endTime = endTime
         self.duration = duration
-        self.isRecording = isRecording
+        self.isTranscribing = isTranscribing
+        self.isOptimizing = isOptimizing
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+    }
+    
+    /// 获取显示用的文本（优先使用优化后的文本）
+    var displayText: String {
+        optimizedTranscript ?? transcript
     }
     
     /// 自动生成标题（基于时间）
     static func generateDefaultTitle() -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm"
-        return "会议记录 \(formatter.string(from: Date()))"
+        return "直播转录 \(formatter.string(from: Date()))"
     }
     
-    /// 字符数（不包括空格）
+    /// 字符数（不包括空格，使用显示文本）
     var characterCount: Int {
-        correctedText.isEmpty ? originalText.replacingOccurrences(of: " ", with: "").count : correctedText.replacingOccurrences(of: " ", with: "").count
+        displayText.replacingOccurrences(of: " ", with: "").count
     }
     
     /// 格式化时长显示

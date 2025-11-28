@@ -23,11 +23,16 @@ struct AITodoView: View {
             
             Divider()
             
-            // Todo 列表
+            // 视图模式切换工具栏
+            viewModeToolbar
+            
+            Divider()
+            
+            // Todo 视图（根据模式显示）
             if store.activeTodos.isEmpty && store.archivedTodos.isEmpty {
                 emptyStateView
             } else {
-                todoListView
+                contentView
             }
         }
         .navigationTitle(NSLocalizedString("ai.todo", comment: "AI Todo"))
@@ -35,6 +40,69 @@ struct AITodoView: View {
             Task {
                 await viewModel.checkAndAutoArchive()
             }
+        }
+    }
+    
+    // MARK: - Content View
+    
+    @ViewBuilder
+    private var contentView: some View {
+        switch viewModel.viewMode {
+        case .list:
+            todoListView
+        case .quadrant:
+            AITodoQuadrantView(viewModel: viewModel)
+        }
+    }
+    
+    // MARK: - View Mode Toolbar
+    
+    private var viewModeToolbar: some View {
+        HStack(spacing: 12) {
+            // 视图模式说明
+            HStack(spacing: 6) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.blue.opacity(0.8))
+                
+                Text(viewModeDescription)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.blue.opacity(0.08))
+            }
+            
+            Spacer()
+            
+            // 模式切换按钮
+            Picker("", selection: $viewModel.viewMode) {
+                ForEach(TodoViewMode.allCases, id: \.self) { mode in
+                    Label(mode.displayName, systemImage: mode.icon)
+                        .tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 220)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+        .background {
+            Rectangle()
+                .fill(.regularMaterial)
+        }
+    }
+    
+    private var viewModeDescription: String {
+        switch viewModel.viewMode {
+        case .list:
+            return NSLocalizedString("todo.view.mode.list.desc", comment: "所有待办事项按列表显示")
+        case .quadrant:
+            return NSLocalizedString("todo.view.mode.quadrant.desc", comment: "按重要性和紧急性分为四个象限")
         }
     }
     
@@ -527,17 +595,25 @@ struct AITodoRow: View {
                 .allowsHitTesting(isHovered)
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
         .padding(.horizontal, 12)
+        .contentShape(Rectangle())
         .background {
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(isHovered ? Color.secondary.opacity(0.08) : Color.clear)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(isHovered ? Color.secondary.opacity(0.1) : Color.clear)
+                .overlay {
+                    if isHovered {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(Color.secondary.opacity(0.2), lineWidth: 1)
+                    }
+                }
         }
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
                 isHovered = hovering
             }
         }
+        .scaleEffect(isHovered ? 1.01 : 1.0)
     }
     
     private var priorityIcon: String {

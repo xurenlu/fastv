@@ -445,17 +445,24 @@ struct VoiceInputHistoryRow: View {
             }
             .frame(width: 52) // 固定宽度，避免布局抖动
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
         .padding(.horizontal, 12)
         .background {
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(isHovered ? Color.secondary.opacity(0.08) : Color.clear)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(isHovered ? Color.secondary.opacity(0.1) : Color.clear)
+                .overlay {
+                    if isHovered {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(Color.secondary.opacity(0.2), lineWidth: 1)
+                    }
+                }
         }
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
                 isHovered = hovering
             }
         }
+        .scaleEffect(isHovered ? 1.01 : 1.0)
     }
     
     private var timeString: String {

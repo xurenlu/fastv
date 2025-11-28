@@ -132,6 +132,11 @@ class IncrementalTranscriptionManager: ObservableObject {
                     segments[idx].transcript = transcript
                     segments[idx].isTranscribing = false
                     print("✅ [IncrementalTranscription] 段落 #\(idx + 1) 转写完成: \(transcript.prefix(30))...")
+                    
+                    // 通知观察者更新（在主线程）
+                    await MainActor.run {
+                        self.objectWillChange.send()
+                    }
                 }
             } catch {
                 // 记录错误

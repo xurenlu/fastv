@@ -48,6 +48,7 @@ class VideoSceneAnalysisViewModel: ObservableObject {
     // 分析参数（传统方法）
     @Published var threshold: Double = 0.3  // 变更阈值
     @Published var extractThumbnails: Bool = true  // 是否提取截图
+    @Published var useSmartTwoStage: Bool = true  // 是否使用智能两阶段检测（默认开启）
     
     // 分析间隔设置
     enum AnalysisIntervalMode: String, CaseIterable {
@@ -112,21 +113,63 @@ class VideoSceneAnalysisViewModel: ObservableObject {
             switch analysisMode {
             case .traditional:
                 // 传统像素差异分析
-                let points = try await SceneChangeDetector.detectSceneChanges(
-                    from: videoURL,
-                    frameRate: videoInfo.frameRate,
-                    threshold: threshold,
-                    extractThumbnails: extractThumbnails,
-                    analysisInterval: intervalMode == .timeBased ? timeInterval : nil,
-                    frameSkip: intervalMode == .frameBased ? frameSkip : nil,
-                    progressHandler: { [weak self] progress, status in
-                        Task { @MainActor in
-                            self?.progress = progress
-                            self?.analysisStatus = status
+                if useSmartTwoStage {
+                    // 使用智能两阶段检测：先粗扫描找候选节点，再精细定位
+                    let points = try await SceneChangeDetector.detectSceneChangesTwoStage(
+                        from: videoURL,
+                        frameRate: videoInfo.frameRate,
+                        threshold: threshold,
+                        extractThumbnails: extractThumbnails,
+                        coarseInterval: 3.9,  // 粗扫描：每3.9秒检测一次
+                        fineRangeBefore: 15.0,  // 精细检测：候选节点前15秒
+                        fineRangeAfter: 10.0,   // 精细检测：候选节点后10秒
+                        fineInterval: 1.1,       // 精细检测：每1.1秒检测一次
+                        progressHandler: { [weak self] progress, status in
+                            Task { @MainActor in
+                                self?.progress = progress
+                                self?.analysisStatus = status
+                            }
+                        },
+                        onDetectedPoint: { [weak self] point in
+                            Task { @MainActor in
+                                guard let self = self else { return }
+                                // 实时添加检测到的关键帧（去重：如果时间差小于2秒，认为是同一个关键帧）
+                                let isDuplicate = self.sceneChangePoints.contains { existingPoint in
+                                    abs(existingPoint.timestamp - point.timestamp) < 2.0
+                                }
+                                
+                                if !isDuplicate {
+                                    self.sceneChangePoints.append(point)
+                                }
+                            }
                         }
-                    }
-                )
-                sceneChangePoints = points
+                    )
+                    // 最终结果已经去重，直接设置（覆盖实时添加的，确保一致性）
+                    sceneChangePoints = points
+                } else {
+                    // 使用传统手动间隔检测
+                    let points = try await SceneChangeDetector.detectSceneChanges(
+                        from: videoURL,
+                        frameRate: videoInfo.frameRate,
+                        threshold: threshold,
+                        extractThumbnails: extractThumbnails,
+                        analysisInterval: intervalMode == .timeBased ? timeInterval : nil,
+                        frameSkip: intervalMode == .frameBased ? frameSkip : nil,
+                        progressHandler: { [weak self] progress, status in
+                            Task { @MainActor in
+                                self?.progress = progress
+                                self?.analysisStatus = status
+                            }
+                        },
+                        onDetectedPoint: { [weak self] point in
+                            Task { @MainActor in
+                                // 实时添加检测到的关键帧
+                                self?.sceneChangePoints.append(point)
+                            }
+                        }
+                    )
+                    sceneChangePoints = points
+                }
                 
             case .aiPowered:
                 // AI 智能分析
@@ -179,6 +222,12 @@ class VideoSceneAnalysisViewModel: ObservableObject {
                         Task { @MainActor in
                             self?.progress = progress * 0.4
                             self?.analysisStatus = "第一步: \(status)"
+                        }
+                    },
+                    onDetectedPoint: { [weak self] point in
+                        Task { @MainActor in
+                            // 实时添加检测到的关键帧
+                            self?.sceneChangePoints.append(point)
                         }
                     }
                 )

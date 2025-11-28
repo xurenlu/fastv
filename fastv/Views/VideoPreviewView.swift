@@ -63,7 +63,7 @@ struct VideoPreviewView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .frame(minHeight: 200, maxHeight: 400)
+            .frame(minHeight: 480, maxHeight: 600)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)

@@ -74,15 +74,28 @@ struct VideoSceneAnalysisView: View {
             VStack(spacing: 20) {
                 // 视频预览
                 if let videoURL = viewModel.videoURL {
-                    VideoPreviewView(
-                        videoURL: videoURL,
-                        onVideoDropped: { urls in
-                            if let url = urls.first {
-                                viewModel.loadVideo(url)
-                            }
-                        },
-                        seekToTime: $seekToTime
-                    )
+                    VStack(spacing: 16) {
+                        VideoPreviewView(
+                            videoURL: videoURL,
+                            onVideoDropped: { urls in
+                                if let url = urls.first {
+                                    viewModel.loadVideo(url)
+                                }
+                            },
+                            seekToTime: $seekToTime
+                        )
+                        
+                        // 实时显示检测到的关键帧缩略图
+                        if viewModel.isAnalyzing || !viewModel.sceneChangePoints.isEmpty {
+                            KeyFramesGridView(
+                                changePoints: viewModel.sceneChangePoints,
+                                isAnalyzing: viewModel.isAnalyzing,
+                                onSeekToTime: { time in
+                                    seekToTime = time
+                                }
+                            )
+                        }
+                    }
                 }
                 
                 // 视频信息（可折叠，默认收起）
@@ -123,6 +136,31 @@ struct VideoSceneAnalysisView: View {
                         // 传统方法参数
                         if viewModel.analysisMode == .traditional || viewModel.analysisMode == .hybrid {
                             Section {
+                                // 智能两阶段检测开关
+                                Toggle("智能两阶段检测（推荐）", isOn: $viewModel.useSmartTwoStage)
+                                
+                                if viewModel.useSmartTwoStage {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "sparkles")
+                                                .foregroundStyle(.blue)
+                                            Text("自动两阶段检测")
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                        }
+                                        
+                                        Text("• 第一阶段：每3.9秒快速扫描，找到候选关键节点")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        Text("• 第二阶段：在每个候选节点前后（前15秒到后10秒）每1.1秒精细检测，精确定位关键帧")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .padding(.vertical, 4)
+                                }
+                                
+                                Divider()
+                                
                                 VStack(alignment: .leading, spacing: 12) {
                                     HStack {
                                         Text("变更阈值")
@@ -148,72 +186,175 @@ struct VideoSceneAnalysisView: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 
-                                Divider()
-                                
-                                // 分析间隔设置
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Picker("分析间隔方式", selection: $viewModel.intervalMode) {
-                                        ForEach(VideoSceneAnalysisViewModel.AnalysisIntervalMode.allCases, id: \.self) { mode in
-                                            Text(mode.rawValue).tag(mode)
-                                        }
-                                    }
-                                    .pickerStyle(.segmented)
+                                // 手动间隔设置（仅在关闭智能两阶段检测时显示）
+                                if !viewModel.useSmartTwoStage {
+                                    Divider()
                                     
-                                    if viewModel.intervalMode == .timeBased {
-                                        VStack(alignment: .leading, spacing: 8) {
-                                            HStack {
-                                                Text("时间间隔")
-                                                    .foregroundStyle(.secondary)
-                                                Spacer()
-                                                Text(String(format: "%.2f秒", viewModel.timeInterval))
-                                                    .monospacedDigit()
+                                    // 分析间隔设置
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Picker("分析间隔方式", selection: $viewModel.intervalMode) {
+                                            ForEach(VideoSceneAnalysisViewModel.AnalysisIntervalMode.allCases, id: \.self) { mode in
+                                                Text(mode.rawValue).tag(mode)
                                             }
-                                            
-                                            Slider(value: $viewModel.timeInterval, in: 0.05...1.0, step: 0.05) {
-                                                Text("时间间隔")
-                                            } minimumValueLabel: {
-                                                Text("0.05s")
-                                                    .font(.caption)
-                                            } maximumValueLabel: {
-                                                Text("1.0s")
-                                                    .font(.caption)
-                                            }
-                                            
-                                            Text("间隔越小，分析越精细但速度越慢")
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
                                         }
-                                    } else {
-                                        VStack(alignment: .leading, spacing: 8) {
-                                            HStack {
-                                                Text("跳帧数")
-                                                    .foregroundStyle(.secondary)
-                                                Spacer()
-                                                Text("每\(viewModel.frameSkip)帧分析一次")
-                                                    .monospacedDigit()
+                                        .pickerStyle(.segmented)
+                                        
+                                        if viewModel.intervalMode == .timeBased {
+                                            VStack(alignment: .leading, spacing: 12) {
+                                                // 预设值快速选择
+                                                VStack(alignment: .leading, spacing: 6) {
+                                                    Text("快速选择:")
+                                                        .font(.caption)
+                                                        .foregroundStyle(.secondary)
+                                                    
+                                                    HStack(spacing: 8) {
+                                                    PresetButton(
+                                                        title: "0.1秒",
+                                                        value: 0.1,
+                                                        currentValue: viewModel.timeInterval,
+                                                        action: { viewModel.timeInterval = 0.1 }
+                                                    )
+                                                    
+                                                    PresetButton(
+                                                        title: "0.5秒",
+                                                        value: 0.5,
+                                                        currentValue: viewModel.timeInterval,
+                                                        action: { viewModel.timeInterval = 0.5 }
+                                                    )
+                                                    
+                                                    PresetButton(
+                                                        title: "1秒",
+                                                        value: 1.0,
+                                                        currentValue: viewModel.timeInterval,
+                                                        action: { viewModel.timeInterval = 1.0 }
+                                                    )
+                                                    
+                                                    PresetButton(
+                                                        title: "5秒",
+                                                        value: 5.0,
+                                                        currentValue: viewModel.timeInterval,
+                                                        action: { viewModel.timeInterval = 5.0 }
+                                                    )
+                                                    
+                                                    PresetButton(
+                                                        title: "10秒",
+                                                        value: 10.0,
+                                                        currentValue: viewModel.timeInterval,
+                                                        action: { viewModel.timeInterval = 10.0 }
+                                                    )
+                                                    }
+                                                }
+                                            
+                                                VStack(alignment: .leading, spacing: 8) {
+                                                HStack {
+                                                    Text("时间间隔")
+                                                        .foregroundStyle(.secondary)
+                                                    Spacer()
+                                                    Text(String(format: "%.2f秒", viewModel.timeInterval))
+                                                        .monospacedDigit()
+                                                }
+                                                
+                                                Slider(value: $viewModel.timeInterval, in: 0.05...10.0, step: 0.05) {
+                                                    Text("时间间隔")
+                                                } minimumValueLabel: {
+                                                    Text("0.05s")
+                                                        .font(.caption)
+                                                } maximumValueLabel: {
+                                                    Text("10s")
+                                                        .font(.caption)
+                                                }
                                             }
                                             
-                                            Slider(value: Binding(
-                                                get: { Double(viewModel.frameSkip) },
-                                                set: { viewModel.frameSkip = Int($0) }
-                                            ), in: 1...30, step: 1) {
-                                                Text("跳帧数")
-                                            } minimumValueLabel: {
-                                                Text("1")
-                                                    .font(.caption)
-                                            } maximumValueLabel: {
-                                                Text("30")
-                                                    .font(.caption)
-                                            }
-                                            
-                                            Text("数值越大，分析越快但可能遗漏变化")
+                                            Text("间隔越小，分析越精细但速度越慢。建议：快速预览用5-10秒，精细分析用0.1-1秒")
                                                 .font(.caption)
                                                 .foregroundStyle(.secondary)
+                                            }
+                                        } else {
+                                            VStack(alignment: .leading, spacing: 12) {
+                                                // 预设值快速选择
+                                                VStack(alignment: .leading, spacing: 6) {
+                                                    Text("快速选择:")
+                                                        .font(.caption)
+                                                        .foregroundStyle(.secondary)
+                                                    
+                                                    HStack(spacing: 8) {
+                                                    PresetButton(
+                                                        title: "10帧",
+                                                        value: 10,
+                                                        currentValue: Double(viewModel.frameSkip),
+                                                        action: { viewModel.frameSkip = 10 }
+                                                    )
+                                                    
+                                                    PresetButton(
+                                                        title: "30帧",
+                                                        value: 30,
+                                                        currentValue: Double(viewModel.frameSkip),
+                                                        action: { viewModel.frameSkip = 30 }
+                                                    )
+                                                    
+                                                    PresetButton(
+                                                        title: "50帧",
+                                                        value: 50,
+                                                        currentValue: Double(viewModel.frameSkip),
+                                                        action: { viewModel.frameSkip = 50 }
+                                                    )
+                                                    
+                                                    PresetButton(
+                                                        title: "100帧",
+                                                        value: 100,
+                                                        currentValue: Double(viewModel.frameSkip),
+                                                        action: { viewModel.frameSkip = 100 }
+                                                    )
+                                                    
+                                                    PresetButton(
+                                                        title: "200帧",
+                                                        value: 200,
+                                                        currentValue: Double(viewModel.frameSkip),
+                                                        action: { viewModel.frameSkip = 200 }
+                                                    )
+                                                    }
+                                                }
+                                            
+                                                VStack(alignment: .leading, spacing: 8) {
+                                                HStack {
+                                                    Text("跳帧数")
+                                                        .foregroundStyle(.secondary)
+                                                    Spacer()
+                                                    Text("每\(viewModel.frameSkip)帧分析一次")
+                                                        .monospacedDigit()
+                                                }
+                                                
+                                                Slider(value: Binding(
+                                                    get: { Double(viewModel.frameSkip) },
+                                                    set: { viewModel.frameSkip = Int($0) }
+                                                ), in: 1...200, step: 1) {
+                                                    Text("跳帧数")
+                                                } minimumValueLabel: {
+                                                    Text("1")
+                                                        .font(.caption)
+                                                } maximumValueLabel: {
+                                                    Text("200")
+                                                        .font(.caption)
+                                                }
+                                            }
+                                            
+                                            Text("数值越大，分析越快但可能遗漏变化。建议：快速预览用100-200帧，精细分析用10-50帧")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                            }
                                         }
                                     }
                                 }
                             } header: {
                                 Text("传统方法参数")
+                            } footer: {
+                                if viewModel.useSmartTwoStage {
+                                    Text("智能两阶段检测会自动优化检测精度和速度，无需手动设置间隔")
+                                        .font(.caption)
+                                } else {
+                                    Text("关闭智能检测后，可手动设置分析间隔")
+                                        .font(.caption)
+                                }
                             }
                         }
                         
@@ -475,6 +616,158 @@ struct VideoSceneAnalysisView: View {
         }
         
         return true
+    }
+}
+
+// MARK: - 预设值按钮组件
+
+struct PresetButton: View {
+    let title: String
+    let value: Double
+    let currentValue: Double
+    let action: () -> Void
+    
+    private var isSelected: Bool {
+        abs(currentValue - value) < 0.01  // 允许小的浮点数误差
+    }
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.caption)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .buttonBorderShape(.roundedRectangle)
+        .foregroundStyle(isSelected ? .white : .primary)
+        .background(isSelected ? Color.accentColor : Color.clear)
+    }
+}
+
+// MARK: - 关键帧网格视图
+
+struct KeyFramesGridView: View {
+    let changePoints: [SceneChangePoint]
+    let isAnalyzing: Bool
+    let onSeekToTime: (TimeInterval) -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("检测到的关键帧", systemImage: "photo.on.rectangle")
+                    .font(.headline)
+                
+                Spacer()
+                
+                if isAnalyzing {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("分析中...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Text("共 \(changePoints.count) 个")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            
+            if changePoints.isEmpty {
+                HStack {
+                    Spacer()
+                    VStack(spacing: 8) {
+                        Image(systemName: "photo")
+                            .font(.system(size: 32))
+                            .foregroundStyle(.secondary.opacity(0.5))
+                        Text("暂未检测到关键帧")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .frame(height: 120)
+            } else {
+                ScrollView(.horizontal, showsIndicators: true) {
+                    LazyHStack(spacing: 12) {
+                        ForEach(changePoints) { point in
+                            KeyFrameThumbnailView(
+                                point: point,
+                                onTap: {
+                                    onSeekToTime(point.timestamp)
+                                }
+                            )
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .frame(height: 140)
+            }
+        }
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.secondary.opacity(0.05))
+        }
+    }
+}
+
+// MARK: - 关键帧缩略图视图
+
+struct KeyFrameThumbnailView: View {
+    let point: SceneChangePoint
+    let onTap: () -> Void
+    @State private var isHovered = false
+    
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 6) {
+                // 缩略图
+                Group {
+                    if let thumbnailImage = point.thumbnailImage {
+                        Image(nsImage: thumbnailImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } else {
+                        ZStack {
+                            Color.secondary.opacity(0.2)
+                            Image(systemName: "photo")
+                                .font(.title2)
+                                .foregroundStyle(.secondary.opacity(0.5))
+                        }
+                    }
+                }
+                .frame(width: 120, height: 80)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(isHovered ? Color.accentColor : Color.secondary.opacity(0.2), lineWidth: isHovered ? 2 : 1)
+                }
+                .shadow(color: .black.opacity(isHovered ? 0.2 : 0.1), radius: isHovered ? 4 : 2)
+                
+                // 时间戳和差异度
+                VStack(spacing: 2) {
+                    Text(point.timeString)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+                    
+                    Text(String(format: "%.0f%%", point.changeIntensity * 100))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isHovered = hovering
+            }
+        }
+        .help("点击跳转到 \(point.timeString)")
     }
 }
 

@@ -339,6 +339,7 @@ struct SettingsView: View {
                     NavigationLink {
                         CommonMistakeManagementView()
                             .navigationTitle("常错词管理")
+                            .frame(minWidth: 700, minHeight: 500)
                     } label: {
                         HStack {
                             Image(systemName: "text.badge.checkmark")
@@ -2279,6 +2280,7 @@ struct CommonMistakeManagementView: View {
                 
                 Toggle("启用自动修正", isOn: $mistakeManager.enableAutoCorrection)
                     .toggleStyle(.switch)
+                    .fixedSize()
             }
             
             Divider()
@@ -2296,7 +2298,8 @@ struct CommonMistakeManagementView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                .controlSize(.regular)
+                .fixedSize()
                 
                 if !mistakeManager.mistakes.isEmpty {
                     Button(action: {
@@ -2308,8 +2311,9 @@ struct CommonMistakeManagementView: View {
                         }
                     }
                     .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .controlSize(.regular)
                     .foregroundStyle(.red)
+                    .fixedSize()
                 }
             }
             
@@ -2318,7 +2322,7 @@ struct CommonMistakeManagementView: View {
                 HStack {
                     TextField("搜索错误词或正确词", text: $searchText)
                         .textFieldStyle(.roundedBorder)
-                        .controlSize(.small)
+                        .controlSize(.regular)
                     
                     Picker("排序", selection: $sortOption) {
                         ForEach(SortOption.allCases, id: \.self) { option in
@@ -2326,7 +2330,8 @@ struct CommonMistakeManagementView: View {
                         }
                     }
                     .pickerStyle(.menu)
-                    .controlSize(.small)
+                    .controlSize(.regular)
+                    .fixedSize()
                 }
             }
             
@@ -2377,10 +2382,11 @@ struct CommonMistakeManagementView: View {
                     }
                     .padding(.vertical, 4)
                 }
-                .frame(maxHeight: 300)
+                .frame(minHeight: 200, maxHeight: 400)
             }
         }
-        .padding(.vertical, 4)
+        .padding(20)
+        .frame(minWidth: 700, minHeight: 500)
         .onChange(of: mistakeManager.mistakes.count) { _, _ in
             // 常错词列表改变时清除缓存
             filteredMistakesCache = []
@@ -2465,23 +2471,31 @@ struct CommonMistakeRow: View {
                     .foregroundStyle(.secondary)
             }
             
-            // 操作按钮
-            if isHovered {
-                HStack(spacing: 8) {
+            // 操作按钮 - 始终保留空间，hover时显示
+            HStack(spacing: 8) {
+                if isHovered {
                     Button(action: onEdit) {
                         Image(systemName: "pencil")
-                            .font(.caption)
+                            .font(.body)
+                            .frame(width: 24, height: 24)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                     .help("编辑")
                     
                     Button(action: onDelete) {
                         Image(systemName: "trash")
-                            .font(.caption)
+                            .font(.body)
                             .foregroundStyle(.red)
+                            .frame(width: 24, height: 24)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                     .help("删除")
+                } else {
+                    // 占位空间，保持布局稳定
+                    Spacer()
+                        .frame(width: 60)
                 }
             }
         }

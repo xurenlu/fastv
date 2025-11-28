@@ -266,3 +266,24 @@
 "sync.success.with.skipped" = "成功同步 %d 个待办事项，跳过 %d 个已存在的";
 "sync.all.existed" = "所有 %d 个待办事项已存在，无需同步";
 "sync.no.new.items" = "没有新的待办事项需要同步";
+"today" = "今天";
+"tomorrow" = "明天";
+"today.at.time" = "今天 %@";
+"tomorrow.at.time" = "明天 %@";
+
+// Todo 视图模式
+"todo.view.mode.list" = "列表模式";
+"todo.view.mode.quadrant" = "四象限模式";
+"todo.view.mode.list.desc" = "所有待办事项按列表显示";
+"todo.view.mode.quadrant.desc" = "按重要性和紧急性分为四个象限";
+
+// 四象限
+"todo.quadrant.important.urgent" = "重要且紧急";
+"todo.quadrant.important.urgent.desc" = "立即执行";
+"todo.quadrant.important.not.urgent" = "重要但不紧急";
+"todo.quadrant.important.not.urgent.desc" = "计划安排";
+"todo.quadrant.not.important.urgent" = "不重要但紧急";
+"todo.quadrant.not.important.urgent.desc" = "委托他人";
+"todo.quadrant.not.important.not.urgent" = "不重要且不紧急";
+"todo.quadrant.not.important.not.urgent.desc" = "尽量少做";
+"todo.quadrant.empty" = "暂无任务";
