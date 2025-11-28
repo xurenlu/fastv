@@ -28,9 +28,7 @@ struct MeetingRecordView: View {
                     // 录音按钮
                     Button(action: {
                         if viewModel.isRecording {
-                            Task {
-                                await viewModel.stopRecording()
-                            }
+                            viewModel.stopRecording()
                         } else {
                             viewModel.startRecording()
                         }
@@ -86,14 +84,46 @@ struct MeetingRecordView: View {
                 
                 // 处理状态提示
                 if viewModel.isProcessing {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                        Text("正在处理录音...")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                    VStack(spacing: 12) {
+                        HStack(spacing: 12) {
+                            ProgressView(value: viewModel.processingProgress)
+                                .progressViewStyle(.linear)
+                                .frame(maxWidth: 300)
+                            
+                            Text("\(Int(viewModel.processingProgress * 100))%")
+                                .font(.caption)
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                                .frame(width: 40)
+                        }
+                        
+                        HStack(spacing: 8) {
+                            if let stage = viewModel.processingStage {
+                                Text(stage.rawValue)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            if viewModel.canCancelProcessing {
+                                Button(action: {
+                                    viewModel.cancelProcessing()
+                                }) {
+                                    Label("取消", systemImage: "xmark.circle")
+                                        .font(.caption)
+                                        .foregroundStyle(.red)
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
                     }
                     .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .background {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Color.blue.opacity(0.1))
+                    }
                 }
                 
                 // 错误提示
