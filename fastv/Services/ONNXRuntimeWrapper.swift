@@ -214,10 +214,12 @@ class ONNXRuntimeWrapper {
         #endif
         
         // 创建所有必需的输入张量（按照模型定义的顺序）
+        // 关键：必须按照模型定义的输入名称顺序创建张量，确保 inputTensors 和 inputNameStrings 的顺序完全一致
         var inputTensors: [OpaquePointer?] = []
         var inputNameStrings: [String] = []
         
         // 按照模型定义的顺序创建输入：speech, speech_lengths, language, textnorm
+        // 注意：ONNX Runtime 的 Run API 使用名称匹配，所以顺序不重要，但为了调试方便，我们按照固定顺序创建
         // 1. speech 输入（主要音频特征）
         if let tensor = inputTensor {
             inputTensors.append(tensor)
@@ -254,7 +256,6 @@ class ONNXRuntimeWrapper {
         
         if let tensor = speechLengthsTensor {
             inputTensors.append(tensor)
-            // 确保使用正确的输入名称
             if let index = inputNames.firstIndex(of: "speech_lengths") {
                 inputNameStrings.append(inputNames[index])
             } else if inputNames.count > 1 {
@@ -263,19 +264,10 @@ class ONNXRuntimeWrapper {
         }
         
         // 3. language 输入（语言标识）
-        // Python 示例使用字符串 "zh"，但 ONNX 模型底层可能期望整数
-        // 根据 Python 代码：language="zh" 表示中文
-        // 注意：需要根据模型实际要求调整，可能是整数映射或字符串
-        var languageTensor: OpaquePointer?
-        
-        // 检查模型是否有 language 输入
         // SenseVoice lid_dict: {"auto": 0, "zh": 3, "en": 4, "yue": 7, "ja": 11, "ko": 12, "nospeech": 13}
-        // 根据错误信息，模型期望的范围是 [-16, 15]，但 3 在这个范围内，应该可以
-        // 使用用户选择的语言ID
+        var languageTensor: OpaquePointer?
         let languageDataValue: Int32 = language.languageID
-        if inputNames.contains(where: { $0.contains("language") || $0 == "language" }) {
-            // 尝试整数类型（ONNX 模型通常使用整数）
-            let languageData: [Int32] = [languageDataValue] // 3 = 中文 (zh)
+        let languageData: [Int32] = [languageDataValue]
         languageData.withUnsafeBufferPointer { buffer in
             let shape: [Int64] = [batchSize]
             var tensor: OpaquePointer?
@@ -289,17 +281,16 @@ class ONNXRuntimeWrapper {
                 &tensor
             )
             if status != nil {
-                    let errorMsg = getErrorMessage(from: status, api: api)
+                let errorMsg = getErrorMessage(from: status, api: api)
                 api.pointee.ReleaseStatus(status)
-                    #if DEBUG
-                    print("警告：创建 language 张量失败: \(errorMsg)")
-                    #endif
+                #if DEBUG
+                print("警告：创建 language 张量失败: \(errorMsg)")
+                #endif
             } else {
                 languageTensor = tensor
-                    #if DEBUG
-                    print("成功创建 language 张量，值=\(languageData[0])")
-                    #endif
-                }
+                #if DEBUG
+                print("成功创建 language 张量，值=\(languageData[0])")
+                #endif
             }
         }
         
@@ -312,19 +303,15 @@ class ONNXRuntimeWrapper {
             } else if inputNames.count > 2 {
                 inputNameStrings.append(inputNames[2])
             }
-            
             #if DEBUG
-            print("language 参数: \(languageDataValue) (中文)")
+            print("language 参数: \(languageDataValue)")
             #endif
         }
         
         // 4. textnorm 输入（文本规范化）
-        // C# 代码: textnormDict = { "withitn": 14, "woitn": 15 }
-        // Python 示例：use_itn=True，对应 textnorm="withitn" -> 14（包含标点符号）
-        // use_itn=False，对应 textnorm="woitn" -> 15（不包含标点符号）
-        // 我们需要标点符号，所以使用 14 (withitn)
+        // textnormDict = { "withitn": 14, "woitn": 15 }
         var textnormTensor: OpaquePointer?
-        let textnormDataValue: Int32 = 14 // 14 = withitn (with ITN，对应 use_itn=True，包含标点符号)
+        let textnormDataValue: Int32 = 14 // 14 = withitn (with ITN，包含标点符号)
         let textnormData: [Int32] = [textnormDataValue]
         textnormData.withUnsafeBufferPointer { buffer in
             let shape: [Int64] = [batchSize]
@@ -382,15 +369,12 @@ class ONNXRuntimeWrapper {
         #endif
         
         defer {
-            // 清理额外的输入张量
-            if let tensor = speechLengthsTensor {
-                api.pointee.ReleaseValue(tensor)
-            }
-            if let tensor = languageTensor {
-                api.pointee.ReleaseValue(tensor)
-            }
-            if let tensor = textnormTensor {
-                api.pointee.ReleaseValue(tensor)
+            // 清理额外的输入张量（除了 speech 张量，它会在上面的 defer 中释放）
+            // 释放所有不是 inputTensor 的张量
+            for tensor in inputTensors {
+                if let tensor = tensor, tensor != inputTensor {
+                    api.pointee.ReleaseValue(tensor)
+                }
             }
         }
         
@@ -435,6 +419,14 @@ class ONNXRuntimeWrapper {
         // 使用 withExtendedLifetime 确保所有字符串在整个函数调用期间有效
         let inputNameCStrings = inputNameStrings.map { $0.cString(using: .utf8)! }
         inputNamePtrs = inputNameCStrings.map { UnsafePointer($0) }
+        
+        #if DEBUG
+        // 验证输入顺序一致性
+        print("验证输入顺序一致性:")
+        for (index, (name, tensor)) in zip(inputNameStrings, inputTensors).enumerated() {
+            print("  输入[\(index)]: name=\(name), tensor=\(tensor != nil ? "有效" : "nil")")
+        }
+        #endif
         
         // 准备输出名称 C 字符串
         let ctcLogitsCString = ctcLogitsOutputName.cString(using: .utf8)!

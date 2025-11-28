@@ -12,7 +12,7 @@ struct SpeechTranscriber {
     // 获取模型目录（优先使用下载的模型）
     private static func getModelDirectory() -> URL {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let appDir = appSupport.appendingPathComponent("妙打")
+        let appDir = appSupport.appendingPathComponent(NSLocalizedString("app.name", comment: ""))
         return appDir.appendingPathComponent("Models/sensevoice-small")
     }
     
