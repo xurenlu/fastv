@@ -314,6 +314,215 @@ struct SettingsView: View {
                     Text("启用后会自动纠正语音识别中的常见错别字，速度极快（毫秒级），无需等待。")
                 }
                 
+                // AI 配置（独立于功能开关）
+                Section {
+                    VStack(alignment: .leading, spacing: 16) {
+                        // API 端点设置
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(NSLocalizedString("ai.api.endpoint", comment: ""))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            TextField("http://127.0.0.1:11434", text: $preferences.aiAPIEndpoint)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        Divider()
+                        
+                        // 模型选择
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(NSLocalizedString("ai.model.name", comment: ""))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            TextField(NSLocalizedString("ai.model.example", comment: ""), text: $preferences.aiModel)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        Divider()
+                        
+                        // API Token（可选）
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(NSLocalizedString("ai.api.token", comment: ""))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            SecureField(NSLocalizedString("ai.api.token.placeholder", comment: ""), text: $preferences.aiAPIToken)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        Divider()
+                        
+                        // 超时设置
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(NSLocalizedString("ai.timeout", comment: ""))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                
+                                Spacer()
+                                
+                                Text("\(String(format: "%.1f", preferences.aiTimeout)) \(NSLocalizedString("ai.timeout.seconds", comment: ""))")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            }
+                            
+                            Slider(value: $preferences.aiTimeout, in: 2.0...30.0, step: 0.5)
+                            
+                            HStack(spacing: 4) {
+                                .font(.caption)
+                                    .foregroundStyle(.blue)
+                                
+                                Text(NSLocalizedString("ai.timeout.hint", comment: ""))
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        Divider()
+                        
+                        // 测试按钮
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 12) {
+                                Button(action: {
+                                    testAIConnection()
+                                }) {
+                                    HStack {
+                                        Image(systemName: "network")
+                                        Text(NSLocalizedString("ai.test.connection", comment: ""))
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .help(NSLocalizedString("ai.test.connection.help", comment: ""))
+                                
+                                Button(action: {
+                                    fetchAvailableModels()
+                                }) {
+                                    HStack {
+                                        Image(systemName: "list.bullet")
+                                        Text(NSLocalizedString("ai.fetch.models", comment: ""))
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .help(NSLocalizedString("ai.fetch.models.help", comment: ""))
+                            }
+                        }
+                    }
+                } header: {
+                    Text("AI 服务配置")
+                } footer: {
+                    Text("配置 AI 服务的连接信息，这些设置会被所有使用 AI 的功能共享。")
+                }
+                
+                // AI 文本优化功能开关
+                // AI 服务配置（独立部分，不依赖功能开关）
+                Section {
+                    VStack(alignment: .leading, spacing: 16) {
+                        // API 端点设置
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(NSLocalizedString("ai.api.endpoint", comment: ""))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            TextField("http://127.0.0.1:11434", text: $preferences.aiAPIEndpoint)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        Divider()
+                        
+                        // 模型选择
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(NSLocalizedString("ai.model.name", comment: ""))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            TextField(NSLocalizedString("ai.model.example", comment: ""), text: $preferences.aiModel)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        Divider()
+                        
+                        // API Token（可选）
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(NSLocalizedString("ai.api.token", comment: ""))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            SecureField(NSLocalizedString("ai.api.token.placeholder", comment: ""), text: $preferences.aiAPIToken)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        Divider()
+                        
+                        // 超时设置
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(NSLocalizedString("ai.timeout", comment: ""))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                
+                                Spacer()
+                                
+                                Text("\(String(format: "%.1f", preferences.aiTimeout)) \(NSLocalizedString("ai.timeout.seconds", comment: ""))")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            }
+                            
+                            Slider(value: $preferences.aiTimeout, in: 2.0...30.0, step: 0.5)
+                            
+                            HStack(spacing: 4) {
+                                Image(systemName: "info.circle")
+                                    .font(.caption)
+                                    .foregroundStyle(.blue)
+                                
+                                Text(NSLocalizedString("ai.timeout.hint", comment: ""))
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        Divider()
+                        
+                        // 测试按钮
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 12) {
+                                Button(action: {
+                                    testAIConnection()
+                                }) {
+                                    HStack {
+                                        Image(systemName: "network")
+                                        Text(NSLocalizedString("ai.test.connection", comment: ""))
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .help(NSLocalizedString("ai.test.connection.help", comment: ""))
+                                
+                                Button(action: {
+                                    fetchAvailableModels()
+                                }) {
+                                    HStack {
+                                        Image(systemName: "list.bullet")
+                                        Text(NSLocalizedString("ai.fetch.models", comment: ""))
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .help(NSLocalizedString("ai.fetch.models.help", comment: ""))
+                            }
+                        }
+                    }
+                } header: {
+                    Text("AI 服务配置")
+                } footer: {
+                    Text("配置 AI 服务的连接信息，这些设置会被所有使用 AI 的功能共享。")
+                }
+                
+                // AI 文本优化功能开关
                 Section {
                     Toggle(NSLocalizedString("ai.optimization.enable", comment: ""), isOn: $preferences.enableAIOptimization)
                     
@@ -370,162 +579,68 @@ struct SettingsView: View {
                         }
                         .padding(.bottom, 8)
                         
-                        VStack(alignment: .leading, spacing: 16) {
-                            // API 端点设置
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(NSLocalizedString("ai.api.endpoint", comment: ""))
+                        // 系统提示词设置（仅用于文本优化）
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(NSLocalizedString("ai.system.prompt", comment: ""))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                 
-                                TextField("http://127.0.0.1:11434", text: $preferences.aiAPIEndpoint)
-                                    .textFieldStyle(.roundedBorder)
-                            }
-                            
-                            Divider()
-                            
-                            // 模型选择
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(NSLocalizedString("ai.model.name", comment: ""))
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                
-                                TextField(NSLocalizedString("ai.model.example", comment: ""), text: $preferences.aiModel)
-                                    .textFieldStyle(.roundedBorder)
-                            }
-                            
-                            Divider()
-                            
-                            // API Token（可选）
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(NSLocalizedString("ai.api.token", comment: ""))
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                
-                                SecureField(NSLocalizedString("ai.api.token.placeholder", comment: ""), text: $preferences.aiAPIToken)
-                                    .textFieldStyle(.roundedBorder)
-                            }
-                            
-                            Divider()
-                            
-                            // 超时设置
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Text(NSLocalizedString("ai.timeout", comment: ""))
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                    
-                                    Spacer()
-                                    
-                                    Text("\(String(format: "%.1f", preferences.aiTimeout)) \(NSLocalizedString("ai.timeout.seconds", comment: ""))")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(.secondary)
-                                        .monospacedDigit()
-                                }
-                                
-                                Slider(value: $preferences.aiTimeout, in: 2.0...30.0, step: 0.5)
-                                
-                                HStack(spacing: 4) {
-                                    Image(systemName: "info.circle")
-                                        .font(.caption)
-                                        .foregroundStyle(.blue)
-                                    
-                                    Text(NSLocalizedString("ai.timeout.hint", comment: ""))
-                                        .font(.system(size: 11))
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            
-                            Divider()
-                            
-                            // 系统提示词设置
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Text(NSLocalizedString("ai.system.prompt", comment: ""))
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                    
-                                    Spacer()
-                                    
-                                    Button(action: {
-                                        resetSystemPrompt()
-                                    }) {
-                                        Text(NSLocalizedString("ai.system.prompt.reset", comment: ""))
-                                            .font(.system(size: 11))
-                                    }
-                                    .buttonStyle(.borderless)
-                                    .controlSize(.small)
-                                    .help(NSLocalizedString("ai.system.prompt.reset.help", comment: ""))
-                                }
-                                
-                                ScrollView {
-                                    TextEditor(text: $preferences.aiSystemPrompt)
-                                        .font(.system(size: 12, design: .monospaced))
-                                        .frame(minHeight: 200)
-                                        .padding(8)
-                                        .background(Color(NSColor.textBackgroundColor))
-                                        .scrollContentBackground(.hidden)
-                                }
-                                .frame(height: 200)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .strokeBorder(Color.secondary.opacity(0.3), lineWidth: 1)
-                                }
-                                
-                                HStack(spacing: 4) {
-                                    Image(systemName: "info.circle")
-                                        .font(.caption)
-                                        .foregroundStyle(.blue)
-                                    
-                                    Text(NSLocalizedString("ai.system.prompt.hint", comment: ""))
-                                        .font(.system(size: 11))
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            
-                            Divider()
-                            
-                            // 测试按钮
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(spacing: 12) {
-                                    Button(action: {
-                                        testAIConnection()
-                                    }) {
-                                        HStack {
-                                            Image(systemName: "network")
-                                            Text(NSLocalizedString("ai.test.connection", comment: ""))
-                                        }
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                    .help(NSLocalizedString("ai.test.connection.help", comment: ""))
-                                    
-                                    Button(action: {
-                                        fetchAvailableModels()
-                                    }) {
-                                        HStack {
-                                            Image(systemName: "list.bullet")
-                                            Text(NSLocalizedString("ai.fetch.models", comment: ""))
-                                        }
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                    .help(NSLocalizedString("ai.fetch.models.help", comment: ""))
-                                }
+                                Spacer()
                                 
                                 Button(action: {
-                                    testAIOptimization()
+                                    resetSystemPrompt()
                                 }) {
-                                    HStack {
-                                        Image(systemName: "wand.and.stars")
-                                        Text(NSLocalizedString("ai.test.optimization", comment: ""))
-                                    }
+                                    Text(NSLocalizedString("ai.system.prompt.reset", comment: ""))
+                                        .font(.system(size: 11))
                                 }
-                                .buttonStyle(.borderedProminent)
+                                .buttonStyle(.borderless)
                                 .controlSize(.small)
-                                .help(NSLocalizedString("ai.test.optimization.help", comment: ""))
+                                .help(NSLocalizedString("ai.system.prompt.reset.help", comment: ""))
+                            }
+                            
+                            ScrollView {
+                                TextEditor(text: $preferences.aiSystemPrompt)
+                                    .font(.system(size: 12, design: .monospaced))
+                                    .frame(minHeight: 200)
+                                    .padding(8)
+                                    .background(Color(NSColor.textBackgroundColor))
+                                    .scrollContentBackground(.hidden)
+                            }
+                            .frame(height: 200)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .strokeBorder(Color.secondary.opacity(0.3), lineWidth: 1)
+                            }
+                            
+                            HStack(spacing: 4) {
+                                Image(systemName: "info.circle")
+                                    .font(.caption)
+                                    .foregroundStyle(.blue)
+                                
+                                Text(NSLocalizedString("ai.system.prompt.hint", comment: ""))
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
                             }
                         }
                         .padding(.leading, 20)
+                        
+                        // 测试优化按钮
+                        HStack {
+                            Button(action: {
+                                testAIOptimization()
+                            }) {
+                                HStack {
+                                    Image(systemName: "wand.and.stars")
+                                    Text(NSLocalizedString("ai.test.optimization", comment: ""))
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                            .help(NSLocalizedString("ai.test.optimization.help", comment: ""))
+                        }
+                        .padding(.leading, 20)
+                        .padding(.top, 8)
                     }
                 } header: {
                     Text(NSLocalizedString("ai.optimization.section", comment: ""))
@@ -542,6 +657,15 @@ struct SettingsView: View {
                     } else {
                         Text(NSLocalizedString("ai.optimization.description", comment: ""))
                     }
+                }
+                
+                // 会议记录 AI 摘要功能开关
+                Section {
+                    Toggle("启用会议记录 AI 摘要", isOn: $preferences.enableMeetingSummaryAI)
+                } header: {
+                    Text("会议记录")
+                } footer: {
+                    Text("启用后，会议记录会自动使用 AI 生成摘要和代办事项。需要先配置 AI 服务。")
                 }
                 
                 // 历史记录 Section

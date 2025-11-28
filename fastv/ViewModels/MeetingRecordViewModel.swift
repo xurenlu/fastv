@@ -150,9 +150,8 @@ class MeetingRecordViewModel: ObservableObject {
             
             record.correctedText = text
             
-            // AI 修正和摘要生成（如果启用）
+            // AI 修正文本（如果启用 AI 文本优化）
             if preferences.enableAIOptimization {
-                // AI 修正文本
                 processingStage = .optimizing
                 processingProgress = 0.6
                 
@@ -186,8 +185,10 @@ class MeetingRecordViewModel: ObservableObject {
                     }
                     print("⚠️ [MeetingRecordViewModel] AI 修正失败，使用原始文本: \(error.localizedDescription)")
                 }
-                
-                // 生成摘要和代办事项
+            }
+            
+            // 生成摘要和代办事项（如果启用会议记录 AI 摘要）
+            if preferences.enableMeetingSummaryAI {
                 processingStage = .summarizing
                 processingProgress = 0.8
                 

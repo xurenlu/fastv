@@ -43,6 +43,7 @@ class UserPreferences: ObservableObject {
         static let waveformWindowColorStyle = "waveformWindowColorStyle"
         // AI 优化相关
         static let enableAIOptimization = "enableAIOptimization"
+        static let enableMeetingSummaryAI = "enableMeetingSummaryAI"
         static let aiAPIEndpoint = "aiAPIEndpoint"
         static let aiModel = "aiModel"
         static let aiAPIToken = "aiAPIToken"
@@ -143,6 +144,10 @@ class UserPreferences: ObservableObject {
     // AI 优化相关
     @Published var enableAIOptimization: Bool {
         willSet { defaults.set(newValue, forKey: Keys.enableAIOptimization) }
+    }
+    
+    @Published var enableMeetingSummaryAI: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.enableMeetingSummaryAI) }
     }
     
     @Published var aiAPIEndpoint: String {
@@ -282,6 +287,7 @@ class UserPreferences: ObservableObject {
         
         // AI 优化设置，默认不启用
         enableAIOptimization = defaults.object(forKey: Keys.enableAIOptimization) as? Bool ?? false
+        enableMeetingSummaryAI = defaults.object(forKey: Keys.enableMeetingSummaryAI) as? Bool ?? false
         aiAPIEndpoint = defaults.string(forKey: Keys.aiAPIEndpoint) ?? "http://127.0.0.1:11434"
         aiModel = defaults.string(forKey: Keys.aiModel) ?? "gemma2:2b"
         aiAPIToken = defaults.string(forKey: Keys.aiAPIToken) ?? ""
