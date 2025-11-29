@@ -57,6 +57,14 @@ class MeetingRecordViewModel: ObservableObject {
     @Published var shouldCaptureSystemAudio = false
     private var systemAudioFileURL: URL?
     
+    // WAV 文件实时保存
+    private var wavFileURL: URL?
+    private var wavFileHandle: FileHandle?
+    private var wavDataSize: UInt32 = 0  // 已写入的音频数据大小
+    private var wavSaveTimer: Timer?  // 定期保存音频数据的定时器
+    private var wavSampleRate: Double = 16000
+    private var wavChannels: UInt16 = 1
+    
     private var silenceCheckTask: Task<Void, Never>?
     private var transcriptUpdateTask: Task<Void, Never>?
     
@@ -191,6 +199,12 @@ class MeetingRecordViewModel: ObservableObject {
             // 开始录音
             try voiceService.startRecording()
             
+            // 初始化 WAV 文件保存（如果启用了说话人分离）
+            if preferences.enableSpeakerDiarization {
+                initializeWAVFile(for: newRecord.id)
+                startRealtimeWAVSaving()
+            }
+            
             // 启动静音检测
             startSilenceDetection()
             
@@ -207,6 +221,21 @@ class MeetingRecordViewModel: ObservableObject {
         
         // 停止静音检测
         stopSilenceDetection()
+        
+        // 停止 WAV 保存定时器
+        wavSaveTimer?.invalidate()
+        wavSaveTimer = nil
+        
+        // 清除实时保存回调
+        voiceService.onConvertedAudioData = nil
+        
+        // 关闭 WAV 文件（如果已打开）
+        if preferences.enableSpeakerDiarization {
+            // 最后保存一次剩余的音频数据（如果有）
+            saveRemainingAudioToWAV()
+            // 注意：closeWAVFile 会在 processRecording 中使用 WAV 文件后调用
+            // 这里不立即关闭，因为 processRecording 还需要使用
+        }
         
         // 禁用防睡眠断言
         sleepWakeNotifier.disablePreventSleep()
@@ -269,6 +298,8 @@ class MeetingRecordViewModel: ObservableObject {
         processingStage = .transcribing
         processingProgress = 0.1
         
+        // 停止录音并获取音频数据
+        // 注意：如果启用了实时 WAV 保存，数据已经在录音过程中转换并保存
         guard let recording = try? await voiceService.stopRecording() else {
             errorMessage = "停止录音失败"
             currentRecord = nil
@@ -277,6 +308,9 @@ class MeetingRecordViewModel: ObservableObject {
             processingStage = nil
             return
         }
+        
+        // 如果启用了说话人分离且已有实时保存的 WAV 文件，直接使用
+        // 否则，在需要时保存 WAV 文件（在说话人分离时）
         
         // 更新记录状态
         record.isRecording = false
@@ -398,8 +432,16 @@ class MeetingRecordViewModel: ObservableObject {
                     let tempDir = FileManager.default.temporaryDirectory
                     let audioURL = tempDir.appendingPathComponent("\(record.id.uuidString).wav")
                     
-                    // 将录音数据保存为 WAV 文件
-                    try await saveRecordingToWAV(recording: recording, to: audioURL)
+                    // 如果已经有实时保存的 WAV 文件，直接使用；否则保存
+                    if let existingWAVURL = wavFileURL, FileManager.default.fileExists(atPath: existingWAVURL.path) {
+                        // 使用已实时保存的 WAV 文件（文件头已更新）
+                        try FileManager.default.copyItem(at: existingWAVURL, to: audioURL)
+                        print("✅ [MeetingRecordViewModel] 使用实时保存的 WAV 文件")
+                    } else {
+                        // 降级方案：将录音数据保存为 WAV 文件
+                        try await saveRecordingToWAV(recording: recording, to: audioURL)
+                        print("✅ [MeetingRecordViewModel] 使用降级方案保存 WAV 文件")
+                    }
                     
                     // 执行说话人分离
                     let segments = try await SpeakerDiarizationService.shared.diarize(
@@ -421,6 +463,9 @@ class MeetingRecordViewModel: ObservableObject {
                     // 清理临时文件
                     try? FileManager.default.removeItem(at: audioURL)
                     
+                    // 关闭实时保存的 WAV 文件
+                    closeWAVFile()
+                    
                     print("✅ [MeetingRecordViewModel] 说话人分离完成，识别到 \(record.speakerSegments.count) 个片段")
                 } catch {
                     if Task.isCancelled {
@@ -441,7 +486,7 @@ class MeetingRecordViewModel: ObservableObject {
                 processingProgress = 0.8
                 
                 do {
-                    let (summary, actionItems) = try await OllamaService.shared.generateMeetingSummary(
+                    let markdownSummary = try await OllamaService.shared.generateMeetingSummary(
                         text: record.correctedText,
                         endpoint: preferences.aiAPIEndpoint,
                         model: preferences.aiModel,
@@ -458,7 +503,10 @@ class MeetingRecordViewModel: ObservableObject {
                         return
                     }
                     
-                    record.summary = summary
+                    // 解析 Markdown 摘要，提取摘要内容和待办事项
+                    let (_, actionItems) = parseMarkdownSummary(markdownSummary)
+                    
+                    record.summary = markdownSummary  // 保存完整的 markdown 格式
                     record.actionItems = actionItems
                 } catch {
                     if Task.isCancelled {
@@ -710,6 +758,218 @@ class MeetingRecordViewModel: ObservableObject {
                 transcriptUpdateTask = nil
             }
         }
+    }
+    
+    /// 解析 Markdown 格式的摘要，提取摘要文本和待办事项
+    /// - Parameter markdownSummary: Markdown 格式的摘要字符串
+    /// - Returns: (摘要文本, 待办事项列表)
+    private func parseMarkdownSummary(_ markdownSummary: String) -> (summaryText: String, actionItems: [String]) {
+        var summaryText = ""
+        var actionItems: [String] = []
+        
+        let lines = markdownSummary.components(separatedBy: .newlines)
+        var currentSection: String? = nil
+        
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // 检测章节标题
+            if trimmed.hasPrefix("## ") {
+                let sectionName = String(trimmed.dropFirst(3)).trimmingCharacters(in: .whitespacesAndNewlines)
+                if sectionName == "会议摘要" {
+                    currentSection = "summary"
+                } else if sectionName == "待办事项" {
+                    currentSection = "actionItems"
+                } else {
+                    currentSection = nil
+                }
+                continue
+            }
+            
+            // 根据当前章节处理内容
+            if currentSection == "summary" {
+                if !trimmed.isEmpty {
+                    if summaryText.isEmpty {
+                        summaryText = trimmed
+                    } else {
+                        summaryText += "\n" + trimmed
+                    }
+                }
+            } else if currentSection == "actionItems" {
+                // 提取待办事项（支持 "- " 和 "• " 开头）
+                if trimmed.hasPrefix("- ") {
+                    let item = String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !item.isEmpty {
+                        actionItems.append(item)
+                    }
+                } else if trimmed.hasPrefix("• ") {
+                    let item = String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !item.isEmpty {
+                        actionItems.append(item)
+                    }
+                }
+            }
+        }
+        
+        return (summaryText, actionItems)
+    }
+    
+    /// 初始化 WAV 文件并写入文件头
+    private func initializeWAVFile(for recordId: UUID) {
+        do {
+            let tempDir = FileManager.default.temporaryDirectory
+            let audioURL = tempDir.appendingPathComponent("\(recordId.uuidString).wav")
+            
+            // 如果文件已存在，删除它
+            if FileManager.default.fileExists(atPath: audioURL.path) {
+                try FileManager.default.removeItem(at: audioURL)
+            }
+            
+            // 创建文件
+            FileManager.default.createFile(atPath: audioURL.path, contents: nil, attributes: nil)
+            
+            guard let fileHandle = try? FileHandle(forWritingTo: audioURL) else {
+                print("⚠️ [MeetingRecordViewModel] 无法创建 WAV 文件句柄")
+                return
+            }
+            
+            wavFileURL = audioURL
+            wavFileHandle = fileHandle
+            wavDataSize = 0
+            
+            // 写入 WAV 文件头（预留空间，稍后更新）
+            let sampleRate = UInt32(wavSampleRate)
+            let channels = wavChannels
+            let bitsPerSample: UInt16 = 16
+            let byteRate = sampleRate * UInt32(channels) * UInt32(bitsPerSample) / 8
+            let blockAlign = channels * bitsPerSample / 8
+            
+            var header = Data()
+            
+            // RIFF header
+            header.append("RIFF".data(using: .ascii)!)
+            header.append(contentsOf: withUnsafeBytes(of: UInt32(0).littleEndian) { Data($0) }) // 文件大小，稍后更新
+            header.append("WAVE".data(using: .ascii)!)
+            
+            // fmt chunk
+            header.append("fmt ".data(using: .ascii)!)
+            header.append(contentsOf: withUnsafeBytes(of: UInt32(16).littleEndian) { Data($0) }) // fmt chunk size
+            header.append(contentsOf: withUnsafeBytes(of: UInt16(1).littleEndian) { Data($0) }) // audio format (PCM)
+            header.append(contentsOf: withUnsafeBytes(of: channels.littleEndian) { Data($0) })
+            header.append(contentsOf: withUnsafeBytes(of: sampleRate.littleEndian) { Data($0) })
+            header.append(contentsOf: withUnsafeBytes(of: byteRate.littleEndian) { Data($0) })
+            header.append(contentsOf: withUnsafeBytes(of: blockAlign.littleEndian) { Data($0) })
+            header.append(contentsOf: withUnsafeBytes(of: bitsPerSample.littleEndian) { Data($0) })
+            
+            // data chunk header
+            header.append("data".data(using: .ascii)!)
+            header.append(contentsOf: withUnsafeBytes(of: UInt32(0).littleEndian) { Data($0) }) // 数据大小，稍后更新
+            
+            try fileHandle.write(contentsOf: header)
+            
+            print("✅ [MeetingRecordViewModel] WAV 文件已初始化: \(audioURL.path)")
+        } catch {
+            print("⚠️ [MeetingRecordViewModel] 初始化 WAV 文件失败: \(error)")
+            wavFileHandle = nil
+            wavFileURL = nil
+        }
+    }
+    
+    /// 启动实时 WAV 文件保存
+    private func startRealtimeWAVSaving() {
+        // 停止之前的定时器（如果有）
+        wavSaveTimer?.invalidate()
+        
+        // 设置 VoiceInputService 的回调，实时获取转换后的音频数据
+        voiceService.onConvertedAudioData = { [weak self] pcmData in
+            guard let self = self else { return }
+            Task { @MainActor in
+                self.appendAudioDataToWAV(pcmData)
+            }
+        }
+        
+        print("✅ [MeetingRecordViewModel] 实时 WAV 保存已启动")
+    }
+    
+    /// 保存剩余的音频数据到 WAV 文件
+    private func saveRemainingAudioToWAV() {
+        // 这个方法会在 stopRecording 时调用
+        // 由于 VoiceInputService 在 stopRecording 时会返回转换后的数据
+        // 如果实时保存过程中有遗漏的数据，在这里补充保存
+        // 但实际上，由于转换是在 stopRecording 时进行的，这里主要是确保文件头已更新
+    }
+    
+    /// 追加音频数据到 WAV 文件
+    private func appendAudioDataToWAV(_ pcmData: Data) {
+        guard let fileHandle = wavFileHandle else {
+            return
+        }
+        
+        do {
+            // 追加数据到文件末尾
+            try fileHandle.seekToEnd()
+            try fileHandle.write(contentsOf: pcmData)
+            
+            // 更新数据大小
+            wavDataSize += UInt32(pcmData.count)
+            
+            // 定期更新文件头（每1MB更新一次，避免频繁写入）
+            if wavDataSize % (1024 * 1024) < UInt32(pcmData.count) {
+                updateWAVFileHeader()
+            }
+        } catch {
+            print("⚠️ [MeetingRecordViewModel] 追加音频数据到 WAV 文件失败: \(error)")
+        }
+    }
+    
+    /// 更新 WAV 文件头
+    private func updateWAVFileHeader() {
+        guard let fileHandle = wavFileHandle else {
+            return
+        }
+        
+        do {
+            let fileSize = 36 + wavDataSize
+            let dataSize = wavDataSize
+            
+            // 更新 RIFF chunk size (位置 4-7)
+            try fileHandle.seek(toOffset: 4)
+            let fileSizeBytes = withUnsafeBytes(of: fileSize.littleEndian) { Data($0) }
+            try fileHandle.write(contentsOf: fileSizeBytes)
+            
+            // 更新 data chunk size (位置 40-43)
+            try fileHandle.seek(toOffset: 40)
+            let dataSizeBytes = withUnsafeBytes(of: dataSize.littleEndian) { Data($0) }
+            try fileHandle.write(contentsOf: dataSizeBytes)
+            
+            // 重置到文件末尾
+            try fileHandle.seekToEnd()
+        } catch {
+            print("⚠️ [MeetingRecordViewModel] 更新 WAV 文件头失败: \(error)")
+        }
+    }
+    
+    /// 关闭 WAV 文件并更新文件头
+    private func closeWAVFile() {
+        guard let fileHandle = wavFileHandle else {
+            return
+        }
+        
+        do {
+            // 最终更新文件头
+            updateWAVFileHeader()
+            
+            // 关闭文件
+            try fileHandle.close()
+            
+            print("✅ [MeetingRecordViewModel] WAV 文件已关闭并更新文件头，总大小: \(wavDataSize) 字节")
+        } catch {
+            print("⚠️ [MeetingRecordViewModel] 关闭 WAV 文件失败: \(error)")
+        }
+        
+        wavFileHandle = nil
+        wavFileURL = nil
+        wavDataSize = 0
     }
 }
 

@@ -699,21 +699,21 @@ class OllamaService {
         return comparison
     }
     
-    /// 生成会议摘要和待办事项
+    /// 生成会议摘要和待办事项（Markdown 格式）
     /// - Parameters:
     ///   - text: 会议转录文本
     ///   - endpoint: API 端点地址
     ///   - model: 使用的模型名称
     ///   - apiToken: API Token（可选）
     ///   - timeout: 超时时间（秒）
-    /// - Returns: (摘要, 待办事项列表)
+    /// - Returns: Markdown 格式的摘要（包含摘要和待办事项章节）
     func generateMeetingSummary(
         text: String,
         endpoint: String,
         model: String,
         apiToken: String?,
         timeout: TimeInterval = 30.0
-    ) async throws -> (summary: String, actionItems: [String]) {
+    ) async throws -> String {
         print("🤖 [OllamaService] 开始生成会议摘要，文本长度: \(text.count)")
         
         let systemPrompt = """
@@ -727,7 +727,7 @@ class OllamaService {
           "actionItems": ["待办事项1", "待办事项2"]
         }
         
-        只返回 JSON，不要其他内容。
+        只返回 JSON，不要其他内容。如果没有待办事项，actionItems 为空数组。
         """
         
         // 检测 API 类型
@@ -913,8 +913,18 @@ class OllamaService {
            let parsedJson = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
            let summary = parsedJson["summary"] as? String,
            let actionItems = parsedJson["actionItems"] as? [String] {
+            // 构建 Markdown 格式的摘要
+            var markdownSummary = "## 会议摘要\n\n\(summary)"
+            
+            if !actionItems.isEmpty {
+                markdownSummary += "\n\n## 待办事项\n\n"
+                for item in actionItems {
+                    markdownSummary += "- \(item)\n"
+                }
+            }
+            
             print("✅ [OllamaService] 会议摘要生成完成")
-            return (summary, actionItems)
+            return markdownSummary
         }
         
         // 如果 JSON 解析失败，尝试从文本中提取
@@ -958,8 +968,18 @@ class OllamaService {
             summary = String(summary.prefix(200)) + "..."
         }
         
+            // 构建 Markdown 格式的摘要
+            var markdownSummary = "## 会议摘要\n\n\(summary)"
+            
+            if !actionItems.isEmpty {
+                markdownSummary += "\n\n## 待办事项\n\n"
+                for item in actionItems {
+                    markdownSummary += "- \(item)\n"
+                }
+            }
+        
         print("✅ [OllamaService] 会议摘要生成完成（降级模式）")
-        return (summary, actionItems)
+        return markdownSummary
     }
 }
 

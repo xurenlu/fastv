@@ -64,15 +64,15 @@ struct MeetingRecordRow: View {
                     }
                 }
                 
-                // 摘要预览
-                if !record.summary.isEmpty {
-                    Text(record.summary)
+                // 全文预览（默认显示全文）
+                if !record.correctedText.isEmpty {
+                    Text(record.correctedText)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                         .padding(.top, 2)
-                } else if !record.correctedText.isEmpty {
-                    Text(record.correctedText)
+                } else if !record.originalText.isEmpty {
+                    Text(record.originalText)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
