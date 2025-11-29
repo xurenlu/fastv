@@ -97,8 +97,13 @@ struct QuadrantCell: View {
     let targetPriority: AITodoPriority
     
     @State private var isDragOver = false
+    @State private var showGroupManagement = false
+    @State private var showCreateGroupDialog = false
+    @State private var newGroupName = ""
     
     var body: some View {
+        let groups = viewModel.getGroups(for: targetPriority)
+        
         VStack(alignment: .leading, spacing: 0) {
             // 标题区域
             VStack(alignment: .leading, spacing: 4) {
@@ -131,11 +136,32 @@ struct QuadrantCell: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(color.opacity(0.05))
+            .contextMenu {
+                Button(action: {
+                    showCreateGroupDialog = true
+                }) {
+                    Label("新建分组", systemImage: "plus.circle")
+                }
+                
+                Button(action: {
+                    showGroupManagement = true
+                }) {
+                    Label("管理分组", systemImage: "slider.horizontal.3")
+                }
+                
+                Divider()
+                
+                Button(action: {
+                    resetToDefaultGroups()
+                }) {
+                    Label("重置为默认分组", systemImage: "arrow.counterclockwise")
+                }
+            }
             
             Divider()
             
-            // Todo 列表
-            if todos.isEmpty {
+            // 看板式布局
+            if groups.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "checkmark.circle")
                         .font(.system(size: 32))
@@ -148,14 +174,19 @@ struct QuadrantCell: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.clear)
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 4) {
-                        ForEach(todos) { todo in
-                            QuadrantTodoRow(todo: todo, viewModel: viewModel, accentColor: color, targetPriority: targetPriority)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 12) {
+                        ForEach(groups) { group in
+                            KanbanColumnView(
+                                group: group,
+                                viewModel: viewModel,
+                                accentColor: color,
+                                targetPriority: targetPriority
+                            )
+                            .frame(width: 280)
                         }
                     }
+                    .padding(.horizontal, 8)
                     .padding(.vertical, 8)
                 }
                 .background(Color.clear)
@@ -178,6 +209,30 @@ struct QuadrantCell: View {
             }
             return true
         }
+        .sheet(isPresented: $showGroupManagement) {
+            GroupManagementView(
+                priority: targetPriority,
+                viewModel: viewModel
+            )
+        }
+        .alert("新建分组", isPresented: $showCreateGroupDialog) {
+            TextField("分组名称", text: $newGroupName)
+            Button("取消", role: .cancel) {
+                newGroupName = ""
+            }
+            Button("创建") {
+                if !newGroupName.isEmpty {
+                    _ = viewModel.createGroup(name: newGroupName, priority: targetPriority)
+                    newGroupName = ""
+                }
+            }
+        } message: {
+            Text("请输入新分组的名称")
+        }
+    }
+    
+    private func resetToDefaultGroups() {
+        viewModel.resetToDefaultGroups(for: targetPriority)
     }
     
     @MainActor
@@ -513,6 +568,320 @@ struct QuadrantTodoRow: View {
             // 其他日期：显示日期和时间
             dateFormatter.timeStyle = .short
             return dateFormatter.string(from: date)
+        }
+    }
+}
+
+/// 看板列视图
+struct KanbanColumnView: View {
+    let group: AITodoGroup
+    @ObservedObject var viewModel: AITodoViewModel
+    let accentColor: Color
+    let targetPriority: AITodoPriority
+    
+    @State private var isDragOver = false
+    
+    var todos: [AITodoItem] {
+        viewModel.getTodos(for: group)
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // 列标题
+            HStack {
+                Text(group.name)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.primary)
+                
+                Spacer()
+                
+                Text("\(todos.count)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background {
+                        Capsule()
+                            .fill(accentColor.opacity(0.15))
+                    }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(accentColor.opacity(0.05))
+            
+            Divider()
+            
+            // 事项列表
+            ScrollView {
+                LazyVStack(spacing: 6) {
+                    if todos.isEmpty {
+                        VStack(spacing: 4) {
+                            Image(systemName: "tray")
+                                .font(.system(size: 24))
+                                .foregroundStyle(.secondary.opacity(0.3))
+                            Text("暂无事项")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
+                    } else {
+                        ForEach(todos) { todo in
+                            KanbanTodoCard(
+                                todo: todo,
+                                viewModel: viewModel,
+                                accentColor: accentColor,
+                                targetPriority: targetPriority
+                            )
+                        }
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+            .frame(maxHeight: .infinity)
+        }
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .overlay {
+            if isDragOver {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(accentColor, style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [5, 3]))
+                    .background(accentColor.opacity(0.1))
+            }
+        }
+        .onDrop(of: [UTType.text], isTargeted: $isDragOver) { providers in
+            Task {
+                await handleDropAsync(providers: providers)
+            }
+            return true
+        }
+    }
+    
+    @MainActor
+    private func handleDropAsync(providers: [NSItemProvider]) async {
+        guard let provider = providers.first else { return }
+        
+        if provider.canLoadObject(ofClass: NSString.self) {
+            do {
+                let nsString = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<NSString, Error>) in
+                    provider.loadObject(ofClass: NSString.self) { object, error in
+                        if let error = error {
+                            continuation.resume(throwing: error)
+                        } else if let string = object as? NSString {
+                            continuation.resume(returning: string)
+                        } else {
+                            continuation.resume(throwing: NSError(domain: "DropError", code: -1))
+                        }
+                    }
+                }
+                
+                let todoIdString = nsString as String
+                guard let todoId = UUID(uuidString: todoIdString) else {
+                    print("❌ [KanbanColumnView] 无效的 UUID: \(todoIdString)")
+                    return
+                }
+                
+                if let todo = viewModel.activeTodos.first(where: { $0.id == todoId }) {
+                    viewModel.moveTodo(todo, to: group)
+                    print("✅ [KanbanColumnView] 已将事项移动到分组: \(group.name)")
+                }
+            } catch {
+                print("❌ [KanbanColumnView] 拖拽处理失败: \(error)")
+            }
+        }
+    }
+}
+
+/// 看板事项卡片
+struct KanbanTodoCard: View {
+    let todo: AITodoItem
+    @ObservedObject var viewModel: AITodoViewModel
+    let accentColor: Color
+    let targetPriority: AITodoPriority
+    
+    @State private var isDragging = false
+    @State private var dragResetTask: Task<Void, Never>?
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // 标题
+            Text(todo.title)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+            
+            // 描述
+            if let description = todo.description, !description.isEmpty {
+                Text(description)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            
+            // 截止时间
+            if let dueDate = todo.dueDate {
+                HStack(spacing: 4) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 9))
+                    Text(formatDate(dueDate))
+                        .font(.system(size: 10))
+                }
+                .foregroundStyle(todo.isOverdue ? .red : .secondary)
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(NSColor.textBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        .onDrag {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isDragging = true
+            }
+            
+            dragResetTask = Task {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                if !Task.isCancelled {
+                    await MainActor.run {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isDragging = false
+                        }
+                    }
+                }
+            }
+            
+            return NSItemProvider(object: todo.id.uuidString as NSString)
+        }
+        .onDrop(of: [UTType.text], isTargeted: .constant(false)) { _ in
+            dragResetTask?.cancel()
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isDragging = false
+            }
+            return false
+        }
+        .opacity(isDragging ? 0.5 : 1.0)
+        .scaleEffect(isDragging ? 0.95 : 1.0)
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        
+        if calendar.isDateInToday(date) {
+            formatter.timeStyle = .short
+            let timeString = formatter.string(from: date)
+            return String(format: NSLocalizedString("today.at.time", comment: "今天 %@"), timeString)
+        } else if calendar.isDateInTomorrow(date) {
+            formatter.timeStyle = .short
+            let timeString = formatter.string(from: date)
+            return String(format: NSLocalizedString("tomorrow.at.time", comment: "明天 %@"), timeString)
+        } else {
+            formatter.dateStyle = .short
+            formatter.timeStyle = .short
+            return formatter.string(from: date)
+        }
+    }
+}
+
+/// 分组管理视图
+struct GroupManagementView: View {
+    let priority: AITodoPriority
+    @ObservedObject var viewModel: AITodoViewModel
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var groups: [AITodoGroup] = []
+    @State private var showCreateDialog = false
+    @State private var newGroupName = ""
+    @State private var editingGroup: AITodoGroup?
+    @State private var editingName = ""
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(groups) { group in
+                    HStack {
+                        if editingGroup?.id == group.id {
+                            TextField("分组名称", text: $editingName)
+                                .textFieldStyle(.roundedBorder)
+                                .onSubmit {
+                                    saveEdit()
+                                }
+                        } else {
+                            Text(group.name)
+                                .font(.body)
+                        }
+                        
+                        Spacer()
+                        
+                        Text("\(viewModel.getTodos(for: group).count) 项")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive, action: {
+                            viewModel.deleteGroup(group)
+                            loadGroups()
+                        }) {
+                            Label("删除", systemImage: "trash")
+                        }
+                        
+                        Button(action: {
+                            editingGroup = group
+                            editingName = group.name
+                        }) {
+                            Label("编辑", systemImage: "pencil")
+                        }
+                    }
+                }
+            }
+            .navigationTitle("管理分组")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("完成", action: { dismiss() })
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(action: {
+                        showCreateDialog = true
+                    }) {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .onAppear {
+                loadGroups()
+            }
+            .alert("新建分组", isPresented: $showCreateDialog) {
+                TextField("分组名称", text: $newGroupName)
+                Button("取消", role: .cancel) {
+                    newGroupName = ""
+                }
+                Button("创建") {
+                    if !newGroupName.isEmpty {
+                        _ = viewModel.createGroup(name: newGroupName, priority: priority)
+                        newGroupName = ""
+                        loadGroups()
+                    }
+                }
+            } message: {
+                Text("请输入新分组的名称")
+            }
+        }
+        .frame(minWidth: 400, minHeight: 300)
+    }
+    
+    private func loadGroups() {
+        groups = viewModel.getGroups(for: priority)
+    }
+    
+    private func saveEdit() {
+        if let group = editingGroup, !editingName.isEmpty {
+            var updated = group
+            updated.name = editingName
+            viewModel.updateGroup(updated)
+            editingGroup = nil
+            editingName = ""
+            loadGroups()
         }
     }
 }
