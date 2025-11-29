@@ -20,6 +20,9 @@ class LiveTranscriptionViewModel: ObservableObject {
     @Published var realtimeTranscript: String = ""  // 实时转写的文本
     @Published var transcriptionProgress: String = "" // 转写进度描述
     
+    // 音频电平（用于波形显示）
+    @Published var audioLevel: Float = 0.0
+    
     private var transcribingStartTime: Date?
     private var durationTimer: Timer?
     private let audioService = LiveTranscriptionAudioService.shared
@@ -239,15 +242,23 @@ class LiveTranscriptionViewModel: ObservableObject {
     private func startSilenceDetection() {
         silenceCheckTask?.cancel()
         
+        // 从 preferences 读取配置并应用到 SilenceDetector
+        silenceDetector.silenceThreshold = preferences.silenceThreshold
+        silenceDetector.relativeThreshold = preferences.silenceRelativeThreshold
+        silenceDetector.minimumSilenceDuration = preferences.silenceDetectionDuration
+        
+        print("✅ [LiveTranscriptionViewModel] 静音检测已启动 (绝对阈值=\(preferences.silenceThreshold), 相对阈值=\(Int(preferences.silenceRelativeThreshold * 100))%, 最小时长=\(preferences.silenceDetectionDuration)秒)")
+        
         // 连接音频电平回调
         audioService.onAudioData = { [weak self] level in
             guard let self = self else { return }
             Task { @MainActor in
+                // 更新音频电平（用于波形显示）
+                self.audioLevel = level
+                // 处理静音检测
                 self.silenceDetector.processAudioLevel(level)
             }
         }
-        
-        print("✅ [LiveTranscriptionViewModel] 静音检测已启动")
     }
     
     /// 停止静音检测
@@ -257,6 +268,7 @@ class LiveTranscriptionViewModel: ObservableObject {
         transcriptUpdateTask?.cancel()
         transcriptUpdateTask = nil
         audioService.onAudioData = nil
+        audioLevel = 0.0
         print("✅ [LiveTranscriptionViewModel] 静音检测已停止")
     }
     

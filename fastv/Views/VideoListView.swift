@@ -166,6 +166,7 @@ struct VideoListView: View {
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
+                .frame(minWidth: 800, idealWidth: 900, maxWidth: 1000, minHeight: 600, idealHeight: 700, maxHeight: 800)
         }
     }
     

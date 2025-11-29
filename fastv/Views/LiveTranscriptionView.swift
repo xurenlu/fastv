@@ -24,6 +24,15 @@ struct LiveTranscriptionView: View {
         VStack(spacing: 0) {
             // 顶部：转录控制区域
             VStack(spacing: 16) {
+                // 波形显示（仅在转录时显示）
+                if viewModel.isTranscribing {
+                    InlineWaveformView(
+                        audioLevel: viewModel.audioLevel,
+                        isActive: viewModel.isTranscribing
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                
                 // 转录按钮和状态
                 HStack(spacing: 20) {
                     // 转录按钮

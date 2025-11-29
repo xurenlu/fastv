@@ -23,6 +23,15 @@ struct MeetingRecordView: View {
         VStack(spacing: 0) {
             // 顶部：录音控制区域
             VStack(spacing: 16) {
+                // 波形显示（仅在录音时显示）
+                if viewModel.isRecording {
+                    InlineWaveformView(
+                        audioLevel: viewModel.audioLevel,
+                        isActive: viewModel.isRecording
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                
                 // 录音按钮和状态
                 HStack(spacing: 20) {
                     // 录音按钮

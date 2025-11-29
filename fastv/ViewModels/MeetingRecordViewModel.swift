@@ -34,6 +34,9 @@ class MeetingRecordViewModel: ObservableObject {
     @Published var realtimeTranscript: String = ""  // 实时转写的文本
     @Published var transcriptionProgress: String = "" // 转写进度描述
     
+    // 音频电平（用于波形显示）
+    @Published var audioLevel: Float = 0.0
+    
     private var recordingStartTime: Date?
     private var durationTimer: Timer?
     private var processingTask: Task<Void, Never>?
@@ -86,10 +89,18 @@ class MeetingRecordViewModel: ObservableObject {
                 guard let self = self, !self.isRecording else { return }
                 
                 self.detectedMeeting = meeting
-                self.showMeetingDetectionAlert = true
                 
-                // 显示提示窗口
-                self.showMeetingDetectionWindow()
+                // 检查是否启用了自动开始录音
+                if self.preferences.enableAutoStartRecording {
+                    // 自动开始录音，不显示提示窗口
+                    print("🤖 [MeetingRecordViewModel] 检测到会议软件，自动开始录音")
+                    let captureSystemAudio = self.preferences.autoStartCaptureSystemAudio
+                    self.handleMeetingDetectionStart(captureSystemAudio: captureSystemAudio)
+                } else {
+                    // 显示提示窗口，让用户手动确认
+                    self.showMeetingDetectionAlert = true
+                    self.showMeetingDetectionWindow()
+                }
             }
         }
     }
@@ -159,6 +170,10 @@ class MeetingRecordViewModel: ObservableObject {
                 isRecording: true
             )
             currentRecord = newRecord
+            
+            // 立即保存到管理器，这样后续更新才能找到记录
+            recordManager.add(newRecord)
+            
             recordingStartTime = Date()
             recordingDuration = 0
             realtimeTranscript = ""
@@ -479,7 +494,8 @@ class MeetingRecordViewModel: ObservableObject {
                 return
             }
             
-            recordManager.add(record)
+            // 更新记录（记录已经在 startRecording 时添加，这里只需要更新）
+            recordManager.update(record)
             currentRecord = nil
             processingProgress = 1.0
             
@@ -552,6 +568,31 @@ class MeetingRecordViewModel: ObservableObject {
                 await self.handleSilenceDetected()
             }
         }
+        
+        // 设置增量转写更新回调：当段落转写完成时，实时更新会议记录
+        incrementalTranscription.onTranscriptionUpdated = { [weak self] fullText in
+            guard let self = self else { return }
+            Task { @MainActor in
+                // 如果正在录音且有当前记录，更新记录的文本
+                if self.isRecording, var record = self.currentRecord {
+                    record.originalText = fullText
+                    record.correctedText = fullText  // 先使用原始文本，后续会进行修正
+                    record.updatedAt = Date()
+                    self.currentRecord = record
+                    
+                    // 实时更新到记录管理器（如果记录已存在）
+                    if let existingRecord = self.recordManager.records.first(where: { $0.id == record.id }) {
+                        var updatedRecord = existingRecord
+                        updatedRecord.originalText = fullText
+                        updatedRecord.correctedText = fullText
+                        updatedRecord.updatedAt = Date()
+                        self.recordManager.update(updatedRecord)
+                    }
+                    
+                    print("📝 [MeetingRecordViewModel] 实时更新会议记录文本，长度: \(fullText.count)")
+                }
+            }
+        }
     }
     
     /// 设置睡眠/唤醒处理
@@ -575,15 +616,23 @@ class MeetingRecordViewModel: ObservableObject {
     private func startSilenceDetection() {
         silenceCheckTask?.cancel()
         
+        // 从 preferences 读取配置并应用到 SilenceDetector
+        silenceDetector.silenceThreshold = preferences.silenceThreshold
+        silenceDetector.relativeThreshold = preferences.silenceRelativeThreshold
+        silenceDetector.minimumSilenceDuration = preferences.silenceDetectionDuration
+        
+        print("✅ [MeetingRecordViewModel] 静音检测已启动 (绝对阈值=\(preferences.silenceThreshold), 相对阈值=\(Int(preferences.silenceRelativeThreshold * 100))%, 最小时长=\(preferences.silenceDetectionDuration)秒)")
+        
         // 连接音频电平回调
         voiceService.onAudioData = { [weak self] level in
             guard let self = self else { return }
             Task { @MainActor in
+                // 更新音频电平（用于波形显示）
+                self.audioLevel = level
+                // 处理静音检测
                 self.silenceDetector.processAudioLevel(level)
             }
         }
-        
-        print("✅ [MeetingRecordViewModel] 静音检测已启动")
     }
     
     /// 停止静音检测
@@ -593,6 +642,7 @@ class MeetingRecordViewModel: ObservableObject {
         transcriptUpdateTask?.cancel()
         transcriptUpdateTask = nil
         voiceService.onAudioData = nil
+        audioLevel = 0.0
         print("✅ [MeetingRecordViewModel] 静音检测已停止")
     }
     

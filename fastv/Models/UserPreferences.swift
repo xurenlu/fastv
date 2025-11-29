@@ -76,6 +76,13 @@ class UserPreferences: ObservableObject {
         static let chatMaxTokens = "chatMaxTokens"
         static let chatEnableSearch = "chatEnableSearch"
         static let chatEnableThinking = "chatEnableThinking"
+        // 会议检测自动开始相关
+        static let enableAutoStartRecording = "enableAutoStartRecording"
+        static let autoStartCaptureSystemAudio = "autoStartCaptureSystemAudio"
+        // 静音检测相关
+        static let silenceDetectionDuration = "silenceDetectionDuration"
+        static let silenceThreshold = "silenceThreshold"
+        static let silenceRelativeThreshold = "silenceRelativeThreshold"
     }
     
     // MARK: - Published Properties
@@ -276,6 +283,28 @@ class UserPreferences: ObservableObject {
         willSet { defaults.set(newValue, forKey: Keys.chatEnableThinking) }
     }
     
+    // 会议检测自动开始相关
+    @Published var enableAutoStartRecording: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.enableAutoStartRecording) }
+    }
+    
+    @Published var autoStartCaptureSystemAudio: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.autoStartCaptureSystemAudio) }
+    }
+    
+    // 静音检测相关
+    @Published var silenceDetectionDuration: Double {
+        willSet { defaults.set(newValue, forKey: Keys.silenceDetectionDuration) }
+    }
+    
+    @Published var silenceThreshold: Float {
+        willSet { defaults.set(newValue, forKey: Keys.silenceThreshold) }
+    }
+    
+    @Published var silenceRelativeThreshold: Float {
+        willSet { defaults.set(newValue, forKey: Keys.silenceRelativeThreshold) }
+    }
+    
     // 引导流程相关
     @Published var hasCompletedOnboarding: Bool {
         willSet { defaults.set(newValue, forKey: Keys.hasCompletedOnboarding) }
@@ -460,6 +489,15 @@ class UserPreferences: ObservableObject {
         chatMaxTokens = defaults.object(forKey: Keys.chatMaxTokens) as? Int ?? 10240
         chatEnableSearch = defaults.object(forKey: Keys.chatEnableSearch) as? Bool ?? true
         chatEnableThinking = defaults.object(forKey: Keys.chatEnableThinking) as? Bool ?? false
+        
+        // 会议检测自动开始设置，默认不启用（需要用户手动确认）
+        enableAutoStartRecording = defaults.object(forKey: Keys.enableAutoStartRecording) as? Bool ?? false
+        autoStartCaptureSystemAudio = defaults.object(forKey: Keys.autoStartCaptureSystemAudio) as? Bool ?? false
+        
+        // 静音检测设置
+        silenceDetectionDuration = defaults.object(forKey: Keys.silenceDetectionDuration) as? Double ?? 1.0 // 默认1.0秒
+        silenceThreshold = defaults.object(forKey: Keys.silenceThreshold) as? Float ?? 0.01 // 默认0.01
+        silenceRelativeThreshold = defaults.object(forKey: Keys.silenceRelativeThreshold) as? Float ?? 0.3 // 默认30%
         
         // 引导流程设置，默认为未完成
         hasCompletedOnboarding = defaults.bool(forKey: Keys.hasCompletedOnboarding)

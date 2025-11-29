@@ -49,6 +49,9 @@ class IncrementalTranscriptionManager: ObservableObject {
     private var transcriptionQueue: [UUID] = []
     private var currentTranscriptionTask: Task<Void, Never>?
     
+    // 转写完成回调：当段落转写完成时调用，参数是完整的转录文本
+    var onTranscriptionUpdated: ((String) -> Void)?
+    
     init() {}
     
     /// 添加新的音频段落
@@ -136,6 +139,10 @@ class IncrementalTranscriptionManager: ObservableObject {
                     // 通知观察者更新（在主线程）
                     await MainActor.run {
                         self.objectWillChange.send()
+                        
+                        // 触发转写更新回调，传递完整的转录文本
+                        let fullText = self.getFullTranscript()
+                        self.onTranscriptionUpdated?(fullText)
                     }
                 }
             } catch {
