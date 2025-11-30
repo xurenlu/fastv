@@ -10,9 +10,6 @@ import SwiftUI
 struct ChatSessionListView: View {
     @ObservedObject var viewModel: AIChatViewModel
     @ObservedObject private var chatManager = ChatManager.shared
-    @State private var editingSession: ChatSession?
-    @State private var editingTitle: String = ""
-    @FocusState private var isEditingTitle: Bool
     
     var body: some View {
         VStack(spacing: 0) {
@@ -63,9 +60,6 @@ struct ChatSessionListView: View {
                             ChatSessionRow(
                                 session: session,
                                 isSelected: viewModel.currentSessionId == session.id,
-                                editingSession: $editingSession,
-                                editingTitle: $editingTitle,
-                                isEditingTitle: $isEditingTitle,
                                 onSelect: {
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                         viewModel.selectSession(session)
@@ -73,9 +67,6 @@ struct ChatSessionListView: View {
                                 },
                                 onDelete: {
                                     viewModel.deleteSession(session)
-                                },
-                                onRename: { newTitle in
-                                    viewModel.updateSessionTitle(session, title: newTitle)
                                 }
                             )
                         }
@@ -92,121 +83,80 @@ struct ChatSessionListView: View {
 struct ChatSessionRow: View {
     let session: ChatSession
     let isSelected: Bool
-    @Binding var editingSession: ChatSession?
-    @Binding var editingTitle: String
-    @FocusState.Binding var isEditingTitle: Bool
     let onSelect: () -> Void
     let onDelete: () -> Void
-    let onRename: (String) -> Void
     
     @State private var isHovered = false
     @State private var showDeleteConfirmation = false
     
-    var isEditing: Bool {
-        editingSession?.id == session.id
-    }
-    
     var body: some View {
         HStack(spacing: 8) {
-            if isEditing {
-                // 编辑模式
-                TextField("会话标题", text: $editingTitle)
-                    .textFieldStyle(.plain)
-                    .focused($isEditingTitle)
-                    .onSubmit {
-                        if !editingTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            onRename(editingTitle)
-                        }
-                        editingSession = nil
-                    }
-                    .onAppear {
-                        editingTitle = session.title
-                        isEditingTitle = true
-                    }
-            } else {
-                // 显示模式
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(session.title)
-                        .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
+            // 显示模式
+            VStack(alignment: .leading, spacing: 6) {
+                Text(session.title)
+                    .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
+                    .lineLimit(1)
+                    .foregroundStyle(isSelected ? .primary : .primary)
+                
+                // 优先显示总结，如果没有总结则显示最后一条消息预览
+                if let summary = session.summary, !summary.isEmpty {
+                    Text(summary)
+                        .font(.system(size: 12))
+                        .lineLimit(2)
+                        .foregroundStyle(.secondary)
+                } else if let preview = session.lastMessagePreview {
+                    Text(preview)
+                        .font(.system(size: 12))
                         .lineLimit(1)
-                        .foregroundStyle(isSelected ? .primary : .primary)
-                    
-                    // 优先显示总结，如果没有总结则显示最后一条消息预览
-                    if let summary = session.summary, !summary.isEmpty {
-                        Text(summary)
-                            .font(.system(size: 12))
-                            .lineLimit(2)
-                            .foregroundStyle(.secondary)
-                    } else if let preview = session.lastMessagePreview {
-                        Text(preview)
-                            .font(.system(size: 12))
-                            .lineLimit(1)
+                        .foregroundStyle(.tertiary)
+                }
+                
+                HStack(spacing: 8) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.tertiary)
+                        Text(session.formattedShortDate)
+                            .font(.system(size: 10, weight: .medium))
                             .foregroundStyle(.tertiary)
                     }
                     
-                    HStack(spacing: 8) {
+                    if session.messageCount > 0 {
                         HStack(spacing: 4) {
-                            Image(systemName: "clock")
+                            Image(systemName: "message.fill")
                                 .font(.system(size: 9))
                                 .foregroundStyle(.tertiary)
-                            Text(session.formattedShortDate)
+                            Text("\(session.messageCount)")
                                 .font(.system(size: 10, weight: .medium))
                                 .foregroundStyle(.tertiary)
                         }
-                        
-                        if session.messageCount > 0 {
-                            HStack(spacing: 4) {
-                                Image(systemName: "message.fill")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(.tertiary)
-                                Text("\(session.messageCount)")
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
-                        
-                        Spacer()
                     }
-                }
-                
-                Spacer()
-                
-                // 操作按钮
-                HStack(spacing: 6) {
-                    Button(action: {
-                        editingSession = session
-                    }) {
-                        Image(systemName: "pencil")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 24, height: 24)
-                            .background {
-                                Circle()
-                                    .fill(Color.secondary.opacity(0.1))
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .opacity(isHovered ? 1.0 : 0.0)
-                    .allowsHitTesting(isHovered)
                     
-                    Button(action: {
-                        showDeleteConfirmation = true
-                    }) {
-                        Image(systemName: "trash")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.red)
-                            .frame(width: 24, height: 24)
-                            .background {
-                                Circle()
-                                    .fill(Color.red.opacity(0.1))
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .opacity(isHovered ? 1.0 : 0.0)
-                    .allowsHitTesting(isHovered)
+                    Spacer()
                 }
-                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isHovered)
             }
+            
+            Spacer()
+            
+            // 操作按钮（只保留删除按钮）
+            HStack(spacing: 6) {
+                Button(action: {
+                    showDeleteConfirmation = true
+                }) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.red)
+                        .frame(width: 24, height: 24)
+                        .background {
+                            Circle()
+                                .fill(Color.red.opacity(0.1))
+                        }
+                }
+                .buttonStyle(.plain)
+                .opacity(isHovered ? 1.0 : 0.0)
+                .allowsHitTesting(isHovered)
+            }
+            .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isHovered)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 10)
@@ -222,9 +172,7 @@ struct ChatSessionRow: View {
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            if !isEditing {
-                onSelect()
-            }
+            onSelect()
         }
         .onHover { hovering in
             withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {

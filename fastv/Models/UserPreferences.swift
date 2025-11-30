@@ -83,6 +83,16 @@ class UserPreferences: ObservableObject {
         static let aiServiceProfiles = "aiServiceProfiles"
         static let aiScenarioBindings = "aiScenarioBindings"
         static let hasMigratedAIConfig = "hasMigratedAIConfig"
+        // 邮箱相关设置
+        static let emailShowImages = "emailShowImages"
+        static let emailShowAttachments = "emailShowAttachments"
+        static let emailNotificationsEnabled = "emailNotificationsEnabled"
+        static let emailAutoReplyEnabled = "emailAutoReplyEnabled"
+        static let emailAutoReplyTemplate = "emailAutoReplyTemplate"
+        static let emailReadReceiptEnabled = "emailReadReceiptEnabled"
+        static let emailAISmartTaggingEnabled = "emailAISmartTaggingEnabled"
+        static let emailAISummaryEnabled = "emailAISummaryEnabled"
+        static let emailAIPriorityDetectionEnabled = "emailAIPriorityDetectionEnabled"
     }
     
     // MARK: - Published Properties
@@ -314,6 +324,43 @@ class UserPreferences: ObservableObject {
         }
     }
     
+    // 邮箱相关设置
+    @Published var emailShowImages: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.emailShowImages) }
+    }
+    
+    @Published var emailShowAttachments: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.emailShowAttachments) }
+    }
+    
+    @Published var emailNotificationsEnabled: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.emailNotificationsEnabled) }
+    }
+    
+    @Published var emailAutoReplyEnabled: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.emailAutoReplyEnabled) }
+    }
+    
+    @Published var emailAutoReplyTemplate: String {
+        willSet { defaults.set(newValue, forKey: Keys.emailAutoReplyTemplate) }
+    }
+    
+    @Published var emailReadReceiptEnabled: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.emailReadReceiptEnabled) }
+    }
+    
+    @Published var emailAISmartTaggingEnabled: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.emailAISmartTaggingEnabled) }
+    }
+    
+    @Published var emailAISummaryEnabled: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.emailAISummaryEnabled) }
+    }
+    
+    @Published var emailAIPriorityDetectionEnabled: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.emailAIPriorityDetectionEnabled) }
+    }
+    
     // MARK: - Initialization
     
     private init() {
@@ -516,6 +563,17 @@ class UserPreferences: ObservableObject {
         } else {
             aiScenarioBindings = []
         }
+        
+        // 邮箱设置默认值（必须在 isModelDownloaded 之前初始化）
+        emailShowImages = defaults.object(forKey: Keys.emailShowImages) as? Bool ?? false
+        emailShowAttachments = defaults.object(forKey: Keys.emailShowAttachments) as? Bool ?? false
+        emailNotificationsEnabled = defaults.object(forKey: Keys.emailNotificationsEnabled) as? Bool ?? true
+        emailAutoReplyEnabled = defaults.object(forKey: Keys.emailAutoReplyEnabled) as? Bool ?? false
+        emailAutoReplyTemplate = defaults.string(forKey: Keys.emailAutoReplyTemplate) ?? "感谢您的邮件。我会尽快回复。"
+        emailReadReceiptEnabled = defaults.object(forKey: Keys.emailReadReceiptEnabled) as? Bool ?? false
+        emailAISmartTaggingEnabled = defaults.object(forKey: Keys.emailAISmartTaggingEnabled) as? Bool ?? true
+        emailAISummaryEnabled = defaults.object(forKey: Keys.emailAISummaryEnabled) as? Bool ?? true
+        emailAIPriorityDetectionEnabled = defaults.object(forKey: Keys.emailAIPriorityDetectionEnabled) as? Bool ?? true
         
         // 检查模型是否已下载（在所有属性初始化之后）
         isModelDownloaded = defaults.object(forKey: Keys.isModelDownloaded) as? Bool ?? false

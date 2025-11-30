@@ -61,6 +61,13 @@ class AITodoViewModel: ObservableObject {
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
+        
+        // 订阅 groups 的变化，确保删除看板后视图能够刷新
+        store.$groups
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
     
     var activeTodos: [AITodoItem] {
@@ -187,7 +194,32 @@ class AITodoViewModel: ObservableObject {
     
     /// 获取指定分组的事项
     func getTodos(for group: AITodoGroup) -> [AITodoItem] {
-        let todos = store.getTodos(for: group)
+        // 首先获取所有匹配优先级和分组ID的事项
+        var todos = store.getTodos(for: group)
+        
+        // 如果分组是默认看板，也包含所有匹配优先级但groupId为nil或groupId不匹配的事项
+        if group.isDefault {
+            // 获取所有匹配优先级但groupId为nil或groupId不匹配任何分组的事项
+            let allGroupsForPriority = store.getGroups(for: group.priority)
+            let allGroupIds = Set(allGroupsForPriority.map { $0.id })
+            
+            let todosWithoutGroup = visibleActiveTodos.filter { todo in
+                todo.priority == group.priority && (todo.groupId == nil || !allGroupIds.contains(todo.groupId!))
+            }
+            // 合并并去重
+            let existingIds = Set(todos.map { $0.id })
+            let newTodos = todosWithoutGroup.filter { !existingIds.contains($0.id) }
+            todos.append(contentsOf: newTodos)
+            
+            // 为没有groupId或groupId无效的事项自动分配默认分组
+            for todo in newTodos {
+                var updated = todo
+                updated.groupId = group.id
+                updated.updatedAt = Date()
+                store.update(updated)
+            }
+        }
+        
         return todos.filter { showCompletedTodos || $0.status != .completed }
     }
     
@@ -206,17 +238,21 @@ class AITodoViewModel: ObservableObject {
         store.deleteGroup(group)
     }
     
-    /// 更新分组
+    /// 更新分组（不允许修改默认看板的名称）
     func updateGroup(_ group: AITodoGroup) {
         store.updateGroup(group)
     }
     
-    /// 重置为默认分组
+    /// 重置为默认分组（删除所有非默认看板）
     func resetToDefaultGroups(for priority: AITodoPriority) {
         let groups = getGroups(for: priority)
         for group in groups {
-            deleteGroup(group)
+            // 只删除非默认看板
+            if !group.isDefault {
+                deleteGroup(group)
+            }
         }
+        // 确保有默认看板
         _ = store.getDefaultGroups(for: priority)
     }
     

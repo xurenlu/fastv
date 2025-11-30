@@ -146,19 +146,22 @@ struct AITodoGroup: Identifiable, Codable, Equatable {
     var priority: AITodoPriority
     var order: Int
     var createdAt: Date
+    var isDefault: Bool // 是否为默认看板
     
     init(
         id: UUID = UUID(),
         name: String,
         priority: AITodoPriority,
         order: Int = 0,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        isDefault: Bool = false
     ) {
         self.id = id
         self.name = name
         self.priority = priority
         self.order = order
         self.createdAt = createdAt
+        self.isDefault = isDefault
     }
 }
 

@@ -225,9 +225,23 @@ class AIChatViewModel: ObservableObject {
             )
             chatManager.addMessage(aiMessage)
             
-            // 自动生成总结（当消息数量达到3条时）
+            // 自动生成总结和标题
             let allMessages = chatManager.getMessages(for: sessionId)
             let conversationMessages = allMessages.filter { $0.role == .user || $0.role == .assistant }
+            
+            // 计算聊天内容总长度
+            let totalLength = conversationMessages.reduce(0) { $0 + $1.content.count }
+            
+            // 检查是否需要生成标题（内容超过100字且标题还是默认的）
+            if let session = chatManager.getSession(id: sessionId),
+               session.title.hasPrefix("新对话") && totalLength >= 100 {
+                // 异步生成标题，不阻塞UI
+                Task {
+                    await generateSessionTitle(sessionId: sessionId)
+                }
+            }
+            
+            // 当消息数量达到3条时生成总结
             if conversationMessages.count >= 3 {
                 // 异步生成总结，不阻塞UI
                 Task {
@@ -463,6 +477,34 @@ class AIChatViewModel: ObservableObject {
     }
     
     // MARK: - Summary Generation
+    
+    /// 生成会话标题
+    /// 注意：标题使用的模型与聊天使用的模型相同（selectedModel 或默认的 aiModel）
+    private func generateSessionTitle(sessionId: UUID) async {
+        let messages = chatManager.getMessages(for: sessionId)
+        guard !messages.isEmpty else { return }
+        
+        // 获取API配置
+        let preferences = UserPreferences.shared
+        let config = preferences.getConfig(for: .aiChat)
+        let model = selectedModel.isEmpty ? config.model : selectedModel
+        
+        do {
+            let title = try await chatService.generateTitle(
+                messages: messages,
+                profile: config.profile,
+                model: model,
+                timeout: config.timeout
+            )
+            
+            // 更新会话标题
+            chatManager.updateSessionTitle(sessionId, title: title)
+            print("✅ [AIChatViewModel] 会话标题生成成功: \(title)")
+        } catch {
+            print("❌ [AIChatViewModel] 生成会话标题失败: \(error.localizedDescription)")
+            // 标题生成失败不影响正常使用，静默处理
+        }
+    }
     
     /// 生成会话总结
     /// 注意：总结使用的模型与聊天使用的模型相同（selectedModel 或默认的 aiModel）

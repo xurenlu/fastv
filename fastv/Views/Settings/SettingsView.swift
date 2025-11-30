@@ -19,6 +19,7 @@ struct SettingsView: View {
         case quick = "快速配置"
         case aiModel = "AI与模型"
         case meeting = "会议与录音"
+        case email = "邮箱"
         case data = "数据与其他"
         
         var id: String { rawValue }
@@ -28,6 +29,7 @@ struct SettingsView: View {
             case .quick: return "bolt.fill"
             case .aiModel: return "cpu"
             case .meeting: return "waveform"
+            case .email: return "envelope.fill"
             case .data: return "folder.fill"
             }
         }
@@ -54,6 +56,8 @@ struct SettingsView: View {
                             AIModelSettingsTab()
                         case .meeting:
                             MeetingRecordingSettingsTab()
+                        case .email:
+                            EmailSettingsTab()
                         case .data:
                             DataOtherSettingsTab()
                         }

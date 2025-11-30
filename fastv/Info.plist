@@ -12,8 +12,8 @@
 	<string>妙打 需要访问您的麦克风以进行语音输入和语音转文字功能。</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>妙打 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。</string>
-	<key>NSRemindersUsageDescription</key>
-	<string>妙打 需要访问您的提醒事项以同步待办事项到 AI Todo 功能中。</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>妙打 需要访问您的提醒事项以同步待办事项到 AI Todo 功能中。应用只会读取未完成的提醒事项，不会修改或删除您的提醒事项。</string>
 </dict>
 </plist>
 

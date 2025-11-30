@@ -17,6 +17,7 @@ enum SidebarItem: String, Identifiable, CaseIterable {
     case videoProcessing = "视频处理"
     case videoSceneAnalysis = "视频场景分析"
     case aiChat = "AI Chat"
+    case email = "邮箱"
     
     var id: String { rawValue }
     
@@ -36,6 +37,8 @@ enum SidebarItem: String, Identifiable, CaseIterable {
             return "checklist"
         case .aiChat:
             return "message.fill"
+        case .email:
+            return "envelope.fill"
         }
     }
 }
@@ -137,6 +140,16 @@ struct ContentView: View {
                             }
                     case .aiChat:
                         AIChatView()
+                            .toolbar {
+                                ToolbarItem(placement: .automatic) {
+                                    Button(action: { showSettings = true }) {
+                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                                    }
+                                    .help(NSLocalizedString("settings", comment: ""))
+                                }
+                            }
+                    case .email:
+                        EmailView()
                             .toolbar {
                                 ToolbarItem(placement: .automatic) {
                                     Button(action: { showSettings = true }) {

@@ -17,6 +17,15 @@
 	<!-- 用户选择的文件写入权限 - 用于保存文件到用户选择的位置 -->
 	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
+	<!-- 提醒事项访问权限 - 用于同步系统提醒事项 -->
+	<key>com.apple.security.personal-information.reminders</key>
+	<true/>
+	<!-- 日历访问权限 - EventKit 可能需要访问日历服务 -->
+	<key>com.apple.security.personal-information.calendars</key>
+	<true/>
+	<!-- 地址簿访问权限 - EventKit 可能需要访问地址簿 -->
+	<key>com.apple.security.personal-information.addressbook</key>
+	<true/>
 	<!-- Debug模式权限 - 仅在Debug构建时使用 -->
 	<key>com.apple.security.get-task-allow</key>
 	<true/>

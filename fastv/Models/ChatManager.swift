@@ -163,6 +163,19 @@ class ChatManager: ObservableObject {
         scheduleSave()
     }
     
+    /// 更新会话标题
+    func updateSessionTitle(_ sessionId: UUID, title: String) {
+        guard let index = sessions.firstIndex(where: { $0.id == sessionId }) else {
+            return
+        }
+        
+        var updatedSession = sessions[index]
+        updatedSession.title = title
+        updatedSession.updatedAt = Date()
+        sessions[index] = updatedSession
+        scheduleSave()
+    }
+    
     /// 清空会话的所有消息
     func clearMessages(for sessionId: UUID) {
         messages[sessionId] = []

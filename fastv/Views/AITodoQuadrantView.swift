@@ -174,7 +174,7 @@ struct QuadrantCell: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.clear)
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal, showsIndicators: true) {
                     HStack(alignment: .top, spacing: 12) {
                         ForEach(groups) { group in
                             KanbanColumnView(
@@ -185,6 +185,28 @@ struct QuadrantCell: View {
                             )
                             .frame(width: 280)
                         }
+                        
+                        // 添加看板按钮
+                        Button(action: {
+                            showCreateGroupDialog = true
+                        }) {
+                            VStack(spacing: 8) {
+                                Image(systemName: "plus.circle")
+                                    .font(.system(size: 24))
+                                    .foregroundStyle(color)
+                                Text("添加看板")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(width: 280, height: 100)
+                            .background(Color(NSColor.controlBackgroundColor))
+                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .strokeBorder(color.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [5, 3]))
+                            }
+                        }
+                        .buttonStyle(.plain)
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 8)
@@ -580,6 +602,9 @@ struct KanbanColumnView: View {
     let targetPriority: AITodoPriority
     
     @State private var isDragOver = false
+    @State private var isEditing = false
+    @State private var editingName = ""
+    @State private var showDeleteAlert = false
     
     var todos: [AITodoItem] {
         viewModel.getTodos(for: group)
@@ -589,11 +614,38 @@ struct KanbanColumnView: View {
         VStack(alignment: .leading, spacing: 0) {
             // 列标题
             HStack {
-                Text(group.name)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.primary)
+                if isEditing && !group.isDefault {
+                    TextField("看板名称", text: $editingName)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12, weight: .semibold))
+                        .onSubmit {
+                            saveEdit()
+                        }
+                } else {
+                    Text(group.name)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .onTapGesture(count: 2) {
+                            if !group.isDefault {
+                                startEdit()
+                            }
+                        }
+                }
                 
                 Spacer()
+                
+                // 删除按钮（非默认看板）
+                if !group.isDefault && !isEditing {
+                    Button(action: {
+                        showDeleteAlert = true
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("删除看板")
+                }
                 
                 Text("\(todos.count)")
                     .font(.system(size: 11, weight: .medium))
@@ -655,6 +707,37 @@ struct KanbanColumnView: View {
             }
             return true
         }
+        .alert("删除看板", isPresented: $showDeleteAlert) {
+            Button("取消", role: .cancel) {}
+            Button("删除", role: .destructive) {
+                deleteGroup()
+            }
+        } message: {
+            Text("确定要删除看板「\(group.name)」吗？该看板中的事项将移动到默认看板。")
+        }
+    }
+    
+    private func startEdit() {
+        editingName = group.name
+        isEditing = true
+    }
+    
+    private func saveEdit() {
+        if !editingName.isEmpty && editingName != group.name {
+            var updated = group
+            updated.name = editingName
+            viewModel.updateGroup(updated)
+        }
+        isEditing = false
+    }
+    
+    private func cancelEdit() {
+        isEditing = false
+        editingName = ""
+    }
+    
+    private func deleteGroup() {
+        viewModel.deleteGroup(group)
     }
     
     @MainActor
@@ -703,30 +786,44 @@ struct KanbanTodoCard: View {
     @State private var dragResetTask: Task<Void, Never>?
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // 标题
-            Text(todo.title)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(.primary)
-                .lineLimit(2)
-            
-            // 描述
-            if let description = todo.description, !description.isEmpty {
-                Text(description)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+        HStack(alignment: .top, spacing: 8) {
+            // 完成状态复选框
+            Button(action: {
+                viewModel.toggleTodoCompletion(todo)
+            }) {
+                Image(systemName: todo.status == .completed ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 14))
+                    .foregroundStyle(todo.status == .completed ? .green : .secondary)
             }
+            .buttonStyle(.plain)
+            .help(todo.status == .completed ? NSLocalizedString("mark.as.pending", comment: "标记为待完成") : NSLocalizedString("mark.as.completed", comment: "标记为已完成"))
             
-            // 截止时间
-            if let dueDate = todo.dueDate {
-                HStack(spacing: 4) {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 9))
-                    Text(formatDate(dueDate))
-                        .font(.system(size: 10))
+            // 内容
+            VStack(alignment: .leading, spacing: 6) {
+                // 标题
+                Text(todo.title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                
+                // 描述
+                if let description = todo.description, !description.isEmpty {
+                    Text(description)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
                 }
-                .foregroundStyle(todo.isOverdue ? .red : .secondary)
+                
+                // 截止时间
+                if let dueDate = todo.dueDate {
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 9))
+                        Text(formatDate(dueDate))
+                            .font(.system(size: 10))
+                    }
+                    .foregroundStyle(todo.isOverdue ? .red : .secondary)
+                }
             }
         }
         .padding(10)

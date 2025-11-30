@@ -211,15 +211,20 @@ class AITodoStore: ObservableObject {
         return newGroup
     }
     
-    /// 删除分组
+    /// 删除分组（不允许删除默认看板）
     func deleteGroup(_ group: AITodoGroup) {
-        // 将该分组下的所有事项移到第一个默认分组
-        let defaultGroups = getDefaultGroups(for: group.priority)
-        let targetGroupId = defaultGroups.first?.id
+        // 不允许删除默认看板
+        guard !group.isDefault else {
+            print("⚠️ [AITodoStore] 不允许删除默认看板")
+            return
+        }
         
-        for index in activeTodos.indices {
-            if activeTodos[index].groupId == group.id {
-                activeTodos[index].groupId = targetGroupId
+        // 将该分组下的所有事项移到默认看板
+        if let defaultGroup = getDefaultGroup(for: group.priority) {
+            for index in activeTodos.indices {
+                if activeTodos[index].groupId == group.id {
+                    activeTodos[index].groupId = defaultGroup.id
+                }
             }
         }
         
@@ -228,38 +233,50 @@ class AITodoStore: ObservableObject {
         scheduleSave()
     }
     
-    /// 更新分组
+    /// 更新分组（不允许修改默认看板的名称）
     func updateGroup(_ group: AITodoGroup) {
         if let index = groups.firstIndex(where: { $0.id == group.id }) {
-            groups[index] = group
+            var updatedGroup = group
+            // 如果是默认看板，保持名称和 isDefault 属性不变
+            if groups[index].isDefault {
+                updatedGroup.name = "默认"
+                updatedGroup.isDefault = true
+            }
+            groups[index] = updatedGroup
             scheduleSaveGroups()
         }
     }
     
-    /// 获取默认分组（待办、进行中、已完成）
+    /// 获取默认分组（只有一个"默认"看板）
     func getDefaultGroups(for priority: AITodoPriority) -> [AITodoGroup] {
-        let existingGroups = getGroups(for: priority)
-        if !existingGroups.isEmpty {
-            return existingGroups
+        // 先查找是否已有默认看板
+        if let existingDefault = groups.first(where: { $0.priority == priority && $0.isDefault }) {
+            return [existingDefault]
         }
         
-        // 创建默认分组
-        let defaultGroups = [
-            AITodoGroup(name: "待办", priority: priority, order: 0),
-            AITodoGroup(name: "进行中", priority: priority, order: 1),
-            AITodoGroup(name: "已完成", priority: priority, order: 2)
-        ]
+        // 如果没有，创建默认看板
+        let defaultGroup = AITodoGroup(
+            name: "默认",
+            priority: priority,
+            order: 0,
+            isDefault: true
+        )
         
-        groups.append(contentsOf: defaultGroups)
+        groups.append(defaultGroup)
         scheduleSaveGroups()
-        return defaultGroups
+        return [defaultGroup]
+    }
+    
+    /// 获取默认看板（单个）
+    func getDefaultGroup(for priority: AITodoPriority) -> AITodoGroup? {
+        return groups.first(where: { $0.priority == priority && $0.isDefault })
     }
     
     /// 初始化默认分组（如果不存在）
     private func initializeDefaultGroupsIfNeeded() {
         for priority in AITodoPriority.allCases {
-            let existingGroups = getGroups(for: priority)
-            if existingGroups.isEmpty {
+            // 确保每个优先级都有一个默认看板
+            if groups.first(where: { $0.priority == priority && $0.isDefault }) == nil {
                 _ = getDefaultGroups(for: priority)
             }
         }
@@ -336,7 +353,38 @@ class AITodoStore: ObservableObject {
         if let data = UserDefaults.standard.data(forKey: groupsKey),
            let decoded = try? JSONDecoder().decode([AITodoGroup].self, from: data) {
             groups = decoded
+            // 数据迁移：确保每个优先级都有一个默认看板
+            migrateGroupsIfNeeded()
         }
+    }
+    
+    /// 迁移旧数据：确保每个优先级都有一个默认看板
+    private func migrateGroupsIfNeeded() {
+        for priority in AITodoPriority.allCases {
+            let groupsForPriority = groups.filter { $0.priority == priority }
+            
+            // 如果没有默认看板，将第一个看板设为默认，或者创建新的默认看板
+            if !groupsForPriority.contains(where: { $0.isDefault }) {
+                if let firstGroup = groupsForPriority.first {
+                    // 如果第一个看板名为"待办"或"默认"，将其设为默认看板
+                    if firstGroup.name == "待办" || firstGroup.name == "默认" {
+                        if let index = groups.firstIndex(where: { $0.id == firstGroup.id }) {
+                            var updated = groups[index]
+                            updated.isDefault = true
+                            updated.name = "默认"
+                            groups[index] = updated
+                        }
+                    } else {
+                        // 否则创建新的默认看板
+                        _ = getDefaultGroups(for: priority)
+                    }
+                } else {
+                    // 没有任何看板，创建默认看板
+                    _ = getDefaultGroups(for: priority)
+                }
+            }
+        }
+        scheduleSaveGroups()
     }
 }
 
