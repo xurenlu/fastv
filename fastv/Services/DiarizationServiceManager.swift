@@ -132,10 +132,16 @@ class DiarizationServiceManager {
         process.terminate()
         
         // 等待进程结束（最多等待 5 秒）
+        // 使用异步方式等待，避免阻塞线程
         let timeout: TimeInterval = 5.0
         let startTime = Date()
-        while process.isRunning && Date().timeIntervalSince(startTime) < timeout {
-            Thread.sleep(forTimeInterval: 0.1)
+        
+        // 使用 RunLoop 而不是 Thread.sleep，避免阻塞
+        let runLoop = RunLoop.current
+        let timeoutDate = Date(timeIntervalSinceNow: timeout)
+        
+        while process.isRunning && Date() < timeoutDate {
+            runLoop.run(mode: .default, before: Date(timeIntervalSinceNow: 0.1))
         }
         
         // 如果还在运行，强制终止

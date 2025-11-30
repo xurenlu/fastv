@@ -173,19 +173,14 @@ class VideoSceneAnalysisViewModel: ObservableObject {
                 
             case .aiPowered:
                 // AI 智能分析
-                guard !preferences.aiAPIEndpoint.isEmpty else {
-                    errorMessage = "请先在设置中配置 AI API 端点"
-                    isAnalyzing = false
-                    return
-                }
+                let config = preferences.getConfig(for: .videoAnalysis)
                 
                 let aiPoints = try await AISceneAnalyzer.analyzeSceneChanges(
                     from: videoURL,
                     frameRate: videoInfo.frameRate,
                     visionModel: visionModel,
                     textModel: textModel,
-                    endpoint: preferences.aiAPIEndpoint,
-                    apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken,
+                    profile: config.profile,
                     frameInterval: frameInterval,
                     audioSegmentDuration: audioSegmentDuration,
                     extractThumbnails: extractThumbnails,
@@ -233,7 +228,8 @@ class VideoSceneAnalysisViewModel: ObservableObject {
                 )
                 
                 // 第二步：用AI分析候选点
-                if !traditionalPoints.isEmpty && !preferences.aiAPIEndpoint.isEmpty {
+                if !traditionalPoints.isEmpty {
+                    let config = preferences.getConfig(for: .videoAnalysis)
                     progressHandler(0.4, "第二步：AI深度分析候选点...")
                     // 简化版：只分析前几个候选点
                     let candidatePoints = Array(traditionalPoints.prefix(min(10, traditionalPoints.count)))
@@ -249,9 +245,8 @@ class VideoSceneAnalysisViewModel: ObservableObject {
                             if let description = try? await OllamaService.shared.analyzeImage(
                                 image: frameImage,
                                 prompt: "请描述这张图片中的场景和主要变化。",
-                                endpoint: preferences.aiAPIEndpoint,
+                                profile: config.profile,
                                 model: visionModel,
-                                apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken,
                                 timeout: 15.0
                             ) {
                                 let refinedPoint = SceneChangePoint(
@@ -435,9 +430,16 @@ class VideoSceneAnalysisViewModel: ObservableObject {
             // 加载视频
             loadVideo(downloadedURL)
             
-            // 等待视频信息加载完成
-            while videoInfo == nil && errorMessage == nil {
+            // 等待视频信息加载完成（最多等待 30 秒，避免无限等待）
+            let maxWaitTime: TimeInterval = 30.0
+            let startTime = Date()
+            while videoInfo == nil && errorMessage == nil && Date().timeIntervalSince(startTime) < maxWaitTime {
                 try await Task.sleep(nanoseconds: 100_000_000) // 等待0.1秒
+            }
+            
+            // 如果超时仍未加载完成，设置错误信息
+            if videoInfo == nil && errorMessage == nil {
+                errorMessage = "视频信息加载超时"
             }
             
             if videoInfo != nil {
