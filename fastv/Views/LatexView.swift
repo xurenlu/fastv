@@ -134,6 +134,9 @@ struct LatexWebView: NSViewRepresentable {
         webView.allowsMagnification = false
         webView.allowsBackForwardNavigationGestures = false
         
+        // 启用文本选择
+        webView.configuration.preferences.isTextInteractionEnabled = true
+        
         if isTransparentBackground {
             webView.setValue(true, forKey: "drawsTransparentBackground")
         }
@@ -223,10 +226,14 @@ struct LatexWebView: NSViewRepresentable {
                     font-size: \(isInline ? "1.1em" : "1.2em");
                     line-height: 1.4;
                     overflow: hidden;
+                    -webkit-user-select: text;
+                    user-select: text;
                 }
                 #content {
                     text-align: left;
                     white-space: normal;
+                    -webkit-user-select: text;
+                    user-select: text;
                 }
                 .katex-display {
                     text-align: center;

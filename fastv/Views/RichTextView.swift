@@ -57,6 +57,15 @@ struct RichTextSwiftUIView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
             .multilineTextAlignment(.leading)
+            .textSelection(.enabled)
+            .contextMenu {
+                Button("复制") {
+                    let pasteboard = NSPasteboard.general
+                    pasteboard.clearContents()
+                    pasteboard.setString(text, forType: .string)
+                }
+                .keyboardShortcut("c", modifiers: .command)
+            }
     }
     
     private func buildAttributedString(from components: [TextComponent]) -> AttributedString {
@@ -193,6 +202,9 @@ struct RichTextWebViewRepresentable: NSViewRepresentable {
         webView.allowsMagnification = false
         webView.allowsBackForwardNavigationGestures = false
         
+        // 启用文本选择
+        webView.configuration.preferences.isTextInteractionEnabled = true
+        
         if isTransparentBackground {
             webView.setValue(true, forKey: "drawsTransparentBackground")
         }
@@ -326,11 +338,15 @@ struct RichTextWebViewRepresentable: NSViewRepresentable {
                     line-height: 1.4;
                     font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif;
                     overflow: visible;
+                    -webkit-user-select: text;
+                    user-select: text;
                 }
                 #content {
                     text-align: left;
                     white-space: normal;
                     word-wrap: break-word;
+                    -webkit-user-select: text;
+                    user-select: text;
                 }
                 a { color: #1a73e8; text-decoration: underline; }
                 .katex { font-size: 1em; line-height: 1.2; display: inline; }

@@ -37,16 +37,16 @@ struct ChatMessageView: View {
                 
                 // 消息文本内容（Markdown 渲染）
                 if !parsedElements.isEmpty {
-                    VStack(alignment: message.isUserMessage ? .trailing : .leading, spacing: 8) {
+                    VStack(alignment: message.isUserMessage ? .trailing : .leading, spacing: 12) {
                         ForEach(Array(parsedElements.enumerated()), id: \.offset) { index, element in
                             MarkdownElementView(element: element, isTransparentBackground: false)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background {
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(message.isUserMessage ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.1))
-                                }
                         }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(message.isUserMessage ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.1))
                     }
                 } else if !message.content.isEmpty {
                     // 未解析时显示原始文本
@@ -89,6 +89,12 @@ struct ChatMessageView: View {
                 Spacer(minLength: 60)
             }
         }
+        .background(
+            // 使用透明背景扩展 hover 区域，包括整个消息区域
+            Rectangle()
+                .fill(Color.clear)
+                .contentShape(Rectangle())
+        )
         .onHover { hovering in
             // 使用 DispatchQueue 延迟状态更新，避免在视图更新期间修改状态
             DispatchQueue.main.async {
@@ -186,8 +192,17 @@ struct ChatMessageView: View {
             copyButton(originalText: message.content)
                 .opacity(isHovered ? 1.0 : 0.0)
                 .animation(.easeInOut(duration: 0.2), value: isHovered)
+                .allowsHitTesting(isHovered) // 只在可见时允许点击
         }
         .frame(width: 32, height: 40) // 固定高度避免约束变化
+        .onHover { hovering in
+            // 在头像区域也保持 hover 状态
+            DispatchQueue.main.async {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isHovered = hovering
+                }
+            }
+        }
     }
     
     /// 用户头像视图
@@ -204,8 +219,17 @@ struct ChatMessageView: View {
             copyButton(originalText: message.content)
                 .opacity(isHovered ? 1.0 : 0.0)
                 .animation(.easeInOut(duration: 0.2), value: isHovered)
+                .allowsHitTesting(isHovered) // 只在可见时允许点击
         }
         .frame(width: 32, height: 40) // 固定高度避免约束变化
+        .onHover { hovering in
+            // 在头像区域也保持 hover 状态
+            DispatchQueue.main.async {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isHovered = hovering
+                }
+            }
+        }
     }
     
     /// 根据模型名生成头像

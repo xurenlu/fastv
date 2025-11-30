@@ -888,6 +888,178 @@ class ChatAIService {
         print("✅ [ChatAIService] 总结生成成功: \(summaryText)")
         return summaryText
     }
+    
+    /// 生成聊天会话标题（使用新的配置系统）
+    /// - Parameters:
+    ///   - messages: 会话消息列表
+    ///   - profile: AI 服务配置
+    ///   - model: 模型名称（覆盖 profile 默认模型）
+    ///   - timeout: 超时时间（覆盖 profile 默认超时）
+    /// - Returns: 生成的标题文本
+    func generateTitle(
+        messages: [ChatMessage],
+        profile: AIServiceProfile,
+        model: String? = nil,
+        timeout: Double? = nil
+    ) async throws -> String {
+        let effectiveModel = model ?? profile.defaultModel
+        let effectiveTimeout = timeout ?? profile.timeout
+        
+        return try await generateTitleLegacy(
+            messages: messages,
+            endpoint: profile.effectiveEndpoint,
+            model: effectiveModel,
+            apiToken: profile.apiKey.isEmpty ? nil : profile.apiKey,
+            timeout: effectiveTimeout
+        )
+    }
+    
+    /// 生成聊天会话标题（旧版兼容方法）
+    /// - Parameters:
+    ///   - messages: 会话消息列表
+    ///   - endpoint: API 端点
+    ///   - model: 模型名称
+    ///   - apiToken: API Token（可选）
+    ///   - timeout: 超时时间
+    /// - Returns: 生成的标题文本
+    func generateTitleLegacy(
+        messages: [ChatMessage],
+        endpoint: String,
+        model: String,
+        apiToken: String?,
+        timeout: TimeInterval = 30.0
+    ) async throws -> String {
+        print("📝 [ChatAIService] 开始生成聊天标题，消息数量: \(messages.count)")
+        
+        // 只使用用户和助手消息，过滤掉系统消息
+        let conversationMessages = messages.filter { $0.role == .user || $0.role == .assistant }
+        
+        guard !conversationMessages.isEmpty else {
+            throw ChatAIError.invalidResponse
+        }
+        
+        // 构建对话内容（限制长度，避免token过多）
+        var conversationText = ""
+        let maxMessages = min(conversationMessages.count, 10)  // 最多使用10条消息
+        let recentMessages = Array(conversationMessages.suffix(maxMessages))
+        
+        for message in recentMessages {
+            let role = message.role == .user ? "用户" : "助手"
+            let content = message.content.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !content.isEmpty {
+                conversationText += "\(role): \(content)\n\n"
+            }
+        }
+        
+        // 构建标题生成提示词
+        let titlePrompt = """
+请为以下对话生成一个简洁的标题（10-30个字符），准确概括对话的核心主题：
+
+\(conversationText)
+
+标题（只返回标题，不要添加任何说明或引号）：
+"""
+        
+        // 构建 URL
+        let url = try AITodoAIService.buildAPIURL(endpoint: endpoint)
+        
+        // 检测 API 类型
+        let apiType = AITodoAIService.detectAPIType(endpoint: endpoint)
+        
+        // 构建请求体
+        let requestBody: [String: Any]
+        
+        if apiType == .openAI {
+            requestBody = [
+                "model": model,
+                "messages": [
+                    [
+                        "role": "user",
+                        "content": titlePrompt
+                    ]
+                ],
+                "temperature": 0.3,
+                "top_p": 0.9,
+                "max_tokens": 50  // 限制输出长度
+            ]
+        } else {
+            requestBody = [
+                "model": model,
+                "prompt": titlePrompt,
+                "stream": false,
+                "options": [
+                    "temperature": 0.3,
+                    "top_p": 0.9,
+                    "num_predict": 50  // Ollama 限制输出长度
+                ]
+            ]
+        }
+        
+        // 构建请求
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        if let token = apiToken, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        request.timeoutInterval = timeout
+        
+        print("📝 [ChatAIService] 发送标题生成请求...")
+        
+        // 发送请求
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        // 检查响应状态
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ChatAIError.invalidResponse
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "未知错误"
+            print("❌ [ChatAIService] 标题生成失败: \(errorMessage)")
+            throw ChatAIError.requestFailed(httpResponse.statusCode, errorMessage)
+        }
+        
+        // 解析响应
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw ChatAIError.invalidResponse
+        }
+        
+        let titleText: String
+        
+        if apiType == .openAI {
+            if let choices = json["choices"] as? [[String: Any]],
+               let firstChoice = choices.first,
+               let message = firstChoice["message"] as? [String: Any],
+               let content = message["content"] as? String {
+                titleText = content.trimmingCharacters(in: .whitespacesAndNewlines)
+            } else {
+                throw ChatAIError.invalidResponse
+            }
+        } else {
+            guard let responseText = json["response"] as? String else {
+                throw ChatAIError.invalidResponse
+            }
+            titleText = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
+        // 清理标题：移除可能的引号、换行等
+        let cleanedTitle = titleText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\"", with: "")
+            .replacingOccurrences(of: "'", with: "")
+            .replacingOccurrences(of: "\n", with: "")
+            .replacingOccurrences(of: "\r", with: "")
+        
+        // 限制标题长度（最多30个字符）
+        let finalTitle = String(cleanedTitle.prefix(30))
+        
+        print("✅ [ChatAIService] 标题生成成功: \(finalTitle)")
+        return finalTitle
+    }
 }
 
 

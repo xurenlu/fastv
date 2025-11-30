@@ -49,6 +49,15 @@ struct MarkdownElementView: View {
                 .foregroundColor(textColor)
                 .padding(.vertical, 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
+                .contextMenu {
+                    Button("复制") {
+                        let pasteboard = NSPasteboard.general
+                        pasteboard.clearContents()
+                        pasteboard.setString(element.content, forType: .string)
+                    }
+                    .keyboardShortcut("c", modifiers: .command)
+                }
                 
         case .paragraph:
             RichTextView(text: element.content, isTransparentBackground: isTransparentBackground)
@@ -57,46 +66,13 @@ struct MarkdownElementView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 
         case .codeBlock(let language):
-            VStack(alignment: .leading, spacing: 4) {
-                if let lang = language, !lang.isEmpty, !isTransparentBackground {
-                    HStack {
-                        Image(systemName: "chevron.left.forwardslash.chevron.right")
-                            .font(.caption)
-                            .foregroundColor(.blue)
-                        Text(lang.capitalized)
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.blue)
-                        Spacer()
-                        
-                        Button(action: {
-                            copyToClipboard(element.content)
-                        }) {
-                            Image(systemName: "doc.on.doc")
-                                .font(.caption)
-                                .foregroundColor(secondaryTextColor)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.blue.opacity(0.1))
-                }
-                
-                Text(element.content)
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundColor(codeTextColor)
-                    .padding()
-                    .background(elementBackground)
-                    .cornerRadius(language != nil ? 0 : 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .background(elementBackground)
-            .cornerRadius(8)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(secondaryTextColor.opacity(0.3), lineWidth: 1)
+            MarkdownCodeBlockView(
+                code: element.content,
+                language: language,
+                isTransparentBackground: isTransparentBackground,
+                elementBackground: self.elementBackground,
+                secondaryTextColor: self.secondaryTextColor,
+                codeTextColor: self.codeTextColor
             )
             
         case .bulletList, .numberedList:
@@ -138,6 +114,15 @@ struct MarkdownElementView: View {
                     .foregroundColor(textColor)
                     .italic()
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+                    .contextMenu {
+                        Button("复制") {
+                            let pasteboard = NSPasteboard.general
+                            pasteboard.clearContents()
+                            pasteboard.setString(element.content, forType: .string)
+                        }
+                        .keyboardShortcut("c", modifiers: .command)
+                    }
             }
             .padding(.vertical, 4)
             .padding(.horizontal, 12)
@@ -169,6 +154,20 @@ struct MarkdownElementView: View {
                     .underline()
             }
             .buttonStyle(PlainButtonStyle())
+            .textSelection(.enabled)
+            .contextMenu {
+                Button("复制链接") {
+                    let pasteboard = NSPasteboard.general
+                    pasteboard.clearContents()
+                    pasteboard.setString(url, forType: .string)
+                }
+                .keyboardShortcut("c", modifiers: .command)
+                
+                Button("打开链接") {
+                    if let u = URL(string: url) { NSWorkspace.shared.open(u) }
+                }
+                .keyboardShortcut("o", modifiers: .command)
+            }
         }
     }
     
@@ -181,6 +180,93 @@ struct MarkdownElementView: View {
         case 5: return .headline
         default: return .subheadline
         }
+    }
+    
+    private func copyToClipboard(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+    }
+}
+
+// MARK: - 代码块视图（带复制反馈）
+
+struct MarkdownCodeBlockView: View {
+    let code: String
+    let language: String?
+    let isTransparentBackground: Bool
+    let elementBackground: Color
+    let secondaryTextColor: Color
+    let codeTextColor: Color
+    
+    @State private var showCopySuccess = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let lang = language, !lang.isEmpty, !isTransparentBackground {
+                HStack {
+                    Image(systemName: "chevron.left.forwardslash.chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    Text(lang.capitalized)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.blue)
+                    Spacer()
+                    
+                    Button(action: {
+                        copyToClipboard(code)
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showCopySuccess = true
+                        }
+                        // 1.5秒后恢复图标
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showCopySuccess = false
+                            }
+                        }
+                    }) {
+                        Image(systemName: showCopySuccess ? "checkmark" : "doc.on.doc")
+                            .font(.caption)
+                            .foregroundColor(showCopySuccess ? .green : secondaryTextColor)
+                            .frame(width: 20, height: 20)
+                            .background(
+                                Circle()
+                                    .fill(showCopySuccess ? Color.green.opacity(0.1) : Color.clear)
+                            )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help(showCopySuccess ? "已复制" : "复制代码")
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.blue.opacity(0.1))
+            }
+            
+            Text(code)
+                .font(.system(.body, design: .monospaced))
+                .foregroundColor(codeTextColor)
+                .padding()
+                .background(elementBackground)
+                .cornerRadius(language != nil ? 0 : 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+                .contextMenu {
+                    Button("复制") {
+                        let pasteboard = NSPasteboard.general
+                        pasteboard.clearContents()
+                        pasteboard.setString(code, forType: .string)
+                    }
+                    .keyboardShortcut("c", modifiers: .command)
+                }
+        }
+        .background(elementBackground)
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(secondaryTextColor.opacity(0.3), lineWidth: 1)
+        )
     }
     
     private func copyToClipboard(_ text: String) {
@@ -260,6 +346,15 @@ struct TableView: View {
                         .padding(8)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(isTransparentBackground ? Color.white.opacity(0.1) : Color.secondary.opacity(0.1))
+                        .textSelection(.enabled)
+                        .contextMenu {
+                            Button("复制") {
+                                let pasteboard = NSPasteboard.general
+                                pasteboard.clearContents()
+                                pasteboard.setString(header, forType: .string)
+                            }
+                            .keyboardShortcut("c", modifiers: .command)
+                        }
                     
                     if index < headers.count - 1 {
                         Divider()
@@ -276,6 +371,15 @@ struct TableView: View {
                             .foregroundColor(isTransparentBackground ? .white.opacity(0.9) : .primary)
                             .padding(8)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                            .contextMenu {
+                                Button("复制") {
+                                    let pasteboard = NSPasteboard.general
+                                    pasteboard.clearContents()
+                                    pasteboard.setString(cell, forType: .string)
+                                }
+                                .keyboardShortcut("c", modifiers: .command)
+                            }
                         
                         if colIndex < row.count - 1 {
                             Divider()
