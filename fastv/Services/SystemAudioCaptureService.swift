@@ -31,11 +31,14 @@ class SystemAudioCaptureService: ObservableObject {
     private let blackHoleDeviceName = "BlackHole"
     
     private init() {
-        checkBlackHoleAvailability()
+        // 延迟异步检查，避免在视图更新期间执行阻塞操作
+        Task { @MainActor in
+            await checkBlackHoleAvailability()
+        }
     }
     
-    /// 检查 BlackHole 是否可用
-    func checkBlackHoleAvailability() {
+    /// 检查 BlackHole 是否可用（异步版本）
+    func checkBlackHoleAvailability() async {
         // macOS 上检查音频设备的方法
         // 注意：macOS 上 AVAudioSession 的行为与 iOS 不同，这里使用简化方法
         
@@ -45,33 +48,41 @@ class SystemAudioCaptureService: ObservableObject {
         let inputFormat = inputNode.inputFormat(forBus: 0)
         
         // 方法 2：通过系统命令检查（更可靠）
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
-        process.arguments = ["SPAudioDataType"]
-        
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        
-        do {
-            try process.run()
-            process.waitUntilExit()
+        // 在后台队列执行阻塞操作，避免阻塞主线程
+        let result = await Task.detached(priority: .userInitiated) {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
+            process.arguments = ["SPAudioDataType"]
             
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            if let output = String(data: data, encoding: .utf8) {
-                let hasBlackHole = output.contains(blackHoleDeviceName) || output.contains("BlackHole")
-                isBlackHoleAvailable = hasBlackHole
-            } else {
-                isBlackHoleAvailable = false
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            
+            do {
+                try process.run()
+                process.waitUntilExit()
+                
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                if let output = String(data: data, encoding: .utf8) {
+                    let hasBlackHole = output.contains("BlackHole") || output.contains("blackHole")
+                    return hasBlackHole
+                } else {
+                    return false
+                }
+            } catch {
+                // 如果检查失败，假设未安装
+                return false
             }
-        } catch {
-            // 如果检查失败，假设未安装
-            isBlackHoleAvailable = false
-        }
+        }.value
         
-        if isBlackHoleAvailable {
-            print("✅ [SystemAudioCapture] 检测到 BlackHole 虚拟音频设备")
-        } else {
-            print("⚠️ [SystemAudioCapture] 未检测到 BlackHole 虚拟音频设备")
+        // 在主线程更新状态
+        await MainActor.run {
+            isBlackHoleAvailable = result
+            
+            if isBlackHoleAvailable {
+                print("✅ [SystemAudioCapture] 检测到 BlackHole 虚拟音频设备")
+            } else {
+                print("⚠️ [SystemAudioCapture] 未检测到 BlackHole 虚拟音频设备")
+            }
         }
     }
     
@@ -84,7 +95,7 @@ class SystemAudioCaptureService: ObservableObject {
         }
         
         // 检查 BlackHole 是否可用
-        checkBlackHoleAvailability()
+        await checkBlackHoleAvailability()
         guard isBlackHoleAvailable else {
             throw SystemAudioError.blackHoleNotInstalled
         }

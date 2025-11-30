@@ -24,6 +24,30 @@ class RemindersSyncService {
         
         let status = EKEventStore.authorizationStatus(for: .reminder)
         
+        // 打印详细的权限状态（用于调试）
+        let statusDescription: String
+        switch status {
+        case .notDetermined:
+            statusDescription = "notDetermined (0) - 未确定"
+        case .restricted:
+            statusDescription = "restricted (1) - 受限"
+        case .denied:
+            statusDescription = "denied (2) - 已拒绝"
+        case .authorized:
+            statusDescription = "authorized (3) - 已授权"
+        @unknown default:
+            if #available(macOS 14.0, *) {
+                if status.rawValue == 4 {
+                    statusDescription = "fullAccess (4) - 完整访问"
+                } else {
+                    statusDescription = "unknown (\(status.rawValue)) - 未知状态"
+                }
+            } else {
+                statusDescription = "unknown (\(status.rawValue)) - 未知状态"
+            }
+        }
+        print("📋 [RemindersSyncService] 当前权限状态: \(statusDescription)")
+        
         if hasReminderAccess(status: status) {
             print("✅ [RemindersSyncService] 已授权访问提醒事项")
             return true

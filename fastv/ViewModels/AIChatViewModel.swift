@@ -83,9 +83,6 @@ class AIChatViewModel: ObservableObject {
         if !preferences.aiModel.isEmpty {
             models.append(preferences.aiModel)
         }
-        if !preferences.aiTodoModel.isEmpty && !models.contains(preferences.aiTodoModel) {
-            models.append(preferences.aiTodoModel)
-        }
         
         // 添加常用模型列表（只包含聊天类模型）
         let defaultModels = [
@@ -130,9 +127,6 @@ class AIChatViewModel: ObservableObject {
         let preferences = UserPreferences.shared
         if !preferences.aiModel.isEmpty {
             return preferences.aiModel
-        }
-        if !preferences.aiTodoModel.isEmpty {
-            return preferences.aiTodoModel
         }
         return "qwen-turbo"
     }
@@ -203,19 +197,16 @@ class AIChatViewModel: ObservableObject {
         
         // 获取API配置
         let preferences = UserPreferences.shared
-        let endpoint = preferences.aiAPIEndpoint
-        let model = selectedModel.isEmpty ? getDefaultModel() : selectedModel
-        let apiToken = preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken
-        let timeout = preferences.aiTimeout > 0 ? preferences.aiTimeout : 30.0
+        let config = preferences.getConfig(for: .aiChat)
+        let model = selectedModel.isEmpty ? config.model : selectedModel
         
         do {
             // 调用AI服务
             let result = try await chatService.sendMessage(
                 messages: apiMessages,
-                endpoint: endpoint,
+                profile: config.profile,
                 model: model,
-                apiToken: apiToken,
-                timeout: timeout,
+                timeout: config.timeout,
                 preferences: preferences
             )
             
@@ -481,19 +472,15 @@ class AIChatViewModel: ObservableObject {
         
         // 获取API配置
         let preferences = UserPreferences.shared
-        let endpoint = preferences.aiAPIEndpoint
-        // 使用当前选择的模型，如果没有选择则使用默认模型（preferences.aiModel）
-        let model = selectedModel.isEmpty ? getDefaultModel() : selectedModel
-        let apiToken = preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken
-        let timeout = preferences.aiTimeout > 0 ? preferences.aiTimeout : 30.0
+        let config = preferences.getConfig(for: .aiChat)
+        let model = selectedModel.isEmpty ? config.model : selectedModel
         
         do {
             let summary = try await chatService.generateSummary(
                 messages: messages,
-                endpoint: endpoint,
+                profile: config.profile,
                 model: model,
-                apiToken: apiToken,
-                timeout: timeout
+                timeout: config.timeout
             )
             
             // 更新会话总结

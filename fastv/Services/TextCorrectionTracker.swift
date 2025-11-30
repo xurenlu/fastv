@@ -34,37 +34,12 @@ class TextCorrectionTracker {
     /// - Parameters:
     ///   - insertedText: 插入的文本
     ///   - appBundleId: 应用Bundle ID
+    /// - Note: 此功能已禁用，不再读取其他应用的文本内容
     func startTracking(insertedText: String, appBundleId: String? = nil) {
-        print("🔍 [TextCorrectionTracker] 开始追踪文本变化，插入文本: \(insertedText.prefix(50))...")
-        
-        // 停止之前的追踪
+        // 功能已禁用：不再读取其他应用的文本内容
+        // 仅保留接口以保持兼容性，但不执行任何操作
+        print("ℹ️ [TextCorrectionTracker] 文本校正追踪功能已禁用")
         stopTracking()
-        
-        self.insertedText = insertedText
-        self.trackingStartTime = Date()
-        self.lastSnapshot = insertedText
-        self.lastValidSnapshot = insertedText.isEmpty ? nil : insertedText
-        self.snapshots = [insertedText]
-        self.lastElementUpdateTime = Date()
-        
-        // 异步获取当前应用和焦点元素，不阻塞主流程
-        Task { @MainActor in
-            // 获取当前应用（优先使用传入的 bundleId，避免遍历所有应用）
-            if let bundleId = appBundleId {
-                // 直接使用传入的 bundleId，避免遍历所有应用
-                let apps = NSWorkspace.shared.runningApplications
-                self.currentApp = apps.first { $0.bundleIdentifier == bundleId }
-            } else {
-                // 如果没有传入 bundleId，才获取当前应用
-                self.currentApp = NSWorkspace.shared.frontmostApplication
-            }
-            
-            // 获取当前焦点元素
-            self.updateCurrentElement()
-            
-            // 启动定时器轮询
-            self.startPolling()
-        }
     }
     
     /// 停止追踪
@@ -98,44 +73,10 @@ class TextCorrectionTracker {
     }
     
     /// 更新当前焦点元素
+    /// - Note: 此功能已禁用，不再读取其他应用的UI元素
     private func updateCurrentElement() {
-        guard let app = currentApp else {
-            currentElement = nil
-            return
-        }
-        
-        let pid = app.processIdentifier
-        
-        let appElement = AXUIElementCreateApplication(pid)
-        
-        // 获取焦点窗口
-        var focusedWindow: AnyObject?
-        let result = AXUIElementCopyAttributeValue(
-            appElement,
-            kAXFocusedWindowAttribute as CFString,
-            &focusedWindow
-        )
-        
-        guard result == .success,
-              let window = focusedWindow as! AXUIElement? else {
-            currentElement = nil
-            return
-        }
-        
-        // 获取焦点元素
-        var focusedElement: AnyObject?
-        let elementResult = AXUIElementCopyAttributeValue(
-            window,
-            kAXFocusedUIElementAttribute as CFString,
-            &focusedElement
-        )
-        
-        if elementResult == .success,
-           let element = focusedElement as! AXUIElement? {
-            currentElement = element
-        } else {
-            currentElement = nil
-        }
+        // 功能已禁用：不再读取其他应用的UI元素
+        currentElement = nil
     }
     
     /// 启动轮询
@@ -230,24 +171,10 @@ class TextCorrectionTracker {
     }
     
     /// 获取当前文本字段的内容
+    /// - Note: 此功能已禁用，不再读取其他应用的文本内容
     private func getCurrentText() -> String? {
-        guard let element = currentElement else {
-            return nil
-        }
-        
-        var value: AnyObject?
-        let result = AXUIElementCopyAttributeValue(
-            element,
-            kAXValueAttribute as CFString,
-            &value
-        )
-        
-        guard result == .success,
-              let text = value as? String else {
-            return nil
-        }
-        
-        return text
+        // 功能已禁用：不再读取其他应用的文本内容
+        return nil
     }
     
     /// 检查当前文本是否基于原始文本

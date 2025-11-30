@@ -15,9 +15,11 @@ class AITodoStore: ObservableObject {
     
     @Published private(set) var activeTodos: [AITodoItem] = []
     @Published private(set) var archivedTodos: [AITodoItem] = []
+    @Published private(set) var groups: [AITodoGroup] = []
     
     private let storageKey = "aiTodoItems"
     private let archiveKey = "aiTodoArchivedItems"
+    private let groupsKey = "aiTodoGroups"
     private let autoArchiveDaysThreshold = 14 // 14天未完成自动归档
     private let autoArchiveCompletedDaysThreshold = 7 // 完成7天后归档
     
@@ -26,6 +28,8 @@ class AITodoStore: ObservableObject {
     
     private init() {
         loadTodos()
+        loadGroups()
+        initializeDefaultGroupsIfNeeded()
         // 启动时自动归档
         Task {
             await autoArchiveOldTodos()
@@ -186,6 +190,94 @@ class AITodoStore: ObservableObject {
         return context
     }
     
+    // MARK: - Group Management
+    
+    /// 获取指定优先级的所有分组（按 order 排序）
+    func getGroups(for priority: AITodoPriority) -> [AITodoGroup] {
+        return groups.filter { $0.priority == priority }.sorted { $0.order < $1.order }
+    }
+    
+    /// 创建新分组
+    func createGroup(name: String, priority: AITodoPriority) -> AITodoGroup {
+        let existingGroups = getGroups(for: priority)
+        let maxOrder = existingGroups.map { $0.order }.max() ?? -1
+        let newGroup = AITodoGroup(
+            name: name,
+            priority: priority,
+            order: maxOrder + 1
+        )
+        groups.append(newGroup)
+        scheduleSaveGroups()
+        return newGroup
+    }
+    
+    /// 删除分组
+    func deleteGroup(_ group: AITodoGroup) {
+        // 将该分组下的所有事项移到第一个默认分组
+        let defaultGroups = getDefaultGroups(for: group.priority)
+        let targetGroupId = defaultGroups.first?.id
+        
+        for index in activeTodos.indices {
+            if activeTodos[index].groupId == group.id {
+                activeTodos[index].groupId = targetGroupId
+            }
+        }
+        
+        groups.removeAll { $0.id == group.id }
+        scheduleSaveGroups()
+        scheduleSave()
+    }
+    
+    /// 更新分组
+    func updateGroup(_ group: AITodoGroup) {
+        if let index = groups.firstIndex(where: { $0.id == group.id }) {
+            groups[index] = group
+            scheduleSaveGroups()
+        }
+    }
+    
+    /// 获取默认分组（待办、进行中、已完成）
+    func getDefaultGroups(for priority: AITodoPriority) -> [AITodoGroup] {
+        let existingGroups = getGroups(for: priority)
+        if !existingGroups.isEmpty {
+            return existingGroups
+        }
+        
+        // 创建默认分组
+        let defaultGroups = [
+            AITodoGroup(name: "待办", priority: priority, order: 0),
+            AITodoGroup(name: "进行中", priority: priority, order: 1),
+            AITodoGroup(name: "已完成", priority: priority, order: 2)
+        ]
+        
+        groups.append(contentsOf: defaultGroups)
+        scheduleSaveGroups()
+        return defaultGroups
+    }
+    
+    /// 初始化默认分组（如果不存在）
+    private func initializeDefaultGroupsIfNeeded() {
+        for priority in AITodoPriority.allCases {
+            let existingGroups = getGroups(for: priority)
+            if existingGroups.isEmpty {
+                _ = getDefaultGroups(for: priority)
+            }
+        }
+    }
+    
+    /// 获取指定分组的事项
+    func getTodos(for group: AITodoGroup) -> [AITodoItem] {
+        return activeTodos.filter { $0.priority == group.priority && $0.groupId == group.id }
+    }
+    
+    /// 将事项移动到指定分组
+    func moveTodo(_ todo: AITodoItem, to group: AITodoGroup) {
+        guard var updated = activeTodos.first(where: { $0.id == todo.id }) else { return }
+        updated.groupId = group.id
+        updated.updatedAt = Date()
+        update(updated)
+    }
+    
     // MARK: - Persistence
     
     private func scheduleSave() {
@@ -221,6 +313,29 @@ class AITodoStore: ObservableObject {
         if let data = UserDefaults.standard.data(forKey: archiveKey),
            let decoded = try? JSONDecoder().decode([AITodoItem].self, from: data) {
             archivedTodos = decoded
+        }
+    }
+    
+    private func scheduleSaveGroups() {
+        saveTimer?.invalidate()
+        saveTimer = Timer.scheduledTimer(withTimeInterval: saveDelay, repeats: false) { [weak self] _ in
+            guard let self = self else { return }
+            Task { @MainActor in
+                self.saveGroups()
+            }
+        }
+    }
+    
+    private func saveGroups() {
+        if let encoded = try? JSONEncoder().encode(groups) {
+            UserDefaults.standard.set(encoded, forKey: groupsKey)
+        }
+    }
+    
+    private func loadGroups() {
+        if let data = UserDefaults.standard.data(forKey: groupsKey),
+           let decoded = try? JSONDecoder().decode([AITodoGroup].self, from: data) {
+            groups = decoded
         }
     }
 }

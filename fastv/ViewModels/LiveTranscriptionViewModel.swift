@@ -89,11 +89,26 @@ class LiveTranscriptionViewModel: ObservableObject {
             // 启用防睡眠断言
             sleepWakeNotifier.enablePreventSleep(reason: "直播转录中")
             
-            // 开始捕获系统音频
-            try audioService.startCapturing()
-            
-            // 启动静音检测
-            startSilenceDetection()
+            // 开始捕获系统音频（异步）
+            Task {
+                do {
+                    try await audioService.startCapturing()
+                    
+                    // 启动静音检测
+                    await MainActor.run {
+                        startSilenceDetection()
+                    }
+                    
+                    await MainActor.run {
+                        print("✅ [LiveTranscriptionViewModel] 开始转录(已启用防睡眠)")
+                    }
+                } catch {
+                    await MainActor.run {
+                        errorMessage = error.localizedDescription
+                        print("❌ [LiveTranscriptionViewModel] 开始转录失败: \(error)")
+                    }
+                }
+            }
             
             print("✅ [LiveTranscriptionViewModel] 开始转录(已启用防睡眠)")
         } catch {
@@ -362,10 +377,7 @@ class LiveTranscriptionViewModel: ObservableObject {
             // 1. AI优化文本（添加标点、修正错别字、分段）
             let optimizedText = try await OllamaService.shared.optimizeTranscript(
                 text: record.transcript,
-                endpoint: preferences.aiAPIEndpoint,
-                model: preferences.aiModel,
-                apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken,
-                timeout: preferences.aiTimeout,
+                scenario: .voiceInputOptimization,
                 systemPrompt: preferences.aiSystemPrompt,
                 useMistakes: true,
                 useHighFrequencyWords: true
@@ -428,12 +440,12 @@ class LiveTranscriptionViewModel: ObservableObject {
                 ["role": "user", "content": "请为以下文本生成标题：\n\n\(text)"]
             ]
             
+            let config = preferences.getConfig(for: .voiceInputOptimization)
             let title = try await ChatAIService.shared.sendMessage(
                 messages: messages,
-                endpoint: preferences.aiAPIEndpoint,
-                model: preferences.aiModel,
-                apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken,
-                timeout: preferences.aiTimeout
+                profile: config.profile,
+                model: config.model,
+                timeout: config.timeout
             )
             
             return title.content.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -470,12 +482,12 @@ class LiveTranscriptionViewModel: ObservableObject {
                 ["role": "user", "content": "请为以下文本生成摘要：\n\n\(text)"]
             ]
             
+            let config = preferences.getConfig(for: .voiceInputOptimization)
             let summary = try await ChatAIService.shared.sendMessage(
                 messages: messages,
-                endpoint: preferences.aiAPIEndpoint,
-                model: preferences.aiModel,
-                apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken,
-                timeout: preferences.aiTimeout
+                profile: config.profile,
+                model: config.model,
+                timeout: config.timeout
             )
             
             return summary.content.trimmingCharacters(in: .whitespacesAndNewlines)

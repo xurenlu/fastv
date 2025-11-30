@@ -13,7 +13,7 @@ struct ChatMessageView: View {
     let message: ChatMessage
     let modelName: String?  // 模型名称（用于生成头像）
     @State private var imageData: Data?
-    @State private var parsedContent: MarkdownContent?
+    @State private var parsedElements: [MarkdownElement] = []
     @State private var isHovered = false
     @State private var showCopySuccess = false
     
@@ -36,30 +36,17 @@ struct ChatMessageView: View {
                 }
                 
                 // 消息文本内容（Markdown 渲染）
-                if let content = parsedContent {
-                    // 显示代码块
-                    ForEach(content.codeBlocks) { codeBlock in
-                        CodeBlockView(codeBlock: codeBlock)
-                    }
-                    
-                    // 显示表格
-                    ForEach(content.tables) { table in
-                        MarkdownTableView(table: table)
-                    }
-                    
-                    // 显示 Markdown 文本（排除代码块和表格）
-                    if !content.text.isEmpty {
-                        MarkdownTextView(markdown: content.text, originalText: message.content)
-                    }
-                    
-                    // 显示 Markdown 中的图片
-                    ForEach(content.images) { media in
-                        MarkdownMediaView(media: media)
-                    }
-                    
-                    // 显示 Markdown 中的视频
-                    ForEach(content.videos) { media in
-                        MarkdownMediaView(media: media)
+                if !parsedElements.isEmpty {
+                    VStack(alignment: message.isUserMessage ? .trailing : .leading, spacing: 8) {
+                        ForEach(Array(parsedElements.enumerated()), id: \.offset) { index, element in
+                            MarkdownElementView(element: element, isTransparentBackground: false)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background {
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(message.isUserMessage ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.1))
+                                }
+                        }
                     }
                 } else if !message.content.isEmpty {
                     // 未解析时显示原始文本
@@ -112,7 +99,7 @@ struct ChatMessageView: View {
         }
         .task(id: message.id) {
             // 异步解析 Markdown，避免在视图更新期间修改状态
-            if message.isAIMessage && parsedContent == nil {
+            if message.isAIMessage && parsedElements.isEmpty {
                 await parseMarkdownAsync()
             }
         }
@@ -331,8 +318,8 @@ struct ChatMessageView: View {
     /// 解析 Markdown 内容（异步版本，避免在视图更新期间修改状态）
     @MainActor
     private func parseMarkdownAsync() async {
-        // 使用 Task 确保在主线程上异步更新状态
-        parsedContent = MarkdownParser.parse(message.content)
+        // 使用新的 Markdown 解析器
+        parsedElements = parseMarkdown(message.content)
     }
     
     /// 思考过程视图
@@ -399,7 +386,7 @@ struct AttachmentView: View {
                         showImagePreview = true
                     }
                     .sheet(isPresented: $showImagePreview) {
-                        ImagePreviewView(image: nsImage)
+                        ChatImagePreviewView(image: nsImage)
                     }
             } else if let urlString = attachment.url,
                       let url = URL(string: urlString) {
@@ -547,7 +534,7 @@ struct MarkdownMediaView: View {
                             showPreview = true
                         }
                         .sheet(isPresented: $showPreview) {
-                            ImagePreviewView(image: nsImage)
+                            ChatImagePreviewView(image: nsImage)
                         }
                 }
             } else if let url = URL(string: media.url) {
@@ -955,7 +942,7 @@ struct MarkdownTableView: View {
     }
 }
 
-struct ImagePreviewView: View {
+struct ChatImagePreviewView: View {
     let image: NSImage
     @Environment(\.dismiss) private var dismiss
     

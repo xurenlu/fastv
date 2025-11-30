@@ -54,7 +54,17 @@ extension AITodoAIService {
         
         // 根据 API 类型拼接路径
         let apiType = detectAPIType(endpoint: cleanEndpoint)
-        let path = apiType == .openAI ? "/v1/chat/completions" : "/api/generate"
+        let lowercasedClean = cleanEndpoint.lowercased()
+        let path: String
+        if apiType == .openAI {
+            if lowercasedClean.contains("dashscope.aliyuncs.com") && lowercasedClean.contains("compatible-mode") {
+                path = "/chat/completions"
+            } else {
+                path = "/v1/chat/completions"
+            }
+        } else {
+            path = "/api/generate"
+        }
         guard let url = URL(string: "\(cleanEndpoint)\(path)") else {
             throw AITodoAIError.invalidEndpoint
         }
@@ -88,7 +98,35 @@ class AITodoAIService {
     
     private init() {}
     
-    /// 解析用户输入（文本或语音转文字）并返回操作列表
+    /// 解析用户输入（使用新的配置系统）
+    /// - Parameters:
+    ///   - input: 用户输入的文本
+    ///   - todosContext: 当前所有活跃 Todo 的上下文文本
+    ///   - profile: AI 服务配置
+    ///   - model: 模型名称（覆盖 profile 默认模型）
+    ///   - timeout: 超时时间（覆盖 profile 默认超时）
+    /// - Returns: 操作列表
+    func parseUserInput(
+        input: String,
+        todosContext: String,
+        profile: AIServiceProfile,
+        model: String? = nil,
+        timeout: Double? = nil
+    ) async throws -> [AITodoOperation] {
+        let effectiveModel = model ?? profile.defaultModel
+        let effectiveTimeout = timeout ?? profile.timeout
+        
+        return try await parseUserInputLegacy(
+            input: input,
+            todosContext: todosContext,
+            endpoint: profile.effectiveEndpoint,
+            model: effectiveModel,
+            apiToken: profile.apiKey.isEmpty ? nil : profile.apiKey,
+            timeout: effectiveTimeout
+        )
+    }
+    
+    /// 解析用户输入（文本或语音转文字）并返回操作列表（旧版兼容方法）
     /// - Parameters:
     ///   - input: 用户输入的文本
     ///   - todosContext: 当前所有活跃 Todo 的上下文文本
@@ -97,7 +135,7 @@ class AITodoAIService {
     ///   - apiToken: API Token（可选）
     ///   - timeout: 超时时间
     /// - Returns: 操作列表
-    func parseUserInput(
+    func parseUserInputLegacy(
         input: String,
         todosContext: String,
         endpoint: String,
@@ -270,7 +308,7 @@ class AITodoAIService {
         
         guard httpResponse.statusCode == 200 else {
             let errorMessage = String(data: data, encoding: .utf8) ?? "未知错误"
-            print("❌ [AITodoAIService] 请求失败: \(errorMessage)")
+            print("❌ [AITodoAIService] 请求失败（状态码: \(httpResponse.statusCode)）：\(errorMessage)")
             throw AITodoAIError.requestFailed(httpResponse.statusCode, errorMessage)
         }
         

@@ -41,7 +41,7 @@ class LiveTranscriptionAudioService: ObservableObject {
     private init() {}
     
     /// 开始捕获系统音频
-    func startCapturing() throws {
+    func startCapturing() async throws {
         print("🎤 [LiveTranscriptionAudioService] startCapturing() 被调用，当前 isCapturing=\(isCapturing)")
         
         guard !isCapturing else {
@@ -51,7 +51,7 @@ class LiveTranscriptionAudioService: ObservableObject {
         
         // 检查 BlackHole 是否可用
         let systemAudioCapture = SystemAudioCaptureService.shared
-        systemAudioCapture.checkBlackHoleAvailability()
+        await systemAudioCapture.checkBlackHoleAvailability()
         guard systemAudioCapture.isBlackHoleAvailable else {
             throw LiveTranscriptionError.blackHoleNotInstalled
         }

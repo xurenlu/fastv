@@ -120,22 +120,31 @@ class MeetingRecordViewModel: ObservableObject {
         shouldCaptureSystemAudio = captureSystemAudio
         
         // 如果启用系统音频捕获，先启动
-        if captureSystemAudio && systemAudioCapture.isBlackHoleAvailable {
+        if captureSystemAudio {
             Task {
-                do {
-                    let tempDir = FileManager.default.temporaryDirectory
-                    let systemAudioURL = tempDir.appendingPathComponent("system_audio_\(UUID().uuidString).wav")
-                    self.systemAudioFileURL = systemAudioURL
-                    
-                    try await systemAudioCapture.startCapture(to: systemAudioURL)
-                    print("✅ [MeetingRecordViewModel] 系统音频捕获已启动")
-                } catch {
-                    print("⚠️ [MeetingRecordViewModel] 系统音频捕获启动失败: \(error)")
-                    // 即使系统音频捕获失败，也继续录音
+                // 确保 BlackHole 检查已完成
+                await systemAudioCapture.checkBlackHoleAvailability()
+                
+                if systemAudioCapture.isBlackHoleAvailable {
+                    do {
+                        let tempDir = FileManager.default.temporaryDirectory
+                        let systemAudioURL = tempDir.appendingPathComponent("system_audio_\(UUID().uuidString).wav")
+                        self.systemAudioFileURL = systemAudioURL
+                        
+                        try await systemAudioCapture.startCapture(to: systemAudioURL)
+                        print("✅ [MeetingRecordViewModel] 系统音频捕获已启动")
+                    } catch {
+                        print("⚠️ [MeetingRecordViewModel] 系统音频捕获启动失败: \(error)")
+                        // 即使系统音频捕获失败，也继续录音
+                    }
+                } else {
+                    print("⚠️ [MeetingRecordViewModel] BlackHole 不可用，跳过系统音频捕获")
                 }
                 
                 // 开始正常录音
-                startRecording()
+                await MainActor.run {
+                    startRecording()
+                }
             }
         } else {
             // 直接开始录音
@@ -391,10 +400,7 @@ class MeetingRecordViewModel: ObservableObject {
                 do {
                     let optimizedText = try await OllamaService.shared.optimizeTranscript(
                         text: text,
-                        endpoint: preferences.aiAPIEndpoint,
-                        model: preferences.aiModel,
-                        apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken,
-                        timeout: preferences.aiTimeout,
+                        scenario: .voiceInputOptimization,
                         systemPrompt: preferences.aiSystemPrompt,
                         useMistakes: true,
                         useHighFrequencyWords: true
@@ -488,10 +494,8 @@ class MeetingRecordViewModel: ObservableObject {
                 do {
                     let markdownSummary = try await OllamaService.shared.generateMeetingSummary(
                         text: record.correctedText,
-                        endpoint: preferences.aiAPIEndpoint,
-                        model: preferences.aiModel,
-                        apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken,
-                        timeout: preferences.aiTimeout * 2 // 摘要生成可能需要更长时间
+                        scenario: .meetingSummary,
+                        timeout: preferences.getConfig(for: .meetingSummary).timeout * 2 // 摘要生成可能需要更长时间
                     )
                     
                     // 检查是否已取消

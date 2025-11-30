@@ -10,6 +10,7 @@ import SwiftUI
 struct AITodoView: View {
     @StateObject private var viewModel = AITodoViewModel()
     @ObservedObject private var store = AITodoStore.shared
+    @AppStorage("aiTodoShowCompleted") private var showCompletedPreference = false
     @State private var showArchived = false
     @FocusState private var isInputFocused: Bool
     @State private var isSyncing = false
@@ -37,6 +38,7 @@ struct AITodoView: View {
         }
         .navigationTitle(NSLocalizedString("ai.todo", comment: "AI Todo"))
         .onAppear {
+            viewModel.showCompletedTodos = showCompletedPreference
             Task {
                 await viewModel.checkAndAutoArchive()
             }
@@ -88,6 +90,21 @@ struct AITodoView: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .frame(width: 220)
+            
+            Toggle(isOn: Binding(
+                get: { viewModel.showCompletedTodos },
+                set: { newValue in
+                    viewModel.showCompletedTodos = newValue
+                    showCompletedPreference = newValue
+                }
+            )) {
+                Label("显示已完成", systemImage: viewModel.showCompletedTodos ? "checkmark.circle.fill" : "checkmark.circle")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .padding(.leading, 12)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
@@ -220,7 +237,8 @@ struct AITodoView: View {
             HStack(spacing: 12) {
                 TextField(NSLocalizedString("ai.todo.input.placeholder", comment: "输入待办事项或语音说话..."), text: $viewModel.inputText, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
-                    .lineLimit(2...4)
+                    .lineLimit(3...8)
+                    .frame(minHeight: 60)
                     .focused($isInputFocused)
                     .onSubmit {
                         Task {
@@ -391,9 +409,10 @@ struct AITodoView: View {
         ScrollView {
             LazyVStack(spacing: 0) {
                 // 活跃的 Todo
-                if !store.activeTodos.isEmpty {
+                let visibleTodos = viewModel.visibleActiveTodos
+                if !visibleTodos.isEmpty {
                     Section {
-                        ForEach(store.activeTodos) { todo in
+                        ForEach(visibleTodos) { todo in
                             AITodoRow(todo: todo, viewModel: viewModel)
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 4)
@@ -404,7 +423,7 @@ struct AITodoView: View {
                                 .font(.headline)
                                 .foregroundStyle(.secondary)
                             Spacer()
-                            Text("\(store.activeTodos.count)")
+                            Text("\(visibleTodos.count)")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }

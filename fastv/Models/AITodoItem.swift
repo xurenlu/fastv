@@ -57,6 +57,8 @@ struct AITodoItem: Identifiable, Codable {
     var archivedAt: Date?
     /// 系统提醒事项的唯一标识符（用于避免重复导入）
     var reminderIdentifier: String?
+    /// 分组 ID（用于看板式布局）
+    var groupId: UUID?
     
     init(
         id: UUID = UUID(),
@@ -69,7 +71,8 @@ struct AITodoItem: Identifiable, Codable {
         updatedAt: Date = Date(),
         completedAt: Date? = nil,
         archivedAt: Date? = nil,
-        reminderIdentifier: String? = nil
+        reminderIdentifier: String? = nil,
+        groupId: UUID? = nil
     ) {
         self.id = id
         self.title = title
@@ -82,6 +85,7 @@ struct AITodoItem: Identifiable, Codable {
         self.completedAt = completedAt
         self.archivedAt = archivedAt
         self.reminderIdentifier = reminderIdentifier
+        self.groupId = groupId
     }
     
     /// 标记为完成
@@ -132,6 +136,29 @@ struct AITodoItem: Identifiable, Codable {
         guard status == .completed, let completedAt = completedAt else { return false }
         let daysSinceCompletion = Calendar.current.dateComponents([.day], from: completedAt, to: Date()).day ?? 0
         return daysSinceCompletion >= daysThreshold
+    }
+}
+
+/// AI Todo 分组（用于看板式布局）
+struct AITodoGroup: Identifiable, Codable, Equatable {
+    let id: UUID
+    var name: String
+    var priority: AITodoPriority
+    var order: Int
+    var createdAt: Date
+    
+    init(
+        id: UUID = UUID(),
+        name: String,
+        priority: AITodoPriority,
+        order: Int = 0,
+        createdAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.priority = priority
+        self.order = order
+        self.createdAt = createdAt
     }
 }
 

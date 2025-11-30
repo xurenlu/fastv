@@ -474,10 +474,7 @@ struct fastvApp: App {
                 do {
                     let optimizedText = try await OllamaService.shared.optimizeTranscript(
                         text: text,
-                        endpoint: preferences.aiAPIEndpoint,
-                        model: preferences.aiModel,
-                        apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken,
-                        timeout: preferences.aiTimeout,
+                        scenario: .voiceInputOptimization,
                         systemPrompt: preferences.aiSystemPrompt,
                         useMistakes: true,
                         useHighFrequencyWords: true

@@ -19,7 +19,33 @@ struct AudioSegment {
 
 /// 音频分段分析服务
 struct AudioSegmentAnalyzer {
-    /// 分析音频分段并识别话题变化
+    /// 分析音频分段并识别话题变化（使用新的配置系统）
+    /// - Parameters:
+    ///   - videoURL: 视频文件URL
+    ///   - segmentDuration: 每个分段的时长（秒，默认5秒）
+    ///   - profile: AI 服务配置
+    ///   - model: AI 模型名称（覆盖 profile 默认模型）
+    ///   - progressHandler: 进度回调
+    /// - Returns: 音频分段列表
+    static func analyzeAudioSegments(
+        from videoURL: URL,
+        segmentDuration: TimeInterval = 5.0,
+        profile: AIServiceProfile,
+        model: String? = nil,
+        progressHandler: @escaping (Double, String) -> Void
+    ) async throws -> [AudioSegment] {
+        let effectiveModel = model ?? profile.defaultModel
+        return try await analyzeAudioSegmentsLegacy(
+            from: videoURL,
+            segmentDuration: segmentDuration,
+            endpoint: profile.effectiveEndpoint,
+            model: effectiveModel,
+            apiToken: profile.apiKey.isEmpty ? nil : profile.apiKey,
+            progressHandler: progressHandler
+        )
+    }
+    
+    /// 分析音频分段并识别话题变化（旧版兼容方法）
     /// - Parameters:
     ///   - videoURL: 视频文件URL
     ///   - segmentDuration: 每个分段的时长（秒，默认5秒）
@@ -28,7 +54,7 @@ struct AudioSegmentAnalyzer {
     ///   - apiToken: API Token（可选）
     ///   - progressHandler: 进度回调
     /// - Returns: 音频分段列表
-    static func analyzeAudioSegments(
+    static func analyzeAudioSegmentsLegacy(
         from videoURL: URL,
         segmentDuration: TimeInterval = 5.0,
         endpoint: String,
@@ -101,11 +127,19 @@ struct AudioSegmentAnalyzer {
             var semanticChange = false
             
             if !transcript.isEmpty {
+                // 创建临时 Profile 用于分析
+                let tempProfile = AIServiceProfile(
+                    name: "临时配置",
+                    protocolType: .ollama,
+                    endpoint: endpoint,
+                    apiKey: apiToken ?? "",
+                    defaultModel: model,
+                    timeout: 5.0
+                )
                 topic = try? await analyzeTopic(
                     transcript: transcript,
-                    endpoint: endpoint,
-                    model: model,
-                    apiToken: apiToken
+                    profile: tempProfile,
+                    model: model
                 )
                 
                 // 判断是否发生语义变化
@@ -176,9 +210,8 @@ struct AudioSegmentAnalyzer {
     /// 使用 AI 分析话题
     private static func analyzeTopic(
         transcript: String,
-        endpoint: String,
-        model: String,
-        apiToken: String?
+        profile: AIServiceProfile,
+        model: String? = nil
     ) async throws -> String {
         let prompt = """
         请分析以下文本片段的主要话题或主题，用一句话简洁概括（不超过10个字）。
@@ -188,22 +221,39 @@ struct AudioSegmentAnalyzer {
         只返回话题，不要其他解释。
         """
         
-        let preferences = UserPreferences.shared
         let systemPrompt = "你是一个话题分析助手，擅长从文本中提取主要话题。"
+        let effectiveModel = model ?? profile.defaultModel
         
         // 注意：这里用于提取主题，不需要使用常错词和高频词
         let topic = try await OllamaService.shared.optimizeTranscript(
             text: prompt,
-            endpoint: endpoint,
-            model: model,
-            apiToken: apiToken,
+            profile: profile,
+            model: effectiveModel,
             timeout: 5.0,
             systemPrompt: systemPrompt,
             useMistakes: false,  // 主题提取不需要常错词
             useHighFrequencyWords: false  // 主题提取不需要高频词
         )
         
-        return topic.trimmingCharacters(in: .whitespacesAndNewlines)
+        return topic.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+    }
+    
+    /// 使用 AI 分析话题（旧版兼容方法）
+    private static func analyzeTopicLegacy(
+        transcript: String,
+        endpoint: String,
+        model: String,
+        apiToken: String?
+    ) async throws -> String {
+        let profile = AIServiceProfile(
+            name: "临时配置",
+            protocolType: .ollama,
+            endpoint: endpoint,
+            apiKey: apiToken ?? "",
+            defaultModel: model,
+            timeout: 5.0
+        )
+        return try await analyzeTopic(transcript: transcript, profile: profile, model: model)
     }
 }
 

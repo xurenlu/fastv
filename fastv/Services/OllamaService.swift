@@ -75,7 +75,70 @@ class OllamaService {
         return url
     }
     
-    /// 优化转录文本（带常错词和高频词支持）
+    /// 优化转录文本（使用新的配置系统）
+    /// - Parameters:
+    ///   - text: 原始转录文本
+    ///   - scenario: 使用场景
+    ///   - systemPrompt: 系统提示词
+    ///   - useMistakes: 是否使用常错词
+    ///   - useHighFrequencyWords: 是否使用高频词
+    /// - Returns: 优化后的文本
+    func optimizeTranscript(
+        text: String,
+        scenario: AIScenario = .voiceInputOptimization,
+        systemPrompt: String,
+        useMistakes: Bool = true,
+        useHighFrequencyWords: Bool = true
+    ) async throws -> String {
+        let preferences = UserPreferences.shared
+        let config = preferences.getConfig(for: scenario)
+        
+        return try await optimizeTranscript(
+            text: text,
+            profile: config.profile,
+            model: config.model,
+            timeout: config.timeout,
+            systemPrompt: systemPrompt,
+            useMistakes: useMistakes,
+            useHighFrequencyWords: useHighFrequencyWords
+        )
+    }
+    
+    /// 优化转录文本（使用 Profile）
+    /// - Parameters:
+    ///   - text: 原始转录文本
+    ///   - profile: AI 服务配置
+    ///   - model: 使用的模型名称（覆盖 profile 默认模型）
+    ///   - timeout: 超时时间（覆盖 profile 默认超时）
+    ///   - systemPrompt: 系统提示词
+    ///   - useMistakes: 是否使用常错词
+    ///   - useHighFrequencyWords: 是否使用高频词
+    /// - Returns: 优化后的文本
+    func optimizeTranscript(
+        text: String,
+        profile: AIServiceProfile,
+        model: String? = nil,
+        timeout: Double? = nil,
+        systemPrompt: String,
+        useMistakes: Bool = true,
+        useHighFrequencyWords: Bool = true
+    ) async throws -> String {
+        let effectiveModel = model ?? profile.defaultModel
+        let effectiveTimeout = timeout ?? profile.timeout
+        
+        return try await optimizeTranscriptLegacy(
+            text: text,
+            endpoint: profile.effectiveEndpoint,
+            model: effectiveModel,
+            apiToken: profile.apiKey.isEmpty ? nil : profile.apiKey,
+            timeout: effectiveTimeout,
+            systemPrompt: systemPrompt,
+            useMistakes: useMistakes,
+            useHighFrequencyWords: useHighFrequencyWords
+        )
+    }
+    
+    /// 优化转录文本（带常错词和高频词支持）- 旧版兼容方法
     /// - Parameters:
     ///   - text: 原始转录文本
     ///   - endpoint: API 端点地址
@@ -86,7 +149,7 @@ class OllamaService {
     ///   - useMistakes: 是否使用常错词
     ///   - useHighFrequencyWords: 是否使用高频词
     /// - Returns: 优化后的文本
-    func optimizeTranscript(
+    func optimizeTranscriptLegacy(
         text: String,
         endpoint: String,
         model: String,
@@ -426,17 +489,11 @@ class OllamaService {
     
     /// 测试文本优化功能（发送实际文本测试）
     /// - Parameters:
-    ///   - endpoint: API 端点地址
-    ///   - model: 使用的模型名称
-    ///   - apiToken: API Token（可选）
-    ///   - timeout: 超时时间（秒）
+    ///   - profile: AI 服务配置
     ///   - systemPrompt: 系统提示词
     /// - Returns: (优化后的文本, 耗时)
     func testOptimization(
-        endpoint: String,
-        model: String,
-        apiToken: String?,
-        timeout: TimeInterval,
+        profile: AIServiceProfile,
         systemPrompt: String
     ) async throws -> (optimizedText: String, duration: TimeInterval) {
         print("🤖 [OllamaService] 测试文本优化功能")
@@ -448,11 +505,10 @@ class OllamaService {
         
         let optimizedText = try await optimizeTranscript(
             text: testText,
-            endpoint: endpoint,
-            model: model,
-            apiToken: apiToken,
-            timeout: timeout,
-            systemPrompt: systemPrompt
+            profile: profile,
+            systemPrompt: systemPrompt,
+            useMistakes: true,
+            useHighFrequencyWords: true
         )
         
         let duration = Date().timeIntervalSince(startTime)
@@ -462,6 +518,32 @@ class OllamaService {
         print("📝 [OllamaService] 优化后: \(optimizedText)")
         
         return (optimizedText, duration)
+    }
+    
+    /// 测试文本优化功能（旧版兼容方法）
+    /// - Parameters:
+    ///   - endpoint: API 端点地址
+    ///   - model: 使用的模型名称
+    ///   - apiToken: API Token（可选）
+    ///   - timeout: 超时时间（秒）
+    ///   - systemPrompt: 系统提示词
+    /// - Returns: (优化后的文本, 耗时)
+    func testOptimizationLegacy(
+        endpoint: String,
+        model: String,
+        apiToken: String?,
+        timeout: TimeInterval,
+        systemPrompt: String
+    ) async throws -> (optimizedText: String, duration: TimeInterval) {
+        let profile = AIServiceProfile(
+            name: "测试配置",
+            protocolType: .ollama,
+            endpoint: endpoint,
+            apiKey: apiToken ?? "",
+            defaultModel: model,
+            timeout: timeout
+        )
+        return try await testOptimization(profile: profile, systemPrompt: systemPrompt)
     }
     
     /// 获取可用的模型列表
@@ -503,7 +585,35 @@ class OllamaService {
         return modelNames
     }
     
-    /// 分析图片内容（使用视觉模型）
+    /// 分析图片内容（使用新的配置系统）
+    /// - Parameters:
+    ///   - image: 要分析的图片
+    ///   - prompt: 分析提示词
+    ///   - profile: AI 服务配置
+    ///   - model: 视觉模型名称（覆盖 profile 默认模型）
+    ///   - timeout: 超时时间（覆盖 profile 默认超时）
+    /// - Returns: AI 对图片的描述和分析
+    func analyzeImage(
+        image: NSImage,
+        prompt: String,
+        profile: AIServiceProfile,
+        model: String? = nil,
+        timeout: Double? = nil
+    ) async throws -> String {
+        let effectiveModel = model ?? profile.defaultModel
+        let effectiveTimeout = timeout ?? profile.timeout
+        
+        return try await analyzeImageLegacy(
+            image: image,
+            prompt: prompt,
+            endpoint: profile.effectiveEndpoint,
+            model: effectiveModel,
+            apiToken: profile.apiKey.isEmpty ? nil : profile.apiKey,
+            timeout: effectiveTimeout
+        )
+    }
+    
+    /// 分析图片内容（使用视觉模型）- 旧版兼容方法
     /// - Parameters:
     ///   - image: 要分析的图片
     ///   - prompt: 分析提示词
@@ -512,7 +622,7 @@ class OllamaService {
     ///   - apiToken: API Token（可选）
     ///   - timeout: 超时时间（秒）
     /// - Returns: AI 对图片的描述和分析
-    func analyzeImage(
+    func analyzeImageLegacy(
         image: NSImage,
         prompt: String,
         endpoint: String,
@@ -594,7 +704,35 @@ class OllamaService {
         return analysis
     }
     
-    /// 比较两张图片的差异（使用视觉模型）
+    /// 比较两张图片的差异（使用新的配置系统）
+    /// - Parameters:
+    ///   - image1: 第一张图片
+    ///   - image2: 第二张图片
+    ///   - profile: AI 服务配置
+    ///   - model: 视觉模型名称（覆盖 profile 默认模型）
+    ///   - timeout: 超时时间（覆盖 profile 默认超时）
+    /// - Returns: AI 对两张图片差异的描述
+    func compareImages(
+        image1: NSImage,
+        image2: NSImage,
+        profile: AIServiceProfile,
+        model: String? = nil,
+        timeout: Double? = nil
+    ) async throws -> String {
+        let effectiveModel = model ?? profile.defaultModel
+        let effectiveTimeout = timeout ?? profile.timeout
+        
+        return try await compareImagesLegacy(
+            image1: image1,
+            image2: image2,
+            endpoint: profile.effectiveEndpoint,
+            model: effectiveModel,
+            apiToken: profile.apiKey.isEmpty ? nil : profile.apiKey,
+            timeout: effectiveTimeout
+        )
+    }
+    
+    /// 比较两张图片的差异（使用视觉模型）- 旧版兼容方法
     /// - Parameters:
     ///   - image1: 第一张图片
     ///   - image2: 第二张图片
@@ -603,7 +741,7 @@ class OllamaService {
     ///   - apiToken: API Token（可选）
     ///   - timeout: 超时时间（秒）
     /// - Returns: AI 对两张图片差异的描述
-    func compareImages(
+    func compareImagesLegacy(
         image1: NSImage,
         image2: NSImage,
         endpoint: String,
@@ -699,7 +837,54 @@ class OllamaService {
         return comparison
     }
     
-    /// 生成会议摘要和待办事项（Markdown 格式）
+    /// 生成会议摘要和待办事项（使用新的配置系统）
+    /// - Parameters:
+    ///   - text: 会议转录文本
+    ///   - scenario: 使用场景（默认 .meetingSummary）
+    ///   - timeout: 超时时间（覆盖配置）
+    /// - Returns: Markdown 格式的摘要（包含摘要和待办事项章节）
+    func generateMeetingSummary(
+        text: String,
+        scenario: AIScenario = .meetingSummary,
+        timeout: Double? = nil
+    ) async throws -> String {
+        let preferences = UserPreferences.shared
+        let config = preferences.getConfig(for: scenario)
+        
+        return try await generateMeetingSummaryLegacy(
+            text: text,
+            profile: config.profile,
+            model: config.model,
+            timeout: timeout ?? config.timeout
+        )
+    }
+    
+    /// 生成会议摘要和待办事项（使用 Profile）
+    /// - Parameters:
+    ///   - text: 会议转录文本
+    ///   - profile: AI 服务配置
+    ///   - model: 模型名称（覆盖 profile 默认模型）
+    ///   - timeout: 超时时间（秒）
+    /// - Returns: Markdown 格式的摘要（包含摘要和待办事项章节）
+    func generateMeetingSummaryLegacy(
+        text: String,
+        profile: AIServiceProfile,
+        model: String? = nil,
+        timeout: Double? = nil
+    ) async throws -> String {
+        let effectiveModel = model ?? profile.defaultModel
+        let effectiveTimeout = timeout ?? profile.timeout
+        
+        return try await generateMeetingSummaryLegacy(
+            text: text,
+            endpoint: profile.effectiveEndpoint,
+            model: effectiveModel,
+            apiToken: profile.apiKey.isEmpty ? nil : profile.apiKey,
+            timeout: effectiveTimeout
+        )
+    }
+    
+    /// 生成会议摘要和待办事项（Markdown 格式）- 旧版兼容方法
     /// - Parameters:
     ///   - text: 会议转录文本
     ///   - endpoint: API 端点地址
@@ -707,7 +892,7 @@ class OllamaService {
     ///   - apiToken: API Token（可选）
     ///   - timeout: 超时时间（秒）
     /// - Returns: Markdown 格式的摘要（包含摘要和待办事项章节）
-    func generateMeetingSummary(
+    func generateMeetingSummaryLegacy(
         text: String,
         endpoint: String,
         model: String,

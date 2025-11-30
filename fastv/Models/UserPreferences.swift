@@ -61,10 +61,6 @@ class UserPreferences: ObservableObject {
         static let isModelDownloaded = "isModelDownloaded"
         // 多语言相关
         static let defaultLanguage = "defaultLanguage"
-        // AI Todo 相关
-        static let aiTodoEndpoint = "aiTodoEndpoint"
-        static let aiTodoModel = "aiTodoModel"
-        static let aiTodoTimeout = "aiTodoTimeout"
         // 说话人分离相关
         static let enableSpeakerDiarization = "enableSpeakerDiarization"
         static let diarizationMinSpeakers = "diarizationMinSpeakers"
@@ -83,6 +79,10 @@ class UserPreferences: ObservableObject {
         static let silenceDetectionDuration = "silenceDetectionDuration"
         static let silenceThreshold = "silenceThreshold"
         static let silenceRelativeThreshold = "silenceRelativeThreshold"
+        // AI 服务配置相关（新）
+        static let aiServiceProfiles = "aiServiceProfiles"
+        static let aiScenarioBindings = "aiScenarioBindings"
+        static let hasMigratedAIConfig = "hasMigratedAIConfig"
     }
     
     // MARK: - Published Properties
@@ -232,19 +232,6 @@ class UserPreferences: ObservableObject {
         willSet { defaults.set(newValue, forKey: Keys.defaultLanguage) }
     }
     
-    // AI Todo 相关
-    @Published var aiTodoEndpoint: String {
-        willSet { defaults.set(newValue, forKey: Keys.aiTodoEndpoint) }
-    }
-    
-    @Published var aiTodoModel: String {
-        willSet { defaults.set(newValue, forKey: Keys.aiTodoModel) }
-    }
-    
-    @Published var aiTodoTimeout: Double {
-        willSet { defaults.set(newValue, forKey: Keys.aiTodoTimeout) }
-    }
-    
     // 说话人分离相关
     @Published var enableSpeakerDiarization: Bool {
         willSet { defaults.set(newValue, forKey: Keys.enableSpeakerDiarization) }
@@ -308,6 +295,23 @@ class UserPreferences: ObservableObject {
     // 引导流程相关
     @Published var hasCompletedOnboarding: Bool {
         willSet { defaults.set(newValue, forKey: Keys.hasCompletedOnboarding) }
+    }
+    
+    // AI 服务配置（新）
+    @Published var aiServiceProfiles: [AIServiceProfile] {
+        willSet {
+            if let encoded = try? JSONEncoder().encode(newValue) {
+                defaults.set(encoded, forKey: Keys.aiServiceProfiles)
+            }
+        }
+    }
+    
+    @Published var aiScenarioBindings: [AIScenarioBinding] {
+        willSet {
+            if let encoded = try? JSONEncoder().encode(newValue) {
+                defaults.set(encoded, forKey: Keys.aiScenarioBindings)
+            }
+        }
     }
     
     // MARK: - Initialization
@@ -471,10 +475,6 @@ class UserPreferences: ObservableObject {
         defaultLanguage = defaults.string(forKey: Keys.defaultLanguage) ?? "zh-Hans"
         
         // AI Todo 设置，默认继承 AI 优化设置
-        aiTodoEndpoint = defaults.string(forKey: Keys.aiTodoEndpoint) ?? ""
-        aiTodoModel = defaults.string(forKey: Keys.aiTodoModel) ?? ""
-        aiTodoTimeout = defaults.object(forKey: Keys.aiTodoTimeout) as? Double ?? 0.0 // 0 表示使用默认值
-        
         // 说话人分离设置，默认不启用
         enableSpeakerDiarization = defaults.object(forKey: Keys.enableSpeakerDiarization) as? Bool ?? false
         let minSpeakers = defaults.object(forKey: Keys.diarizationMinSpeakers) as? Int ?? 0
@@ -502,12 +502,30 @@ class UserPreferences: ObservableObject {
         // 引导流程设置，默认为未完成
         hasCompletedOnboarding = defaults.bool(forKey: Keys.hasCompletedOnboarding)
         
+        // 初始化 AI 服务配置（先初始化为空数组）
+        if let profilesData = defaults.data(forKey: Keys.aiServiceProfiles),
+           let profiles = try? JSONDecoder().decode([AIServiceProfile].self, from: profilesData) {
+            aiServiceProfiles = profiles
+        } else {
+            aiServiceProfiles = []
+        }
+        
+        if let bindingsData = defaults.data(forKey: Keys.aiScenarioBindings),
+           let bindings = try? JSONDecoder().decode([AIScenarioBinding].self, from: bindingsData) {
+            aiScenarioBindings = bindings
+        } else {
+            aiScenarioBindings = []
+        }
+        
         // 检查模型是否已下载（在所有属性初始化之后）
         isModelDownloaded = defaults.object(forKey: Keys.isModelDownloaded) as? Bool ?? false
         // 如果标记为已下载，验证文件是否真的存在
         if isModelDownloaded {
             isModelDownloaded = verifyModelFilesExist()
         }
+        
+        // 加载和迁移 AI 服务配置（在所有属性初始化之后）
+        loadAIServiceConfig()
     }
     
     // MARK: - Methods
@@ -601,6 +619,249 @@ class UserPreferences: ObservableObject {
         let modelDir = URL(fileURLWithPath: modelStoragePath)
         let cmvnFile = modelDir.appendingPathComponent("am.mvn")
         return FileManager.default.fileExists(atPath: cmvnFile.path) ? cmvnFile : nil
+    }
+    
+    // MARK: - AI Service Configuration
+    
+    /// 加载 AI 服务配置（在属性已初始化后调用）
+    private func loadAIServiceConfig() {
+        // 检查是否需要迁移旧配置
+        let hasMigrated = defaults.bool(forKey: Keys.hasMigratedAIConfig)
+        if !hasMigrated {
+            migrateLegacyAIConfig()
+        }
+        
+        // 如果没有配置，创建默认配置
+        if aiServiceProfiles.isEmpty {
+            createDefaultAIServiceProfiles()
+        }
+    }
+    
+    /// 迁移旧版 AI 配置到新的 Profile 系统
+    private func migrateLegacyAIConfig() {
+        print("🔄 [UserPreferences] 开始迁移旧版 AI 配置...")
+        
+        // 检测旧配置使用的协议类型
+        let oldEndpoint = aiAPIEndpoint
+        let protocolType: AIProtocolType
+        
+        if oldEndpoint.lowercased().contains("dashscope") || oldEndpoint.lowercased().contains("aliyun") {
+            protocolType = .dashScope
+        } else if oldEndpoint.lowercased().contains("anthropic") || oldEndpoint.lowercased().contains("claude") {
+            protocolType = .claude
+        } else if oldEndpoint.lowercased().contains("localhost") || oldEndpoint.lowercased().contains("127.0.0.1") || oldEndpoint.lowercased().contains("11434") {
+            protocolType = .ollama
+        } else {
+            protocolType = .openAI
+        }
+        
+        // 创建迁移后的 Profile
+        var migratedProfile = AIServiceProfile(
+            name: "默认配置（已迁移）",
+            protocolType: protocolType,
+            endpoint: oldEndpoint,
+            apiKey: aiAPIToken,
+            defaultModel: aiModel,
+            timeout: aiTimeout,
+            isDefault: true
+        )
+        
+        // 如果 endpoint 需要更新（如协议类型有默认值）
+        if migratedProfile.endpoint.isEmpty && protocolType.defaultEndpoint != nil {
+            migratedProfile.endpoint = protocolType.defaultEndpoint!
+        }
+        
+        aiServiceProfiles.append(migratedProfile)
+        
+        // 保存迁移后的配置
+        if let encoded = try? JSONEncoder().encode(aiServiceProfiles) {
+            defaults.set(encoded, forKey: Keys.aiServiceProfiles)
+        }
+        
+        // 标记已迁移
+        defaults.set(true, forKey: Keys.hasMigratedAIConfig)
+        
+        print("✅ [UserPreferences] AI 配置迁移完成")
+    }
+    
+    /// 创建默认 AI 服务配置
+    private func createDefaultAIServiceProfiles() {
+        print("🔄 [UserPreferences] 创建默认 AI 服务配置...")
+        
+        let defaultProfiles: [AIServiceProfile] = [
+            AIServiceProfile.createDefault(for: .ollama).with(name: "Ollama (本地)", isDefault: true),
+            AIServiceProfile.createDefault(for: .openAI).with(name: "OpenAI"),
+            AIServiceProfile.createDefault(for: .dashScope).with(name: "阿里云 DashScope"),
+            AIServiceProfile.createDefault(for: .someIM).with(name: "Some.IM"),
+            AIServiceProfile.createDefault(for: .gemini).with(name: "Google Gemini"),
+            AIServiceProfile.createDefault(for: .claude).with(name: "Claude")
+        ]
+        
+        aiServiceProfiles = defaultProfiles
+        
+        // 保存默认配置
+        if let encoded = try? JSONEncoder().encode(aiServiceProfiles) {
+            defaults.set(encoded, forKey: Keys.aiServiceProfiles)
+        }
+        
+        print("✅ [UserPreferences] 默认 AI 服务配置创建完成")
+    }
+    
+    /// 获取默认 Profile
+    func getDefaultProfile() -> AIServiceProfile? {
+        return aiServiceProfiles.first { $0.isDefault } ?? aiServiceProfiles.first
+    }
+    
+    /// 根据 ID 获取 Profile
+    func getProfile(id: UUID) -> AIServiceProfile? {
+        return aiServiceProfiles.first { $0.id == id }
+    }
+    
+    /// 获取场景配置
+    func getConfig(for scenario: AIScenario) -> (profile: AIServiceProfile, model: String, timeout: Double) {
+        // 查找场景绑定
+        if let binding = aiScenarioBindings.first(where: { $0.scenario == scenario }),
+           let profileId = binding.profileId,
+           let profile = getProfile(id: profileId) {
+            let model = binding.modelOverride ?? profile.defaultModel
+            let timeout = binding.timeoutOverride ?? profile.timeout
+            print("✅ [UserPreferences] 场景 \(scenario.displayName) 使用配置: \(profile.name) (\(model))")
+            return (profile, model, timeout)
+        }
+        
+        // 如果没有绑定，使用默认 Profile
+        if let defaultProfile = getDefaultProfile() {
+            print("ℹ️ [UserPreferences] 场景 \(scenario.displayName) 使用默认配置: \(defaultProfile.name) (\(defaultProfile.defaultModel))")
+            return (defaultProfile, defaultProfile.defaultModel, defaultProfile.timeout)
+        }
+        
+        // 降级：使用旧配置（兼容性）
+        print("⚠️ [UserPreferences] 场景 \(scenario.displayName) 使用兼容配置（旧版配置）")
+        let fallbackProfile = AIServiceProfile(
+            name: "兼容配置（旧版）",
+            protocolType: .ollama,
+            endpoint: aiAPIEndpoint,
+            apiKey: aiAPIToken,
+            defaultModel: aiModel,
+            timeout: aiTimeout
+        )
+        return (fallbackProfile, aiModel, aiTimeout)
+    }
+    
+    /// 添加或更新 Profile
+    func saveProfile(_ profile: AIServiceProfile) {
+        print("🔍 [UserPreferences] saveProfile 调用")
+        print("  - Profile ID: \(profile.id)")
+        print("  - Profile Name: \(profile.name)")
+        print("  - 当前 Profiles 数量: \(aiServiceProfiles.count)")
+        
+        if let index = aiServiceProfiles.firstIndex(where: { $0.id == profile.id }) {
+            print("  - 找到已存在的 Profile，索引: \(index)，将更新")
+            var updated = profile
+            updated.updatedAt = Date()
+            aiServiceProfiles[index] = updated
+            print("  - 更新后 Profiles 数量: \(aiServiceProfiles.count)")
+        } else {
+            print("  - 未找到已存在的 Profile，将添加新的")
+            aiServiceProfiles.append(profile)
+            print("  - 添加后 Profiles 数量: \(aiServiceProfiles.count)")
+        }
+        
+        // 保存到 UserDefaults
+        if let encoded = try? JSONEncoder().encode(aiServiceProfiles) {
+            defaults.set(encoded, forKey: Keys.aiServiceProfiles)
+            print("  - 已保存到 UserDefaults")
+        }
+        
+        print("🔍 [UserPreferences] 当前所有 Profiles:")
+        for (idx, p) in aiServiceProfiles.enumerated() {
+            print("  [\(idx)] \(p.name) - ID: \(p.id)")
+        }
+    }
+    
+    /// 删除 Profile
+    func deleteProfile(_ profile: AIServiceProfile) {
+        aiServiceProfiles.removeAll { $0.id == profile.id }
+        
+        // 如果删除的是默认 Profile，设置第一个为默认
+        if profile.isDefault && !aiServiceProfiles.isEmpty {
+            var first = aiServiceProfiles[0]
+            first.isDefault = true
+            aiServiceProfiles[0] = first
+        }
+        
+        // 保存到 UserDefaults
+        if let encoded = try? JSONEncoder().encode(aiServiceProfiles) {
+            defaults.set(encoded, forKey: Keys.aiServiceProfiles)
+        }
+    }
+    
+    /// 设置默认 Profile
+    func setDefaultProfile(_ profile: AIServiceProfile) {
+        // 清除所有默认标记
+        aiServiceProfiles = aiServiceProfiles.map { var p = $0; p.isDefault = false; return p }
+        
+        // 设置新的默认
+        if let index = aiServiceProfiles.firstIndex(where: { $0.id == profile.id }) {
+            var updated = profile
+            updated.isDefault = true
+            aiServiceProfiles[index] = updated
+        }
+        
+        // 保存到 UserDefaults
+        if let encoded = try? JSONEncoder().encode(aiServiceProfiles) {
+            defaults.set(encoded, forKey: Keys.aiServiceProfiles)
+        }
+    }
+    
+    /// 保存场景绑定
+    func saveScenarioBinding(_ binding: AIScenarioBinding) {
+        if let index = aiScenarioBindings.firstIndex(where: { $0.scenario == binding.scenario }) {
+            aiScenarioBindings[index] = binding
+        } else {
+            aiScenarioBindings.append(binding)
+        }
+        
+        // 保存到 UserDefaults
+        if let encoded = try? JSONEncoder().encode(aiScenarioBindings) {
+            defaults.set(encoded, forKey: Keys.aiScenarioBindings)
+        }
+    }
+    
+    /// 删除场景绑定
+    func deleteScenarioBinding(for scenario: AIScenario) {
+        aiScenarioBindings.removeAll { $0.scenario == scenario }
+        
+        // 保存到 UserDefaults
+        if let encoded = try? JSONEncoder().encode(aiScenarioBindings) {
+            defaults.set(encoded, forKey: Keys.aiScenarioBindings)
+        }
+    }
+}
+
+// MARK: - AIServiceProfile Extensions
+
+extension AIServiceProfile {
+    /// 创建副本并修改属性
+    func with(
+        name: String? = nil,
+        protocolType: AIProtocolType? = nil,
+        endpoint: String? = nil,
+        apiKey: String? = nil,
+        defaultModel: String? = nil,
+        timeout: Double? = nil,
+        isDefault: Bool? = nil
+    ) -> AIServiceProfile {
+        var copy = self
+        if let name = name { copy.name = name }
+        if let protocolType = protocolType { copy.protocolType = protocolType }
+        if let endpoint = endpoint { copy.endpoint = endpoint }
+        if let apiKey = apiKey { copy.apiKey = apiKey }
+        if let defaultModel = defaultModel { copy.defaultModel = defaultModel }
+        if let timeout = timeout { copy.timeout = timeout }
+        if let isDefault = isDefault { copy.isDefault = isDefault }
+        copy.updatedAt = Date()
+        return copy
     }
 }
 

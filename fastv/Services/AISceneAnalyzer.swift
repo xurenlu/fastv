@@ -22,7 +22,44 @@ struct AISceneChangePoint {
 
 /// AI 场景分析服务（多模态融合）
 struct AISceneAnalyzer {
-    /// 使用 AI 分析视频场景变化
+    /// 使用 AI 分析视频场景变化（使用新的配置系统）
+    /// - Parameters:
+    ///   - videoURL: 视频文件URL
+    ///   - frameRate: 视频帧率
+    ///   - visionModel: 视觉模型名称（如 llava, qwen-vl）
+    ///   - textModel: 文本模型名称（用于音频分析）
+    ///   - profile: AI 服务配置
+    ///   - frameInterval: 帧分析间隔（秒，默认2秒）
+    ///   - audioSegmentDuration: 音频分段时长（秒，默认5秒）
+    ///   - extractThumbnails: 是否提取截图
+    ///   - progressHandler: 进度回调
+    /// - Returns: AI 分析的关键转折点列表
+    static func analyzeSceneChanges(
+        from videoURL: URL,
+        frameRate: Float? = nil,
+        visionModel: String,
+        textModel: String,
+        profile: AIServiceProfile,
+        frameInterval: TimeInterval = 2.0,
+        audioSegmentDuration: TimeInterval = 5.0,
+        extractThumbnails: Bool = true,
+        progressHandler: @escaping (Double, String) -> Void
+    ) async throws -> [AISceneChangePoint] {
+        return try await analyzeSceneChangesLegacy(
+            from: videoURL,
+            frameRate: frameRate,
+            visionModel: visionModel,
+            textModel: textModel,
+            endpoint: profile.effectiveEndpoint,
+            apiToken: profile.apiKey.isEmpty ? nil : profile.apiKey,
+            frameInterval: frameInterval,
+            audioSegmentDuration: audioSegmentDuration,
+            extractThumbnails: extractThumbnails,
+            progressHandler: progressHandler
+        )
+    }
+    
+    /// 使用 AI 分析视频场景变化（旧版兼容方法）
     /// - Parameters:
     ///   - videoURL: 视频文件URL
     ///   - frameRate: 视频帧率
@@ -35,7 +72,7 @@ struct AISceneAnalyzer {
     ///   - extractThumbnails: 是否提取截图
     ///   - progressHandler: 进度回调
     /// - Returns: AI 分析的关键转折点列表
-    static func analyzeSceneChanges(
+    static func analyzeSceneChangesLegacy(
         from videoURL: URL,
         frameRate: Float? = nil,
         visionModel: String,
@@ -70,14 +107,23 @@ struct AISceneAnalyzer {
             }
         }
         
+        // 创建临时 Profile 用于分析
+        let tempProfile = AIServiceProfile(
+            name: "临时配置",
+            protocolType: .ollama,
+            endpoint: endpoint,
+            apiKey: apiToken ?? "",
+            defaultModel: textModel,
+            timeout: 30.0
+        )
+        
         // 并行执行视觉和音频分析
         async let visualAnalysis = analyzeVisualChanges(
             from: videoURL,
             frameRate: actualFrameRate,
             frameInterval: frameInterval,
             visionModel: visionModel,
-            endpoint: endpoint,
-            apiToken: apiToken,
+            profile: tempProfile,
             extractThumbnails: extractThumbnails,
             progressHandler: { progress, status in
                 progressHandler(progress * 0.5, "视觉分析: \(status)")
@@ -87,9 +133,8 @@ struct AISceneAnalyzer {
         async let audioAnalysis = AudioSegmentAnalyzer.analyzeAudioSegments(
             from: videoURL,
             segmentDuration: audioSegmentDuration,
-            endpoint: endpoint,
+            profile: tempProfile,
             model: textModel,
-            apiToken: apiToken,
             progressHandler: { progress, status in
                 progressHandler(0.5 + progress * 0.3, "音频分析: \(status)")
             }
@@ -117,8 +162,7 @@ struct AISceneAnalyzer {
         frameRate: Float,
         frameInterval: TimeInterval,
         visionModel: String,
-        endpoint: String,
-        apiToken: String?,
+        profile: AIServiceProfile,
         extractThumbnails: Bool,
         progressHandler: @escaping (Double, String) -> Void
     ) async throws -> [(timestamp: TimeInterval, description: String, image: NSImage?)] {
@@ -177,9 +221,8 @@ struct AISceneAnalyzer {
                     description = try await OllamaService.shared.compareImages(
                         image1: prevImage,
                         image2: currentImage,
-                        endpoint: endpoint,
+                        profile: profile,
                         model: visionModel,
-                        apiToken: apiToken,
                         timeout: 30.0
                     )
                 } else {
@@ -188,9 +231,8 @@ struct AISceneAnalyzer {
                     description = try await OllamaService.shared.analyzeImage(
                         image: currentImage,
                         prompt: prompt,
-                        endpoint: endpoint,
+                        profile: profile,
                         model: visionModel,
-                        apiToken: apiToken,
                         timeout: 30.0
                     )
                 }

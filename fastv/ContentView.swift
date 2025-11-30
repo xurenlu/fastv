@@ -11,11 +11,11 @@ import UniformTypeIdentifiers
 /// 侧边栏选项
 enum SidebarItem: String, Identifiable, CaseIterable {
     case voiceInput = "语音输入"
+    case aiTodo = "AI Todo"
     case meetingRecord = "会议记录"
     case liveTranscription = "直播转录"
     case videoProcessing = "视频处理"
     case videoSceneAnalysis = "视频场景分析"
-    case aiTodo = "AI Todo"
     case aiChat = "AI Chat"
     
     var id: String { rawValue }

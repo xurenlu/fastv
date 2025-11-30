@@ -15,7 +15,7 @@ struct ChatWindowView: View {
     @State private var showParameters = false
     
     var needsConfiguration: Bool {
-        preferences.aiAPIEndpoint.isEmpty
+        preferences.aiServiceProfiles.isEmpty || preferences.getDefaultProfile() == nil
     }
     
     var body: some View {

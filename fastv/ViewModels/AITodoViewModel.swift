@@ -41,6 +41,7 @@ class AITodoViewModel: ObservableObject {
     @Published var aiErrorMessage: String?
     @Published var aiSuccessMessage: String?
     @Published var viewMode: TodoViewMode = .quadrant
+    @Published var showCompletedTodos: Bool = false
     
     private let store = AITodoStore.shared
     private let aiService = AITodoAIService.shared
@@ -66,6 +67,10 @@ class AITodoViewModel: ObservableObject {
         store.activeTodos
     }
     
+    var visibleActiveTodos: [AITodoItem] {
+        store.activeTodos.filter { showCompletedTodos || $0.status != .completed }
+    }
+    
     var archivedTodos: [AITodoItem] {
         store.archivedTodos
     }
@@ -74,7 +79,7 @@ class AITodoViewModel: ObservableObject {
     
     /// 获取指定优先级的活跃 Todo
     func activeTodos(forPriority priority: AITodoPriority) -> [AITodoItem] {
-        store.activeTodos.filter { $0.priority == priority }
+        visibleActiveTodos.filter { $0.priority == priority }
     }
     
     /// 重要且紧急
@@ -106,11 +111,16 @@ class AITodoViewModel: ObservableObject {
     // MARK: - Basic CRUD
     
     func addTodo(title: String, description: String? = nil, priority: AITodoPriority = .notImportantNotUrgent, dueDate: Date? = nil) {
+        // 确保该优先级有默认分组
+        let defaultGroups = store.getDefaultGroups(for: priority)
+        let defaultGroupId = defaultGroups.first?.id
+        
         let todo = AITodoItem(
             title: title,
             description: description,
             priority: priority,
-            dueDate: dueDate
+            dueDate: dueDate,
+            groupId: defaultGroupId
         )
         store.add(todo)
     }
@@ -162,6 +172,52 @@ class AITodoViewModel: ObservableObject {
     
     func restoreTodo(_ todo: AITodoItem) {
         store.restore(todo)
+    }
+    
+    // MARK: - Group Management
+    
+    /// 获取指定优先级的所有分组（如果不存在则创建默认分组）
+    func getGroups(for priority: AITodoPriority) -> [AITodoGroup] {
+        var groups = store.getGroups(for: priority)
+        if groups.isEmpty {
+            groups = store.getDefaultGroups(for: priority)
+        }
+        return groups
+    }
+    
+    /// 获取指定分组的事项
+    func getTodos(for group: AITodoGroup) -> [AITodoItem] {
+        let todos = store.getTodos(for: group)
+        return todos.filter { showCompletedTodos || $0.status != .completed }
+    }
+    
+    /// 将事项移动到指定分组
+    func moveTodo(_ todo: AITodoItem, to group: AITodoGroup) {
+        store.moveTodo(todo, to: group)
+    }
+    
+    /// 创建新分组
+    func createGroup(name: String, priority: AITodoPriority) -> AITodoGroup {
+        return store.createGroup(name: name, priority: priority)
+    }
+    
+    /// 删除分组
+    func deleteGroup(_ group: AITodoGroup) {
+        store.deleteGroup(group)
+    }
+    
+    /// 更新分组
+    func updateGroup(_ group: AITodoGroup) {
+        store.updateGroup(group)
+    }
+    
+    /// 重置为默认分组
+    func resetToDefaultGroups(for priority: AITodoPriority) {
+        let groups = getGroups(for: priority)
+        for group in groups {
+            deleteGroup(group)
+        }
+        _ = store.getDefaultGroups(for: priority)
     }
     
     // MARK: - Voice Input
@@ -226,10 +282,7 @@ class AITodoViewModel: ObservableObject {
         
         // 获取用户设置
         let preferences = UserPreferences.shared
-        let endpoint = preferences.aiTodoEndpoint.isEmpty ? preferences.aiAPIEndpoint : preferences.aiTodoEndpoint
-        let model = preferences.aiTodoModel.isEmpty ? preferences.aiModel : preferences.aiTodoModel
-        let apiToken = preferences.aiAPIToken
-        let timeout = preferences.aiTodoTimeout > 0 ? preferences.aiTodoTimeout : preferences.aiTimeout
+        let config = preferences.getConfig(for: .todoParsing)
         
         // 获取 Todo 上下文
         let todosContext = store.formatTodosAsContext()
@@ -239,10 +292,9 @@ class AITodoViewModel: ObservableObject {
             let operations = try await aiService.parseUserInput(
                 input: input,
                 todosContext: todosContext,
-                endpoint: endpoint,
-                model: model,
-                apiToken: apiToken.isEmpty ? nil : apiToken,
-                timeout: timeout
+                profile: config.profile,
+                model: config.model,
+                timeout: config.timeout
             )
             
             // 执行操作

@@ -14,6 +14,7 @@ struct MeetingDetectionAlertView: View {
     let onStartRecording: (Bool) -> Void  // 参数：是否捕获系统音频
     let onDismiss: () -> Void
     @State private var captureSystemAudio = false
+    @ObservedObject private var systemAudioCapture = SystemAudioCaptureService.shared
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -42,7 +43,7 @@ struct MeetingDetectionAlertView: View {
                 Toggle("同时捕获系统音频（对方的声音）", isOn: $captureSystemAudio)
                     .help("需要安装 BlackHole 虚拟音频设备才能捕获系统音频")
                 
-                if captureSystemAudio && !SystemAudioCaptureService.shared.isBlackHoleAvailable {
+                if captureSystemAudio && !systemAudioCapture.isBlackHoleAvailable {
                     HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(.orange)
@@ -51,7 +52,7 @@ struct MeetingDetectionAlertView: View {
                             .foregroundColor(.orange)
                         
                         Button("查看安装指南") {
-                            NSWorkspace.shared.open(SystemAudioCaptureService.shared.getBlackHoleInstallGuideURL())
+                            NSWorkspace.shared.open(systemAudioCapture.getBlackHoleInstallGuideURL())
                         }
                         .buttonStyle(.link)
                         .font(.caption)
