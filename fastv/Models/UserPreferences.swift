@@ -93,6 +93,11 @@ class UserPreferences: ObservableObject {
         static let emailAISmartTaggingEnabled = "emailAISmartTaggingEnabled"
         static let emailAISummaryEnabled = "emailAISummaryEnabled"
         static let emailAIPriorityDetectionEnabled = "emailAIPriorityDetectionEnabled"
+        // 网络代理相关设置
+        static let emailProxyEnabled = "emailProxyEnabled"
+        static let emailProxyHost = "emailProxyHost"
+        static let emailProxyPort = "emailProxyPort"
+        static let emailProxyType = "emailProxyType" // "http", "socks5"
     }
     
     // MARK: - Published Properties
@@ -361,6 +366,23 @@ class UserPreferences: ObservableObject {
         willSet { defaults.set(newValue, forKey: Keys.emailAIPriorityDetectionEnabled) }
     }
     
+    // 网络代理相关设置
+    @Published var emailProxyEnabled: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.emailProxyEnabled) }
+    }
+    
+    @Published var emailProxyHost: String {
+        willSet { defaults.set(newValue, forKey: Keys.emailProxyHost) }
+    }
+    
+    @Published var emailProxyPort: Int {
+        willSet { defaults.set(newValue, forKey: Keys.emailProxyPort) }
+    }
+    
+    @Published var emailProxyType: String {
+        willSet { defaults.set(newValue, forKey: Keys.emailProxyType) }
+    }
+    
     // MARK: - Initialization
     
     private init() {
@@ -574,6 +596,12 @@ class UserPreferences: ObservableObject {
         emailAISmartTaggingEnabled = defaults.object(forKey: Keys.emailAISmartTaggingEnabled) as? Bool ?? true
         emailAISummaryEnabled = defaults.object(forKey: Keys.emailAISummaryEnabled) as? Bool ?? true
         emailAIPriorityDetectionEnabled = defaults.object(forKey: Keys.emailAIPriorityDetectionEnabled) as? Bool ?? true
+        
+        // 网络代理设置默认值
+        emailProxyEnabled = defaults.object(forKey: Keys.emailProxyEnabled) as? Bool ?? true
+        emailProxyHost = defaults.string(forKey: Keys.emailProxyHost) ?? "localhost"
+        emailProxyPort = defaults.object(forKey: Keys.emailProxyPort) as? Int ?? 7856
+        emailProxyType = defaults.string(forKey: Keys.emailProxyType) ?? "socks5"
         
         // 检查模型是否已下载（在所有属性初始化之后）
         isModelDownloaded = defaults.object(forKey: Keys.isModelDownloaded) as? Bool ?? false

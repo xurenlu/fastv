@@ -7,22 +7,21 @@
 
 import SwiftUI
 
-/// 账号管理视图
+/// 邮箱账号管理视图 - 符合 Apple 设计标准
 struct EmailAccountManagementView: View {
     @StateObject private var viewModel = EmailAccountViewModel()
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // 账号列表
+            Group {
                 if viewModel.accounts.isEmpty && !viewModel.isAddingAccount {
                     emptyStateView
                 } else {
                     accountListView
                 }
             }
-            .navigationTitle("邮箱账号管理")
+            .navigationTitle("邮箱账号")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("完成") {
@@ -38,11 +37,19 @@ struct EmailAccountManagementView: View {
                     }
                 }
             }
-            .sheet(isPresented: $viewModel.isAddingAccount) {
+            .sheet(isPresented: Binding(
+                get: { viewModel.isAddingAccount || viewModel.editingAccount != nil },
+                set: { newValue in
+                    if !newValue {
+                        viewModel.isAddingAccount = false
+                        viewModel.cancelEditing()
+                    }
+                }
+            )) {
                 accountFormView
             }
         }
-        .frame(minWidth: 600, minHeight: 400)
+        .frame(minWidth: 640, minHeight: 480)
     }
     
     // MARK: - Account List
@@ -62,18 +69,29 @@ struct EmailAccountManagementView: View {
         .listStyle(.sidebar)
     }
     
+    // MARK: - Empty State
+    
     private var emptyStateView: some View {
         VStack(spacing: 20) {
             Image(systemName: "envelope.badge")
-                .font(.system(size: 64))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 56, weight: .ultraLight))
+                .foregroundStyle(.tertiary)
+                .symbolRenderingMode(.hierarchical)
+                .padding(.bottom, 8)
             
-            Text("还没有添加邮箱账号")
-                .font(.headline)
-            
-            Text("点击右上角的"+"按钮添加第一个账号")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            VStack(spacing: 10) {
+                Text("还没有邮箱账号")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+                
+                Text("添加邮箱账号以开始收发邮件")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 40)
             
             Button(action: {
                 viewModel.startAddingAccount()
@@ -81,8 +99,11 @@ struct EmailAccountManagementView: View {
                 Label("添加账号", systemImage: "plus.circle.fill")
             }
             .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .padding(.top, 4)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(40)
     }
     
     // MARK: - Account Form
@@ -90,7 +111,9 @@ struct EmailAccountManagementView: View {
     private var accountFormView: some View {
         NavigationStack {
             Form {
-                Section("基本信息") {
+                // 基本信息部分
+                Section {
+                    // 邮箱服务选择
                     Picker("邮箱服务", selection: $viewModel.serviceType) {
                         ForEach(EmailServiceType.allCases, id: \.self) { type in
                             Text(type.displayName).tag(type)
@@ -100,38 +123,164 @@ struct EmailAccountManagementView: View {
                         viewModel.serviceTypeChanged()
                     }
                     
+                    // 邮箱地址
                     TextField("邮箱地址", text: $viewModel.emailAddress)
                         .textContentType(.emailAddress)
                         #if os(iOS)
                         .autocapitalization(.none)
+                        .keyboardType(.emailAddress)
                         #endif
                     
-                    TextField("显示名称（可选）", text: $viewModel.displayName)
+                    // 显示名称
+                    TextField("显示名称", text: $viewModel.displayName, prompt: Text("可选"))
                     
-                    SecureField("密码", text: $viewModel.password)
-                        .textContentType(.password)
-                }
-                
-                Section {
-                    DisclosureGroup("高级设置", isExpanded: $viewModel.showAdvancedSettings) {
-                        TextField("IMAP服务器", text: $viewModel.imapHost)
-                        TextField("IMAP端口", text: $viewModel.imapPort)
-                        Picker("IMAP加密", selection: $viewModel.imapEncryption) {
-                            Text("无").tag(EmailEncryption.none)
-                            Text("SSL").tag(EmailEncryption.ssl)
-                            Text("STARTTLS").tag(EmailEncryption.startTLS)
-                        }
-                        
-                        TextField("SMTP服务器", text: $viewModel.smtpHost)
-                        TextField("SMTP端口", text: $viewModel.smtpPort)
-                        Picker("SMTP加密", selection: $viewModel.smtpEncryption) {
-                            Text("无").tag(EmailEncryption.none)
-                            Text("SSL").tag(EmailEncryption.ssl)
-                            Text("STARTTLS").tag(EmailEncryption.startTLS)
-                        }
+                    // 密码
+                    SecureField(
+                        viewModel.editingAccount == nil ? "密码" : "密码（留空则不修改）",
+                        text: $viewModel.password
+                    )
+                    .textContentType(.password)
+                } header: {
+                    Text("账号信息")
+                } footer: {
+                    if viewModel.serviceType != .custom {
+                        Text("服务器配置已自动设置")
+                            .font(.caption)
                     }
                 }
                 
+                // 服务器配置（预设服务显示只读，自定义服务可编辑）
+                if viewModel.serviceType == .custom {
+                    // 自定义服务：显示可编辑的高级设置
+                    Section {
+                        DisclosureGroup("服务器设置", isExpanded: $viewModel.showAdvancedSettings) {
+                            VStack(spacing: 16) {
+                                // IMAP 设置
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text("接收邮件服务器 (IMAP)")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.secondary)
+                                        .textCase(.none)
+                                    
+                                    TextField("服务器地址", text: $viewModel.imapHost)
+                                    
+                                    HStack(spacing: 12) {
+                                        TextField("端口", text: $viewModel.imapPort)
+                                            .frame(width: 120)
+                                        
+                                        Picker("加密方式", selection: $viewModel.imapEncryption) {
+                                            Text("无").tag(EmailEncryption.none)
+                                            Text("SSL/TLS").tag(EmailEncryption.ssl)
+                                            Text("STARTTLS").tag(EmailEncryption.startTLS)
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                    }
+                                }
+                                
+                                Divider()
+                                    .padding(.vertical, 4)
+                                
+                                // SMTP 设置
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text("发送邮件服务器 (SMTP)")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.secondary)
+                                        .textCase(.none)
+                                    
+                                    TextField("服务器地址", text: $viewModel.smtpHost)
+                                    
+                                    HStack(spacing: 12) {
+                                        TextField("端口", text: $viewModel.smtpPort)
+                                            .frame(width: 120)
+                                        
+                                        Picker("加密方式", selection: $viewModel.smtpEncryption) {
+                                            Text("无").tag(EmailEncryption.none)
+                                            Text("SSL/TLS").tag(EmailEncryption.ssl)
+                                            Text("STARTTLS").tag(EmailEncryption.startTLS)
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 8)
+                        }
+                    } header: {
+                        Text("服务器配置")
+                    }
+                } else {
+                    // 预设服务：显示只读的配置信息
+                    Section {
+                        VStack(spacing: 12) {
+                            // IMAP 配置
+                            HStack(alignment: .top, spacing: 12) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("接收邮件 (IMAP)")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.secondary)
+                                    
+                                    Text(viewModel.imapHost)
+                                        .font(.body)
+                                        .foregroundStyle(.primary)
+                                    
+                                    HStack(spacing: 8) {
+                                        Text("端口: \(viewModel.imapPort)")
+                                        Text("•")
+                                        Text(encryptionDisplayName(viewModel.imapEncryption))
+                                    }
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                                    .symbolRenderingMode(.hierarchical)
+                            }
+                            
+                            Divider()
+                            
+                            // SMTP 配置
+                            HStack(alignment: .top, spacing: 12) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("发送邮件 (SMTP)")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.secondary)
+                                    
+                                    Text(viewModel.smtpHost)
+                                        .font(.body)
+                                        .foregroundStyle(.primary)
+                                    
+                                    HStack(spacing: 8) {
+                                        Text("端口: \(viewModel.smtpPort)")
+                                        Text("•")
+                                        Text(encryptionDisplayName(viewModel.smtpEncryption))
+                                    }
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                                    .symbolRenderingMode(.hierarchical)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    } header: {
+                        Text("服务器配置")
+                    } footer: {
+                        Text("这些设置已根据您选择的邮箱服务自动配置")
+                            .font(.caption)
+                    }
+                }
+                
+                // 测试连接
                 Section {
                     Button(action: {
                         Task {
@@ -148,19 +297,34 @@ struct EmailAccountManagementView: View {
                             Text("测试连接")
                         }
                     }
-                    .disabled(viewModel.isTestingConnection || viewModel.emailAddress.isEmpty || viewModel.password.isEmpty)
+                    .disabled(viewModel.isTestingConnection || 
+                             viewModel.emailAddress.isEmpty || 
+                             // 编辑账号时，密码可以为空（使用已存储的密码）
+                             (viewModel.password.isEmpty && viewModel.editingAccount == nil))
                     
                     if let result = viewModel.connectionTestResult {
-                        HStack {
+                        HStack(spacing: 8) {
                             Image(systemName: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                .foregroundStyle(result.success ? .green : .red)
+                                .foregroundStyle(result.success ? Color.green : Color.red)
+                                .symbolRenderingMode(.hierarchical)
+                            
                             Text(result.message)
-                                .foregroundStyle(result.success ? .green : .red)
+                                .foregroundStyle(result.success ? Color.primary : Color.red)
                         }
+                        .font(.subheadline)
+                        .padding(.top, 4)
+                    }
+                } header: {
+                    Text("连接测试")
+                } footer: {
+                    if viewModel.connectionTestResult == nil {
+                        Text("测试连接以确保账号配置正确")
+                            .font(.caption)
                     }
                 }
             }
-            .navigationTitle(viewModel.editingAccount == nil ? "添加账号" : "编辑账号")
+            .formStyle(.grouped)
+            .navigationTitle(viewModel.editingAccount == nil ? "添加邮箱账号" : "编辑邮箱账号")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") {
@@ -169,7 +333,7 @@ struct EmailAccountManagementView: View {
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") {
+                    Button(viewModel.editingAccount == nil ? "添加" : "保存") {
                         Task {
                             do {
                                 try await viewModel.saveAccount()
@@ -179,11 +343,13 @@ struct EmailAccountManagementView: View {
                             }
                         }
                     }
-                    .disabled(viewModel.emailAddress.isEmpty || viewModel.password.isEmpty)
+                    .disabled(viewModel.emailAddress.isEmpty || 
+                             viewModel.isTestingConnection ||
+                             (viewModel.password.isEmpty && viewModel.editingAccount == nil))
                 }
             }
             .alert("错误", isPresented: .constant(viewModel.errorMessage != nil)) {
-                Button("确定") {
+                Button("好", role: .cancel) {
                     viewModel.errorMessage = nil
                 }
             } message: {
@@ -192,7 +358,7 @@ struct EmailAccountManagementView: View {
                 }
             }
         }
-        .frame(minWidth: 500, minHeight: 600)
+        .frame(minWidth: 560, minHeight: 640)
     }
 }
 
@@ -204,35 +370,55 @@ struct AccountRow: View {
     let onDelete: () -> Void
     
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(account.displayName)
-                    .font(.headline)
+        HStack(spacing: 14) {
+            // 状态指示器
+            StatusIndicator(status: account.connectionStatus)
+            
+            // 账号信息
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 6) {
+                    Text(account.displayName)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    
+                    if account.isDefault {
+                        Label("默认", systemImage: "star.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                            .symbolRenderingMode(.hierarchical)
+                    }
+                }
                 
                 Text(account.emailAddress)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 
-                HStack(spacing: 8) {
-                    StatusIndicator(status: account.connectionStatus)
+                HStack(spacing: 4) {
                     Text(account.serviceType.displayName)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.tertiary)
+                    
+                    if account.isEnabled {
+                        Text("•")
+                            .foregroundStyle(.tertiary)
+                            .font(.caption)
+                        
+                        Text("已启用")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
             }
             
-            Spacer()
+            Spacer(minLength: 12)
             
-            if account.isDefault {
-                Label("默认", systemImage: "star.fill")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-            }
-            
+            // 操作菜单
             Menu {
                 Button(action: onEdit) {
                     Label("编辑", systemImage: "pencil")
                 }
+                
+                Divider()
                 
                 Button(role: .destructive, action: onDelete) {
                     Label("删除", systemImage: "trash")
@@ -240,12 +426,19 @@ struct AccountRow: View {
             } label: {
                 Image(systemName: "ellipsis.circle")
                     .foregroundStyle(.secondary)
+                    .symbolRenderingMode(.hierarchical)
+                    .font(.system(size: 18))
             }
             .buttonStyle(.plain)
+            .menuStyle(.borderlessButton)
+            .frame(width: 24, height: 24)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
     }
 }
+
+// MARK: - Status Indicator
 
 struct StatusIndicator: View {
     let status: ConnectionStatus
@@ -253,24 +446,43 @@ struct StatusIndicator: View {
     var body: some View {
         Circle()
             .fill(statusColor)
-            .frame(width: 8, height: 8)
+            .frame(width: 9, height: 9)
+            .overlay {
+                Circle()
+                    .stroke(statusColor.opacity(0.2), lineWidth: 1)
+                    .frame(width: 11, height: 11)
+            }
     }
     
     private var statusColor: Color {
         switch status {
         case .connected:
-            return .green
+            return Color(red: 0.2, green: 0.78, blue: 0.35) // Apple green
         case .connecting:
-            return .orange
+            return Color(red: 1.0, green: 0.58, blue: 0.0) // Apple orange
         case .disconnected:
-            return .gray
+            return Color.secondary
         case .error:
-            return .red
+            return Color(red: 1.0, green: 0.23, blue: 0.19) // Apple red
         }
     }
 }
 
-#Preview {
-    EmailAccountManagementView()
+// MARK: - Helper Functions
+
+private func encryptionDisplayName(_ encryption: EmailEncryption) -> String {
+    switch encryption {
+    case .none:
+        return "无加密"
+    case .ssl:
+        return "SSL/TLS"
+    case .startTLS:
+        return "STARTTLS"
+    }
 }
 
+// MARK: - Preview
+
+#Preview("账号列表") {
+    EmailAccountManagementView()
+}

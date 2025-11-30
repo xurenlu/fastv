@@ -182,6 +182,80 @@ class EmailViewModel: ObservableObject {
         }
     }
     
+    /// 同步账号
+    func syncAccount(_ account: EmailAccount) async {
+        isLoading = true
+        syncProgress = 0.0
+        syncStatus = "正在同步..."
+        errorMessage = nil
+        
+        do {
+            // 获取文件夹列表
+            let folders = try await emailService.fetchFolders(account: account)
+            
+            syncProgress = 0.3
+            syncStatus = "已获取 \(folders.count) 个文件夹"
+            
+            // 同步每个文件夹
+            for (index, folder) in folders.enumerated() {
+                try await emailStore.addFolder(folder)
+                
+                let messages = try await emailService.syncMessages(
+                    account: account,
+                    folder: folder,
+                    since: nil
+                )
+                try await emailStore.addMessages(messages, folderId: folder.id)
+                
+                syncProgress = 0.3 + (Double(index + 1) / Double(folders.count)) * 0.7
+                syncStatus = "正在同步 \(folder.name)..."
+                
+                // 发送通知
+                for message in messages {
+                    notificationService.notifyNewEmail(message)
+                }
+            }
+            
+            syncStatus = "同步完成"
+            syncProgress = 1.0
+            
+            // 更新账号最后同步时间
+            var updatedAccount = account
+            updatedAccount.lastSyncDate = Date()
+            updatedAccount.connectionStatus = .connected
+            try await emailStore.updateAccount(updatedAccount)
+            
+            // 刷新当前视图
+            if selectedAccountId == account.id {
+                loadMessages()
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            syncStatus = "同步失败"
+        }
+        
+        isLoading = false
+        
+        // 2秒后清除状态
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            self.syncStatus = ""
+            self.syncProgress = 0.0
+        }
+    }
+    
+    /// 搜索邮件
+    func searchMessages(query: String) -> [EmailMessage] {
+        guard !query.isEmpty else { return messages }
+        
+        let lowercasedQuery = query.lowercased()
+        return messages.filter { message in
+            message.subject.lowercased().contains(lowercasedQuery) ||
+            message.from.email.lowercased().contains(lowercasedQuery) ||
+            (message.from.name?.lowercased().contains(lowercasedQuery) ?? false) ||
+            message.preview.lowercased().contains(lowercasedQuery)
+        }
+    }
+    
     /// 删除邮件
     func deleteMessage(_ message: EmailMessage) async {
         guard let account = currentAccount else { return }
@@ -245,57 +319,5 @@ class EmailViewModel: ObservableObject {
         }
     }
     
-    /// 同步账号
-    func syncAccount(_ account: EmailAccount) async {
-        isLoading = true
-        syncProgress = 0.0
-        syncStatus = "正在同步..."
-        
-        do {
-            // 获取文件夹列表
-            let folders = try await emailService.fetchFolders(account: account)
-            
-            syncProgress = 0.3
-            syncStatus = "已获取 \(folders.count) 个文件夹"
-            
-            // 同步每个文件夹
-            for (index, folder) in folders.enumerated() {
-                try await emailStore.addFolder(folder)
-                
-                let messages = try await emailService.syncMessages(account: account, folder: folder)
-                try await emailStore.addMessages(messages, folderId: folder.id)
-                
-                syncProgress = 0.3 + (Double(index + 1) / Double(folders.count)) * 0.7
-                syncStatus = "正在同步 \(folder.name)..."
-            }
-            
-            syncStatus = "同步完成"
-            
-            // 更新账号最后同步时间
-            var updatedAccount = account
-            updatedAccount.lastSyncDate = Date()
-            updatedAccount.connectionStatus = .connected
-            try await emailStore.updateAccount(updatedAccount)
-            
-        } catch {
-            errorMessage = error.localizedDescription
-            syncStatus = "同步失败"
-        }
-        
-        isLoading = false
-    }
-    
-    /// 搜索邮件
-    func searchMessages(query: String) -> [EmailMessage] {
-        guard !query.isEmpty else { return messages }
-        
-        let lowercasedQuery = query.lowercased()
-        return messages.filter { message in
-            message.subject.lowercased().contains(lowercasedQuery) ||
-            message.from.email.lowercased().contains(lowercasedQuery) ||
-            message.from.name?.lowercased().contains(lowercasedQuery) == true ||
-            message.preview.lowercased().contains(lowercasedQuery)
-        }
-    }
 }
 

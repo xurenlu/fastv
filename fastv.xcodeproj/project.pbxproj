@@ -54,16 +54,22 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		5C0423802ECD792D00821B50 /* fastv */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = fastv;
 			sourceTree = "<group>";
 		};
 		5C0423902ECD793000821B50 /* fastvTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = fastvTests;
 			sourceTree = "<group>";
 		};
 		5C04239A2ECD793000821B50 /* fastvUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = fastvUITests;
 			sourceTree = "<group>";
 		};
@@ -321,13 +327,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-typecho/Pods-typecho-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-typecho/Pods-typecho-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

@@ -183,7 +183,7 @@ struct EmailView: View {
                 EmailAvatarView(email: message.from.email)
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(message.from.displayName)
+                    Text(message.from.name ?? message.from.email)
                         .font(.headline)
                     
                     Text(message.from.email)
@@ -278,7 +278,7 @@ struct MessageRow: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(message.from.displayName)
+                    Text(message.from.name ?? message.from.email)
                         .font(.headline)
                         .lineLimit(1)
                     

@@ -40,6 +40,8 @@ class EmailAccountViewModel: ObservableObject {
     
     init() {
         loadAccounts()
+        // 初始化时自动填充默认服务（Gmail）的配置
+        serviceTypeChanged()
     }
     
     /// 加载账号列表
@@ -62,12 +64,34 @@ class EmailAccountViewModel: ObservableObject {
         emailAddress = account.emailAddress
         displayName = account.displayName
         serviceType = account.serviceType
-        imapHost = account.imapHost
-        imapPort = String(account.imapPort)
-        imapEncryption = account.imapEncryption
-        smtpHost = account.smtpHost
-        smtpPort = String(account.smtpPort)
-        smtpEncryption = account.smtpEncryption
+        
+        // 如果服务类型是自定义，自动展开高级设置
+        if account.serviceType == .custom {
+            showAdvancedSettings = true
+        } else {
+            showAdvancedSettings = false
+        }
+        
+        // 如果服务类型有预设配置，使用预设配置；否则使用账号中保存的配置
+        if let imapConfig = account.serviceType.imapConfig {
+            imapHost = imapConfig.host
+            imapPort = String(imapConfig.port)
+            imapEncryption = imapConfig.encryption
+        } else {
+            imapHost = account.imapHost
+            imapPort = String(account.imapPort)
+            imapEncryption = account.imapEncryption
+        }
+        
+        if let smtpConfig = account.serviceType.smtpConfig {
+            smtpHost = smtpConfig.host
+            smtpPort = String(smtpConfig.port)
+            smtpEncryption = smtpConfig.encryption
+        } else {
+            smtpHost = account.smtpHost
+            smtpPort = String(account.smtpPort)
+            smtpEncryption = account.smtpEncryption
+        }
         
         // 密码需要从Keychain获取，但这里不显示
         password = ""
@@ -101,22 +125,24 @@ class EmailAccountViewModel: ObservableObject {
             account.displayName = displayName.isEmpty ? emailAddress : displayName
             account.serviceType = serviceType
             
-            // 如果服务类型改变，更新服务器配置
-            if let imapConfig = serviceType.imapConfig {
+            // 更新服务器配置
+            // 如果服务类型是预设的且没有打开高级设置，使用预设配置
+            // 如果打开了高级设置或服务类型是自定义，使用表单中的配置
+            if let imapConfig = serviceType.imapConfig, !showAdvancedSettings {
                 account.imapHost = imapConfig.host
                 account.imapPort = imapConfig.port
                 account.imapEncryption = imapConfig.encryption
-            } else if showAdvancedSettings {
+            } else {
                 account.imapHost = imapHost
                 account.imapPort = Int(imapPort) ?? 993
                 account.imapEncryption = imapEncryption
             }
             
-            if let smtpConfig = serviceType.smtpConfig {
+            if let smtpConfig = serviceType.smtpConfig, !showAdvancedSettings {
                 account.smtpHost = smtpConfig.host
                 account.smtpPort = smtpConfig.port
                 account.smtpEncryption = smtpConfig.encryption
-            } else if showAdvancedSettings {
+            } else {
                 account.smtpHost = smtpHost
                 account.smtpPort = Int(smtpPort) ?? 587
                 account.smtpEncryption = smtpEncryption
@@ -213,8 +239,26 @@ class EmailAccountViewModel: ObservableObject {
             )
         }
         
+        // 确定使用的密码
+        // 如果密码为空且正在编辑账号，则从 Keychain 获取已存储的密码
+        var testPassword = password
+        if testPassword.isEmpty, let editing = editingAccount {
+            // 尝试从 Keychain 获取已存储的密码
+            if let storedPassword = try? EmailCredentialStore.shared.getPassword(accountId: editing.id) {
+                testPassword = storedPassword
+            }
+        }
+        
+        // 验证密码
+        guard !testPassword.isEmpty else {
+            connectionTestResult = ConnectionTestResult(success: false, message: "密码不能为空")
+            errorMessage = "密码不能为空"
+            isTestingConnection = false
+            return
+        }
+        
         do {
-            let success = try await emailService.testConnection(account: testAccount, password: password)
+            let success = try await emailService.testConnection(account: testAccount, password: testPassword)
             connectionTestResult = ConnectionTestResult(success: success, message: success ? "连接成功" : "连接失败")
         } catch {
             connectionTestResult = ConnectionTestResult(success: false, message: error.localizedDescription)
@@ -230,6 +274,13 @@ class EmailAccountViewModel: ObservableObject {
             imapHost = imapConfig.host
             imapPort = String(imapConfig.port)
             imapEncryption = imapConfig.encryption
+            // 预设服务时，如果之前是自定义，关闭高级设置
+            if serviceType != .custom {
+                showAdvancedSettings = false
+            }
+        } else {
+            // 自定义服务时，自动展开高级设置
+            showAdvancedSettings = true
         }
         
         if let smtpConfig = serviceType.smtpConfig {
@@ -246,14 +297,10 @@ class EmailAccountViewModel: ObservableObject {
         password = ""
         serviceType = .gmail
         showAdvancedSettings = false
-        imapHost = ""
-        imapPort = "993"
-        imapEncryption = .ssl
-        smtpHost = ""
-        smtpPort = "587"
-        smtpEncryption = .startTLS
         connectionTestResult = nil
         errorMessage = nil
+        // 重置后自动填充默认服务的配置
+        serviceTypeChanged()
     }
 }
 
