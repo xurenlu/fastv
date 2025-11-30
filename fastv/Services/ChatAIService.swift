@@ -94,7 +94,132 @@ class ChatAIService {
         return contentArray
     }
     
-    /// 发送聊天消息
+    /// 发送聊天消息（使用新的配置系统）
+    /// - Parameters:
+    ///   - messages: 消息历史（包含当前消息）
+    ///   - profile: AI 服务配置
+    ///   - model: 模型名称（覆盖 profile 默认模型）
+    ///   - timeout: 超时时间（覆盖 profile 默认超时）
+    ///   - preferences: 用户偏好设置（用于获取参数）
+    /// - Returns: AI回复内容和思考过程（如果有）
+    func sendMessage(
+        messages: [[String: Any]],
+        profile: AIServiceProfile,
+        model: String? = nil,
+        timeout: Double? = nil,
+        preferences: UserPreferences? = nil
+    ) async throws -> (content: String, thinking: String?) {
+        let effectiveModel = model ?? profile.defaultModel
+        let effectiveTimeout = timeout ?? profile.timeout
+        
+        let adapter = AIServiceAdapter.shared
+        let url = try adapter.buildAPIURL(for: profile, useChatCompletions: true, model: effectiveModel)
+        
+        // 对于 DashScope 原生模式，需要转换消息格式
+        let endpoint = profile.effectiveEndpoint.lowercased()
+        let usesDashScopeCompatibleMode = endpoint.contains("compatible-mode") || endpoint.contains("/chat/completions")
+        
+        let convertedMessages: [[String: Any]]
+        if profile.protocolType == .dashScope && !usesDashScopeCompatibleMode {
+            convertedMessages = messages.map { msg in
+                var dashScopeMsg = msg
+                if let content = msg["content"] as? String {
+                    // 将字符串内容转换为 DashScope 数组格式
+                    dashScopeMsg["content"] = [["text": content]]
+                } else if let contentArray = msg["content"] as? [[String: Any]] {
+                    // 已经是数组格式，检查是否需要转换
+                    let dashScopeContent = contentArray.map { item -> [String: Any] in
+                        if item["type"] as? String == "text", let text = item["text"] as? String {
+                            return ["text": text]
+                        } else if item["type"] as? String == "image_url",
+                                  let imageUrl = item["image_url"] as? [String: Any],
+                                  let url = imageUrl["url"] as? String {
+                            return ["image": url]
+                        } else if item["type"] as? String == "audio_url",
+                                  let audioUrl = item["audio_url"] as? [String: Any],
+                                  let url = audioUrl["url"] as? String {
+                            return ["audio": url]
+                        } else if item["type"] as? String == "video_url",
+                                  let videoUrl = item["video_url"] as? [String: Any],
+                                  let url = videoUrl["url"] as? String {
+                            return ["video": [url]]
+                        } else {
+                            return item
+                        }
+                    }
+                    dashScopeMsg["content"] = dashScopeContent
+                }
+                return dashScopeMsg
+            }
+        } else {
+            convertedMessages = messages
+        }
+        
+        let requestBody = adapter.buildRequestBody(
+            for: profile,
+            messages: convertedMessages,
+            model: effectiveModel,
+            temperature: preferences?.chatTemperature,
+            topP: preferences?.chatTopP,
+            maxTokens: preferences?.chatMaxTokens,
+            additionalParams: buildAdditionalParams(for: profile, preferences: preferences)
+        )
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        
+        let headers = adapter.buildRequestHeaders(for: profile)
+        for (key, value) in headers {
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        request.timeoutInterval = effectiveTimeout
+        
+        print("💬 [ChatAIService] 发送请求到 AI（超时: \(effectiveTimeout)秒），协议: \(profile.protocolType.displayName)")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ChatAIError.invalidResponse
+        }
+        
+        print("💬 [ChatAIService] 收到响应，状态码: \(httpResponse.statusCode)")
+        if let responseString = String(data: data, encoding: .utf8) {
+            let preview = responseString.count > 2000 ? String(responseString.prefix(2000)) + "..." : responseString
+            print("💬 [ChatAIService] 响应内容预览: \(preview)")
+        } else {
+            print("💬 [ChatAIService] 响应内容无法解析为字符串")
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "未知错误"
+            print("❌ [ChatAIService] 请求失败: \(errorMessage)")
+            throw ChatAIError.requestFailed(httpResponse.statusCode, errorMessage)
+        }
+        
+        return try adapter.parseResponse(data: data, for: profile)
+    }
+    
+    /// 构建额外参数
+    private func buildAdditionalParams(for profile: AIServiceProfile, preferences: UserPreferences?) -> [String: Any]? {
+        guard let prefs = preferences else { return nil }
+        var params: [String: Any] = [:]
+        
+        // DashScope 特殊参数
+        if profile.protocolType == .dashScope {
+            if prefs.chatEnableSearch {
+                params["enable_search"] = true
+            }
+            if supportsThinking(profile.defaultModel) && prefs.chatEnableThinking {
+                params["thinking"] = true
+            }
+        }
+        
+        return params.isEmpty ? nil : params
+    }
+    
+    /// 发送聊天消息（旧版兼容方法）
     /// - Parameters:
     ///   - messages: 消息历史（包含当前消息）
     ///   - endpoint: API 端点
@@ -103,7 +228,7 @@ class ChatAIService {
     ///   - timeout: 超时时间
     ///   - preferences: 用户偏好设置（用于获取参数）
     /// - Returns: AI回复内容和思考过程（如果有）
-    func sendMessage(
+    func sendMessageLegacy(
         messages: [[String: Any]],
         endpoint: String,
         model: String,
@@ -111,7 +236,7 @@ class ChatAIService {
         timeout: TimeInterval = 30.0,
         preferences: UserPreferences? = nil
     ) async throws -> (content: String, thinking: String?) {
-        print("💬 [ChatAIService] 开始发送聊天消息，消息数量: \(messages.count)")
+        print("💬 [ChatAIService] 开始发送聊天消息（旧版兼容），消息数量: \(messages.count)")
         
         let prefs = preferences ?? UserPreferences.shared
         let isDashScope = isDashScopeEndpoint(endpoint)
@@ -226,7 +351,9 @@ class ChatAIService {
                 parameters["top_k"] = prefs.chatTopK
             }
             if prefs.chatMaxTokens > 0 {
-                parameters["max_tokens"] = prefs.chatMaxTokens
+                // 确保 max_tokens 在有效范围内 [1, 8192]
+                let maxTokens = min(max(prefs.chatMaxTokens, 1), 8192)
+                parameters["max_tokens"] = maxTokens
             }
             
             // 默认启用搜索
@@ -259,7 +386,9 @@ class ChatAIService {
                 openAIBody["top_p"] = prefs.chatTopP
             }
             if prefs.chatMaxTokens > 0 {
-                openAIBody["max_tokens"] = prefs.chatMaxTokens
+                // 确保 max_tokens 在有效范围内 [1, 8192]
+                let maxTokens = min(max(prefs.chatMaxTokens, 1), 8192)
+                openAIBody["max_tokens"] = maxTokens
             }
             
             requestBody = openAIBody
@@ -599,7 +728,32 @@ class ChatAIService {
         return apiMessage
     }
     
-    /// 生成聊天会话总结
+    /// 生成聊天会话总结（使用新的配置系统）
+    /// - Parameters:
+    ///   - messages: 会话消息列表
+    ///   - profile: AI 服务配置
+    ///   - model: 模型名称（覆盖 profile 默认模型）
+    ///   - timeout: 超时时间（覆盖 profile 默认超时）
+    /// - Returns: 生成的总结文本
+    func generateSummary(
+        messages: [ChatMessage],
+        profile: AIServiceProfile,
+        model: String? = nil,
+        timeout: Double? = nil
+    ) async throws -> String {
+        let effectiveModel = model ?? profile.defaultModel
+        let effectiveTimeout = timeout ?? profile.timeout
+        
+        return try await generateSummaryLegacy(
+            messages: messages,
+            endpoint: profile.effectiveEndpoint,
+            model: effectiveModel,
+            apiToken: profile.apiKey.isEmpty ? nil : profile.apiKey,
+            timeout: effectiveTimeout
+        )
+    }
+    
+    /// 生成聊天会话总结（旧版兼容方法）
     /// - Parameters:
     ///   - messages: 会话消息列表
     ///   - endpoint: API 端点
@@ -607,7 +761,7 @@ class ChatAIService {
     ///   - apiToken: API Token（可选）
     ///   - timeout: 超时时间
     /// - Returns: 生成的总结文本
-    func generateSummary(
+    func generateSummaryLegacy(
         messages: [ChatMessage],
         endpoint: String,
         model: String,

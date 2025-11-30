@@ -95,13 +95,21 @@ class AIServiceAdapter {
     ) -> [String: Any] {
         let effectiveModel = model ?? profile.defaultModel
         
-        // qwen 系列模型的 max tokens 限制为 8192
+        // 全局 max_tokens 范围验证 [1, 8192]
         var adjustedMaxTokens = maxTokens
+        if let maxTokens = maxTokens {
+            // 确保 max_tokens 在有效范围内 [1, 8192]
+            if maxTokens < 1 {
+                adjustedMaxTokens = 1
+            } else if maxTokens > 8192 {
+                adjustedMaxTokens = 8192
+            }
+        }
+        
+        // qwen 系列模型的特殊处理
         let modelLowercased = effectiveModel.lowercased()
         if modelLowercased.contains("qwen") {
-            if let maxTokens = maxTokens, maxTokens > 8192 {
-                adjustedMaxTokens = 8192
-            } else if maxTokens == nil {
+            if adjustedMaxTokens == nil {
                 // 如果没有指定 maxTokens，为 qwen 模型设置默认值 8192
                 adjustedMaxTokens = 8192
             }
@@ -144,7 +152,7 @@ class AIServiceAdapter {
                 if let topP = topP {
                     body["top_p"] = topP
                 }
-                if let maxTokens = maxTokens {
+                if let maxTokens = adjustedMaxTokens {
                     body["max_tokens"] = maxTokens
                 }
                 if let additionalParams = additionalParams {
@@ -254,7 +262,7 @@ class AIServiceAdapter {
                 if let topP = topP {
                     body["top_p"] = topP
                 }
-                if let maxTokens = maxTokens {
+                if let maxTokens = adjustedMaxTokens {
                     body["max_tokens"] = maxTokens
                 }
                 if let additionalParams = additionalParams {
