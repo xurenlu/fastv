@@ -269,6 +269,125 @@ class EmailAIService {
         return result.content.lowercased().contains("是")
     }
     
+    // MARK: - Email Body Polish
+    
+    /// 邮件正文润色模式
+    enum PolishMode {
+        case chineseFormal      // 中文商务润色
+        case englishEmail       // 英文邮件格式
+        case translateToChinese // 翻译成中文并美化
+        case translateToEnglish // 翻译成英文并美化
+    }
+    
+    /// 润色邮件正文
+    /// - Parameters:
+    ///   - text: 原始正文文本
+    ///   - mode: 润色模式（中文商务、英文邮件或翻译并美化）
+    /// - Returns: 润色后的正文文本
+    func polishEmailBody(text: String, mode: PolishMode) async throws -> String {
+        // 检查输入文本是否有效
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedText.isEmpty else {
+            throw NSError(domain: "EmailAIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "正文内容为空"])
+        }
+        
+        let config = await MainActor.run {
+            preferences.getConfig(for: .aiChat)
+        }
+        
+        let prompt: String
+        switch mode {
+        case .chineseFormal:
+            prompt = """
+            请将以下邮件正文改写为更正式、商务化的中文邮件格式。要求：
+            1. 保持原意不变
+            2. 使用得体的商务用语和礼貌措辞
+            3. 结构清晰，段落分明
+            4. 符合常见商务邮件规范
+            5. 如果原文较短，请添加适当的商务礼貌用语（如"顺祝商祺"、"此致敬礼"等）
+            6. 确保格式美观，段落分明
+            
+            原始正文：
+            \(trimmedText)
+            
+            请直接返回改写后的正文，不要添加任何解释或说明。
+            """
+        case .englishEmail:
+            prompt = """
+            Please rewrite the following email body into a professional, native English email format. Requirements:
+            1. Keep the original meaning unchanged
+            2. Use appropriate business English expressions and polite language
+            3. Include proper greeting (e.g., "Dear", "Hello") and closing (e.g., "Best regards", "Sincerely")
+            4. Structure clearly with well-organized paragraphs
+            5. Follow common English email conventions
+            6. If the original text is short, add appropriate professional closing phrases
+            
+            Original text:
+            \(trimmedText)
+            
+            Please return only the rewritten email body, without any explanations or notes.
+            """
+        case .translateToChinese:
+            prompt = """
+            请将以下邮件正文翻译成中文，并改写为正式、商务化的中文邮件格式。要求：
+            1. 准确翻译原意
+            2. 使用得体的商务用语和礼貌措辞
+            3. 结构清晰，段落分明
+            4. 符合常见商务邮件规范
+            5. 添加适当的商务礼貌用语（如"顺祝商祺"、"此致敬礼"等）
+            6. 确保格式美观，段落分明
+            
+            原始正文：
+            \(trimmedText)
+            
+            请直接返回翻译并改写后的正文，不要添加任何解释或说明。
+            """
+        case .translateToEnglish:
+            prompt = """
+            Please translate the following email body into English and rewrite it into a professional, native English email format. Requirements:
+            1. Accurately translate the original meaning
+            2. Use appropriate business English expressions and polite language
+            3. Include proper greeting (e.g., "Dear", "Hello") and closing (e.g., "Best regards", "Sincerely")
+            4. Structure clearly with well-organized paragraphs
+            5. Follow common English email conventions
+            
+            Original text:
+            \(trimmedText)
+            
+            Please return only the translated and rewritten email body, without any explanations or notes.
+            """
+        }
+        
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+        
+        let prefs = await MainActor.run {
+            preferences
+        }
+        
+        let result = try await chatAIService.sendMessage(
+            messages: messages,
+            profile: config.profile,
+            model: config.model,
+            timeout: config.timeout,
+            preferences: prefs
+        )
+        
+        // 清理返回结果，移除可能的引号或多余格式
+        var polishedText = result.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // 如果 AI 返回的内容被引号包裹，移除引号
+        if polishedText.hasPrefix("\"") && polishedText.hasSuffix("\"") {
+            polishedText = String(polishedText.dropFirst().dropLast())
+        }
+        if polishedText.hasPrefix("'") && polishedText.hasSuffix("'") {
+            polishedText = String(polishedText.dropFirst().dropLast())
+        }
+        
+        return polishedText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
     // MARK: - Action Suggestions
     
     /// 生成行动建议

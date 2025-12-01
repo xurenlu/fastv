@@ -36,10 +36,11 @@ enum EmailServiceType: String, Codable, CaseIterable {
     }
     
     /// 获取预设的SMTP配置
+    /// 注意：Gmail 使用 SSL 直连（端口 465）更稳定，STARTTLS（端口 587）在某些网络环境下可能失败
     var smtpConfig: (host: String, port: Int, encryption: EmailEncryption)? {
         switch self {
         case .gmail:
-            return ("smtp.gmail.com", 587, .startTLS)
+            return ("smtp.gmail.com", 465, .ssl)  // 使用 SSL 直连，比 STARTTLS 更稳定
         case .outlook:
             return ("smtp.office365.com", 587, .startTLS)
         case .aliyun:

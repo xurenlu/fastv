@@ -12,12 +12,15 @@ import UniformTypeIdentifiers
 enum SidebarItem: String, Identifiable, CaseIterable {
     case voiceInput = "语音输入"
     case aiTodo = "AI Todo"
+    case diary = "日记"
+    case expense = "记账"
     case meetingRecord = "会议记录"
     case liveTranscription = "直播转录"
     case videoProcessing = "视频处理"
     case videoSceneAnalysis = "视频场景分析"
     case aiChat = "AI Chat"
     case email = "邮箱"
+    case intel = "情报"
     
     var id: String { rawValue }
     
@@ -39,6 +42,12 @@ enum SidebarItem: String, Identifiable, CaseIterable {
             return "message.fill"
         case .email:
             return "envelope.fill"
+        case .diary:
+            return "book.fill"
+        case .expense:
+            return "dollarsign.circle.fill"
+        case .intel:
+            return "doc.text.magnifyingglass"
         }
     }
 }
@@ -150,6 +159,36 @@ struct ContentView: View {
                             }
                     case .email:
                         EmailView()
+                            .toolbar {
+                                ToolbarItem(placement: .automatic) {
+                                    Button(action: { showSettings = true }) {
+                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                                    }
+                                    .help(NSLocalizedString("settings", comment: ""))
+                                }
+                            }
+                    case .diary:
+                        DiaryView()
+                            .toolbar {
+                                ToolbarItem(placement: .automatic) {
+                                    Button(action: { showSettings = true }) {
+                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                                    }
+                                    .help(NSLocalizedString("settings", comment: ""))
+                                }
+                            }
+                    case .expense:
+                        ExpenseView()
+                            .toolbar {
+                                ToolbarItem(placement: .automatic) {
+                                    Button(action: { showSettings = true }) {
+                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                                    }
+                                    .help(NSLocalizedString("settings", comment: ""))
+                                }
+                            }
+                    case .intel:
+                        IntelView()
                             .toolbar {
                                 ToolbarItem(placement: .automatic) {
                                     Button(action: { showSettings = true }) {

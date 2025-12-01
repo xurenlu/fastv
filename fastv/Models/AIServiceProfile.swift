@@ -135,6 +135,9 @@ enum AIScenario: String, Codable, CaseIterable {
     case textCorrection = "text_correction"                     // 文本纠错
     case errorDetection = "error_detection"                    // 错误检测
     case videoAnalysis = "video_analysis"                       // 视频分析
+    case diaryAnalysis = "diary_analysis"                       // 日记分析
+    case expenseParsing = "expense_parsing"                     // 记账解析
+    case intelGeneration = "intel_generation"                   // 情报生成
     
     var displayName: String {
         switch self {
@@ -152,6 +155,12 @@ enum AIScenario: String, Codable, CaseIterable {
             return "错误检测"
         case .videoAnalysis:
             return "视频分析"
+        case .diaryAnalysis:
+            return "日记分析"
+        case .expenseParsing:
+            return "记账解析"
+        case .intelGeneration:
+            return "情报生成"
         }
     }
 }

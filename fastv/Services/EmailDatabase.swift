@@ -178,6 +178,11 @@ class EmailDatabase {
         if !columnNames.contains("rule_applied_at") {
             try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN rule_applied_at REAL")
         }
+        
+        // 添加 has_been_replied 字段（是否已回复）
+        if !columnNames.contains("has_been_replied") {
+            try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN has_been_replied INTEGER NOT NULL DEFAULT 0")
+        }
     }
     
     /// 获取数据库队列（用于异步操作）
@@ -199,7 +204,8 @@ class EmailDatabase {
             throw EmailDatabaseError.notInitialized
         }
         // 使用 Task.detached 确保在后台线程执行
-        return try await Task.detached(priority: .utility) {
+        // 使用 .userInitiated 优先级避免优先级反转（当主线程 await 时）
+        return try await Task.detached(priority: .userInitiated) {
             try dbQueue.write(block)
         }.value
     }
@@ -218,7 +224,8 @@ class EmailDatabase {
             throw EmailDatabaseError.notInitialized
         }
         // 使用 Task.detached 确保在后台线程执行
-        return try await Task.detached(priority: .utility) {
+        // 使用 .userInitiated 优先级避免优先级反转（当主线程 await 时）
+        return try await Task.detached(priority: .userInitiated) {
             try dbQueue.read(block)
         }.value
     }

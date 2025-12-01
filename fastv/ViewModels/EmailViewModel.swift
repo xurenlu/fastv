@@ -8,6 +8,8 @@
 import Foundation
 import Combine
 import SwiftUI
+import AppKit
+import UserNotifications
 
 /// 回复草稿模型
 struct ReplyDraft {
@@ -47,6 +49,12 @@ class EmailViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var isSendingReply = false // 正在发送回复
     @Published var isSendingCompose = false // 正在发送新邮件
+    @Published var sendProgress: Double = 0.0 // 发送进度 0.0 - 1.0
+    @Published var sendStatusText: String = "" // 发送状态文字
+    
+    // AI 美化相关状态
+    @Published var isPolishingCompose = false // 正在美化新邮件
+    @Published var isPolishingReply = false // 正在美化回复
     
     // 搜索防抖任务
     private var searchTask: Task<Void, Never>?
@@ -642,9 +650,19 @@ class EmailViewModel: ObservableObject {
     func loadMoreMessages() {
         if selectedFolderId == nil {
             guard !isLoadingMore && hasMoreMessages else { return }
+            isLoadingMore = true
             currentPage += 1
+            
             Task {
+                // 先尝试从内存更新
                 await updateMessagesFromStore()
+                
+                // 如果内存中没有更多邮件，尝试从数据库加载更多
+                if !hasMoreMessages {
+                    await loadMoreMessagesFromDatabase()
+                }
+                
+                isLoadingMore = false
             }
             return
         }
@@ -653,6 +671,28 @@ class EmailViewModel: ObservableObject {
         Task {
             await loadMessagesAsync(loadMore: true)
         }
+    }
+    
+    /// 从数据库加载更多邮件（用于"所有邮件"视图）
+    private func loadMoreMessagesFromDatabase() async {
+        guard let accountId = selectedAccountId else { return }
+        
+        let foldersForAccount = emailStore.getFolders(for: accountId)
+        
+        // 从所有文件夹加载更多邮件
+        for folder in foldersForAccount {
+            let existingMessages = emailStore.messages[folder.id] ?? []
+            if existingMessages.isEmpty {
+                // 如果内存中没有该文件夹的邮件，从数据库加载
+                await emailStore.loadMessages(for: folder.id)
+            } else {
+                // 如果内存中已有邮件，强制加载更多（追加到现有列表）
+                await emailStore.loadMessages(for: folder.id, forceLoadMore: true)
+            }
+        }
+        
+        // 重新更新邮件列表
+        await updateMessagesFromStore()
     }
     
     // 选择账号
@@ -782,29 +822,30 @@ class EmailViewModel: ObservableObject {
             let hasHtmlBody = currentMessage.htmlBody?.isEmpty == false
             let needsBodyLoad = !currentMessage.isBodyLoaded || (!hasTextBody && !hasHtmlBody)
             
-            // 触发AI分析（如果启用任何AI功能，且还没有AI结果）
-            let needsAIAnalysis = (self.preferences.emailAISmartTaggingEnabled && currentMessage.aiTags.isEmpty) ||
-                                  (self.preferences.emailAISummaryEnabled && currentMessage.aiSummary == nil) ||
-                                  (self.preferences.emailAIPriorityDetectionEnabled && currentMessage.aiPriority == nil)
-            
-            // 如果需要加载正文，先加载正文，然后再进行 AI 分析
+            // 只在加载正文后才触发 AI 分析，避免滚动时自动触发数据库写入
+            // 这样可以避免在滚动列表时因为选择邮件而触发大量数据库操作
             if needsBodyLoad {
                 Task {
                     await self.loadMessageBody(currentMessage)
                     
-                    // 正文加载完成后，如果需要 AI 分析，再执行（在后台线程）
-                    if needsAIAnalysis {
-                        await Task.detached(priority: .userInitiated) {
-                            await self.analyzeMessageWithAI(currentMessage)
-                        }.value
+                    // 正文加载完成后，再检查是否需要 AI 分析（仅在正文已加载时）
+                    // 这样可以确保 AI 分析只在用户真正查看邮件时触发
+                    let updatedMessage = self.messages.first(where: { $0.id == currentMessage.id }) ?? currentMessage
+                    let needsAIAnalysis = (self.preferences.emailAISmartTaggingEnabled && updatedMessage.aiTags.isEmpty) ||
+                                          (self.preferences.emailAISummaryEnabled && updatedMessage.aiSummary == nil) ||
+                                          (self.preferences.emailAIPriorityDetectionEnabled && updatedMessage.aiPriority == nil)
+                    
+                    if needsAIAnalysis && updatedMessage.isBodyLoaded {
+                        // 在后台线程执行 AI 分析，不阻塞 UI
+                        Task.detached(priority: .background) { [weak self] in
+                            guard let self = self else { return }
+                            await self.analyzeMessageWithAI(updatedMessage)
+                        }
                     }
                 }
-            } else if needsAIAnalysis {
-                // 如果不需要加载正文，直接进行 AI 分析（在后台线程）
-                Task.detached(priority: .userInitiated) {
-                    await self.analyzeMessageWithAI(currentMessage)
-                }
             }
+            // 注意：如果正文已加载，我们也不立即触发 AI 分析
+            // 只有在用户明确查看邮件详情时才会触发（通过其他机制，如手动请求）
         }
     }
     
@@ -820,10 +861,19 @@ class EmailViewModel: ObservableObject {
             errorMessage = nil
             
             do {
-                let folder = folders.first { $0.id == folderId }
+                // 优先从 emailStore 获取文件夹（确保使用正确的数据库ID）
+                let folder = emailStore.getFolders(for: account.id).first { $0.id == folderId }
+                    ?? folders.first { $0.id == folderId }
+                
+                guard let validFolder = folder else {
+                    print("⚠️ [EmailViewModel] 无法找到文件夹: \(folderId)")
+                    isLoading = false
+                    return
+                }
+                
                 let messages = try await emailService.syncMessages(
                     account: account,
-                    folder: folder ?? EmailFolder(accountId: account.id, name: "Inbox", type: .inbox),
+                    folder: validFolder,
                     since: nil as Date?
                 )
                 
@@ -969,8 +1019,16 @@ class EmailViewModel: ObservableObject {
     func markAsRead(_ message: EmailMessage) async {
         guard let account = currentAccount else { return }
         
+        // 获取邮件所在的文件夹
+        let folderId = message.folderId ?? selectedFolderId
+        guard let id = folderId,
+              let folder = folder(for: id) else {
+            print("⚠️ [EmailViewModel] markAsRead: 无法获取邮件所在文件夹")
+            return
+        }
+        
         do {
-            try await emailService.markAsRead(account: account, message: message)
+            try await emailService.markAsRead(account: account, folder: folder, message: message)
             
             // 重要：从 emailStore 获取最新的邮件数据（包含正文缓存）
             // 避免用没有正文的邮件对象覆盖数据库中已缓存的正文
@@ -1007,14 +1065,15 @@ class EmailViewModel: ObservableObject {
             
             // 同步每个文件夹
             for (index, folder) in folders.enumerated() {
-                try await emailStore.addFolder(folder)
+                // 使用返回的文件夹（带有正确的数据库ID）
+                let savedFolder = try await emailStore.addFolder(folder)
                 
                 let messages = try await emailService.syncMessages(
                     account: account,
-                    folder: folder,
+                    folder: savedFolder,
                     since: nil
                 )
-                try await emailStore.addMessages(messages, folderId: folder.id)
+                try await emailStore.addMessages(messages, folderId: savedFolder.id)
                 
                 syncProgress = 0.3 + (Double(index + 1) / Double(folders.count)) * 0.7
                 syncStatus = "正在同步 \(folder.name)..."
@@ -1053,6 +1112,7 @@ class EmailViewModel: ObservableObject {
     }
     
     /// 执行搜索（异步，不阻塞主线程）
+    /// 先搜索本地缓存，如果结果不足或用户明确要求，再搜索服务端
     private func performSearch(query: String) {
         // 取消之前的搜索任务
         searchTask?.cancel()
@@ -1064,6 +1124,8 @@ class EmailViewModel: ObservableObject {
         
         let lowercasedQuery = query.lowercased()
         let messagesToSearch = messages // 复制当前消息列表，避免并发问题
+        let account = currentAccount
+        let selectedFolderIdValue = selectedFolderId
         
         // 后台执行搜索
         searchTask = Task.detached(priority: .userInitiated) { [weak self] in
@@ -1072,19 +1134,97 @@ class EmailViewModel: ObservableObject {
             // 检查是否被取消
             guard !Task.isCancelled else { return }
             
-            let results = messagesToSearch.filter { message in
+            // 先搜索本地缓存
+            var localResults = messagesToSearch.filter { message in
                 message.subject.lowercased().contains(lowercasedQuery) ||
                 message.from.email.lowercased().contains(lowercasedQuery) ||
                 (message.from.name?.lowercased().contains(lowercasedQuery) ?? false) ||
-                message.preview.lowercased().contains(lowercasedQuery)
+                message.preview.lowercased().contains(lowercasedQuery) ||
+                (message.textBody?.lowercased().contains(lowercasedQuery) ?? false)
             }
             
             // 检查是否被取消（搜索过程中）
             guard !Task.isCancelled else { return }
             
+            // 如果本地结果少于 20 条，或者查询长度 >= 3 个字符，尝试服务端搜索
+            let shouldSearchServer = localResults.count < 20 && query.count >= 3
+            
+            if shouldSearchServer, let account = account {
+                // 从服务端搜索
+                do {
+                    // 在主线程获取文件夹信息
+                    let folder: EmailFolder? = await MainActor.run {
+                        if let folderId = selectedFolderIdValue {
+                            return self.folder(for: folderId)
+                        }
+                        return nil
+                    }
+                    
+                    if let folder = folder {
+                        // 搜索指定文件夹
+                        let serverResults = try await emailService.searchMessages(
+                            account: account,
+                            folder: folder,
+                            query: query,
+                            limit: 100
+                        )
+                        
+                        // 合并结果，去重
+                        var allResults = localResults
+                        let localIds = Set(localResults.map { $0.id })
+                        for serverMsg in serverResults {
+                            if !localIds.contains(serverMsg.id) {
+                                allResults.append(serverMsg)
+                            }
+                        }
+                        localResults = allResults
+                    } else {
+                        // 搜索所有文件夹（"所有邮件"视图）
+                        let folders = await MainActor.run {
+                            self.emailStore.getFolders(for: account.id)
+                        }
+                        var allServerResults: [EmailMessage] = []
+                        
+                        for folder in folders.prefix(10) { // 限制搜索前10个文件夹，避免太慢
+                            guard !Task.isCancelled else { break }
+                            
+                            do {
+                                let folderResults = try await emailService.searchMessages(
+                                    account: account,
+                                    folder: folder,
+                                    query: query,
+                                    limit: 50
+                                )
+                                allServerResults.append(contentsOf: folderResults)
+                            } catch {
+                                print("⚠️ [EmailViewModel] 搜索文件夹 \(folder.name) 失败: \(error)")
+                            }
+                        }
+                        
+                        // 合并结果，去重
+                        var allResults = localResults
+                        let localIds = Set(localResults.map { $0.id })
+                        for serverMsg in allServerResults {
+                            if !localIds.contains(serverMsg.id) {
+                                allResults.append(serverMsg)
+                            }
+                        }
+                        localResults = allResults
+                    }
+                } catch {
+                    print("⚠️ [EmailViewModel] 服务端搜索失败: \(error)，仅使用本地结果")
+                }
+            }
+            
+            // 检查是否被取消（搜索过程中）
+            guard !Task.isCancelled else { return }
+            
+            // 按日期排序（最新的在前）
+            localResults.sort { $0.date > $1.date }
+            
             // 更新结果到主线程
             await MainActor.run {
-                self.searchResults = results
+                self.searchResults = localResults
             }
         }
     }
@@ -1265,7 +1405,280 @@ class EmailViewModel: ObservableObject {
         composeDraft = draft
     }
     
-    /// 发送新邮件
+    /// 发送新邮件（从撰写窗口调用）
+    func sendComposeMessage(
+        account: EmailAccount,
+        to: [EmailContact],
+        cc: [EmailContact] = [],
+        bcc: [EmailContact] = [],
+        subject: String,
+        body: String,
+        htmlBody: String? = nil
+    ) async throws {
+        // 更新草稿
+        var draft = composeDraft ?? ReplyDraft()
+        draft.to = to
+        draft.cc = cc
+        draft.bcc = bcc
+        draft.subject = subject
+        draft.body = body
+        draft.htmlBody = htmlBody
+        composeDraft = draft
+        
+        // 发送
+        try await sendCompose()
+    }
+    
+    /// 发送回复（从撰写窗口调用）
+    func sendReplyMessage(
+        account: EmailAccount,
+        originalMessage: EmailMessage,
+        to: [EmailContact],
+        cc: [EmailContact] = [],
+        bcc: [EmailContact] = [],
+        subject: String,
+        body: String,
+        htmlBody: String? = nil,
+        replyType: ReplyDraft.ReplyType = .reply
+    ) async throws {
+        // 初始化回复草稿
+        initReplyDraft(for: originalMessage, type: replyType)
+        
+        // 更新草稿
+        var draft = replyDraft ?? ReplyDraft()
+        draft.to = to
+        draft.cc = cc
+        draft.bcc = bcc
+        draft.subject = subject
+        draft.body = body
+        draft.htmlBody = htmlBody
+        replyDraft = draft
+        
+        // 发送
+        try await sendReply()
+    }
+    
+    /// 标记邮件为已回复
+    func markMessageAsReplied(messageId: UUID) async {
+        guard let message = messages.first(where: { $0.id == messageId }) else {
+            print("⚠️ [EmailViewModel] 未找到要标记的邮件: \(messageId)")
+            return
+        }
+        
+        var updated = message
+        updated.hasBeenReplied = true
+        
+        do {
+            try await emailStore.updateMessage(updated)
+            print("✅ [EmailViewModel] 邮件已标记为已回复: \(message.subject)")
+        } catch {
+            print("❌ [EmailViewModel] 标记邮件失败: \(error)")
+        }
+    }
+    
+    // MARK: - AI Polish
+    
+    /// 切分回复正文，分离用户撰写部分和引用部分
+    private func splitReplyBody(_ body: String) -> (userPart: String, quotedPart: String) {
+        // 常见的引用分隔符模式
+        let separators = [
+            "\n\n--- 原始邮件 ---",
+            "\n\n--- 转发邮件 ---",
+            "\n\n在 ",
+            "\n\n> ",
+            "\n\nOn ",
+            "\n\nFrom:",
+            "\n\n发件人:"
+        ]
+        
+        // 查找第一个匹配的分隔符
+        for separator in separators {
+            if let range = body.range(of: separator) {
+                let userPart = String(body[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                let quotedPart = String(body[range.lowerBound...])
+                return (userPart, quotedPart)
+            }
+        }
+        
+        // 如果没有找到分隔符，检查是否有以 ">" 开头的行（常见引用格式）
+        let lines = body.components(separatedBy: .newlines)
+        var userLines: [String] = []
+        var quotedLines: [String] = []
+        var foundQuotedStart = false
+        
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix(">") || trimmed.hasPrefix("|") {
+                foundQuotedStart = true
+                quotedLines.append(line)
+            } else if foundQuotedStart {
+                quotedLines.append(line)
+            } else {
+                userLines.append(line)
+            }
+        }
+        
+        if !quotedLines.isEmpty {
+            let userPart = userLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            let quotedPart = quotedLines.joined(separator: "\n")
+            return (userPart, quotedPart)
+        }
+        
+        // 如果都没有找到，返回整个正文作为用户部分
+        return (body, "")
+    }
+    
+    /// AI 美化新邮件草稿（支持选中文本）
+    func aiPolishComposeDraft(mode: EmailAIService.PolishMode, selectedText: String? = nil, selectedRange: NSRange? = nil) async -> String? {
+        guard var draft = composeDraft else {
+            errorMessage = "没有正在编写的邮件"
+            return nil
+        }
+        
+        let originalBody = draft.body
+        
+        // 如果有选中文本，只美化选中部分
+        if let selectedText = selectedText, !selectedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            guard let selectedRange = selectedRange else {
+                errorMessage = "选中范围无效"
+                return nil
+            }
+            
+            isPolishingCompose = true
+            errorMessage = nil
+            
+            do {
+                let polishedSelection = try await emailAIService.polishEmailBody(text: selectedText, mode: mode)
+                
+                // 替换选中部分
+                let nsString = originalBody as NSString
+                let newBody = nsString.replacingCharacters(in: selectedRange, with: polishedSelection)
+                
+                draft.body = newBody
+                composeDraft = draft
+                print("✅ [EmailViewModel] AI 美化选中文本成功")
+                isPolishingCompose = false
+                return newBody
+            } catch {
+                errorMessage = "AI 美化失败: \(error.localizedDescription)"
+                print("❌ [EmailViewModel] AI 美化选中文本失败: \(error)")
+                isPolishingCompose = false
+                return nil
+            }
+        }
+        
+        // 美化整个正文
+        let trimmedBody = originalBody.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedBody.isEmpty else {
+            errorMessage = "正文内容为空，无法美化"
+            return nil
+        }
+        
+        isPolishingCompose = true
+        errorMessage = nil
+        
+        do {
+            let polishedBody = try await emailAIService.polishEmailBody(text: trimmedBody, mode: mode)
+            draft.body = polishedBody
+            composeDraft = draft
+            print("✅ [EmailViewModel] AI 美化新邮件成功")
+            isPolishingCompose = false
+            return polishedBody
+        } catch {
+            errorMessage = "AI 美化失败: \(error.localizedDescription)"
+            print("❌ [EmailViewModel] AI 美化新邮件失败: \(error)")
+            isPolishingCompose = false
+            return nil
+        }
+    }
+    
+    /// AI 美化回复草稿（支持选中文本）
+    func aiPolishReplyDraft(mode: EmailAIService.PolishMode, selectedText: String? = nil, selectedRange: NSRange? = nil) async -> String? {
+        guard var draft = replyDraft else {
+            errorMessage = "没有正在回复的邮件"
+            return nil
+        }
+        
+        let originalBody = draft.body
+        
+        // 如果有选中文本，检查选中部分是否在引用区域内
+        if let selectedText = selectedText, !selectedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            guard let selectedRange = selectedRange else {
+                errorMessage = "选中范围无效"
+                return nil
+            }
+            
+            // 检查选中部分是否包含引用内容
+            let (userPart, quotedPart) = splitReplyBody(originalBody)
+            let userPartEndIndex = originalBody.index(originalBody.startIndex, offsetBy: userPart.count, limitedBy: originalBody.endIndex) ?? originalBody.endIndex
+            let userPartEndRange = NSRange(userPartEndIndex..<originalBody.endIndex, in: originalBody)
+            
+            // 如果选中范围与引用部分重叠，不允许美化
+            if !quotedPart.isEmpty && selectedRange.location + selectedRange.length > userPart.count {
+                errorMessage = "不能美化引用内容，请只选择您撰写的部分"
+                return nil
+            }
+            
+            isPolishingReply = true
+            errorMessage = nil
+            
+            do {
+                let polishedSelection = try await emailAIService.polishEmailBody(text: selectedText, mode: mode)
+                
+                // 替换选中部分
+                let nsString = originalBody as NSString
+                let newBody = nsString.replacingCharacters(in: selectedRange, with: polishedSelection)
+                
+                draft.body = newBody
+                replyDraft = draft
+                print("✅ [EmailViewModel] AI 美化回复选中文本成功")
+                isPolishingReply = false
+                return newBody
+            } catch {
+                errorMessage = "AI 美化失败: \(error.localizedDescription)"
+                print("❌ [EmailViewModel] AI 美化回复选中文本失败: \(error)")
+                isPolishingReply = false
+                return nil
+            }
+        }
+        
+        // 美化整个用户撰写部分
+        let (userPart, quotedPart) = splitReplyBody(originalBody)
+        
+        guard !userPart.isEmpty else {
+            errorMessage = "没有可美化的内容（可能只有引用部分）"
+            return nil
+        }
+        
+        isPolishingReply = true
+        errorMessage = nil
+        
+        do {
+            let polishedUserPart = try await emailAIService.polishEmailBody(text: userPart, mode: mode)
+            
+            // 拼接美化后的用户部分和原始引用部分
+            if quotedPart.isEmpty {
+                draft.body = polishedUserPart
+            } else {
+                // 确保两部分之间有适当的换行
+                let separator = originalBody.contains("\n\n") ? "\n\n" : "\n"
+                draft.body = polishedUserPart + separator + quotedPart
+            }
+            
+            replyDraft = draft
+            print("✅ [EmailViewModel] AI 美化回复成功")
+            isPolishingReply = false
+            return draft.body
+        } catch {
+            errorMessage = "AI 美化失败: \(error.localizedDescription)"
+            print("❌ [EmailViewModel] AI 美化回复失败: \(error)")
+            isPolishingReply = false
+            return nil
+        }
+    }
+    
+    /// 发送新邮件（发送完成后通知用户）
+    /// 注意：LibEtPan 的 SMTP 操作必须在主线程执行，所以这里不能用 Task.detached
     func sendCompose() async throws {
         guard let draft = composeDraft else {
             throw EmailServiceError.invalidConfiguration("编写草稿不存在")
@@ -1285,29 +1698,73 @@ class EmailViewModel: ObservableObject {
             throw EmailServiceError.invalidConfiguration("您提到了附件，但还没有添加任何附件。请添加附件后再发送，或修改邮件内容。")
         }
         
-        // 设置发送状态
+        // 设置发送状态和进度
         isSendingCompose = true
         errorMessage = nil
+        sendProgress = 0.0
+        sendStatusText = "准备发送..."
+        
+        // 保存草稿信息
+        let draftToSend = draft
+        let subject = draft.subject
+        let hasAttachments = !draft.attachments.isEmpty
+        
+        // 让 UI 有机会更新
+        await Task.yield()
         
         do {
+            // 阶段1: 连接服务器
+            sendProgress = 0.1
+            sendStatusText = "正在连接邮件服务器..."
+            await Task.yield()
+            
+            // 阶段2: 准备邮件内容
+            sendProgress = 0.3
+            if hasAttachments {
+                sendStatusText = "正在准备附件 (\(draftToSend.attachments.count) 个)..."
+            } else {
+                sendStatusText = "正在准备邮件内容..."
+            }
+            await Task.yield()
+            
+            // 阶段3: 发送邮件
+            sendProgress = 0.5
+            sendStatusText = "正在发送邮件..."
+            
             try await sendMessage(
-                to: draft.to,
-                cc: draft.cc,
-                bcc: draft.bcc,
-                subject: draft.subject,
-                body: draft.body,
-                htmlBody: draft.htmlBody,
-                attachments: draft.attachments
+                to: draftToSend.to,
+                cc: draftToSend.cc,
+                bcc: draftToSend.bcc,
+                subject: draftToSend.subject,
+                body: draftToSend.body,
+                htmlBody: draftToSend.htmlBody,
+                attachments: draftToSend.attachments
             )
             
-            // 发送成功后清除草稿并关闭面板
+            // 阶段4: 发送成功
+            sendProgress = 1.0
+            sendStatusText = "发送成功！"
+            await Task.yield()
+            
+            // 短暂显示成功状态后关闭面板
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
+            
+            // 发送成功后关闭面板
             composeDraft = nil
             showComposePanel = false
             showCcBcc = false
             isSendingCompose = false
+            sendProgress = 0.0
+            sendStatusText = ""
+            
+            notifyEmailSent(subject: subject, success: true)
         } catch {
+            // 发送失败
+            sendProgress = 0.0
+            sendStatusText = ""
             isSendingCompose = false
             errorMessage = error.localizedDescription
+            notifyEmailSent(subject: subject, success: false, error: error.localizedDescription)
             throw error
         }
     }
@@ -1356,7 +1813,8 @@ class EmailViewModel: ObservableObject {
         return mentionsAttachment && draft.attachments.isEmpty
     }
     
-    /// 发送回复
+    /// 发送回复（发送完成后通知用户）
+    /// 注意：LibEtPan 的 SMTP 操作必须在主线程执行，所以这里不能用 Task.detached
     func sendReply() async throws {
         guard let draft = replyDraft else {
             throw EmailServiceError.invalidConfiguration("回复草稿不存在")
@@ -1367,29 +1825,73 @@ class EmailViewModel: ObservableObject {
             throw EmailServiceError.invalidConfiguration("您提到了附件，但还没有添加任何附件。请添加附件后再发送，或修改邮件内容。")
         }
         
-        // 设置发送状态
+        // 设置发送状态和进度
         isSendingReply = true
         errorMessage = nil
+        sendProgress = 0.0
+        sendStatusText = "准备发送..."
+        
+        // 保存草稿信息
+        let draftToSend = draft
+        let subject = draft.subject
+        let hasAttachments = !draft.attachments.isEmpty
+        
+        // 让 UI 有机会更新
+        await Task.yield()
         
         do {
+            // 阶段1: 连接服务器
+            sendProgress = 0.1
+            sendStatusText = "正在连接邮件服务器..."
+            await Task.yield()
+            
+            // 阶段2: 准备邮件内容
+            sendProgress = 0.3
+            if hasAttachments {
+                sendStatusText = "正在准备附件 (\(draftToSend.attachments.count) 个)..."
+            } else {
+                sendStatusText = "正在准备邮件内容..."
+            }
+            await Task.yield()
+            
+            // 阶段3: 发送邮件
+            sendProgress = 0.5
+            sendStatusText = "正在发送邮件..."
+            
             try await sendMessage(
-                to: draft.to,
-                cc: draft.cc,
-                bcc: draft.bcc,
-                subject: draft.subject,
-                body: draft.body,
-                htmlBody: draft.htmlBody,
-                attachments: draft.attachments
+                to: draftToSend.to,
+                cc: draftToSend.cc,
+                bcc: draftToSend.bcc,
+                subject: draftToSend.subject,
+                body: draftToSend.body,
+                htmlBody: draftToSend.htmlBody,
+                attachments: draftToSend.attachments
             )
             
-            // 发送成功后清除草稿并关闭面板
+            // 阶段4: 发送成功
+            sendProgress = 1.0
+            sendStatusText = "发送成功！"
+            await Task.yield()
+            
+            // 短暂显示成功状态后关闭面板
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
+            
+            // 发送成功后关闭面板
             replyDraft = nil
             showReplyPanel = false
             showCcBcc = false
             isSendingReply = false
+            sendProgress = 0.0
+            sendStatusText = ""
+            
+            notifyEmailSent(subject: subject, success: true)
         } catch {
+            // 发送失败
+            sendProgress = 0.0
+            sendStatusText = ""
             isSendingReply = false
             errorMessage = error.localizedDescription
+            notifyEmailSent(subject: subject, success: false, error: error.localizedDescription)
             throw error
         }
     }
@@ -1569,6 +2071,46 @@ class EmailViewModel: ObservableObject {
         // 如果记住，也更新全局设置（作为默认值）
         if remember {
             preferences.emailShowImages = show
+        }
+    }
+    
+    // MARK: - Send Notification
+    
+    /// 邮件发送完成后通知用户
+    private func notifyEmailSent(subject: String, success: Bool, error: String? = nil) {
+        // 播放系统提示音
+        if success {
+            if let sound = NSSound(named: .init("Mail Sent")) {
+                sound.play()
+            } else {
+                NSSound.beep()
+            }
+        } else {
+            NSSound.beep()
+        }
+        
+        // 发送系统通知
+        let content = UNMutableNotificationContent()
+        if success {
+            content.title = "邮件已发送"
+            content.body = subject.isEmpty ? "邮件发送成功" : "「\(subject)」已发送"
+            content.sound = .default
+        } else {
+            content.title = "邮件发送失败"
+            content.body = error ?? "发送时遇到问题，请稍后重试"
+            content.sound = .defaultCritical
+        }
+        
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil // 立即显示
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ [EmailViewModel] 发送通知失败: \(error)")
+            }
         }
     }
     

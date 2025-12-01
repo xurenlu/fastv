@@ -210,15 +210,10 @@ struct EmailAccountManagementView: View {
                         Text("服务器配置")
                     }
                 } else {
-                    // 预设服务：显示可编辑的配置信息（编辑账号时允许自定义）
+                    // 预设服务：编辑账号时始终显示可编辑的配置
                     Section {
-                        // 编辑账号时，显示高级设置开关
+                        // 编辑账号时，始终显示可编辑的服务器配置
                         if viewModel.editingAccount != nil {
-                            Toggle("自定义服务器配置", isOn: $viewModel.showAdvancedSettings)
-                                .font(.subheadline)
-                        }
-                        
-                        if viewModel.showAdvancedSettings || viewModel.editingAccount == nil {
                             DisclosureGroup("服务器设置", isExpanded: .constant(true)) {
                                 VStack(spacing: 16) {
                                     // IMAP 设置
@@ -230,21 +225,10 @@ struct EmailAccountManagementView: View {
                                             .textCase(.none)
                                         
                                         TextField("服务器地址", text: $viewModel.imapHost)
-                                            .onChange(of: viewModel.imapHost) { _, _ in
-                                                // 用户修改配置时，自动启用高级设置
-                                                if viewModel.editingAccount != nil {
-                                                    viewModel.showAdvancedSettings = true
-                                                }
-                                            }
                                         
                                         HStack(spacing: 12) {
                                             TextField("端口", text: $viewModel.imapPort)
                                                 .frame(width: 120)
-                                                .onChange(of: viewModel.imapPort) { _, _ in
-                                                    if viewModel.editingAccount != nil {
-                                                        viewModel.showAdvancedSettings = true
-                                                    }
-                                                }
                                             
                                             Picker("加密方式", selection: $viewModel.imapEncryption) {
                                                 Text("无").tag(EmailEncryption.none)
@@ -252,11 +236,6 @@ struct EmailAccountManagementView: View {
                                                 Text("STARTTLS").tag(EmailEncryption.startTLS)
                                             }
                                             .frame(maxWidth: .infinity)
-                                            .onChange(of: viewModel.imapEncryption) { _, _ in
-                                                if viewModel.editingAccount != nil {
-                                                    viewModel.showAdvancedSettings = true
-                                                }
-                                            }
                                         }
                                     }
                                     
@@ -272,21 +251,10 @@ struct EmailAccountManagementView: View {
                                             .textCase(.none)
                                         
                                         TextField("服务器地址", text: $viewModel.smtpHost)
-                                            .onChange(of: viewModel.smtpHost) { _, _ in
-                                                // 用户修改配置时，自动启用高级设置
-                                                if viewModel.editingAccount != nil {
-                                                    viewModel.showAdvancedSettings = true
-                                                }
-                                            }
                                         
                                         HStack(spacing: 12) {
                                             TextField("端口", text: $viewModel.smtpPort)
                                                 .frame(width: 120)
-                                                .onChange(of: viewModel.smtpPort) { _, _ in
-                                                    if viewModel.editingAccount != nil {
-                                                        viewModel.showAdvancedSettings = true
-                                                    }
-                                                }
                                             
                                             Picker("加密方式", selection: $viewModel.smtpEncryption) {
                                                 Text("无").tag(EmailEncryption.none)
@@ -294,11 +262,6 @@ struct EmailAccountManagementView: View {
                                                 Text("STARTTLS").tag(EmailEncryption.startTLS)
                                             }
                                             .frame(maxWidth: .infinity)
-                                            .onChange(of: viewModel.smtpEncryption) { _, _ in
-                                                if viewModel.editingAccount != nil {
-                                                    viewModel.showAdvancedSettings = true
-                                                }
-                                            }
                                         }
                                     }
                                 }
@@ -370,10 +333,10 @@ struct EmailAccountManagementView: View {
                     } header: {
                         Text("服务器配置")
                     } footer: {
-                        if viewModel.editingAccount != nil && viewModel.showAdvancedSettings {
-                            Text("自定义服务器配置将覆盖预设配置")
+                        if viewModel.editingAccount != nil {
+                            Text("修改服务器配置后请点击「测试连接」验证")
                                 .font(.caption)
-                        } else if viewModel.editingAccount == nil {
+                        } else {
                             Text("这些设置已根据您选择的邮箱服务自动配置")
                                 .font(.caption)
                         }
@@ -404,13 +367,13 @@ struct EmailAccountManagementView: View {
                     
                     if let result = viewModel.connectionTestResult {
                         VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 8) {
-                                Image(systemName: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                    .foregroundStyle(result.success ? Color.green : Color.red)
-                                    .symbolRenderingMode(.hierarchical)
-                                
-                                Text(result.message)
-                                    .foregroundStyle(result.success ? Color.primary : Color.red)
+                        HStack(spacing: 8) {
+                            Image(systemName: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .foregroundStyle(result.success ? Color.green : Color.red)
+                                .symbolRenderingMode(.hierarchical)
+                            
+                            Text(result.message)
+                                .foregroundStyle(result.success ? Color.primary : Color.red)
                             }
                             
                             ConnectionStagesView(stages: result.stages)

@@ -33,6 +33,10 @@ class EmailStore: ObservableObject {
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let self = self else { return }
             await self.loadAccounts()
+            
+            // 迁移：修复 Gmail 账号的 SMTP 配置（587+SSL -> 465+SSL）
+            await self.migrateGmailSmtpConfig()
+            
             await self.loadFolders()
             
             // 预加载邮件缓存（低优先级，后台执行）
@@ -40,6 +44,49 @@ class EmailStore: ObservableObject {
                 guard let self = self else { return }
                 await self.preloadMessageCache()
             }
+        }
+    }
+    
+    /// 迁移 Gmail 账号的 SMTP 配置
+    /// 修复错误的 587 端口配置为正确的 465+SSL
+    private func migrateGmailSmtpConfig() async {
+        print("🔧 [EmailStore] 开始检查 Gmail SMTP 配置迁移...")
+        var needsMigration: [EmailAccount] = []
+        
+        for account in accounts {
+            print("🔧 [EmailStore] 检查账号: \(account.emailAddress), serviceType=\(account.serviceType.rawValue), smtpHost=\(account.smtpHost), smtpPort=\(account.smtpPort), smtpEncryption=\(account.smtpEncryption.rawValue)")
+            
+            // 检查是否是 Gmail 账号且使用了 587 端口（不管加密方式，都应该改为 465+SSL）
+            if account.serviceType == .gmail &&
+               account.smtpHost == "smtp.gmail.com" &&
+               account.smtpPort == 587 {
+                print("🔧 [EmailStore] 发现需要迁移的 Gmail 账号: \(account.emailAddress) (当前: 587+\(account.smtpEncryption.rawValue))")
+                needsMigration.append(account)
+            }
+        }
+        
+        print("🔧 [EmailStore] 需要迁移的账号数量: \(needsMigration.count)")
+        
+        for account in needsMigration {
+            var updated = account
+            updated.smtpPort = 465  // 修复为正确的端口
+            updated.smtpEncryption = .ssl  // 确保使用 SSL
+            updated.updatedAt = Date()
+            
+            do {
+                try await database.write { db in
+                    try self.saveAccount(updated, db: db)
+                }
+                print("✅ [EmailStore] Gmail 账号 SMTP 配置已迁移: \(account.emailAddress) -> 465+SSL")
+            } catch {
+                print("❌ [EmailStore] Gmail 账号迁移失败: \(error)")
+            }
+        }
+        
+        // 如果有迁移，重新加载账号
+        if !needsMigration.isEmpty {
+            await loadAccounts()
+            print("✅ [EmailStore] 账号列表已重新加载")
         }
     }
     
@@ -123,7 +170,9 @@ class EmailStore: ObservableObject {
     // MARK: - Folder Management
     
     /// 添加文件夹（检查重复）
-    func addFolder(_ folder: EmailFolder) async throws {
+    /// 返回实际保存的文件夹（如果已存在则返回数据库中的版本，否则返回新创建的）
+    @discardableResult
+    func addFolder(_ folder: EmailFolder) async throws -> EmailFolder {
         let normalizedPath = folder.path.lowercased()
         let existingFolders = folders[folder.accountId] ?? []
         if let existing = existingFolders.first(where: { $0.path.lowercased() == normalizedPath }) {
@@ -138,13 +187,14 @@ class EmailStore: ObservableObject {
                 lastSyncDate: folder.lastSyncDate
             )
             try await updateFolder(updatedFolder)
-            return
+            return updatedFolder  // 返回使用数据库ID的文件夹
         }
         
         try await database.write { db in
             try self.saveFolder(folder, db: db)
         }
         await loadFolders()
+        return folder  // 新文件夹，返回原始对象
     }
     
     /// 更新文件夹
@@ -235,12 +285,12 @@ class EmailStore: ObservableObject {
         }
     }
     
-    /// 更新邮件
+    /// 更新邮件（完全异步，不阻塞调用线程）
     func updateMessage(_ message: EmailMessage) async throws {
         var updated = message
         updated.updatedAt = Date()
         
-        // 先更新内存
+        // 先更新内存（在主线程，快速操作）
         if let folderId = message.folderId,
            var folderMessages = messages[folderId],
            let index = folderMessages.firstIndex(where: { $0.id == message.id }) {
@@ -253,10 +303,12 @@ class EmailStore: ObservableObject {
             print("⚠️ [EmailStore] 无法更新邮件（未找到）: \(updated.subject), folderId=\(message.folderId?.uuidString ?? "nil")")
         }
         
-        // 后台异步写入数据库
-        Task.detached(priority: .background) { [weak self] in
+        // 后台异步写入数据库（fire-and-forget，不等待完成）
+        // 使用 .background 优先级，避免与 UI 操作竞争资源
+        Task.detached(priority: .background) { [weak self, updated] in
             guard let self = self else { return }
             do {
+                // 使用同步 write 方法，因为已经在后台线程
                 try await self.database.asyncWrite { db in
                     try self.saveMessage(updated, db: db)
                 }
@@ -338,6 +390,28 @@ class EmailStore: ObservableObject {
         let tags = try? JSONEncoder().encode(message.tags)
         let aiTags = try? JSONEncoder().encode(message.aiTags)
         
+        // 验证外键：检查 account_id 是否存在
+        let accountIdString = message.accountId.uuidString
+        let accountExists = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM email_accounts WHERE id = ?", arguments: [accountIdString]) ?? 0
+        if accountExists == 0 {
+            print("⚠️ [EmailStore] 跳过保存邮件: account_id 不存在于数据库中 (\(accountIdString)), subject=\(message.subject)")
+            // 不抛出错误，直接跳过（账号可能已被删除）
+            return
+        }
+        
+        // 验证外键：检查 folder_id 是否存在（如果有的话）
+        // 注意：folder_id 的外键约束是 ON DELETE SET NULL，所以如果文件夹不存在，我们设为 NULL
+        var validFolderId: String? = nil
+        if let folderId = message.folderId {
+            let folderIdString = folderId.uuidString
+            let folderExists = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM email_folders WHERE id = ?", arguments: [folderIdString]) ?? 0
+            if folderExists > 0 {
+                validFolderId = folderIdString
+            } else {
+                print("⚠️ [EmailStore] folder_id 不存在于数据库中 (\(folderIdString))，将设为 NULL, subject=\(message.subject)")
+            }
+        }
+        
         try db.execute(sql: """
             INSERT OR REPLACE INTO email_messages (
                 id, account_id, folder_id, uid, message_id, thread_id,
@@ -346,12 +420,12 @@ class EmailStore: ObservableObject {
                 date, received_date, is_read, is_starred, is_important,
                 is_no_reply, has_attachments, is_spam, is_deleted, contains_remote_resources,
                 tags, ai_tags, ai_summary,
-                ai_priority, synced_at, updated_at, is_body_loaded, body_cached_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ai_priority, synced_at, updated_at, is_body_loaded, body_cached_at, has_been_replied
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, arguments: [
             message.id.uuidString,
             message.accountId.uuidString,
-            message.folderId?.uuidString,
+            validFolderId,
             message.uid.map { Int64($0) },
             message.messageId,
             message.threadId,
@@ -382,7 +456,8 @@ class EmailStore: ObservableObject {
             message.syncedAt.timeIntervalSince1970,
             message.updatedAt.timeIntervalSince1970,
             message.isBodyLoaded ? 1 : 0,
-            message.bodyCachedAt?.timeIntervalSince1970
+            message.bodyCachedAt?.timeIntervalSince1970,
+            message.hasBeenReplied ? 1 : 0
         ])
         
         // 保存附件
@@ -470,9 +545,12 @@ class EmailStore: ObservableObject {
     }
     
     /// 从数据库加载文件夹的邮件缓存（超高速版本）
-    func loadMessages(for folderId: UUID) async {
-        // 如果已经有缓存，跳过
-        if let existing = messages[folderId], !existing.isEmpty {
+    /// - Parameters:
+    ///   - folderId: 文件夹ID
+    ///   - forceLoadMore: 如果为 true，即使已有缓存也加载更多邮件（用于"所有邮件"视图）
+    func loadMessages(for folderId: UUID, forceLoadMore: Bool = false) async {
+        // 如果已经有缓存且不强制加载更多，跳过
+        if !forceLoadMore, let existing = messages[folderId], !existing.isEmpty {
             print("📦 [EmailStore] 文件夹 \(folderId) 已有缓存 \(existing.count) 封邮件，跳过加载")
             return
         }
@@ -481,6 +559,10 @@ class EmailStore: ObservableObject {
         let loadStart = Date()
         
         do {
+            let currentCount = messages[folderId]?.count ?? 0
+            let offset = forceLoadMore ? currentCount : 0
+            let limit = forceLoadMore ? 100 : 100
+            
             // 分批加载：先加载100封立即显示，再加载剩余的
             let firstBatch = try await database.asyncRead { db -> [EmailMessage] in
                 var messages: [EmailMessage] = []
@@ -488,8 +570,8 @@ class EmailStore: ObservableObject {
                     SELECT * FROM email_messages
                     WHERE folder_id = ?
                     ORDER BY date DESC
-                    LIMIT 100
-                """, arguments: [folderId.uuidString])
+                    LIMIT ? OFFSET ?
+                """, arguments: [folderId.uuidString, limit, offset])
                 
                 for row in rows {
                     let message = try self.parseMessage(from: row, db: db)
@@ -503,12 +585,20 @@ class EmailStore: ObservableObject {
             
             // 立即更新UI
             await MainActor.run {
-                messages[folderId] = firstBatch
+                if forceLoadMore {
+                    // 如果是强制加载更多，追加到现有列表
+                    var existing = messages[folderId] ?? []
+                    existing.append(contentsOf: firstBatch)
+                    messages[folderId] = existing
+                } else {
+                    // 否则替换现有列表
+                    messages[folderId] = firstBatch
+                }
                 notifyChange()
             }
             
-            // 后台加载剩余邮件
-            if firstBatch.count >= 100 {
+            // 后台加载剩余邮件（只在非强制加载模式下）
+            if !forceLoadMore && firstBatch.count >= 100 {
                 Task.detached(priority: .background) { [weak self] in
                     guard let self = self else { return }
                     
@@ -556,16 +646,22 @@ class EmailStore: ObservableObject {
             throw EmailDatabaseError.invalidData
         }
         
+        // 端口字段在 SQLite 中可能以 Int / Int64 / String 等不同底层类型存储，
+        // 直接使用 `as? Int` 很容易失败并导致总是回退到默认值（993 / 587）。
+        // 这里使用统一的解析函数，确保能正确读回已保存的端口。
+        let imapPort = parsePort(from: row, column: "imap_port", defaultPort: 993)
+        let smtpPort = parsePort(from: row, column: "smtp_port", defaultPort: 587)
+        
         return EmailAccount(
             id: id,
             emailAddress: row["email_address"] as? String ?? "",
             displayName: row["display_name"] as? String ?? "",
             serviceType: EmailServiceType(rawValue: row["service_type"] as? String ?? "custom") ?? .custom,
             imapHost: row["imap_host"] as? String ?? "",
-            imapPort: row["imap_port"] as? Int ?? 993,
+            imapPort: imapPort,
             imapEncryption: EmailEncryption(rawValue: row["imap_encryption"] as? String ?? "ssl") ?? .ssl,
             smtpHost: row["smtp_host"] as? String ?? "",
-            smtpPort: row["smtp_port"] as? Int ?? 587,
+            smtpPort: smtpPort,
             smtpEncryption: EmailEncryption(rawValue: row["smtp_encryption"] as? String ?? "startTLS") ?? .startTLS,
             isEnabled: (row["is_enabled"] as? Int ?? 1) == 1,
             isDefault: (row["is_default"] as? Int ?? 0) == 1,
@@ -576,6 +672,27 @@ class EmailStore: ObservableObject {
             updatedAt: Date(timeIntervalSince1970: row["updated_at"] as? Double ?? 0),
             applyServiceDefaults: false
         )
+    }
+
+    /// 稳健解析端口字段，避免因为底层类型差异导致总是回落到默认值
+    private func parsePort(from row: Row, column: String, defaultPort: Int) -> Int {
+        // 1. 直接按 Int 读取（GRDB 通常会帮忙做转换）
+        if let intValue = row[column] as? Int {
+            return intValue
+        }
+        // 2. 尝试 Int64
+        if let int64Value = row[column] as? Int64 {
+            return Int(int64Value)
+        }
+        // 3. 尝试 String -> Int
+        if let stringValue = row[column] as? String {
+            let trimmed = stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let intValue = Int(trimmed), intValue > 0 && intValue < 65536 {
+                return intValue
+            }
+        }
+        // 4. 兜底：使用默认端口
+        return defaultPort
     }
     
     private func parseFolder(from row: Row) throws -> EmailFolder {
@@ -665,6 +782,7 @@ class EmailStore: ObservableObject {
             isSpam: (row["is_spam"] as? Int ?? 0) == 1,
             isDeleted: (row["is_deleted"] as? Int ?? 0) == 1,
             containsRemoteResources: (row["contains_remote_resources"] as? Int ?? 0) == 1,
+            hasBeenReplied: (row["has_been_replied"] as? Int ?? 0) == 1,
             tags: tags,
             aiTags: aiTags,
             aiSummary: row["ai_summary"] as? String,

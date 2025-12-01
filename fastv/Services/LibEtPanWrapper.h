@@ -39,6 +39,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// 按日期搜索邮件（sinceDate 为 nil 时获取所有邮件）
 - (nullable NSArray<NSDictionary *> *)fetchMessagesSinceDate:(nullable NSDate *)sinceDate limit:(NSUInteger)limit error:(NSError **)error;
 
+/// 按文本搜索邮件（搜索主题、发件人、正文等）
+- (nullable NSArray<NSDictionary *> *)searchMessagesWithQuery:(NSString *)query limit:(NSUInteger)limit error:(NSError **)error;
+
 /// 快速获取最新N封邮件的UID（不搜索，直接从最新开始获取）
 - (nullable NSArray<NSDictionary *> *)fetchLatestMessagesWithLimit:(NSUInteger)limit error:(NSError **)error;
 
@@ -84,13 +87,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)loginWithError:(NSError **)error;
 
 /// 发送邮件
+/// attachments: 附件数组，每个元素是包含 "data"(NSData), "filename"(NSString), "mimeType"(NSString) 的字典
 - (BOOL)sendMessageTo:(NSArray<NSString *> *)to
                     cc:(nullable NSArray<NSString *> *)cc
                    bcc:(nullable NSArray<NSString *> *)bcc
                 subject:(NSString *)subject
                    body:(NSString *)body
               htmlBody:(nullable NSString *)htmlBody
-            attachments:(nullable NSArray<NSData *> *)attachments
+            attachments:(nullable NSArray<NSDictionary<NSString *, id> *> *)attachments
             readReceipt:(BOOL)readReceipt
                   error:(NSError **)error;
 

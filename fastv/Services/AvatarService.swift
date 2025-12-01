@@ -27,38 +27,55 @@ class AvatarService {
         cache.totalCostLimit = 50 * 1024 * 1024 // 50MB
     }
     
-    /// 获取头像（优先使用缓存）
+    /// 获取头像（优先使用缓存，完全异步）
     func getAvatar(for email: String, size: Int = 80) async -> NSImage? {
         let cacheKey = "\(email)-\(size)"
         
-        // 检查内存缓存
+        // 检查内存缓存（快速路径，在主线程）
         if let cached = cache.object(forKey: cacheKey as NSString) {
             return cached
         }
         
-        // 检查磁盘缓存
-        if let diskCached = loadFromDisk(email: email, size: size) {
+        // 检查磁盘缓存（在后台线程执行，避免阻塞 UI）
+        if let diskCached = await Task.detached(priority: .userInitiated) { [weak self] in
+            return self?.loadFromDisk(email: email, size: size)
+        }.value {
             cache.setObject(diskCached, forKey: cacheKey as NSString)
             return diskCached
         }
         
         // 尝试从Gravatar获取
         if let gravatar = await fetchGravatar(email: email, size: size) {
-            saveToDisk(image: gravatar, email: email, size: size)
+            // 后台保存到磁盘，不阻塞返回
+            Task.detached(priority: .background) { [weak self] in
+                self?.saveToDisk(image: gravatar, email: email, size: size)
+            }
             cache.setObject(gravatar, forKey: cacheKey as NSString)
             return gravatar
         }
         
         // 尝试从Clearbit获取（域名logo）
         if let clearbit = await fetchClearbitLogo(email: email) {
-            saveToDisk(image: clearbit, email: email, size: size)
+            // 后台保存到磁盘，不阻塞返回
+            Task.detached(priority: .background) { [weak self] in
+                self?.saveToDisk(image: clearbit, email: email, size: size)
+            }
             cache.setObject(clearbit, forKey: cacheKey as NSString)
             return clearbit
         }
         
-        // 生成Identicon
-        let identicon = generateIdenticon(email: email, size: size)
-        saveToDisk(image: identicon, email: email, size: size)
+        // 生成Identicon（在后台线程生成，避免阻塞 UI）
+        let identicon: NSImage? = await Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self = self else { return nil }
+            return self.generateIdenticon(email: email, size: size)
+        }.value
+        
+        guard let identicon = identicon else { return nil }
+        
+        // 后台保存到磁盘，不阻塞返回
+        Task.detached(priority: .background) { [weak self] in
+            self?.saveToDisk(image: identicon, email: email, size: size)
+        }
         cache.setObject(identicon, forKey: cacheKey as NSString)
         return identicon
     }

@@ -52,13 +52,15 @@ struct EmailConnectionTestReport {
 
 /// 邮件服务
 /// 使用 LibEtPan C 库实现 IMAP/SMTP 协议
+/// 
+/// 重要：LibEtPan 的 CFStream 实现不是线程安全的。
+/// 每个操作必须使用独立的 IMAP/SMTP session，不能跨线程共享。
+/// 所有 session 在操作完成后立即断开，不再缓存。
 @MainActor
 class EmailService {
     static let shared = EmailService()
     
     // nonisolated(unsafe): 允许后台线程访问这些属性
-    nonisolated(unsafe) private var imapSessions: [UUID: LibEtPanIMAPSession] = [:]
-    nonisolated(unsafe) private var smtpSessions: [UUID: LibEtPanSMTPSession] = [:]
     nonisolated(unsafe) var initialLoadLimit = 1000 // 可配置
     nonisolated(unsafe) private var backgroundSyncTasks: [UUID: Task<Void, Never>] = [:]
     
@@ -89,14 +91,17 @@ class EmailService {
             throw EmailServiceError.invalidConfiguration("服务器地址或密码不能为空")
         }
         
-        var stages: [EmailConnectionStageResult] = []
-        stages.append(testIMAPStage(account: account, password: password))
-        stages.append(testSMTPStage(account: account, password: password))
-        
-        return EmailConnectionTestReport(stages: stages)
+        // 在后台线程执行测试，避免阻塞主线程
+        return try await Task.detached(priority: .userInitiated) {
+            var stages: [EmailConnectionStageResult] = []
+            stages.append(self.testIMAPStage(account: account, password: password))
+            stages.append(self.testSMTPStage(account: account, password: password))
+            
+            return EmailConnectionTestReport(stages: stages)
+        }.value
     }
     
-    private func testIMAPStage(account: EmailAccount, password: String) -> EmailConnectionStageResult {
+    nonisolated private func testIMAPStage(account: EmailAccount, password: String) -> EmailConnectionStageResult {
         guard let imap = LibEtPanIMAPSession(
             host: account.imapHost,
             port: account.imapPort,
@@ -145,7 +150,7 @@ class EmailService {
         }
     }
     
-    private func testSMTPStage(account: EmailAccount, password: String) -> EmailConnectionStageResult {
+    nonisolated private func testSMTPStage(account: EmailAccount, password: String) -> EmailConnectionStageResult {
         guard let smtp = LibEtPanSMTPSession(
             host: account.smtpHost,
             port: account.smtpPort,
@@ -196,16 +201,16 @@ class EmailService {
     
     // MARK: - IMAP Operations
     
-    /// 获取或创建 IMAP 会话
-    /// 注意：LibEtPan 的 CFStream 必须在主线程的 run loop 上运行
-    nonisolated private func getOrCreateIMAPSession(account: EmailAccount) async throws -> LibEtPanIMAPSession {
-        // 检查是否已有会话
-        if let existing = imapSessions[account.id] {
-            return existing
-        }
-        
-        // LibEtPan 的 CFStream 操作必须在主线程执行
-        return try await MainActor.run {
+    /// 创建新的 IMAP 会话
+    /// 
+    /// 重要：LibEtPan 的 CFStream 实现不是线程安全的。
+    /// 每次操作都必须创建独立的 session，操作完成后立即断开。
+    /// 不要在多个线程之间共享 IMAP session。
+    nonisolated private func createIMAPSession(account: EmailAccount) async throws -> LibEtPanIMAPSession {
+        // 在后台线程执行 IMAP 操作，避免主线程阻塞
+        return try await Task.detached(priority: .userInitiated) {
+            print("🔌 [EmailService] 创建新的 IMAP 会话: \(account.emailAddress)")
+            
             guard let password = try? EmailCredentialStore.shared.getPassword(accountId: account.id) else {
                 throw EmailServiceError.authenticationFailed("密码未找到")
             }
@@ -222,24 +227,28 @@ class EmailService {
             
             do {
                 try imap.connect()
+                print("✅ [EmailService] IMAP 连接成功")
             } catch {
                 throw EmailServiceError.connectionFailed(error.localizedDescription)
             }
             
             do {
                 try imap.login()
+                print("✅ [EmailService] IMAP 登录成功")
             } catch {
                 imap.disconnect()
                 throw EmailServiceError.authenticationFailed(error.localizedDescription)
             }
             
-            self.imapSessions[account.id] = imap
             return imap
-        }
+        }.value
     }
     
     /// 同步邮件（增量同步，支持时间范围和限制数量）
     /// nonisolated: 允许在后台线程执行,避免阻塞UI
+    /// 
+    /// 重要：每次同步都会创建独立的 IMAP session，操作完成后自动断开。
+    /// 这是为了避免 LibEtPan CFStream 的多线程竞态条件问题。
     nonisolated func syncMessages(
         account: EmailAccount,
         folder: EmailFolder,
@@ -247,17 +256,22 @@ class EmailService {
         limit: Int? = nil,
         batchSize: Int = 20
     ) async throws -> [EmailMessage] {
-        // LibEtPan 的 CFStream 操作必须在主线程执行
-        // 先获取 session（在主线程）
-        let imap = try await getOrCreateIMAPSession(account: account)
+        // 创建独立的 IMAP session
+        let imap = try await createIMAPSession(account: account)
         
-        // 将所有 LibEtPan 操作包装在主线程执行
-        return try await MainActor.run {
+        // 确保操作完成后断开连接
+        defer {
+            print("🔌 [EmailService] 断开 IMAP 连接 (syncMessages)")
+            imap.disconnect()
+        }
+        
+        // 在后台线程执行所有 IMAP 操作
+        return try await Task.detached(priority: .userInitiated) { [imap] in
             
             do {
                 try imap.selectFolder(folder.name)
             } catch {
-                throw EmailServiceError.connectionFailed(error.localizedDescription)
+                throw EmailServiceError.connectionFailed("选择文件夹失败: \(error.localizedDescription)")
             }
             
             // 计算时间范围：默认只获取最近30天的邮件
@@ -375,10 +389,12 @@ class EmailService {
             
             print("✅ [EmailService] 初始加载完成: \(emailMessages.count) 封邮件")
             return emailMessages
-        }
+        }.value
     }
     
     /// 后台同步剩余邮件
+    /// 
+    /// 重要：后台同步使用独立的 IMAP session，批量处理邮件以提高效率。
     nonisolated private func scheduleBackgroundSync(
         account: EmailAccount,
         folder: EmailFolder,
@@ -393,6 +409,10 @@ class EmailService {
             
             var syncedCount = 0
             let totalCount = remainingUIDs.count
+            let batchSize = 50 // 每批处理50封
+            
+            // 分批处理，每批使用独立的 IMAP session
+            var currentBatch: [NSNumber] = []
             
             for msgDictAny in remainingUIDs {
                 // 检查是否被取消
@@ -403,42 +423,63 @@ class EmailService {
                 
                 guard let msgDict = msgDictAny as? NSDictionary,
                       let uidValue = msgDict["uid"] as? NSNumber else { continue }
-                let uid = uidValue.uint32Value
                 
-                do {
-                    // LibEtPan 的 CFStream 操作必须在主线程执行
-                    let imap = try await self.getOrCreateIMAPSession(account: account)
-                    let headers = try await MainActor.run {
-                        try imap.selectFolder(folder.name)
-                        let headerDict = try imap.fetchMessageHeaders(withUID: uid)
-                        return headerDict as? [String: Any] ?? [:]
-                    }
-                    
-                    if let emailMessage = self.parseEmailMessage(
-                        from: headers,
-                        accountId: account.id,
-                        folderId: folder.id,
-                        uid: uid
-                    ) {
-                        // 检查日期范围
-                        if let sinceDate = sinceDate, emailMessage.date < sinceDate {
-                            continue
+                currentBatch.append(uidValue)
+                
+                // 当批次满了或者是最后一个，处理这批
+                if currentBatch.count >= batchSize || msgDictAny as AnyObject === remainingUIDs.last as AnyObject {
+                    do {
+                        // 创建独立的 IMAP session 处理这批邮件
+                        let imap = try await self.createIMAPSession(account: account)
+                        defer {
+                            imap.disconnect()
                         }
                         
-                        // 保存到本地数据库
-                        try await EmailStore.shared.addMessages([emailMessage], folderId: folder.id)
-                        syncedCount += 1
+                        try imap.selectFolder(folder.name)
+                        
+                        // 批量获取邮件头
+                        let headersArray = try imap.fetchBatchMessageHeaders(withUIDs: currentBatch)
+                        let allHeaders = headersArray.compactMap { $0 as? [String: Any] }
+                        
+                        var messagesToSave: [EmailMessage] = []
+                        
+                        for headers in allHeaders {
+                            guard let uidValue = headers["uid"] as? NSNumber else { continue }
+                            let uid = uidValue.uint32Value
+                            
+                            if let emailMessage = self.parseEmailMessage(
+                                from: headers,
+                                accountId: account.id,
+                                folderId: folder.id,
+                                uid: uid
+                            ) {
+                                // 检查日期范围
+                                if let sinceDate = sinceDate, emailMessage.date < sinceDate {
+                                    continue
+                                }
+                                messagesToSave.append(emailMessage)
+                            }
+                        }
+                        
+                        // 批量保存到本地数据库
+                        if !messagesToSave.isEmpty {
+                            try await EmailStore.shared.addMessages(messagesToSave, folderId: folder.id)
+                            syncedCount += messagesToSave.count
+                        }
                         
                         // 每处理100封打印进度
-                        if syncedCount % 100 == 0 {
+                        if syncedCount % 100 < batchSize {
                             print("🔄 [EmailService] 后台已同步 \(syncedCount)/\(totalCount) 封邮件")
                         }
                         
                         // 让出CPU,避免占用过多资源
-                        try await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                        try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+                        
+                    } catch {
+                        print("⚠️ [EmailService] 后台同步批次失败: \(error.localizedDescription)")
                     }
-                } catch {
-                    print("⚠️ [EmailService] 后台同步邮件失败，UID: \(uid), 错误: \(error.localizedDescription)")
+                    
+                    currentBatch.removeAll()
                 }
             }
             
@@ -455,6 +496,8 @@ class EmailService {
     }
     
     /// 获取邮件正文
+    /// 
+    /// 重要：每次获取正文都会创建独立的 IMAP session，操作完成后自动断开。
     nonisolated func fetchMessageBody(
         account: EmailAccount,
         folder: EmailFolder,
@@ -467,21 +510,28 @@ class EmailService {
         
         print("📧 [EmailService] fetchMessageBody: 开始获取正文, folder=\(folder.name), uid=\(uid)")
         
-        // LibEtPan 的 CFStream 操作必须在主线程执行
-        let imap = try await getOrCreateIMAPSession(account: account)
-        let bodyData = try await MainActor.run {
+        // 创建独立的 IMAP session
+        let imap = try await createIMAPSession(account: account)
+        
+        // 确保操作完成后断开连接
+        defer {
+            print("🔌 [EmailService] 断开 IMAP 连接 (fetchMessageBody)")
+            imap.disconnect()
+        }
+        
+        let bodyData = try await Task.detached(priority: .userInitiated) { [imap] in
             do {
                 try imap.selectFolder(folder.name)
                 print("📧 [EmailService] fetchMessageBody: 文件夹选择成功")
             } catch {
                 print("❌ [EmailService] fetchMessageBody: 选择文件夹失败: \(error)")
-                throw EmailServiceError.connectionFailed(error.localizedDescription)
+                throw EmailServiceError.connectionFailed("选择文件夹失败: \(error.localizedDescription)")
             }
             
             let data = try imap.fetchMessageBody(withUID: uid)
             print("📧 [EmailService] fetchMessageBody: 获取到数据 \(data.count) 字节")
             return data
-        }
+        }.value
         
         if bodyData.isEmpty {
             print("❌ [EmailService] fetchMessageBody: 邮件正文为空")
@@ -495,17 +545,100 @@ class EmailService {
         return content
     }
     
+    /// 搜索邮件（通过 IMAP 服务器搜索）
+    /// 
+    /// 重要：每次搜索都会创建独立的 IMAP session，操作完成后自动断开。
+    nonisolated func searchMessages(
+        account: EmailAccount,
+        folder: EmailFolder,
+        query: String,
+        limit: Int = 100
+    ) async throws -> [EmailMessage] {
+        guard !query.isEmpty else {
+            return []
+        }
+        
+        // 创建独立的 IMAP session
+        let imap = try await createIMAPSession(account: account)
+        
+        // 确保操作完成后断开连接
+        defer {
+            print("🔌 [EmailService] 断开 IMAP 连接 (searchMessages)")
+            imap.disconnect()
+        }
+        
+        // 在后台线程执行所有 IMAP 操作
+        return try await Task.detached(priority: .userInitiated) { [imap] in
+            do {
+                try imap.selectFolder(folder.name)
+            } catch {
+                throw EmailServiceError.connectionFailed("选择文件夹失败: \(error.localizedDescription)")
+            }
+            
+            // 使用 IMAP 搜索
+            let messageUIDs: [Any]
+            do {
+                print("🔍 [EmailService] 开始搜索邮件，查询: \(query), 文件夹: \(folder.name)")
+                let result = try imap.searchMessages(withQuery: query, limit: UInt(limit))
+                messageUIDs = result as? [NSDictionary] ?? []
+                print("✅ [EmailService] 搜索完成，找到 \(messageUIDs.count) 封邮件")
+            } catch {
+                throw EmailServiceError.parseError("搜索失败: \(error.localizedDescription)")
+            }
+            
+            // 如果没有找到邮件，返回空数组
+            guard !messageUIDs.isEmpty else {
+                return []
+            }
+            
+            // 获取邮件头信息（批量获取，性能优化）
+            var emailMessages: [EmailMessage] = []
+            let uids = messageUIDs.compactMap { ($0 as? NSDictionary)?["uid"] as? NSNumber }
+            
+            if !uids.isEmpty {
+                let headers = try imap.fetchBatchMessageHeaders(withUIDs: uids)
+                
+                for headerDictAny in headers {
+                    guard let headerDict = headerDictAny as? [String: Any],
+                          let uidNum = headerDict["uid"] as? NSNumber else { continue }
+                    let uid = uidNum.uint32Value
+                    
+                    // 使用 EmailService 的私有方法解析邮件
+                    if let message = self.parseEmailMessage(
+                        from: headerDict,
+                        accountId: account.id,
+                        folderId: folder.id,
+                        uid: uid
+                    ) {
+                        emailMessages.append(message)
+                    }
+                }
+            }
+            
+            return emailMessages
+        }.value
+    }
+    
     /// 获取文件夹列表
+    /// 
+    /// 重要：每次获取文件夹列表都会创建独立的 IMAP session，操作完成后自动断开。
     nonisolated func fetchFolders(account: EmailAccount) async throws -> [EmailFolder] {
-        // LibEtPan 的 CFStream 操作必须在主线程执行
-        let imap = try await getOrCreateIMAPSession(account: account)
-        let folderNames: [String] = try await MainActor.run {
+        // 创建独立的 IMAP session
+        let imap = try await createIMAPSession(account: account)
+        
+        // 确保操作完成后断开连接
+        defer {
+            print("🔌 [EmailService] 断开 IMAP 连接 (fetchFolders)")
+            imap.disconnect()
+        }
+        
+        let folderNames: [String] = try await Task.detached(priority: .userInitiated) { [imap] in
             do {
                 return try imap.fetchFolders() ?? []
             } catch {
-                throw EmailServiceError.connectionFailed(error.localizedDescription)
+                throw EmailServiceError.connectionFailed("获取文件夹列表失败: \(error.localizedDescription)")
             }
-        }
+        }.value
         
         // 去重：使用 Set 存储已处理的文件夹名称
         var seenNames = Set<String>()
@@ -546,31 +679,39 @@ class EmailService {
     }
     
     /// 标记邮件为已读
-    /// 注意：LibEtPan 的 CFStream 必须在主线程的 run loop 上运行
-    nonisolated func markAsRead(account: EmailAccount, message: EmailMessage) async throws {
+    /// 
+    /// 重要：每次标记操作都会创建独立的 IMAP session，操作完成后自动断开。
+    nonisolated func markAsRead(account: EmailAccount, folder: EmailFolder, message: EmailMessage) async throws {
         guard let uid = message.uid else {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
         
-        // LibEtPan 的 CFStream 操作必须在主线程执行
-        let imap = try await getOrCreateIMAPSession(account: account)
-        try await MainActor.run {
+        // 创建独立的 IMAP session
+        let imap = try await createIMAPSession(account: account)
+        
+        // 确保操作完成后断开连接
+        defer {
+            print("🔌 [EmailService] 断开 IMAP 连接 (markAsRead)")
+            imap.disconnect()
+        }
+        
+        try await Task.detached(priority: .userInitiated) { [imap] in
             do {
+                try imap.selectFolder(folder.name)
                 try imap.markAsRead(withUID: uid)
             } catch {
                 throw EmailServiceError.networkError(error)
             }
-        }
+        }.value
     }
     
     /// 删除邮件
+    /// 
+    /// 重要：每次删除操作都会创建独立的 IMAP session，操作完成后自动断开。
     nonisolated func deleteMessage(account: EmailAccount, message: EmailMessage) async throws {
         guard let uid = message.uid else {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
-        
-        // LibEtPan 的 CFStream 操作必须在主线程执行
-        let imap = try await getOrCreateIMAPSession(account: account)
         
         // 获取邮件所在的文件夹
         guard let folderId = message.folderId,
@@ -578,7 +719,16 @@ class EmailService {
             throw EmailServiceError.invalidConfiguration("找不到邮件所在文件夹")
         }
         
-        try await MainActor.run {
+        // 创建独立的 IMAP session
+        let imap = try await createIMAPSession(account: account)
+        
+        // 确保操作完成后断开连接
+        defer {
+            print("🔌 [EmailService] 断开 IMAP 连接 (deleteMessage)")
+            imap.disconnect()
+        }
+        
+        try await Task.detached(priority: .userInitiated) { [imap] in
             do {
                 try imap.selectFolder(folder.name)
                 // TODO: 使用 LibEtPan 的删除功能（STORE +DELETE 或 MOVE 到 Trash）
@@ -587,24 +737,32 @@ class EmailService {
             } catch {
                 throw EmailServiceError.networkError(error)
             }
-        }
+        }.value
     }
     
     /// 切换星标状态
+    /// 
+    /// 重要：每次切换操作都会创建独立的 IMAP session，操作完成后自动断开。
     nonisolated func toggleStar(account: EmailAccount, message: EmailMessage) async throws {
         guard let uid = message.uid else {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
-        
-        // LibEtPan 的 CFStream 操作必须在主线程执行
-        let imap = try await getOrCreateIMAPSession(account: account)
         
         guard let folderId = message.folderId,
               let folder = try await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
             throw EmailServiceError.invalidConfiguration("找不到邮件所在文件夹")
         }
         
-        try await MainActor.run {
+        // 创建独立的 IMAP session
+        let imap = try await createIMAPSession(account: account)
+        
+        // 确保操作完成后断开连接
+        defer {
+            print("🔌 [EmailService] 断开 IMAP 连接 (toggleStar)")
+            imap.disconnect()
+        }
+        
+        try await Task.detached(priority: .userInitiated) { [imap] in
             do {
                 try imap.selectFolder(folder.name)
                 // TODO: 使用 LibEtPan 的 STORE 命令添加/移除 \Flagged 标志
@@ -613,7 +771,7 @@ class EmailService {
             } catch {
                 throw EmailServiceError.networkError(error)
             }
-        }
+        }.value
     }
     
     /// 标记为垃圾邮件
@@ -647,6 +805,8 @@ class EmailService {
     }
     
     /// 下载附件
+    /// 
+    /// 重要：每次下载操作都会创建独立的 IMAP session，操作完成后自动断开。
     nonisolated func downloadAttachment(
         account: EmailAccount,
         folder: EmailFolder,
@@ -657,15 +817,22 @@ class EmailService {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
         
-        // LibEtPan 的 CFStream 操作必须在主线程执行
-        let imap = try await getOrCreateIMAPSession(account: account)
-        let bodyData = try await MainActor.run {
+        // 创建独立的 IMAP session
+        let imap = try await createIMAPSession(account: account)
+        
+        // 确保操作完成后断开连接
+        defer {
+            print("🔌 [EmailService] 断开 IMAP 连接 (downloadAttachment)")
+            imap.disconnect()
+        }
+        
+        let bodyData = try await Task.detached(priority: .userInitiated) { [imap] in
             try imap.selectFolder(folder.name)
             
             // TODO: 使用 LibEtPan 获取附件的具体部分
             // 目前先获取完整邮件，然后解析附件
             return try imap.fetchMessageBody(withUID: uid)
-        }
+        }.value
         
         // 解析 MIME 结构，提取附件
         // 这里需要解析 multipart 结构，找到对应的附件部分
@@ -682,20 +849,28 @@ class EmailService {
     }
     
     /// 移动邮件到文件夹
+    /// 
+    /// 重要：每次移动操作都会创建独立的 IMAP session，操作完成后自动断开。
     nonisolated func moveMessage(account: EmailAccount, message: EmailMessage, to folder: EmailFolder) async throws {
         guard let uid = message.uid else {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
-        
-        // LibEtPan 的 CFStream 操作必须在主线程执行
-        let imap = try await getOrCreateIMAPSession(account: account)
         
         guard let folderId = message.folderId,
               let sourceFolder = try await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
             throw EmailServiceError.invalidConfiguration("找不到源文件夹")
         }
         
-        try await MainActor.run {
+        // 创建独立的 IMAP session
+        let imap = try await createIMAPSession(account: account)
+        
+        // 确保操作完成后断开连接
+        defer {
+            print("🔌 [EmailService] 断开 IMAP 连接 (moveMessage)")
+            imap.disconnect()
+        }
+        
+        try await Task.detached(priority: .userInitiated) { [imap] in
             do {
                 try imap.selectFolder(sourceFolder.name)
                 // TODO: 使用 LibEtPan 的 MOVE 或 COPY + STORE +DELETE 命令
@@ -704,23 +879,19 @@ class EmailService {
             } catch {
                 throw EmailServiceError.networkError(error)
             }
-        }
+        }.value
     }
     
     // MARK: - SMTP Operations
     
-    /// 获取或创建 SMTP 会话
-    /// 注意：LibEtPan 的 CFStream 必须在主线程的 run loop 上运行
-    nonisolated private func getOrCreateSMTPSession(account: EmailAccount) async throws -> LibEtPanSMTPSession {
-        // 检查是否已有会话
-        if let existing = smtpSessions[account.id] {
-            print("📧 [EmailService] 使用现有 SMTP 会话: \(account.emailAddress)")
-            return existing
-        }
-        
-        // LibEtPan 的 CFStream 操作必须在主线程执行
-        return try await MainActor.run {
-            print("📧 [EmailService] 开始创建 SMTP 会话")
+    /// 创建 SMTP 会话
+    /// 
+    /// 重要：与 IMAP 类似，SMTP session 也不再缓存，每次操作创建新的 session。
+    /// 这样可以确保使用最新的账户配置，避免配置更新后仍使用旧连接。
+    nonisolated private func createSMTPSession(account: EmailAccount) async throws -> LibEtPanSMTPSession {
+        // 在后台线程执行 SMTP 操作，避免主线程阻塞
+        return try await Task.detached(priority: .userInitiated) {
+            print("📧 [EmailService] 创建新的 SMTP 会话")
             print("📧 [EmailService] SMTP 服务器: \(account.smtpHost):\(account.smtpPort)")
             print("📧 [EmailService] SMTP 加密方式: \(self.encryptionString(from: account.smtpEncryption))")
             print("📧 [EmailService] 用户名: \(account.emailAddress)")
@@ -750,22 +921,25 @@ class EmailService {
                 let errorDesc = error.localizedDescription
                 // 避免重复包装错误信息
                 let errorMessage = errorDesc.hasPrefix("连接失败") ? errorDesc : "连接失败: \(errorDesc)"
-            print("❌ [EmailService] SMTP 连接失败: \(errorMessage)")
-            print("❌ [EmailService] 错误详情: \(error)")
-            if let nsError = error as NSError? {
-                print("❌ [EmailService] 错误域: \(nsError.domain), 错误代码: \(nsError.code)")
-                if let failureReason = nsError.userInfo[NSLocalizedFailureReasonErrorKey] as? String {
-                    print("❌ [EmailService] 失败原因: \(failureReason)")
-                }
-                if let libetpanCode = nsError.userInfo["LibEtPanErrorCode"] as? Int {
-                    print("❌ [EmailService] LibEtPan 错误代码: \(libetpanCode)")
-                    // 根据错误代码提供建议
-                    if libetpanCode == 24 { // MAILSMTP_ERROR_STARTTLS_NOT_SUPPORTED
-                        print("💡 [EmailService] 建议: STARTTLS 握手失败，可以尝试使用 SSL 直接连接（端口 465）")
+                print("❌ [EmailService] SMTP 连接失败: \(errorMessage)")
+                print("❌ [EmailService] 错误详情: \(error)")
+                if let nsError = error as NSError? {
+                    print("❌ [EmailService] 错误域: \(nsError.domain), 错误代码: \(nsError.code)")
+                    if let failureReason = nsError.userInfo[NSLocalizedFailureReasonErrorKey] as? String {
+                        print("❌ [EmailService] 失败原因: \(failureReason)")
+                    }
+                    if let libetpanCode = nsError.userInfo["LibEtPanErrorCode"] as? Int {
+                        print("❌ [EmailService] LibEtPan 错误代码: \(libetpanCode)")
+                        // 根据错误代码提供建议
+                        if libetpanCode == 24 { // MAILSMTP_ERROR_STARTTLS_NOT_SUPPORTED
+                            print("💡 [EmailService] 建议: STARTTLS 握手失败，可以尝试使用 SSL 直接连接（端口 465）")
+                        } else if libetpanCode == 27 { // MAILSMTP_ERROR_SSL
+                            print("💡 [EmailService] 建议: SSL/TLS 错误，请检查端口和加密方式是否匹配（SSL 通常用 465，STARTTLS 用 587）")
+                        }
                     }
                 }
-            }
-            throw EmailServiceError.connectionFailed(errorMessage)
+                smtp.disconnect()
+                throw EmailServiceError.connectionFailed(errorMessage)
             }
             
             print("📧 [EmailService] 正在登录 SMTP 服务器...")
@@ -784,13 +958,15 @@ class EmailService {
                 throw EmailServiceError.authenticationFailed(errorMessage)
             }
             
-            self.smtpSessions[account.id] = smtp
-            print("✅ [EmailService] SMTP 会话创建并保存成功")
+            print("✅ [EmailService] SMTP 会话创建成功")
             return smtp
-        }
+        }.value
     }
     
     /// 发送邮件
+    /// 
+    /// 重要：每次发送都会创建独立的 SMTP session，操作完成后自动断开。
+    /// 这样可以确保使用最新的账户配置。
     nonisolated func sendMessage(
         account: EmailAccount,
         to: [EmailContact],
@@ -818,30 +994,42 @@ class EmailService {
         }
         print("📧 [EmailService] 附件数量: \(attachments.count)")
         
-        // LibEtPan 的 CFStream 操作必须在主线程执行
-        let smtp = try await getOrCreateSMTPSession(account: account)
+        // 创建独立的 SMTP session
+        let smtp = try await createSMTPSession(account: account)
         
-        try await MainActor.run {
-            print("📧 [EmailService] 正在准备邮件数据...")
+        // 确保操作完成后断开连接
+        defer {
+            print("🔌 [EmailService] 断开 SMTP 连接 (sendMessage)")
+            smtp.disconnect()
+        }
+        
+        try await Task.detached(priority: .userInitiated) { [smtp] in
+            print("📧 [EmailService] 正在准备邮件数据（后台线程）...")
             
             let toAddresses: [String] = to.map { $0.email }
             let ccAddresses: [String] = cc.map { $0.email }
             let bccAddresses: [String] = bcc.map { $0.email }
-            let attachmentData: [Data] = attachments.compactMap { attachment -> Data? in
+            
+            // 准备附件信息（包含 data, filename, mimeType）
+            let attachmentInfos: [[String: Any]] = attachments.compactMap { attachment -> [String: Any]? in
                 guard let path = attachment.localPath,
                       let data = NSData(contentsOfFile: path) else {
                     print("⚠️ [EmailService] 无法读取附件: \(attachment.filename)")
                     return nil
                 }
-                print("📎 [EmailService] 附件已加载: \(attachment.filename) (\(data.length) 字节)")
-                return data as Data
+                print("📎 [EmailService] 附件已加载: \(attachment.filename) (\(attachment.mimeType), \(data.length) 字节)")
+                return [
+                    "data": data as Data,
+                    "filename": attachment.filename,
+                    "mimeType": attachment.mimeType
+                ]
             }
             
             print("📧 [EmailService] 正在调用 SMTP sendMessage...")
             do {
                 let ccOpt: [String]? = ccAddresses.isEmpty ? nil : ccAddresses
                 let bccOpt: [String]? = bccAddresses.isEmpty ? nil : bccAddresses
-                let attachmentsOpt: [Data]? = attachmentData.isEmpty ? nil : attachmentData
+                let attachmentsOpt: [[String: Any]]? = attachmentInfos.isEmpty ? nil : attachmentInfos
                 try smtp.sendMessage(to: toAddresses,
                                     cc: ccOpt,
                                     bcc: bccOpt,
@@ -866,58 +1054,32 @@ class EmailService {
                 }
                 throw EmailServiceError.networkError(error)
             }
-        }
+        }.value
     }
     
     // MARK: - Session Management
     
-    /// 清理账户的所有会话和后台任务
+    /// 清理账户的后台任务
+    /// 
+    /// 注意：IMAP/SMTP session 现在都是每次操作独立创建的，不再缓存。
+    /// 这里只需要取消后台同步任务。
     nonisolated func cleanupAccount(accountId: UUID) {
         // 取消后台同步任务
         cancelBackgroundSync(accountId: accountId)
-        
-        // LibEtPan 的断开操作必须在主线程执行
-        Task { @MainActor in
-            // 断开IMAP连接
-            if let imapSession = self.imapSessions[accountId] {
-                imapSession.disconnect()
-                self.imapSessions.removeValue(forKey: accountId)
-            }
-            
-            // 断开SMTP连接
-            if let smtpSession = self.smtpSessions[accountId] {
-                smtpSession.disconnect()
-                self.smtpSessions.removeValue(forKey: accountId)
-            }
-            
-            print("🧹 [EmailService] 已清理账户会话和后台任务")
-        }
+        print("🧹 [EmailService] 已清理账户后台任务")
     }
     
-    /// 清理所有会话
+    /// 清理所有后台任务
+    /// 
+    /// 注意：IMAP/SMTP session 现在都是每次操作独立创建的，不再缓存。
+    /// 这里只需要取消后台同步任务。
     nonisolated func cleanupAllSessions() {
         // 取消所有后台任务
         let accountIds = backgroundSyncTasks.keys
         for accountId in accountIds {
             cancelBackgroundSync(accountId: accountId)
         }
-        
-        // LibEtPan 的断开操作必须在主线程执行
-        Task { @MainActor in
-            // 断开所有IMAP连接
-            for (_, session) in self.imapSessions {
-                session.disconnect()
-            }
-            self.imapSessions.removeAll()
-            
-            // 断开所有SMTP连接
-            for (_, session) in self.smtpSessions {
-                session.disconnect()
-            }
-            self.smtpSessions.removeAll()
-            
-            print("🧹 [EmailService] 已清理所有会话")
-        }
+        print("🧹 [EmailService] 已清理所有后台任务")
     }
     
     // MARK: - Helper Methods

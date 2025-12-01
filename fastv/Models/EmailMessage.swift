@@ -40,6 +40,7 @@ struct EmailMessage: Identifiable, Codable {
     var isSpam: Bool // 是否标记为垃圾邮件
     var isDeleted: Bool // 是否已删除
     var containsRemoteResources: Bool // 是否包含外部资源（图片、CSS等）
+    var hasBeenReplied: Bool // 是否已回复
     
     // 标签和分类
     var tags: [String]
@@ -86,6 +87,7 @@ struct EmailMessage: Identifiable, Codable {
         isSpam: Bool = false,
         isDeleted: Bool = false,
         containsRemoteResources: Bool = false,
+        hasBeenReplied: Bool = false,
         tags: [String] = [],
         aiTags: [String] = [],
         aiSummary: String? = nil,
@@ -121,6 +123,7 @@ struct EmailMessage: Identifiable, Codable {
         self.isSpam = isSpam
         self.isDeleted = isDeleted
         self.containsRemoteResources = containsRemoteResources
+        self.hasBeenReplied = hasBeenReplied
         self.tags = tags
         self.aiTags = aiTags
         self.aiSummary = aiSummary

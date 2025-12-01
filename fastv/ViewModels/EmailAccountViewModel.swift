@@ -35,6 +35,9 @@ class EmailAccountViewModel: ObservableObject {
     @Published var connectionTestResult: ConnectionTestResult?
     @Published var errorMessage: String?
     
+    // 内部标志：正在加载编辑数据时，不允许 serviceTypeChanged 覆盖配置
+    private var isLoadingEditData = false
+    
     private let emailStore = EmailStore.shared
     @Published private(set) var emailService = EmailService.shared
     
@@ -58,6 +61,11 @@ class EmailAccountViewModel: ObservableObject {
     
     /// 开始编辑账号
     func startEditingAccount(_ account: EmailAccount) {
+        // 设置标志，防止 serviceTypeChanged 覆盖用户保存的配置
+        // 注意：由于 SwiftUI 的 View 更新是异步的，onChange 可能在本函数返回后才触发
+        // 所以使用 DispatchQueue.main.async 来延迟清除标志
+        isLoadingEditData = true
+        
         // 确保使用最新的账号数据（从 EmailStore 重新获取）
         // 这样可以确保获取到保存后的最新配置
         let latestAccount = emailStore.getAccount(id: account.id) ?? account
@@ -67,10 +75,12 @@ class EmailAccountViewModel: ObservableObject {
         
         emailAddress = latestAccount.emailAddress
         displayName = latestAccount.displayName
+        
+        // 先设置 serviceType（这可能触发 View 的 onChange）
         serviceType = latestAccount.serviceType
         
+        // 然后设置用户保存的实际配置（这些值不应被覆盖）
         // 编辑账号时，总是使用账号中保存的实际配置（而不是预设配置）
-        // 这样用户可以看到和编辑他们之前自定义的配置
         imapHost = latestAccount.imapHost
         imapPort = String(latestAccount.imapPort)
         imapEncryption = latestAccount.imapEncryption
@@ -78,6 +88,8 @@ class EmailAccountViewModel: ObservableObject {
         smtpHost = latestAccount.smtpHost
         smtpPort = String(latestAccount.smtpPort)
         smtpEncryption = latestAccount.smtpEncryption
+        
+        print("📝 [EmailAccountViewModel] 加载账号配置 - SMTP: \(latestAccount.smtpHost):\(latestAccount.smtpPort) \(latestAccount.smtpEncryption.rawValue)")
         
         // 检查账号的配置是否与预设配置不同，如果不同则自动展开高级设置
         let hasCustomConfig = {
@@ -105,6 +117,12 @@ class EmailAccountViewModel: ObservableObject {
         
         // 密码需要从Keychain获取，但这里不显示
         password = ""
+        
+        // 延迟清除标志，确保在 SwiftUI View 更新（触发 onChange）后才清除
+        DispatchQueue.main.async { [weak self] in
+            self?.isLoadingEditData = false
+            print("📝 [EmailAccountViewModel] 编辑数据加载完成，允许 serviceTypeChanged 更新配置")
+        }
     }
     
     /// 取消编辑
@@ -220,32 +238,20 @@ class EmailAccountViewModel: ObservableObject {
         connectionTestResult = nil
         
         // 构建临时账号用于测试
-        let testAccount: EmailAccount
-        if let imapConfig = serviceType.imapConfig {
-            testAccount = EmailAccount(
-                emailAddress: emailAddress,
-                displayName: displayName,
-                serviceType: serviceType,
-                imapHost: imapConfig.host,
-                imapPort: imapConfig.port,
-                imapEncryption: imapConfig.encryption,
-                smtpHost: serviceType.smtpConfig?.host ?? "",
-                smtpPort: serviceType.smtpConfig?.port ?? 587,
-                smtpEncryption: serviceType.smtpConfig?.encryption ?? .startTLS
-            )
-        } else {
-            testAccount = EmailAccount(
-                emailAddress: emailAddress,
-                displayName: displayName,
-                serviceType: .custom,
-                imapHost: imapHost,
-                imapPort: Int(imapPort) ?? 993,
-                imapEncryption: imapEncryption,
-                smtpHost: smtpHost,
-                smtpPort: Int(smtpPort) ?? 587,
-                smtpEncryption: smtpEncryption
-            )
-        }
+        // 始终使用用户在表单中输入的配置，而不是预设配置
+        let testAccount = EmailAccount(
+            emailAddress: emailAddress,
+            displayName: displayName,
+            serviceType: serviceType,
+            imapHost: imapHost,
+            imapPort: Int(imapPort) ?? 993,
+            imapEncryption: imapEncryption,
+            smtpHost: smtpHost,
+            smtpPort: Int(smtpPort) ?? 587,
+            smtpEncryption: smtpEncryption
+        )
+        
+        print("🔌 [EmailAccountViewModel] 测试连接 - SMTP: \(smtpHost):\(smtpPort) \(smtpEncryption.rawValue)")
         
         // 确定使用的密码
         // 如果密码为空且正在编辑账号，则从 Keychain 获取已存储的密码
@@ -291,7 +297,27 @@ class EmailAccountViewModel: ObservableObject {
     }
     
     /// 服务类型改变时更新配置
+    /// 注意：编辑账号时加载数据过程中不应覆盖用户保存的配置
     func serviceTypeChanged() {
+        // 如果正在加载编辑数据，不要覆盖用户保存的配置
+        if isLoadingEditData {
+            print("📝 [EmailAccountViewModel] serviceTypeChanged: 跳过覆盖（正在加载编辑数据）")
+            return
+        }
+
+        // 如果是在编辑已有账号，不要再用预设把用户自己改的端口/加密方式改回去
+        // 只在「新建账号」时，根据服务类型自动填充默认配置
+        if editingAccount != nil {
+            // 编辑模式下，仅在切换为自定义服务时展开高级设置，其余保持用户保存的配置不变
+            if serviceType == .custom {
+                showAdvancedSettings = true
+            }
+            print("📝 [EmailAccountViewModel] serviceTypeChanged: 编辑模式下不覆盖服务器配置")
+            return
+        }
+
+        print("📝 [EmailAccountViewModel] serviceTypeChanged: 应用预设配置 for \(serviceType.rawValue)（仅用于新建账号）")
+
         if let imapConfig = serviceType.imapConfig {
             imapHost = imapConfig.host
             imapPort = String(imapConfig.port)

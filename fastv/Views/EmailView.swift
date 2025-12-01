@@ -13,11 +13,8 @@ import UniformTypeIdentifiers
 struct EmailView: View {
     @StateObject private var viewModel = EmailViewModel()
     @State private var showAccountManagement = false
-    @State private var showAttachmentPicker = false
-    @FocusState private var isReplyBodyFocused: Bool
-    @State private var replyBodyText: String = ""
-    @State private var composeBodyText: String = ""
-    @State private var bodyUpdateTask: Task<Void, Never>?
+    @State private var showComposeWindow = false
+    @State private var composeWindowType: EmailComposeWindowView.ComposeType?
     
     var body: some View {
         HSplitView {
@@ -29,11 +26,8 @@ struct EmailView: View {
             messageListView
                 .frame(minWidth: 300, idealWidth: 400)
             
-            // 右侧：邮件详情或编写面板
-            if viewModel.showComposePanel {
-                composeDetailView()
-                    .frame(minWidth: 400, idealWidth: 500)
-            } else if let message = viewModel.selectedMessage {
+            // 右侧：邮件详情
+            if let message = viewModel.selectedMessage {
                 messageDetailView(message: message)
                     .frame(minWidth: 400, idealWidth: 500)
             } else {
@@ -46,6 +40,8 @@ struct EmailView: View {
             ToolbarItem(placement: .primaryAction) {
                 Button(action: {
                     viewModel.initComposeDraft()
+                    composeWindowType = .new
+                    showComposeWindow = true
                 }) {
                     Label("新邮件", systemImage: "square.and.pencil")
                 }
@@ -74,6 +70,11 @@ struct EmailView: View {
         }
         .sheet(isPresented: $showAccountManagement) {
             EmailAccountManagementView()
+        }
+        .sheet(isPresented: $showComposeWindow) {
+            if let composeType = composeWindowType {
+                EmailComposeWindowView(viewModel: viewModel, composeType: composeType)
+            }
         }
         .onAppear {
             // 如果没有选中文件夹，默认选中"所有邮件"
@@ -206,15 +207,22 @@ struct EmailView: View {
                             .buttonStyle(.plain)
                             .contentShape(Rectangle())
                             
-                            HStack {
-                                Image(systemName: "tray.full")
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 20)
-                                Text("所有邮件")
-                                Spacer()
+                            Button(action: {
+                                // 显式调用 showAllMessages，确保点击总是有响应
+                                viewModel.showAllMessages()
+                            }) {
+                                HStack {
+                                    Image(systemName: "tray.full")
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 20)
+                                    Text("所有邮件")
+                                    Spacer()
+                                }
                             }
+                            .buttonStyle(.plain)
                             .contentShape(Rectangle())
                             .tag(nil as UUID?)
+                            .foregroundStyle(viewModel.selectedFolderId == nil ? .primary : .secondary)
                         }
                         ForEach(visibleFolders) { folder in
                             FolderRow(folder: folder)
@@ -283,9 +291,13 @@ struct EmailView: View {
                             MessageRow(message: message, showAttachments: viewModel.showAttachments)
                                 .tag(message.id)
                                 .onAppear {
-                                    // 滚动到底部时自动加载更多
+                                    // 滚动到底部时自动加载更多（防抖处理）
+                                    // 只在列表末尾的邮件出现时触发，避免频繁调用
                                     if message.id == viewModel.messages.last?.id {
-                                        DispatchQueue.main.async {
+                                        // 使用 Task 而不是 DispatchQueue，避免阻塞 UI
+                                        Task { @MainActor in
+                                            // 稍微延迟，避免快速滚动时频繁触发
+                                            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒
                                             viewModel.loadMoreMessages()
                                         }
                                     }
@@ -337,19 +349,6 @@ struct EmailView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    // 编写面板（新邮件）
-                    if viewModel.showComposePanel, let draft = viewModel.composeDraft {
-                        composePanelView(draft: draft)
-                            .id("compose-panel")
-                    }
-                    
-                    // 回复面板
-                    if viewModel.showReplyPanel, let draft = viewModel.replyDraft {
-                        Divider()
-                        replyPanelView(draft: draft, originalMessage: message)
-                            .id("reply-panel")
-                    }
-                    
                     // 邮件头部（带操作按钮）
                     messageHeaderWithActions(message: message)
                     
@@ -464,45 +463,6 @@ struct EmailView: View {
                 }
                 .padding()
             }
-            .onChange(of: viewModel.showReplyPanel) { _, newValue in
-                if newValue {
-                    // 初始化正文内容
-                    if let draft = viewModel.replyDraft {
-                        replyBodyText = draft.body
-                    }
-                    // 延迟一点确保视图已渲染
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        withAnimation {
-                            proxy.scrollTo("reply-panel", anchor: .top)
-                        }
-                        // 设置焦点
-                        isReplyBodyFocused = true
-                    }
-                } else {
-                    // 关闭时清空
-                    replyBodyText = ""
-                    bodyUpdateTask?.cancel()
-                }
-            }
-            .onChange(of: viewModel.replyDraft?.body) { _, newValue in
-                // 当草稿从外部更新时（比如切换回复类型），同步到本地状态
-                if let newValue = newValue, !newValue.isEmpty {
-                    // 只在本地状态为空或等于当前草稿内容时才更新，避免覆盖用户正在输入的内容
-                    if replyBodyText.isEmpty || replyBodyText == viewModel.replyDraft?.body {
-                        replyBodyText = newValue
-                    }
-                }
-            }
-            .onChange(of: viewModel.showComposePanel) { _, newValue in
-                if newValue {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        withAnimation {
-                            proxy.scrollTo("compose-panel", anchor: .top)
-                        }
-                        isReplyBodyFocused = true
-                    }
-                }
-            }
         }
     }
     
@@ -559,6 +519,8 @@ struct EmailView: View {
                             viewModel.errorMessage = "这是一个 no-reply 邮箱，无法回复"
                         } else {
                             viewModel.initReplyDraft(for: message, type: .reply)
+                            composeWindowType = .reply(message)
+                            showComposeWindow = true
                         }
                     }) {
                         Label("回复", systemImage: "arrowshape.turn.up.left")
@@ -570,6 +532,8 @@ struct EmailView: View {
                             viewModel.errorMessage = "这是一个 no-reply 邮箱，无法回复"
                         } else {
                             viewModel.initReplyDraft(for: message, type: .replyAll)
+                            composeWindowType = .replyAll(message)
+                            showComposeWindow = true
                         }
                     }) {
                         Label("全部", systemImage: "arrowshape.turn.up.left.2")
@@ -578,6 +542,8 @@ struct EmailView: View {
                     
                     Button(action: {
                         viewModel.initReplyDraft(for: message, type: .forward)
+                        composeWindowType = .forward(message)
+                        showComposeWindow = true
                     }) {
                         Label("转发", systemImage: "arrowshape.turn.up.right")
                     }
@@ -762,264 +728,6 @@ struct EmailView: View {
         }
     }
     
-    private func replyPanelView(draft: ReplyDraft, originalMessage: EmailMessage) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // 回复类型切换
-            Picker("", selection: Binding(
-                get: { draft.replyType },
-                set: { newType in
-                    if let message = viewModel.selectedMessage {
-                        // 先同步当前输入的内容
-                        viewModel.updateReplyField(body: replyBodyText)
-                        viewModel.initReplyDraft(for: message, type: newType)
-                        // 更新本地状态以匹配新的草稿
-                        if let newDraft = viewModel.replyDraft {
-                            replyBodyText = newDraft.body
-                        }
-                    }
-                }
-            )) {
-                Text("回复").tag(ReplyDraft.ReplyType.reply)
-                Text("回复全部").tag(ReplyDraft.ReplyType.replyAll)
-                Text("转发").tag(ReplyDraft.ReplyType.forward)
-            }
-            .pickerStyle(.segmented)
-            
-            // To 字段
-            VStack(alignment: .leading, spacing: 4) {
-                Text("收件人")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                TextField("收件人", text: Binding(
-                    get: { draft.to.map { $0.displayName }.joined(separator: ", ") },
-                    set: { text in
-                        let contacts = parseEmailAddresses(text)
-                        viewModel.updateReplyField(to: contacts)
-                    }
-                ))
-                .textFieldStyle(.roundedBorder)
-            }
-            
-            // Cc/Bcc 折叠区域
-            if viewModel.showCcBcc {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("抄送")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("抄送", text: Binding(
-                        get: { draft.cc.map { $0.displayName }.joined(separator: ", ") },
-                        set: { text in
-                            let contacts = parseEmailAddresses(text)
-                            viewModel.updateReplyField(cc: contacts)
-                        }
-                    ))
-                    .textFieldStyle(.roundedBorder)
-                    
-                    Text("密送")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("密送", text: Binding(
-                        get: { draft.bcc.map { $0.displayName }.joined(separator: ", ") },
-                        set: { text in
-                            let contacts = parseEmailAddresses(text)
-                            viewModel.updateReplyField(bcc: contacts)
-                        }
-                    ))
-                    .textFieldStyle(.roundedBorder)
-                }
-            } else {
-                Button(action: {
-                    viewModel.showCcBcc = true
-                }) {
-                    Text("添加抄送/密送")
-                        .font(.caption)
-                }
-                .buttonStyle(.plain)
-            }
-            
-            // 主题
-            VStack(alignment: .leading, spacing: 4) {
-                Text("主题")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                TextField("主题", text: Binding(
-                    get: { draft.subject },
-                    set: { newValue in
-                        // 使用防抖更新主题
-                        Task { @MainActor in
-                            try? await Task.sleep(nanoseconds: 200_000_000) // 200ms 防抖
-                            viewModel.updateReplyField(subject: newValue)
-                        }
-                    }
-                ))
-                .textFieldStyle(.roundedBorder)
-            }
-            
-            // 正文编辑区
-            TextEditor(text: $replyBodyText)
-            .frame(minHeight: 150)
-            .padding(4)
-            .background(Color(NSColor.textBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 4))
-            .focused($isReplyBodyFocused)
-            .onChange(of: replyBodyText) { _, newValue in
-                // 取消之前的更新任务
-                bodyUpdateTask?.cancel()
-                // 使用防抖，延迟更新 ViewModel（避免每次输入都触发视图更新）
-                bodyUpdateTask = Task {
-                    try? await Task.sleep(nanoseconds: 300_000_000) // 300ms 防抖
-                    if !Task.isCancelled {
-                        await MainActor.run {
-                            viewModel.updateReplyField(body: newValue)
-                        }
-                    }
-                }
-            }
-            .onAppear {
-                // 初始化时同步内容（仅在首次显示时）
-                if replyBodyText.isEmpty {
-                    replyBodyText = draft.body
-                }
-            }
-            
-            // 附件列表
-            if !draft.attachments.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("附件 (\(draft.attachments.count))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    
-                    ForEach(draft.attachments) { attachment in
-                        HStack {
-                            Image(systemName: attachmentIcon(for: attachment.mimeType))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 16)
-                            
-                            Text(attachment.filename)
-                                .font(.caption)
-                                .lineLimit(1)
-                            
-                            Spacer()
-                            
-                            Button(action: {
-                                viewModel.removeAttachmentFromReply(attachment.id)
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .padding(.vertical, 2)
-                    }
-                }
-                .padding(.vertical, 4)
-            }
-            
-            // 添加附件按钮
-            Button(action: {
-                showAttachmentPicker = true
-            }) {
-                Label("添加附件", systemImage: "paperclip")
-                    .font(.subheadline)
-            }
-            .buttonStyle(.bordered)
-            .fileImporter(
-                isPresented: $showAttachmentPicker,
-                allowedContentTypes: [.item],
-                allowsMultipleSelection: true
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    for url in urls {
-                        // 需要访问权限
-                        _ = url.startAccessingSecurityScopedResource()
-                        defer { url.stopAccessingSecurityScopedResource() }
-                        
-                        let filename = url.lastPathComponent
-                        let fileSize = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
-                        let mimeType = detectMIMEType(for: url)
-                        
-                        let attachment = EmailAttachment(
-                            filename: filename,
-                            mimeType: mimeType,
-                            size: fileSize,
-                            localPath: url.path
-                        )
-                        
-                        if viewModel.showComposePanel {
-                            viewModel.addAttachmentToCompose(attachment)
-                        } else {
-                            viewModel.addAttachmentToReply(attachment)
-                        }
-                    }
-                case .failure(let error):
-                    viewModel.errorMessage = "选择文件失败: \(error.localizedDescription)"
-                }
-            }
-            
-            // 错误提示
-            if let errorMessage = viewModel.errorMessage {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
-                    Text(errorMessage)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color.red.opacity(0.1))
-                }
-            }
-            
-            // 操作按钮
-            HStack {
-                Spacer()
-                Button("取消") {
-                    bodyUpdateTask?.cancel()
-                    replyBodyText = ""
-                    viewModel.replyDraft = nil
-                    viewModel.showReplyPanel = false
-                    viewModel.errorMessage = nil
-                }
-                .buttonStyle(.bordered)
-                .disabled(viewModel.isSendingReply)
-                
-                Button(action: {
-                    // 发送前立即同步正文内容
-                    viewModel.updateReplyField(body: replyBodyText)
-                    Task {
-                        do {
-                            try await viewModel.sendReply()
-                            // 发送成功后清空本地状态
-                            replyBodyText = ""
-                        } catch {
-                            // 错误已经在 sendReply 中设置到 errorMessage
-                        }
-                    }
-                }) {
-                    if viewModel.isSendingReply {
-                        HStack {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                            Text("发送中...")
-                        }
-                    } else {
-                        Text("发送")
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(viewModel.isSendingReply)
-            }
-        }
-        .padding()
-        .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-    
     private var emptyDetailView: some View {
         VStack(spacing: 16) {
             Image(systemName: "doc.text")
@@ -1031,289 +739,6 @@ struct EmailView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-    
-    // MARK: - Compose View
-    
-    private func composeDetailView() -> some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if let draft = viewModel.composeDraft {
-                        composePanelView(draft: draft)
-                            .id("compose-panel")
-                    }
-                }
-                .padding()
-            }
-            .onChange(of: viewModel.showComposePanel) { _, newValue in
-                if newValue {
-                    // 初始化正文内容
-                    if let draft = viewModel.composeDraft {
-                        composeBodyText = draft.body
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        withAnimation {
-                            proxy.scrollTo("compose-panel", anchor: .top)
-                        }
-                        isReplyBodyFocused = true
-                    }
-                } else {
-                    // 关闭时清空
-                    composeBodyText = ""
-                    bodyUpdateTask?.cancel()
-                }
-            }
-        }
-    }
-    
-    private func composePanelView(draft: ReplyDraft) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // 标题
-            HStack {
-                Text("新邮件")
-                    .font(.headline)
-                Spacer()
-                Button(action: {
-                    bodyUpdateTask?.cancel()
-                    composeBodyText = ""
-                    viewModel.composeDraft = nil
-                    viewModel.showComposePanel = false
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-            
-            Divider()
-            
-            // To 字段
-            VStack(alignment: .leading, spacing: 4) {
-                Text("收件人")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                TextField("收件人", text: Binding(
-                    get: { draft.to.map { $0.displayName }.joined(separator: ", ") },
-                    set: { text in
-                        let contacts = parseEmailAddresses(text)
-                        viewModel.updateComposeField(to: contacts)
-                    }
-                ))
-                .textFieldStyle(.roundedBorder)
-            }
-            
-            // Cc/Bcc 折叠区域
-            if viewModel.showCcBcc {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("抄送")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("抄送", text: Binding(
-                        get: { draft.cc.map { $0.displayName }.joined(separator: ", ") },
-                        set: { text in
-                            let contacts = parseEmailAddresses(text)
-                            viewModel.updateComposeField(cc: contacts)
-                        }
-                    ))
-                    .textFieldStyle(.roundedBorder)
-                    
-                    Text("密送")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("密送", text: Binding(
-                        get: { draft.bcc.map { $0.displayName }.joined(separator: ", ") },
-                        set: { text in
-                            let contacts = parseEmailAddresses(text)
-                            viewModel.updateComposeField(bcc: contacts)
-                        }
-                    ))
-                    .textFieldStyle(.roundedBorder)
-                }
-            } else {
-                Button(action: {
-                    viewModel.showCcBcc = true
-                }) {
-                    Text("添加抄送/密送")
-                        .font(.caption)
-                }
-                .buttonStyle(.plain)
-            }
-            
-            // 主题
-            VStack(alignment: .leading, spacing: 4) {
-                Text("主题")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                TextField("主题", text: Binding(
-                    get: { draft.subject },
-                    set: { viewModel.updateComposeField(subject: $0) }
-                ))
-                .textFieldStyle(.roundedBorder)
-            }
-            
-            // 正文编辑区
-            TextEditor(text: $composeBodyText)
-            .frame(minHeight: 200)
-            .padding(4)
-            .background(Color(NSColor.textBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 4))
-            .focused($isReplyBodyFocused)
-            .onChange(of: composeBodyText) { _, newValue in
-                // 取消之前的更新任务
-                bodyUpdateTask?.cancel()
-                // 使用防抖，延迟更新 ViewModel（避免每次输入都触发视图更新）
-                bodyUpdateTask = Task {
-                    try? await Task.sleep(nanoseconds: 300_000_000) // 300ms 防抖
-                    if !Task.isCancelled {
-                        await MainActor.run {
-                            viewModel.updateComposeField(body: newValue)
-                        }
-                    }
-                }
-            }
-            .onAppear {
-                // 初始化时同步内容（仅在首次显示时）
-                if composeBodyText.isEmpty {
-                    composeBodyText = draft.body
-                }
-            }
-            
-            // 附件列表
-            if !draft.attachments.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("附件 (\(draft.attachments.count))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    
-                    ForEach(draft.attachments) { attachment in
-                        HStack {
-                            Image(systemName: attachmentIcon(for: attachment.mimeType))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 16)
-                            
-                            Text(attachment.filename)
-                                .font(.caption)
-                                .lineLimit(1)
-                            
-                            Spacer()
-                            
-                            Button(action: {
-                                viewModel.removeAttachmentFromCompose(attachment.id)
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .padding(.vertical, 2)
-                    }
-                }
-                .padding(.vertical, 4)
-            }
-            
-            // 添加附件按钮
-            Button(action: {
-                showAttachmentPicker = true
-            }) {
-                Label("添加附件", systemImage: "paperclip")
-                    .font(.subheadline)
-            }
-            .buttonStyle(.bordered)
-            .fileImporter(
-                isPresented: $showAttachmentPicker,
-                allowedContentTypes: [.item],
-                allowsMultipleSelection: true
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    for url in urls {
-                        _ = url.startAccessingSecurityScopedResource()
-                        defer { url.stopAccessingSecurityScopedResource() }
-                        
-                        let filename = url.lastPathComponent
-                        let fileSize = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
-                        let mimeType = detectMIMEType(for: url)
-                        
-                        let attachment = EmailAttachment(
-                            filename: filename,
-                            mimeType: mimeType,
-                            size: fileSize,
-                            localPath: url.path
-                        )
-                        
-                        if viewModel.showComposePanel {
-                            viewModel.addAttachmentToCompose(attachment)
-                        } else {
-                            viewModel.addAttachmentToReply(attachment)
-                        }
-                    }
-                case .failure(let error):
-                    viewModel.errorMessage = "选择文件失败: \(error.localizedDescription)"
-                }
-            }
-            
-            // 错误提示
-            if let errorMessage = viewModel.errorMessage {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
-                    Text(errorMessage)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color.red.opacity(0.1))
-                }
-            }
-            
-            // 操作按钮
-            HStack {
-                Spacer()
-                Button("取消") {
-                    bodyUpdateTask?.cancel()
-                    composeBodyText = ""
-                    viewModel.composeDraft = nil
-                    viewModel.showComposePanel = false
-                    viewModel.errorMessage = nil
-                }
-                .buttonStyle(.bordered)
-                .disabled(viewModel.isSendingCompose)
-                
-                Button(action: {
-                    // 发送前立即同步正文内容
-                    viewModel.updateComposeField(body: composeBodyText)
-                    Task {
-                        do {
-                            try await viewModel.sendCompose()
-                            // 发送成功后清空本地状态
-                            composeBodyText = ""
-                        } catch {
-                            // 错误已经在 sendCompose 中设置到 errorMessage
-                        }
-                    }
-                }) {
-                    if viewModel.isSendingCompose {
-                        HStack {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                            Text("发送中...")
-                        }
-                    } else {
-                        Text("发送")
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(viewModel.isSendingCompose)
-            }
-        }
-        .padding()
-        .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 
@@ -1370,18 +795,34 @@ struct MessageRow: View {
                         .foregroundStyle(.tertiary)
                 }
                 
-                Text(message.subject)
-                    .font(.subheadline)
-                    .fontWeight(message.isRead ? .regular : .medium)
-                    .lineLimit(2)
-                    .foregroundStyle(message.isRead ? .secondary : .primary)
-                    .padding(.top, 2)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    // 回复标记图标
+                    if message.hasBeenReplied {
+                        Image(systemName: "arrowshape.turn.up.left.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Text(message.subject)
+                        .font(.subheadline)
+                        .fontWeight(message.isRead ? .regular : .medium)
+                        .lineLimit(2)
+                        .foregroundStyle(message.isRead ? .secondary : .primary)
+                }
+                .padding(.top, 2)
                 
-                if !message.preview.isEmpty {
+                // 优先显示 AI 摘要，否则显示预览
+                if let aiSummary = message.aiSummary, !aiSummary.isEmpty {
+                    Text(aiSummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .padding(.top, 2)
+                } else if !message.preview.isEmpty {
                     Text(message.preview)
                         .font(.caption)
                         .foregroundStyle(.tertiary)
-                        .lineLimit(1)
+                        .lineLimit(2)
                         .padding(.top, 2)
                 }
                 
@@ -1411,44 +852,63 @@ struct MessageRow: View {
 
 // MARK: - Helpers
 
-/// 智能格式化邮件日期
+// MARK: - Date Formatter Cache
+
+/// 缓存的日期格式化器（避免每次滚动都创建新实例）
+private struct DateFormatterCache {
+    static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter
+    }()
+    
+    static let weekdayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE HH:mm"
+        return formatter
+    }()
+    
+    static let monthDayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM/dd"
+        return formatter
+    }()
+    
+    static let yearMonthDayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy/MM/dd"
+        return formatter
+    }()
+}
+
+/// 智能格式化邮件日期（使用缓存的格式化器）
 private func formatMessageDate(_ date: Date) -> String {
     let calendar = Calendar.current
     let now = Date()
     
     // 今天 - 显示时间
     if calendar.isDateInToday(date) {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
+        return DateFormatterCache.timeFormatter.string(from: date)
     }
     
     // 昨天
     if calendar.isDateInYesterday(date) {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return "昨天 " + formatter.string(from: date)
+        return "昨天 " + DateFormatterCache.timeFormatter.string(from: date)
     }
     
     // 本周内 - 显示星期
     if let weekAgo = calendar.date(byAdding: .day, value: -7, to: now),
        date > weekAgo {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEE HH:mm"
-        return formatter.string(from: date)
+        return DateFormatterCache.weekdayFormatter.string(from: date)
     }
     
     // 今年内 - 显示月日
     if calendar.component(.year, from: date) == calendar.component(.year, from: now) {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MM/dd"
-        return formatter.string(from: date)
+        return DateFormatterCache.monthDayFormatter.string(from: date)
     }
     
     // 更早 - 显示年月日
-    let formatter = DateFormatter()
-    formatter.dateFormat = "yyyy/MM/dd"
-    return formatter.string(from: date)
+    return DateFormatterCache.yearMonthDayFormatter.string(from: date)
 }
 
 // MARK: - Helper Functions

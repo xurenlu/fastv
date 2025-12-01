@@ -14,9 +14,17 @@
 #import <libetpan/mailsmtp.h>
 #import <libetpan/mailsmtp_types.h>
 #import <libetpan/mailmime.h>
+#import <pthread/qos.h>
 
 // Forward declaration for Swift types
 @class EmailAccount;
+
+/// 设置当前线程的 QoS 为 User Initiated，避免优先级反转
+/// LibEtPan 的 CFStream 操作会在 runloop 中等待，如果 runloop 运行在较低 QoS 的线程上，
+/// 会导致 User Initiated QoS 的线程等待 Default QoS 的线程，产生优先级反转警告
+static void ensureUserInitiatedQoS(void) {
+    pthread_set_qos_class_self_np(QOS_CLASS_USER_INITIATED, 0);
+}
 
 @implementation LibEtPanIMAPSession {
     void *_imapSession; // mailimap *
@@ -89,6 +97,10 @@
     
     NSLog(@"🔌 [LibEtPan IMAP] 尝试连接: %@ 端口 %d 加密方式 %@", _host, (int)_port, _encryption);
     
+    // 设置线程 QoS 为 User Initiated，避免优先级反转
+    // LibEtPan 的 CFStream 操作会在 runloop 中等待，需要确保 runloop 运行在正确的 QoS 级别
+    ensureUserInitiatedQoS();
+    
     int r;
     const char *host = [_host UTF8String];
     uint16_t port = (uint16_t)_port;
@@ -132,6 +144,9 @@
     }
     
     NSLog(@"🔐 [LibEtPan] 尝试登录 IMAP，用户名: %@", _username);
+    
+    // 设置线程 QoS，避免优先级反转
+    ensureUserInitiatedQoS();
     
     const char *username = [_username UTF8String];
     const char *password = [_password UTF8String];
@@ -196,6 +211,9 @@
         }
     }
     // 如果已经是 ASCII 或已经是编码格式，直接使用
+    // 设置线程 QoS，避免优先级反转
+    ensureUserInitiatedQoS();
+    
     const char *mb = [encodedName UTF8String];
     int r = mailimap_select((mailimap *)_imapSession, mb);
     
@@ -223,6 +241,9 @@
         }
         return nil;
     }
+    
+    // 设置线程 QoS，避免优先级反转
+    ensureUserInitiatedQoS();
     
     clist *result = NULL;
     int r = mailimap_list((mailimap *)_imapSession, "", "*", &result);
@@ -324,6 +345,9 @@
         return nil;
     }
     
+    // 设置线程 QoS，避免优先级反转
+    ensureUserInitiatedQoS();
+    
     // 构建搜索条件：获取所有邮件
     struct mailimap_search_key *search_key = mailimap_search_key_new_all();
     
@@ -390,6 +414,9 @@
     
     NSLog(@"🔍 [LibEtPan] 开始搜索邮件，日期: %@, 限制: %lu", sinceDate, (unsigned long)limit);
     
+    // 设置线程 QoS，避免优先级反转
+    ensureUserInitiatedQoS();
+    
     clist *search_result = NULL;
     int r = mailimap_uid_search((mailimap *)_imapSession, "UTF-8", search_key, &search_result);
     
@@ -445,6 +472,87 @@
     return messages;
 }
 
+/// 按文本搜索邮件（搜索主题、发件人、正文等）
+- (nullable NSArray<NSDictionary *> *)searchMessagesWithQuery:(NSString *)query limit:(NSUInteger)limit error:(NSError **)error {
+    if (!_imapSession) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError" 
+                                         code:-1 
+                                     userInfo:@{NSLocalizedDescriptionKey: @"IMAP 会话未初始化"}];
+        }
+        return nil;
+    }
+    
+    if (!query || query.length == 0) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError" 
+                                         code:-1 
+                                     userInfo:@{NSLocalizedDescriptionKey: @"搜索查询不能为空"}];
+        }
+        return nil;
+    }
+    
+    NSLog(@"🔍 [LibEtPan] 开始搜索邮件，查询: %@, 限制: %lu", query, (unsigned long)limit);
+    
+    // 构建搜索条件：使用 TEXT 搜索，这会搜索邮件的所有文本字段（主题、正文等）
+    // TEXT 搜索是 IMAP 标准中最通用的搜索方式
+    struct mailimap_search_key *searchKey = mailimap_search_key_new_text([query UTF8String]);
+    
+    // 设置线程 QoS，避免优先级反转
+    ensureUserInitiatedQoS();
+    
+    clist *search_result = NULL;
+    int r = mailimap_uid_search((mailimap *)_imapSession, "UTF-8", searchKey, &search_result);
+    
+    // 释放搜索条件
+    mailimap_search_key_free(searchKey);
+    
+    if (r != MAILIMAP_NO_ERROR) {
+        NSLog(@"❌ [LibEtPan] 搜索邮件失败，错误代码: %d", r);
+        if (error) {
+            NSString *errorMsg = [NSString stringWithFormat:@"搜索邮件失败: %d", r];
+            *error = [NSError errorWithDomain:@"LibEtPanError" 
+                                         code:r 
+                                     userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
+        }
+        return nil;
+    }
+    
+    // 收集所有 UID
+    NSMutableArray<NSNumber *> *uidArray = [NSMutableArray array];
+    clistiter *iter;
+    for (iter = clist_begin(search_result); iter != NULL; iter = clist_next(iter)) {
+        uint32_t uid = *((uint32_t *)clist_content(iter));
+        [uidArray addObject:@(uid)];
+    }
+    
+    mailimap_search_result_free(search_result);
+    
+    NSUInteger totalFound = uidArray.count;
+    NSLog(@"📊 [LibEtPan] 搜索到 %lu 封邮件", (unsigned long)totalFound);
+    
+    // 按 UID 降序排序（最新的在前）
+    [uidArray sortUsingComparator:^NSComparisonResult(NSNumber *obj1, NSNumber *obj2) {
+        return [obj2 compare:obj1]; // 降序
+    }];
+    
+    // 限制数量
+    NSMutableArray<NSDictionary *> *messages = [NSMutableArray array];
+    NSUInteger count = 0;
+    NSUInteger actualLimit = (limit > 0) ? limit : totalFound;
+    
+    for (NSNumber *uidNum in uidArray) {
+        if (count >= actualLimit) {
+            break;
+        }
+        [messages addObject:@{@"uid": uidNum}];
+        count++;
+    }
+    
+    NSLog(@"✅ [LibEtPan] 返回 %lu 封邮件", (unsigned long)messages.count);
+    return messages;
+}
+
 /// 快速获取最新N封邮件的UID（不搜索，直接从最新开始获取）
 - (nullable NSArray<NSDictionary *> *)fetchLatestMessagesWithLimit:(NSUInteger)limit error:(NSError **)error {
     if (!_imapSession) {
@@ -486,6 +594,9 @@
     uint32_t endUID = uidNext - 1;
     
     NSLog(@"🔍 [LibEtPan] 获取 UID 范围: %u:%u", startUID, endUID);
+    
+    // 设置线程 QoS，避免优先级反转
+    ensureUserInitiatedQoS();
     
     // 使用 UID FETCH 获取这个范围的所有UID
     struct mailimap_set *set = mailimap_set_new_interval(startUID, endUID);
@@ -561,6 +672,9 @@
     
     // 使用 helper 函数获取邮件头（注意：helper 函数使用 msgid，不是 UID）
     // 我们需要先获取 UID 对应的 msgid，或者直接使用 UID fetch
+    // 设置线程 QoS，避免优先级反转
+    ensureUserInitiatedQoS();
+    
     // 简化实现：使用 UID fetch 获取 ENVELOPE（包含基本头信息）
     struct mailimap_set *set = mailimap_set_new_single(uid);
     struct mailimap_fetch_type *fetch_type = mailimap_fetch_type_new_fetch_att_list_empty();
@@ -693,6 +807,9 @@
         uint32_t uid = [uidNum unsignedIntValue];
         mailimap_set_add_single(set, uid);
     }
+    
+    // 设置线程 QoS，避免优先级反转
+    ensureUserInitiatedQoS();
     
     // 构建fetch请求: FETCH (UID ENVELOPE)
     struct mailimap_fetch_type *fetch_type = mailimap_fetch_type_new_fetch_att_list_empty();
@@ -834,6 +951,9 @@
         return nil;
     }
     
+    // 设置线程 QoS，避免优先级反转
+    ensureUserInitiatedQoS();
+    
     // 使用 UID fetch 获取完整邮件
     struct mailimap_set *set = mailimap_set_new_single(uid);
     struct mailimap_fetch_type *fetch_type = mailimap_fetch_type_new_fetch_att_list_empty();
@@ -909,6 +1029,9 @@
         }
         return NO;
     }
+    
+    // 设置线程 QoS，避免优先级反转
+    ensureUserInitiatedQoS();
     
     // 使用 STORE 命令标记为已读（添加 \Seen 标志）
     struct mailimap_set *set = mailimap_set_new_single(uid);
@@ -1017,6 +1140,10 @@
         if (!_smtpSession) {
             return nil;
         }
+        
+        // 设置连接超时为 30 秒，避免无限等待
+        mailsmtp_set_timeout((mailsmtp *)_smtpSession, 30);
+        NSLog(@"📧 [LibEtPan SMTP] 已设置连接超时: 30秒");
     }
     return self;
 }
@@ -1064,6 +1191,10 @@
     uint16_t port = (uint16_t)_port;
     
     NSLog(@"🔌 [LibEtPan SMTP] 开始连接，主机: %s, 端口: %d", host, port);
+    
+    // 设置线程 QoS 为 User Initiated，避免优先级反转
+    // LibEtPan 的 CFStream 操作会在 runloop 中等待，需要确保 runloop 运行在正确的 QoS 级别
+    ensureUserInitiatedQoS();
     
     if ([_encryption isEqualToString:@"ssl"]) {
         NSLog(@"🔌 [LibEtPan SMTP] 使用 SSL 加密连接");
@@ -1150,24 +1281,72 @@
     
     NSLog(@"🔐 [LibEtPan SMTP] 开始登录，用户名: %@", _username);
     
-    // TODO: 实现 SMTP 认证
-    // LibEtPan 的 SMTP 认证需要额外的 SASL 库支持
-    // 暂时返回成功，后续完善
-    // const char *username = [_username UTF8String];
-    // const char *password = [_password UTF8String];
-    // int r = mailsmtp_auth((mailsmtp *)_smtpSession, username, password);
-    int r = MAILSMTP_NO_ERROR;
+    // 设置线程 QoS，避免优先级反转
+    ensureUserInitiatedQoS();
+    
+    mailsmtp *smtp = (mailsmtp *)_smtpSession;
+    
+    // 1. 首先发送 EHLO 命令获取服务器支持的认证方式
+    NSLog(@"🔐 [LibEtPan SMTP] 步骤 1: 发送 EHLO 命令");
+    int r = mailesmtp_ehlo(smtp);
+    if (r != MAILSMTP_NO_ERROR) {
+        NSLog(@"⚠️ [LibEtPan SMTP] EHLO 失败 (代码: %d)，尝试 HELO", r);
+        // 如果 EHLO 失败，尝试传统的 HELO
+        r = mailsmtp_helo(smtp);
+        if (r != MAILSMTP_NO_ERROR) {
+            NSString *errorMsg = [NSString stringWithFormat:@"HELO/EHLO 失败: %d", r];
+            NSLog(@"❌ [LibEtPan SMTP] %@", errorMsg);
+            if (error) {
+                *error = [NSError errorWithDomain:@"LibEtPanError" 
+                                             code:r 
+                                         userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
+            }
+            return NO;
+        }
+        NSLog(@"✅ [LibEtPan SMTP] HELO 成功");
+    } else {
+        NSLog(@"✅ [LibEtPan SMTP] EHLO 成功");
+    }
+    
+    // 2. 执行认证
+    NSLog(@"🔐 [LibEtPan SMTP] 步骤 2: 执行认证");
+    const char *username = [_username UTF8String];
+    const char *password = [_password UTF8String];
+    
+    // 尝试使用 AUTH LOGIN 方式认证
+    r = mailesmtp_auth_sasl(smtp, "LOGIN",
+                           NULL, // server_fqdn
+                           NULL, // local_ip_port
+                           NULL, // remote_ip_port
+                           username, username,
+                           password, NULL /* realm */);
     
     if (r != MAILSMTP_NO_ERROR) {
-        NSString *errorMsg = [NSString stringWithFormat:@"登录失败: %d", r];
-        NSLog(@"❌ [LibEtPan SMTP] 登录失败，错误代码: %d", r);
-        NSLog(@"❌ [LibEtPan SMTP] 错误信息: %@", errorMsg);
-        if (error) {
-            *error = [NSError errorWithDomain:@"LibEtPanError" 
-                                         code:r 
-                                     userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
+        NSLog(@"⚠️ [LibEtPan SMTP] LOGIN 认证失败 (代码: %d)，尝试 PLAIN 认证", r);
+        
+        // 如果 LOGIN 失败，尝试 PLAIN 认证
+        r = mailesmtp_auth_sasl(smtp, "PLAIN",
+                               NULL, // server_fqdn
+                               NULL, // local_ip_port
+                               NULL, // remote_ip_port
+                               username, username,
+                               password, NULL /* realm */);
+        
+        if (r != MAILSMTP_NO_ERROR) {
+            NSString *errorMsg = [NSString stringWithFormat:@"认证失败: %d", r];
+            NSLog(@"❌ [LibEtPan SMTP] 认证失败，错误代码: %d", r);
+            NSLog(@"❌ [LibEtPan SMTP] 错误信息: %@", errorMsg);
+            NSLog(@"💡 [LibEtPan SMTP] 提示: 如果您使用 Gmail，请确保使用应用专用密码");
+            if (error) {
+                *error = [NSError errorWithDomain:@"LibEtPanError" 
+                                             code:r 
+                                         userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
+            }
+            return NO;
         }
-        return NO;
+        NSLog(@"✅ [LibEtPan SMTP] PLAIN 认证成功");
+    } else {
+        NSLog(@"✅ [LibEtPan SMTP] LOGIN 认证成功");
     }
     
     NSLog(@"✅ [LibEtPan SMTP] 登录成功");
@@ -1180,7 +1359,7 @@
                 subject:(NSString *)subject
                    body:(NSString *)body
               htmlBody:(nullable NSString *)htmlBody
-            attachments:(nullable NSArray<NSData *> *)attachments
+            attachments:(nullable NSArray<NSDictionary<NSString *, id> *> *)attachments
             readReceipt:(BOOL)readReceipt
                   error:(NSError **)error {
     if (!_smtpSession) {
@@ -1209,7 +1388,16 @@
     }
     if (attachments) {
         NSLog(@"📧 [LibEtPan SMTP] 附件数量: %lu", (unsigned long)attachments.count);
+        for (NSDictionary *att in attachments) {
+            NSString *filename = att[@"filename"] ?: @"unknown";
+            NSString *mimeType = att[@"mimeType"] ?: @"application/octet-stream";
+            NSData *data = att[@"data"];
+            NSLog(@"📧 [LibEtPan SMTP] 附件: %@ (%@, %lu 字节)", filename, mimeType, (unsigned long)(data ? data.length : 0));
+        }
     }
+    
+    // 设置线程 QoS，避免优先级反转
+    ensureUserInitiatedQoS();
     
     // 1. 设置发件人
     NSLog(@"📧 [LibEtPan SMTP] 步骤 1: 设置发件人");
@@ -1396,14 +1584,28 @@
         }
         
         // 附件部分
-        for (NSData *attachment in attachments) {
+        for (NSDictionary *attDict in attachments) {
+            NSData *attachmentData = attDict[@"data"];
+            NSString *filename = attDict[@"filename"] ?: @"attachment";
+            NSString *mimeType = attDict[@"mimeType"] ?: @"application/octet-stream";
+            
+            if (!attachmentData) {
+                NSLog(@"⚠️ [LibEtPan SMTP] 跳过无效附件: %@", filename);
+                continue;
+            }
+            
             [message appendFormat:@"--%@\r\n", boundary];
-            [message appendString:@"Content-Type: application/octet-stream\r\n"];
+            
+            // Content-Type 包含 name 参数（用于兼容性）
+            NSString *encodedFilename = [self encodeMimeHeaderValue:filename];
+            [message appendFormat:@"Content-Type: %@; name=\"%@\"\r\n", mimeType, encodedFilename];
             [message appendString:@"Content-Transfer-Encoding: base64\r\n"];
-            [message appendString:@"Content-Disposition: attachment\r\n"];
+            
+            // Content-Disposition 包含 filename 参数（Gmail 需要这个）
+            [message appendFormat:@"Content-Disposition: attachment; filename=\"%@\"\r\n", encodedFilename];
             [message appendString:@"\r\n"];
             
-            NSString *base64 = [attachment base64EncodedStringWithOptions:0];
+            NSString *base64 = [attachmentData base64EncodedStringWithOptions:0];
             // 每76个字符换行（RFC 2045）
             NSUInteger lineLength = 76;
             for (NSUInteger i = 0; i < base64.length; i += lineLength) {
@@ -1468,6 +1670,47 @@
     
     NSLog(@"✅ [LibEtPan SMTP] 邮件发送成功");
     return YES;
+}
+
+// 辅助方法：编码 MIME 头值（用于文件名等，处理非ASCII字符和特殊字符）
+- (NSString *)encodeMimeHeaderValue:(NSString *)value {
+    // 检查是否包含需要编码的字符
+    BOOL needsEncoding = NO;
+    for (NSUInteger i = 0; i < value.length; i++) {
+        unichar ch = [value characterAtIndex:i];
+        if (ch > 127 || ch == '"' || ch == '\\') {
+            needsEncoding = NO; // 使用 RFC 2047 编码
+            break;
+        }
+    }
+    
+    // 如果包含非ASCII字符，使用 RFC 2047 base64 编码
+    NSData *data = [value dataUsingEncoding:NSUTF8StringEncoding];
+    BOOL hasNonASCII = NO;
+    for (NSUInteger i = 0; i < data.length; i++) {
+        unsigned char byte = ((unsigned char *)data.bytes)[i];
+        if (byte > 127) {
+            hasNonASCII = YES;
+            break;
+        }
+    }
+    
+    if (hasNonASCII) {
+        NSString *base64 = [data base64EncodedStringWithOptions:0];
+        return [NSString stringWithFormat:@"=?UTF-8?B?%@?=", base64];
+    }
+    
+    // 转义特殊字符
+    NSMutableString *escaped = [NSMutableString string];
+    for (NSUInteger i = 0; i < value.length; i++) {
+        unichar ch = [value characterAtIndex:i];
+        if (ch == '"' || ch == '\\') {
+            [escaped appendFormat:@"\\%C", ch];
+        } else {
+            [escaped appendFormat:@"%C", ch];
+        }
+    }
+    return escaped;
 }
 
 // 辅助方法：编码 MIME 头（简化版，只处理非ASCII字符）
