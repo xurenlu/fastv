@@ -27,21 +27,42 @@ struct EmailAvatarView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {
-                // 占位符
+                // 多彩占位符 - 根据邮箱地址生成固定颜色
                 Circle()
-                    .fill(Color.accentColor.opacity(0.2))
+                    .fill(avatarColor)
                     .overlay {
                         Text(initials)
-                            .font(.system(size: size * 0.4, weight: .medium))
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: size * 0.4, weight: .semibold))
+                            .foregroundStyle(.white)
                     }
             }
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
+        .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
         .task {
             await loadAvatar()
         }
+    }
+    
+    /// 根据邮箱地址生成固定的颜色
+    private var avatarColor: Color {
+        // 现代感强的柔和色板
+        let colors: [Color] = [
+            Color(red: 0.0, green: 0.48, blue: 1.0),      // Blue
+            Color(red: 0.58, green: 0.40, blue: 0.86),    // Purple
+            Color(red: 1.0, green: 0.18, blue: 0.33),     // Pink
+            Color(red: 0.0, green: 0.78, blue: 0.78),      // Teal
+            Color(red: 0.35, green: 0.34, blue: 0.84),    // Indigo
+            Color(red: 1.0, green: 0.58, blue: 0.0),      // Orange
+            Color(red: 0.0, green: 0.78, blue: 0.33),     // Green
+            Color(red: 0.99, green: 0.24, blue: 0.37),    // Red
+        ]
+        
+        // 使用邮箱地址的哈希值来选择颜色，确保同一邮箱总是相同颜色
+        let hash = email.hashValue
+        let index = abs(hash) % colors.count
+        return colors[index]
     }
     
     private var initials: String {

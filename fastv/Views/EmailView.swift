@@ -341,51 +341,81 @@ struct EmailView: View {
                     // 邮件头部（带操作按钮）
                     messageHeaderWithActions(message: message)
                     
-                    // AI摘要（如果有）
+                    // AI摘要（如果有）- 使用渐变背景和毛玻璃效果
                     if let summary = message.aiSummary, !summary.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
                                 Image(systemName: "sparkles")
-                                    .foregroundStyle(.blue)
-                                    .font(.caption)
-                                Text("AI摘要")
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [.blue, .purple],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .font(.title3)
+                                Text("AI 摘要")
                                     .font(.headline)
+                                    .fontWeight(.semibold)
                                     .foregroundStyle(.primary)
                             }
                             
                             Text(summary)
                                 .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.primary)
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(12)
+                                .padding(16)
                                 .background {
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(Color.blue.opacity(0.1))
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color.blue.opacity(0.08),
+                                                    Color.purple.opacity(0.05)
+                                                ],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                .stroke(
+                                                    LinearGradient(
+                                                        colors: [
+                                                            Color.blue.opacity(0.3),
+                                                            Color.purple.opacity(0.2)
+                                                        ],
+                                                        startPoint: .topLeading,
+                                                        endPoint: .bottomTrailing
+                                                    ),
+                                                    lineWidth: 1
+                                                )
+                                        }
                                 }
                         }
+                        .padding(.vertical, 4)
                     }
                     
                     Divider()
                     
-                    // 邮件正文
+                    // 邮件正文 - 增强卡片质感
                     Group {
                         if let htmlBody = message.htmlBody,
                            let attributed = htmlBody.toAttributedHTML() {
                             Text(attributed)
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                // HTML 转换的字符串已包含背景色样式，但在 SwiftUI 中可能需要强制背景以防万一
                                 .background(Color.white)
                         } else if let textBody = message.textBody, !textBody.isEmpty {
                             Text(textBody)
                                 .font(.system(size: 16)) // 匹配 HTML 注入的 16px
-                            .lineSpacing(6) // 匹配 line-height: 1.5
-                            .foregroundStyle(Color(red: 29/255, green: 29/255, blue: 31/255)) // Apple 文字黑 #1d1d1f
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(20) // 匹配 CSS 中的 content-wrapper padding
-                            .background(Color.white)
+                                .lineSpacing(6) // 匹配 line-height: 1.5
+                                .foregroundStyle(Color(red: 29/255, green: 29/255, blue: 31/255)) // Apple 文字黑 #1d1d1f
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(20) // 匹配 CSS 中的 content-wrapper padding
+                                .background(Color.white)
                         } else {
                             Text(message.preview)
                                 .font(.system(size: 16))
@@ -396,9 +426,14 @@ struct EmailView: View {
                                 .background(Color.white)
                         }
                     }
-                    .background(Color.white) // 确保整个正文区域是白色的
-                    .clipShape(RoundedRectangle(cornerRadius: 8)) // 给正文区域加个圆角，像一张卡片
-                    .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1) // 轻微阴影
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 2)
+                    .shadow(color: Color.black.opacity(0.04), radius: 2, x: 0, y: 1)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(Color.black.opacity(0.06), lineWidth: 0.5)
+                    }
 
                     
                     if !message.isBodyLoaded &&
@@ -464,124 +499,142 @@ struct EmailView: View {
     }
     
     private func messageHeader(message: EmailMessage) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top) {
-                EmailAvatarView(email: message.from.email)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 16) {
+                // 放大头像，增强视觉焦点
+                EmailAvatarView(email: message.from.email, size: 56)
                 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(message.from.name ?? message.from.email)
-                        .font(.headline)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
                     
                     Text(message.from.email)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        Text(formatMessageDate(message.date))
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.top, 2)
                 }
                 
                 Spacer()
-                
-                Text(message.date, style: .date)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             
             Text(message.subject)
-                .font(.title3)
-                .fontWeight(.semibold)
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
     
     private func messageHeaderWithActions(message: EmailMessage) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 16) {
             messageHeader(message: message)
             
-            // 操作按钮栏
-            HStack(spacing: 12) {
-                // 回复按钮组
-                Button(action: {
-                    if message.isNoReply {
-                        viewModel.errorMessage = "这是一个 no-reply 邮箱，无法回复"
-                    } else {
-                        viewModel.initReplyDraft(for: message, type: .reply)
+            Divider()
+            
+            // 美化的操作按钮栏 - 使用 ControlGroup 和图标按钮组
+            HStack(spacing: 8) {
+                // 回复操作组
+                ControlGroup {
+                    Button(action: {
+                        if message.isNoReply {
+                            viewModel.errorMessage = "这是一个 no-reply 邮箱，无法回复"
+                        } else {
+                            viewModel.initReplyDraft(for: message, type: .reply)
+                        }
+                    }) {
+                        Label("回复", systemImage: "arrowshape.turn.up.left")
                     }
-                }) {
-                    Label("回复", systemImage: "arrowshape.turn.up.left")
-                        .font(.subheadline)
-                }
-                .buttonStyle(.bordered)
-                .disabled(message.isNoReply)
-                
-                Button(action: {
-                    if message.isNoReply {
-                        viewModel.errorMessage = "这是一个 no-reply 邮箱，无法回复"
-                    } else {
-                        viewModel.initReplyDraft(for: message, type: .replyAll)
+                    .disabled(message.isNoReply)
+                    
+                    Button(action: {
+                        if message.isNoReply {
+                            viewModel.errorMessage = "这是一个 no-reply 邮箱，无法回复"
+                        } else {
+                            viewModel.initReplyDraft(for: message, type: .replyAll)
+                        }
+                    }) {
+                        Label("全部", systemImage: "arrowshape.turn.up.left.2")
                     }
-                }) {
-                    Label("回复全部", systemImage: "arrowshape.turn.up.left.2")
-                        .font(.subheadline)
+                    .disabled(message.isNoReply)
+                    
+                    Button(action: {
+                        viewModel.initReplyDraft(for: message, type: .forward)
+                    }) {
+                        Label("转发", systemImage: "arrowshape.turn.up.right")
+                    }
                 }
-                .buttonStyle(.bordered)
-                .disabled(message.isNoReply)
-                
-                Button(action: {
-                    viewModel.initReplyDraft(for: message, type: .forward)
-                }) {
-                    Label("转发", systemImage: "arrowshape.turn.up.right")
-                        .font(.subheadline)
-                }
-                .buttonStyle(.bordered)
                 
                 Spacer()
                 
-                // 星标按钮
-                Button(action: {
-                    Task {
-                        await viewModel.toggleStar(message)
-                    }
-                }) {
-                    Image(systemName: message.isStarred ? "star.fill" : "star")
-                        .foregroundStyle(message.isStarred ? .yellow : .secondary)
-                }
-                .buttonStyle(.plain)
-                
-                // 垃圾邮件按钮
-                if message.isSpam {
+                // 右侧操作按钮组 - 使用图标按钮，更紧凑
+                HStack(spacing: 4) {
+                    // 星标按钮
                     Button(action: {
                         Task {
-                            await viewModel.restoreFromSpam(message)
+                            await viewModel.toggleStar(message)
                         }
                     }) {
-                        Label("不是垃圾", systemImage: "exclamationmark.triangle.fill")
-                            .font(.subheadline)
-                            .foregroundStyle(.orange)
+                        Image(systemName: message.isStarred ? "star.fill" : "star")
+                            .foregroundStyle(message.isStarred ? .yellow : .secondary)
+                            .frame(width: 32, height: 32)
                     }
-                    .buttonStyle(.bordered)
-                } else {
+                    .buttonStyle(.plain)
+                    .help(message.isStarred ? "取消星标" : "添加星标")
+                    
+                    // 垃圾邮件按钮
+                    if message.isSpam {
+                        Button(action: {
+                            Task {
+                                await viewModel.restoreFromSpam(message)
+                            }
+                        }) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                                .frame(width: 32, height: 32)
+                        }
+                        .buttonStyle(.plain)
+                        .help("不是垃圾邮件")
+                    } else {
+                        Button(action: {
+                            Task {
+                                await viewModel.markAsSpam(message)
+                            }
+                        }) {
+                            Image(systemName: "exclamationmark.triangle")
+                                .foregroundStyle(.secondary)
+                                .frame(width: 32, height: 32)
+                        }
+                        .buttonStyle(.plain)
+                        .help("标记为垃圾邮件")
+                    }
+                    
+                    // 删除按钮
                     Button(action: {
                         Task {
-                            await viewModel.markAsSpam(message)
+                            await viewModel.deleteMessage(message)
                         }
                     }) {
-                        Label("垃圾", systemImage: "exclamationmark.triangle")
-                            .font(.subheadline)
+                        Image(systemName: "trash")
+                            .foregroundStyle(.red)
+                            .frame(width: 32, height: 32)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.plain)
+                    .help("删除邮件")
                 }
-                
-                // 删除按钮
-                Button(action: {
-                    Task {
-                        await viewModel.deleteMessage(message)
-                    }
-                }) {
-                    Label("删除", systemImage: "trash")
-                        .font(.subheadline)
-                        .foregroundStyle(.red)
-                }
-                .buttonStyle(.bordered)
             }
-            .padding(.top, 8)
         }
+        .padding(.vertical, 4)
     }
     
     private func remoteResourcesBanner(message: EmailMessage) -> some View {
@@ -1186,45 +1239,56 @@ struct MessageRow: View {
     let showAttachments: Bool
     
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            EmailAvatarView(email: message.from.email, size: 32)
+        HStack(alignment: .top, spacing: 14) {
+            EmailAvatarView(email: message.from.email, size: 36)
             
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(message.from.name ?? message.from.email)
-                        .font(.headline)
+                        .font(message.isRead ? .subheadline : .headline)
+                        .fontWeight(message.isRead ? .regular : .semibold)
+                        .foregroundStyle(message.isRead ? .secondary : .primary)
                         .lineLimit(1)
                     
                     Spacer()
                     
                     Text(formatMessageDate(message.date))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.tertiary)
                 }
                 
                 Text(message.subject)
                     .font(.subheadline)
+                    .fontWeight(message.isRead ? .regular : .medium)
                     .lineLimit(2)
                     .foregroundStyle(message.isRead ? .secondary : .primary)
+                    .padding(.top, 2)
                 
-                Text(message.preview)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                if !message.preview.isEmpty {
+                    Text(message.preview)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .padding(.top, 2)
+                }
                 
                 if showAttachments && message.hasAttachments {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 6) {
                         Image(systemName: "paperclip")
                             .font(.caption2)
+                            .foregroundStyle(.blue)
                         Text("\(message.attachments.count) 个附件")
                             .font(.caption2)
+                            .foregroundStyle(.blue)
                     }
-                    .foregroundStyle(.secondary)
+                    .padding(.top, 4)
                 }
             }
         }
-        .padding(.vertical, 4)
-        .opacity(message.isRead ? 0.7 : 1.0)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 4)
+        .background(message.isRead ? Color.clear : Color.blue.opacity(0.03))
+        .contentShape(Rectangle())
     }
 }
 
