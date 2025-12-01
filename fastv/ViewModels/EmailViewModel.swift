@@ -45,6 +45,8 @@ class EmailViewModel: ObservableObject {
     @Published var showImages: Bool = false
     
     @Published var errorMessage: String?
+    @Published var isSendingReply = false // 正在发送回复
+    @Published var isSendingCompose = false // 正在发送新邮件
     
     // 搜索防抖任务
     private var searchTask: Task<Void, Never>?
@@ -693,10 +695,10 @@ class EmailViewModel: ObservableObject {
             isLoading = false
             print("📂 [EmailViewModel] 立即显示缓存: \(messages.count) 封邮件，耗时: \(String(format: "%.3f", Date().timeIntervalSince(startTime) * 1000))ms")
         } else {
-            // 无缓存，显示loading
+            // 无缓存，保留当前数据避免闪动，显示loading状态
             isLoading = true
-            messages = []
-            print("📂 [EmailViewModel] 无缓存，显示loading")
+            // 不立即清空 messages，保留当前数据直到新数据加载完成
+            print("📂 [EmailViewModel] 无缓存，保留当前数据，显示loading")
         }
         
         // 3. 后台加载数据库缓存（如果内存缓存为空）
@@ -790,14 +792,16 @@ class EmailViewModel: ObservableObject {
                 Task {
                     await self.loadMessageBody(currentMessage)
                     
-                    // 正文加载完成后，如果需要 AI 分析，再执行
+                    // 正文加载完成后，如果需要 AI 分析，再执行（在后台线程）
                     if needsAIAnalysis {
-                        await self.analyzeMessageWithAI(currentMessage)
+                        await Task.detached(priority: .userInitiated) {
+                            await self.analyzeMessageWithAI(currentMessage)
+                        }.value
                     }
                 }
             } else if needsAIAnalysis {
-                // 如果不需要加载正文，直接进行 AI 分析
-                Task {
+                // 如果不需要加载正文，直接进行 AI 分析（在后台线程）
+                Task.detached(priority: .userInitiated) {
                     await self.analyzeMessageWithAI(currentMessage)
                 }
             }
@@ -968,7 +972,18 @@ class EmailViewModel: ObservableObject {
         do {
             try await emailService.markAsRead(account: account, message: message)
             
+            // 重要：从 emailStore 获取最新的邮件数据（包含正文缓存）
+            // 避免用没有正文的邮件对象覆盖数据库中已缓存的正文
             var updated = message
+            if let folderId = message.folderId,
+               let storeMessages = emailStore.messages[folderId],
+               let latestMessage = storeMessages.first(where: { $0.id == message.id }) {
+                updated = latestMessage
+                print("✅ [EmailViewModel] markAsRead: 使用 EmailStore 中的最新邮件数据（保留正文缓存）")
+            } else {
+                print("⚠️ [EmailViewModel] markAsRead: 未找到 EmailStore 中的邮件，使用传入的邮件对象")
+            }
+            
             updated.isRead = true
             try await emailStore.updateMessage(updated)
         } catch {
@@ -1114,37 +1129,47 @@ class EmailViewModel: ObservableObject {
     /// 使用AI分析邮件
     func analyzeMessageWithAI(_ message: EmailMessage) async {
         do {
-            // 重要：从当前列表获取最新的邮件（可能已经加载了正文）
-            // 避免用旧的邮件覆盖新的正文数据
-            let currentMessage = messages.first(where: { $0.id == message.id }) ?? message
+            // 在主线程获取当前邮件和偏好设置
+            let (currentMessage, needsTagging, needsPriority, needsSummary) = await MainActor.run {
+                let msg = messages.first(where: { $0.id == message.id }) ?? message
+                let tagging = preferences.emailAISmartTaggingEnabled && msg.aiTags.isEmpty
+                let priority = preferences.emailAIPriorityDetectionEnabled && msg.aiPriority == nil
+                let summary = preferences.emailAISummaryEnabled && msg.aiSummary == nil
+                return (msg, tagging, priority, summary)
+            }
+            
             var updated = currentMessage
             
             print("🤖 [EmailViewModel] AI分析邮件: \(updated.subject), hasBody=\(updated.isBodyLoaded), htmlBody长度=\(updated.htmlBody?.count ?? 0)")
             
+            // 在后台线程执行AI请求
             // 生成标签（如果启用）
-            if preferences.emailAISmartTaggingEnabled {
+            if needsTagging {
                 let tags = try await emailAIService.generateSmartTags(for: currentMessage)
                 updated.aiTags = tags
             }
             
             // 检测优先级（如果启用）
-            if preferences.emailAIPriorityDetectionEnabled {
+            if needsPriority {
                 let priority = try await emailAIService.detectPriority(for: currentMessage)
                 updated.aiPriority = priority
             }
             
             // 生成摘要（如果启用）
-            if preferences.emailAISummaryEnabled {
+            if needsSummary {
                 let summary = try await emailAIService.generateSummary(for: currentMessage)
                 updated.aiSummary = summary
             }
             
             print("🤖 [EmailViewModel] AI分析完成，更新邮件: hasBody=\(updated.isBodyLoaded), htmlBody长度=\(updated.htmlBody?.count ?? 0)")
             
+            // 保存到数据库（后台线程）
             try await emailStore.updateMessage(updated)
             
-            // 更新列表中的邮件
-            replaceMessageInList(with: updated)
+            // 在主线程更新UI
+            await MainActor.run {
+                replaceMessageInList(with: updated)
+            }
         } catch {
             print("❌ [EmailViewModel] AI分析失败: \(error)")
         }
@@ -1260,20 +1285,31 @@ class EmailViewModel: ObservableObject {
             throw EmailServiceError.invalidConfiguration("您提到了附件，但还没有添加任何附件。请添加附件后再发送，或修改邮件内容。")
         }
         
-        try await sendMessage(
-            to: draft.to,
-            cc: draft.cc,
-            bcc: draft.bcc,
-            subject: draft.subject,
-            body: draft.body,
-            htmlBody: draft.htmlBody,
-            attachments: draft.attachments
-        )
+        // 设置发送状态
+        isSendingCompose = true
+        errorMessage = nil
         
-        // 发送成功后清除草稿并关闭面板
-        composeDraft = nil
-        showComposePanel = false
-        showCcBcc = false
+        do {
+            try await sendMessage(
+                to: draft.to,
+                cc: draft.cc,
+                bcc: draft.bcc,
+                subject: draft.subject,
+                body: draft.body,
+                htmlBody: draft.htmlBody,
+                attachments: draft.attachments
+            )
+            
+            // 发送成功后清除草稿并关闭面板
+            composeDraft = nil
+            showComposePanel = false
+            showCcBcc = false
+            isSendingCompose = false
+        } catch {
+            isSendingCompose = false
+            errorMessage = error.localizedDescription
+            throw error
+        }
     }
     
     /// 格式化日期用于引用
@@ -1331,20 +1367,31 @@ class EmailViewModel: ObservableObject {
             throw EmailServiceError.invalidConfiguration("您提到了附件，但还没有添加任何附件。请添加附件后再发送，或修改邮件内容。")
         }
         
-        try await sendMessage(
-            to: draft.to,
-            cc: draft.cc,
-            bcc: draft.bcc,
-            subject: draft.subject,
-            body: draft.body,
-            htmlBody: draft.htmlBody,
-            attachments: draft.attachments
-        )
+        // 设置发送状态
+        isSendingReply = true
+        errorMessage = nil
         
-        // 发送成功后清除草稿并关闭面板
-        replyDraft = nil
-        showReplyPanel = false
-        showCcBcc = false
+        do {
+            try await sendMessage(
+                to: draft.to,
+                cc: draft.cc,
+                bcc: draft.bcc,
+                subject: draft.subject,
+                body: draft.body,
+                htmlBody: draft.htmlBody,
+                attachments: draft.attachments
+            )
+            
+            // 发送成功后清除草稿并关闭面板
+            replyDraft = nil
+            showReplyPanel = false
+            showCcBcc = false
+            isSendingReply = false
+        } catch {
+            isSendingReply = false
+            errorMessage = error.localizedDescription
+            throw error
+        }
     }
     
     // MARK: - Message Actions
@@ -1356,7 +1403,14 @@ class EmailViewModel: ObservableObject {
         do {
             try await emailService.toggleStar(account: account, message: message)
             
+            // 从 emailStore 获取最新数据（保留正文缓存）
             var updated = message
+            if let folderId = message.folderId,
+               let storeMessages = emailStore.messages[folderId],
+               let latestMessage = storeMessages.first(where: { $0.id == message.id }) {
+                updated = latestMessage
+            }
+            
             updated.isStarred.toggle()
             try await emailStore.updateMessage(updated)
             
@@ -1375,7 +1429,14 @@ class EmailViewModel: ObservableObject {
         do {
             try await emailService.deleteMessage(account: account, message: message)
             
+            // 从 emailStore 获取最新数据（保留正文缓存）
             var updated = message
+            if let folderId = message.folderId,
+               let storeMessages = emailStore.messages[folderId],
+               let latestMessage = storeMessages.first(where: { $0.id == message.id }) {
+                updated = latestMessage
+            }
+            
             updated.isDeleted = true
             try await emailStore.updateMessage(updated)
             
@@ -1401,7 +1462,14 @@ class EmailViewModel: ObservableObject {
         do {
             try await emailService.markAsSpam(account: account, message: message)
             
+            // 从 emailStore 获取最新数据（保留正文缓存）
             var updated = message
+            if let folderId = message.folderId,
+               let storeMessages = emailStore.messages[folderId],
+               let latestMessage = storeMessages.first(where: { $0.id == message.id }) {
+                updated = latestMessage
+            }
+            
             updated.isSpam = true
             try await emailStore.updateMessage(updated)
             
@@ -1419,7 +1487,14 @@ class EmailViewModel: ObservableObject {
         do {
             try await emailService.unmarkSpam(account: account, message: message)
             
+            // 从 emailStore 获取最新数据（保留正文缓存）
             var updated = message
+            if let folderId = message.folderId,
+               let storeMessages = emailStore.messages[folderId],
+               let latestMessage = storeMessages.first(where: { $0.id == message.id }) {
+                updated = latestMessage
+            }
+            
             updated.isSpam = false
             try await emailStore.updateMessage(updated)
             

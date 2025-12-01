@@ -173,6 +173,11 @@ class EmailDatabase {
         if !columnNames.contains("body_cached_at") {
             try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN body_cached_at REAL")
         }
+        
+        // 添加 rule_applied_at 字段（规则应用时间）
+        if !columnNames.contains("rule_applied_at") {
+            try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN rule_applied_at REAL")
+        }
     }
     
     /// 获取数据库队列（用于异步操作）

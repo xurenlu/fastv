@@ -573,7 +573,8 @@ class EmailStore: ObservableObject {
             connectionStatus: ConnectionStatus(rawValue: row["connection_status"] as? String ?? "disconnected") ?? .disconnected,
             passwordKeychainIdentifier: row["password_keychain_identifier"] as? String,
             createdAt: Date(timeIntervalSince1970: row["created_at"] as? Double ?? 0),
-            updatedAt: Date(timeIntervalSince1970: row["updated_at"] as? Double ?? 0)
+            updatedAt: Date(timeIntervalSince1970: row["updated_at"] as? Double ?? 0),
+            applyServiceDefaults: false
         )
     }
     

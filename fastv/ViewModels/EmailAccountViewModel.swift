@@ -58,40 +58,50 @@ class EmailAccountViewModel: ObservableObject {
     
     /// 开始编辑账号
     func startEditingAccount(_ account: EmailAccount) {
-        editingAccount = account
+        // 确保使用最新的账号数据（从 EmailStore 重新获取）
+        // 这样可以确保获取到保存后的最新配置
+        let latestAccount = emailStore.getAccount(id: account.id) ?? account
+        
+        editingAccount = latestAccount
         isAddingAccount = false
         
-        emailAddress = account.emailAddress
-        displayName = account.displayName
-        serviceType = account.serviceType
+        emailAddress = latestAccount.emailAddress
+        displayName = latestAccount.displayName
+        serviceType = latestAccount.serviceType
         
-        // 如果服务类型是自定义，自动展开高级设置
-        if account.serviceType == .custom {
-            showAdvancedSettings = true
-        } else {
-            showAdvancedSettings = false
-        }
+        // 编辑账号时，总是使用账号中保存的实际配置（而不是预设配置）
+        // 这样用户可以看到和编辑他们之前自定义的配置
+        imapHost = latestAccount.imapHost
+        imapPort = String(latestAccount.imapPort)
+        imapEncryption = latestAccount.imapEncryption
         
-        // 如果服务类型有预设配置，使用预设配置；否则使用账号中保存的配置
-        if let imapConfig = account.serviceType.imapConfig {
-            imapHost = imapConfig.host
-            imapPort = String(imapConfig.port)
-            imapEncryption = imapConfig.encryption
-        } else {
-            imapHost = account.imapHost
-            imapPort = String(account.imapPort)
-            imapEncryption = account.imapEncryption
-        }
+        smtpHost = latestAccount.smtpHost
+        smtpPort = String(latestAccount.smtpPort)
+        smtpEncryption = latestAccount.smtpEncryption
         
-        if let smtpConfig = account.serviceType.smtpConfig {
-            smtpHost = smtpConfig.host
-            smtpPort = String(smtpConfig.port)
-            smtpEncryption = smtpConfig.encryption
-        } else {
-            smtpHost = account.smtpHost
-            smtpPort = String(account.smtpPort)
-            smtpEncryption = account.smtpEncryption
-        }
+        // 检查账号的配置是否与预设配置不同，如果不同则自动展开高级设置
+        let hasCustomConfig = {
+            if let imapConfig = latestAccount.serviceType.imapConfig {
+                if latestAccount.imapHost != imapConfig.host ||
+                   latestAccount.imapPort != imapConfig.port ||
+                   latestAccount.imapEncryption != imapConfig.encryption {
+                    print("📝 [EmailAccountViewModel] 检测到自定义 IMAP 配置")
+                    return true
+                }
+            }
+            if let smtpConfig = latestAccount.serviceType.smtpConfig {
+                if latestAccount.smtpHost != smtpConfig.host ||
+                   latestAccount.smtpPort != smtpConfig.port ||
+                   latestAccount.smtpEncryption != smtpConfig.encryption {
+                    print("📝 [EmailAccountViewModel] 检测到自定义 SMTP 配置: \(latestAccount.smtpHost):\(latestAccount.smtpPort) \(latestAccount.smtpEncryption.rawValue) vs 预设: \(smtpConfig.host):\(smtpConfig.port) \(smtpConfig.encryption.rawValue)")
+                    return true
+                }
+            }
+            return latestAccount.serviceType == .custom
+        }()
+        
+        print("📝 [EmailAccountViewModel] 编辑账号: \(latestAccount.emailAddress), hasCustomConfig: \(hasCustomConfig), showAdvancedSettings: \(hasCustomConfig)")
+        showAdvancedSettings = hasCustomConfig
         
         // 密码需要从Keychain获取，但这里不显示
         password = ""
@@ -126,27 +136,17 @@ class EmailAccountViewModel: ObservableObject {
             account.serviceType = serviceType
             
             // 更新服务器配置
-            // 如果服务类型是预设的且没有打开高级设置，使用预设配置
-            // 如果打开了高级设置或服务类型是自定义，使用表单中的配置
-            if let imapConfig = serviceType.imapConfig, !showAdvancedSettings {
-                account.imapHost = imapConfig.host
-                account.imapPort = imapConfig.port
-                account.imapEncryption = imapConfig.encryption
-            } else {
-                account.imapHost = imapHost
-                account.imapPort = Int(imapPort) ?? 993
-                account.imapEncryption = imapEncryption
-            }
+            // 简化逻辑：直接使用表单中的配置，不管开关状态
+            // 用户看到什么就保存什么
+            account.imapHost = imapHost
+            account.imapPort = Int(imapPort) ?? 993
+            account.imapEncryption = imapEncryption
             
-            if let smtpConfig = serviceType.smtpConfig, !showAdvancedSettings {
-                account.smtpHost = smtpConfig.host
-                account.smtpPort = smtpConfig.port
-                account.smtpEncryption = smtpConfig.encryption
-            } else {
-                account.smtpHost = smtpHost
-                account.smtpPort = Int(smtpPort) ?? 587
-                account.smtpEncryption = smtpEncryption
-            }
+            account.smtpHost = smtpHost
+            account.smtpPort = Int(smtpPort) ?? 587
+            account.smtpEncryption = smtpEncryption
+            
+            print("💾 [EmailAccountViewModel] 保存配置 - SMTP: \(smtpHost):\(smtpPort) \(smtpEncryption.rawValue)")
         } else {
             // 创建新账号
             if let imapConfig = serviceType.imapConfig {
@@ -188,12 +188,20 @@ class EmailAccountViewModel: ObservableObject {
         
         // 保存账号
         if editingAccount != nil {
+            print("💾 [EmailAccountViewModel] 保存账号更新: \(account.emailAddress)")
+            print("💾 [EmailAccountViewModel] SMTP配置: \(account.smtpHost):\(account.smtpPort) \(account.smtpEncryption.rawValue)")
             try await emailStore.updateAccount(account)
+            // updateAccount 内部已经调用了 loadAccounts()，但我们需要等待它完成
+            // 然后重新加载 ViewModel 的账号列表
+            await Task.yield() // 让出执行权，确保 EmailStore 的异步操作完成
         } else {
             try await emailStore.addAccount(account)
+            await Task.yield()
         }
         
+        // 重新加载账号列表，确保获取最新数据
         loadAccounts()
+        
         resetForm()
         isAddingAccount = false
         editingAccount = nil
@@ -251,17 +259,31 @@ class EmailAccountViewModel: ObservableObject {
         
         // 验证密码
         guard !testPassword.isEmpty else {
-            connectionTestResult = ConnectionTestResult(success: false, message: "密码不能为空")
+            connectionTestResult = ConnectionTestResult(success: false, message: "密码不能为空", stages: [])
             errorMessage = "密码不能为空"
             isTestingConnection = false
             return
         }
         
         do {
-            let success = try await emailService.testConnection(account: testAccount, password: testPassword)
-            connectionTestResult = ConnectionTestResult(success: success, message: success ? "连接成功" : "连接失败")
+            let report = try await emailService.testConnection(account: testAccount, password: testPassword)
+            let stages = report.stages.map {
+                ConnectionTestStageResult(
+                    id: UUID(),
+                    name: $0.name,
+                    success: $0.success,
+                    detail: $0.detail
+                )
+            }
+            let success = report.isSuccess
+            let message = success ? "IMAP 与 SMTP 均已通过" : "连接失败，请查看详细阶段信息"
+            connectionTestResult = ConnectionTestResult(success: success, message: message, stages: stages)
         } catch {
-            connectionTestResult = ConnectionTestResult(success: false, message: error.localizedDescription)
+            connectionTestResult = ConnectionTestResult(
+                success: false,
+                message: error.localizedDescription,
+                stages: []
+            )
             errorMessage = error.localizedDescription
         }
         
@@ -308,5 +330,13 @@ class EmailAccountViewModel: ObservableObject {
 struct ConnectionTestResult {
     let success: Bool
     let message: String
+    let stages: [ConnectionTestStageResult]
+}
+
+struct ConnectionTestStageResult: Identifiable {
+    let id: UUID
+    let name: String
+    let success: Bool
+    let detail: String
 }
 

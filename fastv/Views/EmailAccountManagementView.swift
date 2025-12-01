@@ -210,73 +210,173 @@ struct EmailAccountManagementView: View {
                         Text("服务器配置")
                     }
                 } else {
-                    // 预设服务：显示只读的配置信息
+                    // 预设服务：显示可编辑的配置信息（编辑账号时允许自定义）
                     Section {
-                        VStack(spacing: 12) {
-                            // IMAP 配置
-                            HStack(alignment: .top, spacing: 12) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("接收邮件 (IMAP)")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .foregroundStyle(.secondary)
-                                    
-                                    Text(viewModel.imapHost)
-                                        .font(.body)
-                                        .foregroundStyle(.primary)
-                                    
-                                    HStack(spacing: 8) {
-                                        Text("端口: \(viewModel.imapPort)")
-                                        Text("•")
-                                        Text(encryptionDisplayName(viewModel.imapEncryption))
-                                    }
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                                }
-                                
-                                Spacer()
-                                
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
-                                    .symbolRenderingMode(.hierarchical)
-                            }
-                            
-                            Divider()
-                            
-                            // SMTP 配置
-                            HStack(alignment: .top, spacing: 12) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("发送邮件 (SMTP)")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .foregroundStyle(.secondary)
-                                    
-                                    Text(viewModel.smtpHost)
-                                        .font(.body)
-                                        .foregroundStyle(.primary)
-                                    
-                                    HStack(spacing: 8) {
-                                        Text("端口: \(viewModel.smtpPort)")
-                                        Text("•")
-                                        Text(encryptionDisplayName(viewModel.smtpEncryption))
-                                    }
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                                }
-                                
-                                Spacer()
-                                
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
-                                    .symbolRenderingMode(.hierarchical)
-                            }
+                        // 编辑账号时，显示高级设置开关
+                        if viewModel.editingAccount != nil {
+                            Toggle("自定义服务器配置", isOn: $viewModel.showAdvancedSettings)
+                                .font(.subheadline)
                         }
-                        .padding(.vertical, 4)
+                        
+                        if viewModel.showAdvancedSettings || viewModel.editingAccount == nil {
+                            DisclosureGroup("服务器设置", isExpanded: .constant(true)) {
+                                VStack(spacing: 16) {
+                                    // IMAP 设置
+                                    VStack(alignment: .leading, spacing: 10) {
+                                        Text("接收邮件服务器 (IMAP)")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .foregroundStyle(.secondary)
+                                            .textCase(.none)
+                                        
+                                        TextField("服务器地址", text: $viewModel.imapHost)
+                                            .onChange(of: viewModel.imapHost) { _, _ in
+                                                // 用户修改配置时，自动启用高级设置
+                                                if viewModel.editingAccount != nil {
+                                                    viewModel.showAdvancedSettings = true
+                                                }
+                                            }
+                                        
+                                        HStack(spacing: 12) {
+                                            TextField("端口", text: $viewModel.imapPort)
+                                                .frame(width: 120)
+                                                .onChange(of: viewModel.imapPort) { _, _ in
+                                                    if viewModel.editingAccount != nil {
+                                                        viewModel.showAdvancedSettings = true
+                                                    }
+                                                }
+                                            
+                                            Picker("加密方式", selection: $viewModel.imapEncryption) {
+                                                Text("无").tag(EmailEncryption.none)
+                                                Text("SSL/TLS").tag(EmailEncryption.ssl)
+                                                Text("STARTTLS").tag(EmailEncryption.startTLS)
+                                            }
+                                            .frame(maxWidth: .infinity)
+                                            .onChange(of: viewModel.imapEncryption) { _, _ in
+                                                if viewModel.editingAccount != nil {
+                                                    viewModel.showAdvancedSettings = true
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    Divider()
+                                        .padding(.vertical, 4)
+                                    
+                                    // SMTP 设置
+                                    VStack(alignment: .leading, spacing: 10) {
+                                        Text("发送邮件服务器 (SMTP)")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .foregroundStyle(.secondary)
+                                            .textCase(.none)
+                                        
+                                        TextField("服务器地址", text: $viewModel.smtpHost)
+                                            .onChange(of: viewModel.smtpHost) { _, _ in
+                                                // 用户修改配置时，自动启用高级设置
+                                                if viewModel.editingAccount != nil {
+                                                    viewModel.showAdvancedSettings = true
+                                                }
+                                            }
+                                        
+                                        HStack(spacing: 12) {
+                                            TextField("端口", text: $viewModel.smtpPort)
+                                                .frame(width: 120)
+                                                .onChange(of: viewModel.smtpPort) { _, _ in
+                                                    if viewModel.editingAccount != nil {
+                                                        viewModel.showAdvancedSettings = true
+                                                    }
+                                                }
+                                            
+                                            Picker("加密方式", selection: $viewModel.smtpEncryption) {
+                                                Text("无").tag(EmailEncryption.none)
+                                                Text("SSL/TLS").tag(EmailEncryption.ssl)
+                                                Text("STARTTLS").tag(EmailEncryption.startTLS)
+                                            }
+                                            .frame(maxWidth: .infinity)
+                                            .onChange(of: viewModel.smtpEncryption) { _, _ in
+                                                if viewModel.editingAccount != nil {
+                                                    viewModel.showAdvancedSettings = true
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding(.vertical, 8)
+                            }
+                        } else {
+                            // 只读显示（添加新账号时）
+                            VStack(spacing: 12) {
+                                // IMAP 配置
+                                HStack(alignment: .top, spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("接收邮件 (IMAP)")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .foregroundStyle(.secondary)
+                                        
+                                        Text(viewModel.imapHost)
+                                            .font(.body)
+                                            .foregroundStyle(.primary)
+                                        
+                                        HStack(spacing: 8) {
+                                            Text("端口: \(viewModel.imapPort)")
+                                            Text("•")
+                                            Text(encryptionDisplayName(viewModel.imapEncryption))
+                                        }
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.green)
+                                        .symbolRenderingMode(.hierarchical)
+                                }
+                                
+                                Divider()
+                                
+                                // SMTP 配置
+                                HStack(alignment: .top, spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("发送邮件 (SMTP)")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .foregroundStyle(.secondary)
+                                        
+                                        Text(viewModel.smtpHost)
+                                            .font(.body)
+                                            .foregroundStyle(.primary)
+                                        
+                                        HStack(spacing: 8) {
+                                            Text("端口: \(viewModel.smtpPort)")
+                                            Text("•")
+                                            Text(encryptionDisplayName(viewModel.smtpEncryption))
+                                        }
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.green)
+                                        .symbolRenderingMode(.hierarchical)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
                     } header: {
                         Text("服务器配置")
                     } footer: {
-                        Text("这些设置已根据您选择的邮箱服务自动配置")
-                            .font(.caption)
+                        if viewModel.editingAccount != nil && viewModel.showAdvancedSettings {
+                            Text("自定义服务器配置将覆盖预设配置")
+                                .font(.caption)
+                        } else if viewModel.editingAccount == nil {
+                            Text("这些设置已根据您选择的邮箱服务自动配置")
+                                .font(.caption)
+                        }
                     }
                 }
                 
@@ -303,13 +403,17 @@ struct EmailAccountManagementView: View {
                              (viewModel.password.isEmpty && viewModel.editingAccount == nil))
                     
                     if let result = viewModel.connectionTestResult {
-                        HStack(spacing: 8) {
-                            Image(systemName: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                .foregroundStyle(result.success ? Color.green : Color.red)
-                                .symbolRenderingMode(.hierarchical)
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 8) {
+                                Image(systemName: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                    .foregroundStyle(result.success ? Color.green : Color.red)
+                                    .symbolRenderingMode(.hierarchical)
+                                
+                                Text(result.message)
+                                    .foregroundStyle(result.success ? Color.primary : Color.red)
+                            }
                             
-                            Text(result.message)
-                                .foregroundStyle(result.success ? Color.primary : Color.red)
+                            ConnectionStagesView(stages: result.stages)
                         }
                         .font(.subheadline)
                         .padding(.top, 4)
@@ -412,26 +516,33 @@ struct AccountRow: View {
             
             Spacer(minLength: 12)
             
-            // 操作菜单
-            Menu {
+            // 操作按钮组
+            HStack(spacing: 8) {
+                // 编辑按钮 - 更大更明显
                 Button(action: onEdit) {
-                    Label("编辑", systemImage: "pencil")
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundStyle(.blue)
+                        .symbolRenderingMode(.hierarchical)
                 }
+                .buttonStyle(.plain)
+                .help("编辑账号")
                 
-                Divider()
-                
-                Button(role: .destructive, action: onDelete) {
-                    Label("删除", systemImage: "trash")
+                // 删除按钮
+                Menu {
+                    Button(role: .destructive, action: onDelete) {
+                        Label("删除账号", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.secondary)
+                        .symbolRenderingMode(.hierarchical)
                 }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .foregroundStyle(.secondary)
-                    .symbolRenderingMode(.hierarchical)
-                    .font(.system(size: 18))
+                .buttonStyle(.plain)
+                .menuStyle(.borderlessButton)
+                .help("更多操作")
             }
-            .buttonStyle(.plain)
-            .menuStyle(.borderlessButton)
-            .frame(width: 24, height: 24)
         }
         .padding(.vertical, 10)
         .contentShape(Rectangle())
@@ -478,6 +589,39 @@ private func encryptionDisplayName(_ encryption: EmailEncryption) -> String {
         return "SSL/TLS"
     case .startTLS:
         return "STARTTLS"
+    }
+}
+
+struct ConnectionStagesView: View {
+    let stages: [ConnectionTestStageResult]
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(stages) { (stage: ConnectionTestStageResult) in
+                ConnectionStageRow(stage: stage)
+            }
+        }
+    }
+}
+
+struct ConnectionStageRow: View {
+    let stage: ConnectionTestStageResult
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: stage.success ? "checkmark.seal.fill" : "xmark.seal.fill")
+                .foregroundStyle(stage.success ? Color.green : Color.red)
+                .symbolRenderingMode(.hierarchical)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(stage.name)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text(stage.detail)
+                    .font(.caption)
+                    .foregroundStyle(stage.success ? Color.secondary : Color.red)
+            }
+        }
     }
 }
 

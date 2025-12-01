@@ -12,6 +12,7 @@
 #import <libetpan/mailimap.h>
 #import <libetpan/mailimap_helper.h>
 #import <libetpan/mailsmtp.h>
+#import <libetpan/mailsmtp_types.h>
 #import <libetpan/mailmime.h>
 
 // Forward declaration for Swift types
@@ -1022,6 +1023,7 @@
 
 - (BOOL)connectWithError:(NSError **)error {
     if (!_smtpSession) {
+        NSLog(@"❌ [LibEtPan SMTP] 会话未初始化");
         if (error) {
             *error = [NSError errorWithDomain:@"LibEtPanError" 
                                          code:-1 
@@ -1029,6 +1031,8 @@
         }
         return NO;
     }
+    
+    NSLog(@"🔌 [LibEtPan SMTP] 尝试连接: %@ 端口 %ld 加密方式 %@", _host, (long)_port, _encryption);
     
     // 设置代理环境变量（如果启用）
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
@@ -1038,6 +1042,8 @@
         NSInteger proxyPort = [defaults integerForKey:@"emailProxyPort"];
         if (proxyPort == 0) proxyPort = 7856;
         NSString *proxyType = [defaults stringForKey:@"emailProxyType"] ?: @"socks5";
+        
+        NSLog(@"🔌 [LibEtPan SMTP] 使用代理: %@://%@:%ld", proxyType, proxyHost, (long)proxyPort);
         
         // 设置环境变量，让 CFNetwork 使用代理
         NSString *proxyString;
@@ -1049,39 +1055,91 @@
             setenv("http_proxy", [proxyString UTF8String], 1);
             setenv("https_proxy", [proxyString UTF8String], 1);
         }
+    } else {
+        NSLog(@"🔌 [LibEtPan SMTP] 未启用代理");
     }
     
     int r;
     const char *host = [_host UTF8String];
     uint16_t port = (uint16_t)_port;
     
+    NSLog(@"🔌 [LibEtPan SMTP] 开始连接，主机: %s, 端口: %d", host, port);
+    
     if ([_encryption isEqualToString:@"ssl"]) {
+        NSLog(@"🔌 [LibEtPan SMTP] 使用 SSL 加密连接");
         r = mailsmtp_ssl_connect((mailsmtp *)_smtpSession, host, port);
     } else if ([_encryption isEqualToString:@"startTLS"]) {
+        NSLog(@"🔌 [LibEtPan SMTP] 使用 STARTTLS 连接");
         r = mailsmtp_socket_connect((mailsmtp *)_smtpSession, host, port);
         if (r == MAILSMTP_NO_ERROR) {
+            NSLog(@"🔌 [LibEtPan SMTP] Socket 连接成功，开始 STARTTLS 握手");
             r = mailsmtp_socket_starttls((mailsmtp *)_smtpSession);
         }
     } else {
-        // 无加密
+        NSLog(@"🔌 [LibEtPan SMTP] 使用无加密连接");
         r = mailsmtp_socket_connect((mailsmtp *)_smtpSession, host, port);
     }
     
     if (r != MAILSMTP_NO_ERROR) {
+        NSString *errorMsg;
+        NSString *errorDetail;
+        
+        // 根据错误代码提供更详细的错误信息
+        switch (r) {
+            case MAILSMTP_ERROR_STARTTLS_NOT_SUPPORTED:
+                errorMsg = @"STARTTLS 不支持或握手失败";
+                errorDetail = @"服务器可能不支持 STARTTLS，或 SSL/TLS 握手失败。请尝试使用 SSL 直接连接（端口 465）。";
+                break;
+            case MAILSMTP_ERROR_STARTTLS_TEMPORARY_FAILURE:
+                errorMsg = @"STARTTLS 临时失败";
+                errorDetail = @"STARTTLS 握手临时失败，请稍后重试。";
+                break;
+            case MAILSMTP_ERROR_SSL:
+                errorMsg = @"SSL/TLS 错误";
+                errorDetail = @"SSL/TLS 连接失败，可能是证书验证失败或 TLS 版本不兼容。";
+                break;
+            case MAILSMTP_ERROR_CONNECTION_REFUSED:
+                errorMsg = @"连接被拒绝";
+                errorDetail = @"服务器拒绝了连接，请检查服务器地址和端口是否正确。";
+                break;
+            case MAILSMTP_ERROR_STREAM:
+                errorMsg = @"流错误";
+                errorDetail = @"网络流错误，可能是网络连接中断。";
+                break;
+            case MAILSMTP_ERROR_HOSTNAME:
+                errorMsg = @"主机名错误";
+                errorDetail = @"无法解析主机名，请检查服务器地址是否正确。";
+                break;
+            default:
+                errorMsg = [NSString stringWithFormat:@"连接失败: %d", r];
+                errorDetail = [NSString stringWithFormat:@"LibEtPan 错误代码: %d", r];
+                break;
+        }
+        
+        NSLog(@"❌ [LibEtPan SMTP] 连接失败，错误代码: %d", r);
+        NSLog(@"❌ [LibEtPan SMTP] 错误类型: %@", errorMsg);
+        NSLog(@"❌ [LibEtPan SMTP] 错误详情: %@", errorDetail);
+        
         if (error) {
-            NSString *errorMsg = [NSString stringWithFormat:@"连接失败: %d", r];
+            NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+            [userInfo setObject:errorMsg forKey:NSLocalizedDescriptionKey];
+            [userInfo setObject:errorDetail forKey:NSLocalizedFailureReasonErrorKey];
+            [userInfo setObject:@(r) forKey:@"LibEtPanErrorCode"];
+            
             *error = [NSError errorWithDomain:@"LibEtPanError" 
                                          code:r 
-                                     userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
+                                     userInfo:userInfo];
         }
         return NO;
     }
     
+    NSLog(@"✅ [LibEtPan SMTP] 连接成功");
     return YES;
 }
 
 - (BOOL)loginWithError:(NSError **)error {
     if (!_smtpSession) {
+        NSLog(@"❌ [LibEtPan SMTP] 登录失败: 会话未初始化");
         if (error) {
             *error = [NSError errorWithDomain:@"LibEtPanError" 
                                          code:-1 
@@ -1089,6 +1147,8 @@
         }
         return NO;
     }
+    
+    NSLog(@"🔐 [LibEtPan SMTP] 开始登录，用户名: %@", _username);
     
     // TODO: 实现 SMTP 认证
     // LibEtPan 的 SMTP 认证需要额外的 SASL 库支持
@@ -1099,8 +1159,10 @@
     int r = MAILSMTP_NO_ERROR;
     
     if (r != MAILSMTP_NO_ERROR) {
+        NSString *errorMsg = [NSString stringWithFormat:@"登录失败: %d", r];
+        NSLog(@"❌ [LibEtPan SMTP] 登录失败，错误代码: %d", r);
+        NSLog(@"❌ [LibEtPan SMTP] 错误信息: %@", errorMsg);
         if (error) {
-            NSString *errorMsg = [NSString stringWithFormat:@"登录失败: %d", r];
             *error = [NSError errorWithDomain:@"LibEtPanError" 
                                          code:r 
                                      userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
@@ -1108,6 +1170,7 @@
         return NO;
     }
     
+    NSLog(@"✅ [LibEtPan SMTP] 登录成功");
     return YES;
 }
 
@@ -1121,6 +1184,7 @@
             readReceipt:(BOOL)readReceipt
                   error:(NSError **)error {
     if (!_smtpSession) {
+        NSLog(@"❌ [LibEtPan SMTP] 发送失败: 会话未初始化");
         if (error) {
             *error = [NSError errorWithDomain:@"LibEtPanError" 
                                          code:-1 
@@ -1129,26 +1193,50 @@
         return NO;
     }
     
+    NSLog(@"📧 [LibEtPan SMTP] 开始发送邮件");
+    NSLog(@"📧 [LibEtPan SMTP] 发件人: %@", _username);
+    NSLog(@"📧 [LibEtPan SMTP] 收件人: %@", [to componentsJoinedByString:@", "]);
+    if (cc && cc.count > 0) {
+        NSLog(@"📧 [LibEtPan SMTP] 抄送: %@", [cc componentsJoinedByString:@", "]);
+    }
+    if (bcc && bcc.count > 0) {
+        NSLog(@"📧 [LibEtPan SMTP] 密送: %@", [bcc componentsJoinedByString:@", "]);
+    }
+    NSLog(@"📧 [LibEtPan SMTP] 主题: %@", subject);
+    NSLog(@"📧 [LibEtPan SMTP] 正文长度: %lu 字符", (unsigned long)body.length);
+    if (htmlBody) {
+        NSLog(@"📧 [LibEtPan SMTP] HTML 正文长度: %lu 字符", (unsigned long)htmlBody.length);
+    }
+    if (attachments) {
+        NSLog(@"📧 [LibEtPan SMTP] 附件数量: %lu", (unsigned long)attachments.count);
+    }
+    
     // 1. 设置发件人
+    NSLog(@"📧 [LibEtPan SMTP] 步骤 1: 设置发件人");
     const char *from = [_username UTF8String];
     int r = mailsmtp_mail((mailsmtp *)_smtpSession, from);
     if (r != MAILSMTP_NO_ERROR) {
+        NSString *errorMsg = [NSString stringWithFormat:@"设置发件人失败: %d", r];
+        NSLog(@"❌ [LibEtPan SMTP] %@", errorMsg);
         if (error) {
-            NSString *errorMsg = [NSString stringWithFormat:@"设置发件人失败: %d", r];
             *error = [NSError errorWithDomain:@"LibEtPanError" 
                                          code:r 
                                      userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
         }
         return NO;
     }
+    NSLog(@"✅ [LibEtPan SMTP] 发件人设置成功");
     
     // 2. 添加收件人
+    NSLog(@"📧 [LibEtPan SMTP] 步骤 2: 添加收件人");
     for (NSString *recipient in to) {
         const char *toAddr = [recipient UTF8String];
+        NSLog(@"📧 [LibEtPan SMTP] 添加收件人: %@", recipient);
         r = mailsmtp_rcpt((mailsmtp *)_smtpSession, toAddr);
         if (r != MAILSMTP_NO_ERROR) {
+            NSString *errorMsg = [NSString stringWithFormat:@"添加收件人失败: %@, 错误: %d", recipient, r];
+            NSLog(@"❌ [LibEtPan SMTP] %@", errorMsg);
             if (error) {
-                NSString *errorMsg = [NSString stringWithFormat:@"添加收件人失败: %@, 错误: %d", recipient, r];
                 *error = [NSError errorWithDomain:@"LibEtPanError" 
                                              code:r 
                                          userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
@@ -1156,15 +1244,19 @@
             return NO;
         }
     }
+    NSLog(@"✅ [LibEtPan SMTP] 收件人添加成功");
     
     // 添加 CC 收件人
-    if (cc) {
+    if (cc && cc.count > 0) {
+        NSLog(@"📧 [LibEtPan SMTP] 步骤 2.1: 添加 CC 收件人");
         for (NSString *recipient in cc) {
             const char *ccAddr = [recipient UTF8String];
+            NSLog(@"📧 [LibEtPan SMTP] 添加 CC 收件人: %@", recipient);
             r = mailsmtp_rcpt((mailsmtp *)_smtpSession, ccAddr);
             if (r != MAILSMTP_NO_ERROR) {
+                NSString *errorMsg = [NSString stringWithFormat:@"添加CC收件人失败: %@, 错误: %d", recipient, r];
+                NSLog(@"❌ [LibEtPan SMTP] %@", errorMsg);
                 if (error) {
-                    NSString *errorMsg = [NSString stringWithFormat:@"添加CC收件人失败: %@, 错误: %d", recipient, r];
                     *error = [NSError errorWithDomain:@"LibEtPanError" 
                                                  code:r 
                                              userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
@@ -1172,16 +1264,20 @@
                 return NO;
             }
         }
+        NSLog(@"✅ [LibEtPan SMTP] CC 收件人添加成功");
     }
     
     // 添加 BCC 收件人
-    if (bcc) {
+    if (bcc && bcc.count > 0) {
+        NSLog(@"📧 [LibEtPan SMTP] 步骤 2.2: 添加 BCC 收件人");
         for (NSString *recipient in bcc) {
             const char *bccAddr = [recipient UTF8String];
+            NSLog(@"📧 [LibEtPan SMTP] 添加 BCC 收件人: %@", recipient);
             r = mailsmtp_rcpt((mailsmtp *)_smtpSession, bccAddr);
             if (r != MAILSMTP_NO_ERROR) {
+                NSString *errorMsg = [NSString stringWithFormat:@"添加BCC收件人失败: %@, 错误: %d", recipient, r];
+                NSLog(@"❌ [LibEtPan SMTP] %@", errorMsg);
                 if (error) {
-                    NSString *errorMsg = [NSString stringWithFormat:@"添加BCC收件人失败: %@, 错误: %d", recipient, r];
                     *error = [NSError errorWithDomain:@"LibEtPanError" 
                                                  code:r 
                                              userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
@@ -1189,21 +1285,26 @@
                 return NO;
             }
         }
+        NSLog(@"✅ [LibEtPan SMTP] BCC 收件人添加成功");
     }
     
     // 3. 开始数据阶段
+    NSLog(@"📧 [LibEtPan SMTP] 步骤 3: 开始数据阶段");
     r = mailsmtp_data((mailsmtp *)_smtpSession);
     if (r != MAILSMTP_NO_ERROR) {
+        NSString *errorMsg = [NSString stringWithFormat:@"开始数据阶段失败: %d", r];
+        NSLog(@"❌ [LibEtPan SMTP] %@", errorMsg);
         if (error) {
-            NSString *errorMsg = [NSString stringWithFormat:@"开始数据阶段失败: %d", r];
             *error = [NSError errorWithDomain:@"LibEtPanError" 
                                          code:r 
                                      userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
         }
         return NO;
     }
+    NSLog(@"✅ [LibEtPan SMTP] 数据阶段开始成功");
     
     // 4. 构建 MIME 消息
+    NSLog(@"📧 [LibEtPan SMTP] 步骤 4: 构建 MIME 消息");
     NSMutableString *message = [NSMutableString string];
     
     // 邮件头
@@ -1345,14 +1446,19 @@
     }
     
     // 5. 发送消息
+    NSLog(@"📧 [LibEtPan SMTP] 步骤 5: 发送消息数据");
     NSData *messageData = [message dataUsingEncoding:NSUTF8StringEncoding];
+    NSLog(@"📧 [LibEtPan SMTP] 消息大小: %lu 字节", (unsigned long)messageData.length);
+    
     r = mailsmtp_data_message((mailsmtp *)_smtpSession, 
                               (const char *)messageData.bytes, 
                               messageData.length);
     
     if (r != MAILSMTP_NO_ERROR) {
+        NSString *errorMsg = [NSString stringWithFormat:@"发送消息失败: %d", r];
+        NSLog(@"❌ [LibEtPan SMTP] %@", errorMsg);
+        NSLog(@"❌ [LibEtPan SMTP] 错误代码: %d", r);
         if (error) {
-            NSString *errorMsg = [NSString stringWithFormat:@"发送消息失败: %d", r];
             *error = [NSError errorWithDomain:@"LibEtPanError" 
                                          code:r 
                                      userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
@@ -1360,7 +1466,7 @@
         return NO;
     }
     
-    NSLog(@"✅ [LibEtPan] 邮件发送成功");
+    NSLog(@"✅ [LibEtPan SMTP] 邮件发送成功");
     return YES;
 }
 

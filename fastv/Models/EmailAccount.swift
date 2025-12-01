@@ -106,15 +106,16 @@ struct EmailAccount: Identifiable, Codable {
         connectionStatus: ConnectionStatus = .disconnected,
         passwordKeychainIdentifier: String? = nil,
         createdAt: Date = Date(),
-        updatedAt: Date = Date()
+        updatedAt: Date = Date(),
+        applyServiceDefaults: Bool = true
     ) {
         self.id = id
         self.emailAddress = emailAddress
         self.displayName = displayName.isEmpty ? emailAddress : displayName
         self.serviceType = serviceType
         
-        // 如果是预设服务，使用预设配置
-        if let imapConfig = serviceType.imapConfig {
+        // 如果允许且是预设服务，使用预设配置
+        if applyServiceDefaults, let imapConfig = serviceType.imapConfig {
             self.imapHost = imapConfig.host
             self.imapPort = imapConfig.port
             self.imapEncryption = imapConfig.encryption
@@ -124,7 +125,7 @@ struct EmailAccount: Identifiable, Codable {
             self.imapEncryption = imapEncryption
         }
         
-        if let smtpConfig = serviceType.smtpConfig {
+        if applyServiceDefaults, let smtpConfig = serviceType.smtpConfig {
             self.smtpHost = smtpConfig.host
             self.smtpPort = smtpConfig.port
             self.smtpEncryption = smtpConfig.encryption

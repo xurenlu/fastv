@@ -555,6 +555,7 @@
 					"$(SRCROOT)/Libraries/onnxruntime/current/include",
 					"$(SRCROOT)/ThirdParty",
 					"$(SRCROOT)/ThirdParty/libetpan/include/**",
+					/opt/homebrew/include,
 				);
 				INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)";
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
@@ -612,6 +613,7 @@
 					"$(SRCROOT)/Libraries/onnxruntime/current/include",
 					"$(SRCROOT)/ThirdParty",
 					"$(SRCROOT)/ThirdParty/libetpan/include/**",
+					/opt/homebrew/include,
 				);
 				INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)";
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";

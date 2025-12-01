@@ -76,13 +76,19 @@ struct EmailView: View {
             EmailAccountManagementView()
         }
         .onAppear {
+            // 如果没有选中文件夹，默认选中"所有邮件"
+            if viewModel.selectedFolderId == nil {
+                viewModel.showAllMessages()
+            }
             // 视图出现时，后台加载数据,不阻塞UI
             Task.detached(priority: .userInitiated) {
                 await viewModel.loadInitialData()
             }
         }
         .onChange(of: viewModel.selectedAccountId) { _, _ in
-            // 账号切换时，后台重新加载数据
+            // 账号切换时，自动选中"所有邮件"
+            viewModel.showAllMessages()
+            // 后台重新加载数据
             Task.detached(priority: .userInitiated) {
                 if let account = await viewModel.currentAccount {
                     await viewModel.loadFolders(account: account)
@@ -951,6 +957,24 @@ struct EmailView: View {
                 }
             }
             
+            // 错误提示
+            if let errorMessage = viewModel.errorMessage {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.red.opacity(0.1))
+                }
+            }
+            
             // 操作按钮
             HStack {
                 Spacer()
@@ -959,10 +983,12 @@ struct EmailView: View {
                     replyBodyText = ""
                     viewModel.replyDraft = nil
                     viewModel.showReplyPanel = false
+                    viewModel.errorMessage = nil
                 }
                 .buttonStyle(.bordered)
+                .disabled(viewModel.isSendingReply)
                 
-                Button("发送") {
+                Button(action: {
                     // 发送前立即同步正文内容
                     viewModel.updateReplyField(body: replyBodyText)
                     Task {
@@ -971,11 +997,22 @@ struct EmailView: View {
                             // 发送成功后清空本地状态
                             replyBodyText = ""
                         } catch {
-                            viewModel.errorMessage = error.localizedDescription
+                            // 错误已经在 sendReply 中设置到 errorMessage
                         }
+                    }
+                }) {
+                    if viewModel.isSendingReply {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("发送中...")
+                        }
+                    } else {
+                        Text("发送")
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .disabled(viewModel.isSendingReply)
             }
         }
         .padding()
@@ -1216,6 +1253,24 @@ struct EmailView: View {
                 }
             }
             
+            // 错误提示
+            if let errorMessage = viewModel.errorMessage {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.red.opacity(0.1))
+                }
+            }
+            
             // 操作按钮
             HStack {
                 Spacer()
@@ -1224,10 +1279,12 @@ struct EmailView: View {
                     composeBodyText = ""
                     viewModel.composeDraft = nil
                     viewModel.showComposePanel = false
+                    viewModel.errorMessage = nil
                 }
                 .buttonStyle(.bordered)
+                .disabled(viewModel.isSendingCompose)
                 
-                Button("发送") {
+                Button(action: {
                     // 发送前立即同步正文内容
                     viewModel.updateComposeField(body: composeBodyText)
                     Task {
@@ -1236,11 +1293,22 @@ struct EmailView: View {
                             // 发送成功后清空本地状态
                             composeBodyText = ""
                         } catch {
-                            viewModel.errorMessage = error.localizedDescription
+                            // 错误已经在 sendCompose 中设置到 errorMessage
                         }
+                    }
+                }) {
+                    if viewModel.isSendingCompose {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("发送中...")
+                        }
+                    } else {
+                        Text("发送")
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .disabled(viewModel.isSendingCompose)
             }
         }
         .padding()
