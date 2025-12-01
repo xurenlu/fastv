@@ -75,11 +75,20 @@ class EmailStore: ObservableObject {
     
     /// 添加文件夹（检查重复）
     func addFolder(_ folder: EmailFolder) async throws {
-        // 检查是否已存在相同路径的文件夹
+        let normalizedPath = folder.path.lowercased()
         let existingFolders = folders[folder.accountId] ?? []
-        if existingFolders.contains(where: { $0.path == folder.path && $0.accountId == folder.accountId }) {
-            // 已存在，更新而不是添加
-            try await updateFolder(folder)
+        if let existing = existingFolders.first(where: { $0.path.lowercased() == normalizedPath }) {
+            let updatedFolder = EmailFolder(
+                id: existing.id,
+                accountId: folder.accountId,
+                name: folder.name,
+                type: folder.type,
+                path: existing.path,
+                unreadCount: folder.unreadCount,
+                totalCount: folder.totalCount,
+                lastSyncDate: folder.lastSyncDate
+            )
+            try await updateFolder(updatedFolder)
             return
         }
         
@@ -328,6 +337,10 @@ class EmailStore: ObservableObject {
                     }
                     foldersDict[accountId]?.append(folder)
                 }
+
+                for (accountId, folderList) in foldersDict {
+                    foldersDict[accountId] = self.deduplicatedFolders(folderList)
+                }
                 return foldersDict
             }
             
@@ -335,6 +348,20 @@ class EmailStore: ObservableObject {
         } catch {
             print("❌ [EmailStore] 加载文件夹失败: \(error)")
         }
+    }
+    
+    private func deduplicatedFolders(_ folders: [EmailFolder]) -> [EmailFolder] {
+        var seen = Set<String>()
+        var result: [EmailFolder] = []
+        for folder in folders {
+            let key = folder.path.lowercased()
+            if seen.contains(key) {
+                continue
+            }
+            seen.insert(key)
+            result.append(folder)
+        }
+        return result
     }
     
     private func loadMessages(for folderId: UUID) async {

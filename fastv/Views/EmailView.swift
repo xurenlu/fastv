@@ -152,9 +152,16 @@ struct EmailView: View {
                             if let folderId = folderId,
                                let folder = viewModel.folders.first(where: { $0.id == folderId }) {
                                 viewModel.selectFolder(folder)
+                            } else {
+                                viewModel.showAllMessages()
                             }
                         }
                     )) {
+                        Section {
+                            Label("所有邮件", systemImage: "tray.full")
+                                .tag(Optional<UUID>.none)
+                                .contentShape(Rectangle())
+                        }
                         ForEach(viewModel.folders) { folder in
                             FolderRow(folder: folder)
                                 .tag(folder.id)
@@ -245,7 +252,7 @@ struct EmailView: View {
                 .foregroundStyle(.secondary)
             
             if viewModel.selectedFolderId == nil {
-                Text("请选择一个文件夹")
+                Text("暂无邮件，稍后同步或选择文件夹")
                     .font(.subheadline)
                     .foregroundStyle(.tertiary)
             }
@@ -264,13 +271,21 @@ struct EmailView: View {
                 Divider()
                 
                 // 邮件正文
-                if let htmlBody = message.htmlBody, !htmlBody.isEmpty {
-                    // HTML渲染（简化版，实际应该使用WebView）
-                    Text(message.textBody ?? message.preview)
+                if let htmlBody = message.htmlBody,
+                   let attributed = htmlBody.toAttributedHTML() {
+                    Text(attributed)
+                        .textSelection(.enabled)
+                } else if let textBody = message.textBody, !textBody.isEmpty {
+                    Text(textBody)
                         .textSelection(.enabled)
                 } else {
-                    Text(message.textBody ?? message.preview)
+                    Text(message.preview)
                         .textSelection(.enabled)
+                }
+                
+                if !message.isBodyLoaded {
+                    ProgressView("正在加载正文...")
+                        .padding(.vertical, 8)
                 }
                 
                 // 附件列表
@@ -355,7 +370,7 @@ struct FolderRow: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 20)
             
-            Text(folder.name)
+            Text(folder.displayTitle)
             
             Spacer()
             
@@ -423,5 +438,24 @@ struct MessageRow: View {
 
 #Preview {
     EmailView()
+}
+
+// MARK: - Helpers
+
+private extension String {
+    func toAttributedHTML() -> AttributedString? {
+        guard let data = data(using: .utf8) else { return nil }
+        if let attributed = try? NSAttributedString(
+            data: data,
+            options: [
+                .documentType: NSAttributedString.DocumentType.html,
+                .characterEncoding: String.Encoding.utf8.rawValue
+            ],
+            documentAttributes: nil
+        ) {
+            return AttributedString(attributed)
+        }
+        return nil
+    }
 }
 

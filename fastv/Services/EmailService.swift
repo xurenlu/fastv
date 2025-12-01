@@ -221,6 +221,31 @@ class EmailService {
         return emailMessages
     }
     
+    /// 获取邮件正文
+    func fetchMessageBody(
+        account: EmailAccount,
+        folder: EmailFolder,
+        message: EmailMessage
+    ) async throws -> EmailBodyContent {
+        guard let uid = message.uid else {
+            throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
+        }
+        
+        let imap = try getOrCreateIMAPSession(account: account)
+        do {
+            try imap.selectFolder(folder.name)
+        } catch {
+            throw EmailServiceError.connectionFailed(error.localizedDescription)
+        }
+        
+        let bodyData = try imap.fetchMessageBody(withUID: uid)
+        if bodyData.isEmpty {
+            throw EmailServiceError.parseError("未获取到邮件正文")
+        }
+        
+        return EmailContentDecoder.parseBody(data: bodyData)
+    }
+    
     /// 获取文件夹列表
     func fetchFolders(account: EmailAccount) async throws -> [EmailFolder] {
         let imap = try getOrCreateIMAPSession(account: account)
@@ -384,9 +409,9 @@ class EmailService {
     
     /// 从邮件头信息解析 EmailMessage
     private func parseEmailMessage(from headers: [String: Any], accountId: UUID, folderId: UUID, uid: UInt32) -> EmailMessage? {
-        let subject = (headers["subject"] as? String) ?? ""
-        let fromString = (headers["from"] as? String) ?? ""
-        let toString = (headers["to"] as? String) ?? ""
+        let subject = EmailContentDecoder.decodeRFC2047String((headers["subject"] as? String) ?? "")
+        let fromString = EmailContentDecoder.decodeRFC2047String((headers["from"] as? String) ?? "")
+        let toString = EmailContentDecoder.decodeRFC2047String((headers["to"] as? String) ?? "")
         let dateString = (headers["date"] as? String) ?? ""
         let messageId = headers["message-id"] as? String
         
@@ -402,8 +427,8 @@ class EmailService {
         // 检测是否为no-reply地址
         let isNoReply = isNoReplyAddress(from.email)
         
-        // 生成预览文本（暂时为空，后续可以从正文获取）
-        let preview = ""
+        // 生成预览文本（使用主题作为初始预览）
+        let preview = subject.isEmpty ? "" : subject
         
         return EmailMessage(
             id: UUID(),
@@ -477,13 +502,18 @@ class EmailService {
     
     /// 解析邮件地址
     func parseEmailAddress(_ addressString: String) -> EmailContact {
+        let trimmed = addressString.trimmingCharacters(in: .whitespacesAndNewlines)
+        let decoded = EmailContentDecoder.decodeRFC2047String(trimmed)
+        
         // 解析 "Name <email@example.com>" 格式
-        if let range = addressString.range(of: "<", options: .backwards),
-           let endRange = addressString.range(of: ">", options: [], range: range.upperBound..<addressString.endIndex) {
-            let email = String(addressString[range.upperBound..<endRange.lowerBound])
-            let name = String(addressString[..<range.lowerBound]).trimmingCharacters(in: .whitespaces)
+        if let range = decoded.range(of: "<", options: .backwards),
+           let endRange = decoded.range(of: ">", options: [], range: range.upperBound..<decoded.endIndex) {
+            let email = String(decoded[range.upperBound..<endRange.lowerBound])
+            var name = String(decoded[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+            name = name.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
             return EmailContact(name: name.isEmpty ? nil : name, email: email)
         }
-        return EmailContact(email: addressString)
+        
+        return EmailContact(email: decoded)
     }
 }

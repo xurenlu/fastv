@@ -88,3 +88,13 @@ struct EmailFolder: Identifiable, Codable {
     }
 }
 
+extension EmailFolder {
+    /// 适合展示的名称（去掉 Gmail 前缀等）
+    var displayTitle: String {
+        if name.contains("/") {
+            return name.split(separator: "/").last.map(String.init) ?? name
+        }
+        return name
+    }
+}
+

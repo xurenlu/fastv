@@ -134,19 +134,53 @@ class EmailViewModel: ObservableObject {
     
     /// 从 EmailStore 更新邮件列表（实时更新）
     private func updateMessagesFromStore() {
-        guard let folderId = selectedFolderId else {
-            messages = []
+        if let folderId = selectedFolderId {
+            let allMessages = emailStore.messages[folderId] ?? []
+            let sorted = allMessages.sorted { $0.date > $1.date }
+            let endIndex = min((currentPage + 1) * pageSize, sorted.count)
+            messages = Array(sorted.prefix(endIndex))
+            hasMoreMessages = sorted.count > endIndex
+        } else {
+            let combined = aggregatedMessagesForCurrentAccount()
+            let sorted = combined.sorted { $0.date > $1.date }
+            let endIndex = min((currentPage + 1) * pageSize, sorted.count)
+            messages = Array(sorted.prefix(endIndex))
+            hasMoreMessages = sorted.count > endIndex
+        }
+    }
+    
+    private func aggregatedMessagesForCurrentAccount() -> [EmailMessage] {
+        guard let accountId = selectedAccountId else { return [] }
+        let foldersForAccount = emailStore.getFolders(for: accountId)
+        var combined: [EmailMessage] = []
+        for folder in foldersForAccount {
+            combined.append(contentsOf: emailStore.messages[folder.id] ?? [])
+        }
+        return combined
+    }
+    
+    private func prefetchDefaultFolderIfNeeded(for account: EmailAccount) async {
+        let folders = emailStore.getFolders(for: account.id)
+        guard let targetFolder = folders.first(where: { $0.type == .inbox }) ?? folders.first else {
             return
         }
         
-        // 从 EmailStore 获取所有邮件
-        let allMessages = emailStore.messages[folderId] ?? []
-        let sorted = allMessages.sorted { $0.date > $1.date }
-        
-        // 只显示当前页的邮件
-        let endIndex = min((currentPage + 1) * pageSize, sorted.count)
-        messages = Array(sorted[0..<endIndex])
-        hasMoreMessages = sorted.count > endIndex
+        let existingMessages = emailStore.messages[targetFolder.id] ?? []
+        if existingMessages.isEmpty {
+            await loadMessagesAsync(
+                loadMore: false,
+                folderIdOverride: targetFolder.id,
+                affectsCurrentList: selectedFolderId == targetFolder.id
+            )
+        }
+    }
+    
+    private func folder(for id: UUID) -> EmailFolder? {
+        if let cached = folders.first(where: { $0.id == id }) {
+            return cached
+        }
+        guard let accountId = selectedAccountId else { return nil }
+        return emailStore.getFolders(for: accountId).first(where: { $0.id == id })
     }
     
     /// 加载初始数据（文件夹列表和邮件列表）
@@ -160,11 +194,14 @@ class EmailViewModel: ObservableObject {
         let existingFolders = emailStore.getFolders(for: accountId)
         if existingFolders.isEmpty {
             await loadFolders(account: account)
+        } else {
+            await prefetchDefaultFolderIfNeeded(for: account)
         }
         
-        // 如果选择了文件夹，加载邮件列表
-        if let folderId = selectedFolderId {
+        if selectedFolderId != nil {
             await loadMessagesAsync()
+        } else {
+            updateMessagesFromStore()
         }
     }
     
@@ -179,10 +216,9 @@ class EmailViewModel: ObservableObject {
                 try await emailStore.addFolder(folder)
             }
             
-            // 如果还没有选择文件夹，选择收件箱
+            await prefetchDefaultFolderIfNeeded(for: account)
             if selectedFolderId == nil {
-                let inbox = folders.first { $0.type == .inbox }
-                selectedFolderId = inbox?.id
+                updateMessagesFromStore()
             }
         } catch {
             errorMessage = "加载文件夹失败: \(error.localizedDescription)"
@@ -193,66 +229,72 @@ class EmailViewModel: ObservableObject {
     }
     
     /// 异步加载邮件列表（增量加载，实时更新）
-    func loadMessagesAsync(loadMore: Bool = false) async {
-        guard let folderId = selectedFolderId,
-              let account = currentAccount else {
+    func loadMessagesAsync(
+        loadMore: Bool = false,
+        folderIdOverride: UUID? = nil,
+        affectsCurrentList: Bool = true
+    ) async {
+        guard let account = currentAccount else { return }
+        
+        let activeFolderId = folderIdOverride ?? selectedFolderId
+        guard let folderId = activeFolderId,
+              let folder = folder(for: folderId) else {
+            if selectedFolderId == nil && folderIdOverride == nil && loadMore {
+                currentPage += 1
+                updateMessagesFromStore()
+            }
             return
         }
+        
+        let shouldAffectUI = affectsCurrentList && folderIdOverride == nil
         
         if loadMore {
             isLoadingMore = true
             currentPage += 1
-        } else {
+        } else if shouldAffectUI {
             isLoading = true
             currentPage = 0
             loadedDateRange = nil
-            messages = [] // 清空当前列表
+            messages = []
         }
         
         errorMessage = nil
         
         do {
-            let folder = folders.first { $0.id == folderId }
-            
-            // 计算时间范围：首次加载最近30天，加载更多时扩展到更早的日期
             let sinceDate: Date?
-            if loadMore, let earliestDate = messages.last?.date {
-                // 加载更多时，从当前最旧的邮件开始往前加载
-                sinceDate = Calendar.current.date(byAdding: .day, value: -30, to: earliestDate)
-                loadedDateRange = sinceDate
+            if loadMore {
+                let existing = emailStore.messages[folderId] ?? []
+                let earliest = existing.last?.date ?? Date()
+                sinceDate = Calendar.current.date(byAdding: .day, value: -30, to: earliest)
             } else {
-                // 首次加载：最近30天
                 sinceDate = Calendar.current.date(byAdding: .day, value: -30, to: Date())
-                loadedDateRange = sinceDate
             }
+            loadedDateRange = sinceDate
             
-            // 分批加载邮件，每批20封，实时更新UI
-            let batchSize = 20
-            var allMessages: [EmailMessage] = []
-            
-            // 先加载一批，立即显示（减少到10封，更快响应）
-            let firstBatchSize = 10
-            let firstBatch = try await emailService.syncMessages(
+            let fetched = try await emailService.syncMessages(
                 account: account,
-                folder: folder ?? EmailFolder(accountId: account.id, name: "Inbox", type: .inbox),
+                folder: folder,
                 since: sinceDate,
-                limit: firstBatchSize,
-                batchSize: firstBatchSize
+                limit: pageSize,
+                batchSize: 10
             )
             
-            if !firstBatch.isEmpty {
-                try await emailStore.addMessages(firstBatch, folderId: folderId)
-                allMessages.append(contentsOf: firstBatch)
+            if !fetched.isEmpty {
+                try await emailStore.addMessages(fetched, folderId: folderId)
                 
-                // 立即更新 UI（实时显示）
-                await MainActor.run {
-                    self.updateMessagesFromStore()
+                if shouldAffectUI || selectedFolderId == nil {
+                    updateMessagesFromStore()
                 }
                 
-                // 发送通知（只对新邮件）- 后台处理，不阻塞
+                 if fetched.count < pageSize {
+                     hasMoreMessages = false
+                 } else if !loadMore {
+                     hasMoreMessages = true
+                 }
+                
                 Task.detached(priority: .background) { [weak self] in
-                    guard let self = self else { return }
-                    for message in firstBatch {
+                    guard let self else { return }
+                    for message in fetched {
                         await self.notificationService.notifyNewEmail(message)
                         
                         if await self.preferences.emailAutoReplyEnabled {
@@ -260,52 +302,10 @@ class EmailViewModel: ObservableObject {
                         }
                     }
                 }
-            }
-            
-            // 继续加载剩余邮件（后台加载，不阻塞UI）
-            if !loadMore {
-                let accountToSync = account
-                let folderIdToSync = folderId
-                let folderToSync = folder ?? EmailFolder(accountId: account.id, name: "Inbox", type: .inbox)
-                let sinceDateToSync = sinceDate
-                
-                Task.detached(priority: .background) { [weak self] in
-                    guard let self = self else { return }
-                    
-                    var offset = batchSize
-                    while true {
-                        let batch = try? await self.emailService.syncMessages(
-                            account: accountToSync,
-                            folder: folderToSync,
-                            since: sinceDateToSync,
-                            limit: batchSize,
-                            batchSize: batchSize
-                        )
-                        
-                        guard let batch = batch, !batch.isEmpty else { break }
-                        
-                        try? await self.emailStore.addMessages(batch, folderId: folderIdToSync)
-                        
-                        // 发送通知
-                        for message in batch {
-                            await self.notificationService.notifyNewEmail(message)
-                            
-                            if await self.preferences.emailAutoReplyEnabled {
-                                await EmailAutoReplyScheduler.shared.processNewMessage(message)
-                            }
-                        }
-                        
-                        offset += batchSize
-                        
-                        // 限制总加载数量，避免一次性加载太多
-                        if offset >= 200 { // 最多加载200封邮件
-                            break
-                        }
-                        
-                        // 让出控制权
-                        try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
-                    }
-                }
+            } else if loadMore {
+                hasMoreMessages = false
+            } else {
+                hasMoreMessages = false
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -318,6 +318,13 @@ class EmailViewModel: ObservableObject {
     
     /// 加载更多邮件（滚动到底部时调用）
     func loadMoreMessages() {
+        if selectedFolderId == nil {
+            guard !isLoadingMore && hasMoreMessages else { return }
+            currentPage += 1
+            updateMessagesFromStore()
+            return
+        }
+        
         guard !isLoadingMore && hasMoreMessages else { return }
         Task {
             await loadMessagesAsync(loadMore: true)
@@ -328,23 +335,17 @@ class EmailViewModel: ObservableObject {
     func selectAccount(_ account: EmailAccount) {
         selectedAccountId = account.id
         selectedMessageId = nil
+        selectedFolderId = nil
+        currentPage = 0
+        messages = []
         
-        // 加载文件夹列表（如果为空）
-        let existingFolders = emailStore.getFolders(for: account.id)
-        if existingFolders.isEmpty {
-            Task {
+        Task {
+            let existingFolders = emailStore.getFolders(for: account.id)
+            if existingFolders.isEmpty {
                 await loadFolders(account: account)
-            }
-        } else {
-            // 选择收件箱
-            let inbox = existingFolders.first { $0.type == .inbox }
-            selectedFolderId = inbox?.id
-            
-            // 加载邮件列表
-            if let folderId = selectedFolderId {
-                Task {
-                    await loadMessagesAsync()
-                }
+            } else {
+                await prefetchDefaultFolderIfNeeded(for: account)
+                updateMessagesFromStore()
             }
         }
     }
@@ -363,6 +364,15 @@ class EmailViewModel: ObservableObject {
             guard let self = self else { return }
             await self.loadMessagesAsync(loadMore: false)
         }
+    }
+    
+    /// 显示所有邮件（不按文件夹过滤）
+    func showAllMessages() {
+        selectedFolderId = nil
+        selectedMessageId = nil
+        currentPage = 0
+        hasMoreMessages = true
+        updateMessagesFromStore()
     }
     
     /// 选择邮件
@@ -432,15 +442,30 @@ class EmailViewModel: ObservableObject {
     /// 加载邮件正文（懒加载）
     func loadMessageBody(_ message: EmailMessage) async {
         guard let account = currentAccount,
-              !message.isBodyLoaded,
-              let uid = message.uid else { return }
+              !message.isBodyLoaded else { return }
         
-        // TODO: 实现邮件正文加载
-        // 需要在 EmailService 中添加 fetchMessageBody 方法
-        // 目前先标记为已加载，避免重复请求
-        var updated = message
-        updated.isBodyLoaded = true
-        try? await emailStore.updateMessage(updated)
+        let folderIdentifier = message.folderId ?? selectedFolderId
+        guard let folderId = folderIdentifier,
+              let folder = folder(for: folderId) else { return }
+        
+        do {
+            let content = try await emailService.fetchMessageBody(
+                account: account,
+                folder: folder,
+                message: message
+            )
+            
+            var updated = message
+            updated.textBody = content.textBody ?? content.htmlBody?.strippingHTML()
+            updated.htmlBody = content.htmlBody
+            if updated.preview.isEmpty {
+                updated.preview = content.previewText
+            }
+            updated.isBodyLoaded = true
+            try await emailStore.updateMessage(updated)
+        } catch {
+            errorMessage = "加载正文失败: \(error.localizedDescription)"
+        }
     }
     
     /// 标记为已读

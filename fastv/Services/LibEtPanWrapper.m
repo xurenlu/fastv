@@ -261,73 +261,52 @@
         return encoded;
     }
     
-    // 检查是否包含 Modified UTF-7 编码标记（& 开头）
-    if (![encoded containsString:@"&"]) {
-        // 不包含编码标记，直接返回
+    if ([encoded rangeOfString:@"&"].location == NSNotFound) {
         return encoded;
     }
     
     NSMutableString *decoded = [NSMutableString string];
     NSUInteger length = encoded.length;
-    NSUInteger i = 0;
+    NSUInteger index = 0;
     
-    while (i < length) {
-        unichar ch = [encoded characterAtIndex:i];
-        
+    while (index < length) {
+        unichar ch = [encoded characterAtIndex:index];
         if (ch == '&') {
-            i++; // 跳过 &
-            
-            if (i < length && [encoded characterAtIndex:i] == '-') {
-                // "&-" 表示 "&"
+            index++;
+            if (index < length && [encoded characterAtIndex:index] == '-') {
                 [decoded appendString:@"&"];
-                i++; // 跳过 -
-            } else {
-                // 查找编码段的结束位置（-）
-                NSRange dashRange = [encoded rangeOfString:@"-" options:0 range:NSMakeRange(i, length - i)];
-                
-                if (dashRange.location != NSNotFound) {
-                    // 提取 Base64 编码部分
-                    NSRange encodedRange = NSMakeRange(i, dashRange.location - i);
-                    NSString *base64Part = [encoded substringWithRange:encodedRange];
-                    
-                    if (base64Part.length > 0) {
-                        // Modified UTF-7 使用 , 代替 /，需要转换回标准 Base64
-                        NSString *base64 = [base64Part stringByReplacingOccurrencesOfString:@"," withString:@"/"];
-                        
-                        // 添加必要的填充
-                        NSUInteger remainder = base64.length % 4;
-                        if (remainder > 0) {
-                            for (NSUInteger j = 0; j < (4 - remainder); j++) {
-                                base64 = [base64 stringByAppendingString:@"="];
-                            }
-                        }
-                        
-                        // Base64 解码
-                        NSData *data = [[NSData alloc] initWithBase64EncodedString:base64 options:0];
-                        if (data) {
-                            NSString *utf8String = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-                            if (utf8String) {
-                                [decoded appendString:utf8String];
-                            } else {
-                                // UTF-8 解码失败，保留原始编码
-                                [decoded appendFormat:@"&%@-", base64Part];
-                            }
-                        } else {
-                            // Base64 解码失败，保留原始编码
-                            [decoded appendFormat:@"&%@-", base64Part];
-                        }
-                    }
-                    
-                    i = dashRange.location + 1; // 跳过 -
-                } else {
-                    // 没有找到结束标记，可能是字符串结尾，保留原始字符
-                    [decoded appendString:@"&"];
+                index++;
+                continue;
+            }
+            
+            NSRange dashRange = [encoded rangeOfString:@"-" options:0 range:NSMakeRange(index, length - index)];
+            if (dashRange.location == NSNotFound) {
+                [decoded appendString:@"&"];
+                break;
+            }
+            
+            NSRange encodedRange = NSMakeRange(index, dashRange.location - index);
+            NSString *base64Part = [encoded substringWithRange:encodedRange];
+            NSString *base64 = [[base64Part stringByReplacingOccurrencesOfString:@"," withString:@"/"]
+                                stringByReplacingOccurrencesOfString:@" " withString:@""];
+            
+            NSUInteger remainder = base64.length % 4;
+            if (remainder > 0) {
+                base64 = [base64 stringByPaddingToLength:base64.length + (4 - remainder) withString:@"=" startingAtIndex:0];
+            }
+            
+            NSData *data = [[NSData alloc] initWithBase64EncodedString:base64 options:0];
+            if (data) {
+                NSString *utf16String = [[NSString alloc] initWithData:data encoding:NSUTF16BigEndianStringEncoding];
+                if (utf16String) {
+                    [decoded appendString:utf16String];
                 }
             }
+            
+            index = dashRange.location + 1;
         } else {
-            // 普通字符
             [decoded appendFormat:@"%C", ch];
-            i++;
+            index++;
         }
     }
     
@@ -712,42 +691,33 @@
     }
     
     NSMutableString *encoded = [NSMutableString string];
-    NSData *utf8Data = [folderName dataUsingEncoding:NSUTF8StringEncoding];
+    NSMutableString *nonAsciiBuffer = [NSMutableString string];
     
-    NSUInteger i = 0;
-    while (i < utf8Data.length) {
-        unsigned char byte = ((unsigned char *)utf8Data.bytes)[i];
-        
-        // ASCII 字符（0x20-0x7E，除了 &）直接使用
-        if (byte >= 0x20 && byte <= 0x7E && byte != '&') {
-            [encoded appendFormat:@"%c", byte];
-            i++;
-        } else if (byte == '&') {
-            // & 用 &- 表示
-            [encoded appendString:@"&-"];
-            i++;
-        } else {
-            // 非 ASCII 字符，需要 Base64 编码
-            NSMutableData *nonAsciiData = [NSMutableData data];
-            while (i < utf8Data.length) {
-                byte = ((unsigned char *)utf8Data.bytes)[i];
-                if (byte >= 0x20 && byte <= 0x7E && byte != '&') {
-                    break; // 遇到 ASCII 字符，停止
-                }
-                [nonAsciiData appendBytes:&byte length:1];
-                i++;
+    void (^flushBuffer)(void) = ^{
+        if (nonAsciiBuffer.length == 0) { return; }
+        NSData *utf16Data = [nonAsciiBuffer dataUsingEncoding:NSUTF16BigEndianStringEncoding];
+        NSString *base64 = [utf16Data base64EncodedStringWithOptions:0];
+        base64 = [base64 stringByReplacingOccurrencesOfString:@"/" withString:@","];
+        base64 = [base64 stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"="]];
+        [encoded appendFormat:@"&%@-", base64];
+        [nonAsciiBuffer setString:@""];
+    };
+    
+    for (NSUInteger i = 0; i < folderName.length; i++) {
+        unichar ch = [folderName characterAtIndex:i];
+        if (ch >= 0x20 && ch <= 0x7E) {
+            flushBuffer();
+            if (ch == '&') {
+                [encoded appendString:@"&-"];
+            } else {
+                [encoded appendFormat:@"%C", ch];
             }
-            
-            // Base64 编码，使用 , 代替 /
-            NSString *base64 = [nonAsciiData base64EncodedStringWithOptions:0];
-            base64 = [base64 stringByReplacingOccurrencesOfString:@"/" withString:@","];
-            // 移除填充的 =
-            base64 = [base64 stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"="]];
-            
-            [encoded appendFormat:@"&%@-", base64];
+        } else {
+            [nonAsciiBuffer appendFormat:@"%C", ch];
         }
     }
     
+    flushBuffer();
     return encoded;
 }
 
@@ -1203,42 +1173,33 @@
     }
     
     NSMutableString *encoded = [NSMutableString string];
-    NSData *utf8Data = [folderName dataUsingEncoding:NSUTF8StringEncoding];
+    NSMutableString *buffer = [NSMutableString string];
     
-    NSUInteger i = 0;
-    while (i < utf8Data.length) {
-        unsigned char byte = ((unsigned char *)utf8Data.bytes)[i];
-        
-        // ASCII 字符（0x20-0x7E，除了 &）直接使用
-        if (byte >= 0x20 && byte <= 0x7E && byte != '&') {
-            [encoded appendFormat:@"%c", byte];
-            i++;
-        } else if (byte == '&') {
-            // & 用 &- 表示
-            [encoded appendString:@"&-"];
-            i++;
-        } else {
-            // 非 ASCII 字符，需要 Base64 编码
-            NSMutableData *nonAsciiData = [NSMutableData data];
-            while (i < utf8Data.length) {
-                byte = ((unsigned char *)utf8Data.bytes)[i];
-                if (byte >= 0x20 && byte <= 0x7E && byte != '&') {
-                    break; // 遇到 ASCII 字符，停止
-                }
-                [nonAsciiData appendBytes:&byte length:1];
-                i++;
+    void (^flushBuffer)(void) = ^{
+        if (buffer.length == 0) { return; }
+        NSData *utf16Data = [buffer dataUsingEncoding:NSUTF16BigEndianStringEncoding];
+        NSString *base64 = [utf16Data base64EncodedStringWithOptions:0];
+        base64 = [base64 stringByReplacingOccurrencesOfString:@"/" withString:@","];
+        base64 = [base64 stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"="]];
+        [encoded appendFormat:@"&%@-", base64];
+        [buffer setString:@""];
+    };
+    
+    for (NSUInteger i = 0; i < folderName.length; i++) {
+        unichar ch = [folderName characterAtIndex:i];
+        if (ch >= 0x20 && ch <= 0x7E) {
+            flushBuffer();
+            if (ch == '&') {
+                [encoded appendString:@"&-"];
+            } else {
+                [encoded appendFormat:@"%C", ch];
             }
-            
-            // Base64 编码，使用 , 代替 /
-            NSString *base64 = [nonAsciiData base64EncodedStringWithOptions:0];
-            base64 = [base64 stringByReplacingOccurrencesOfString:@"/" withString:@","];
-            // 移除填充的 =
-            base64 = [base64 stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"="]];
-            
-            [encoded appendFormat:@"&%@-", base64];
+        } else {
+            [buffer appendFormat:@"%C", ch];
         }
     }
     
+    flushBuffer();
     return encoded;
 }
 
