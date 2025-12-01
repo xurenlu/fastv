@@ -383,6 +383,7 @@ class EmailStore: ObservableObject {
             }
             
             messages[folderId] = loaded
+            objectWillChange.send()
         } catch {
             print("❌ [EmailStore] 加载邮件失败: \(error)")
         }

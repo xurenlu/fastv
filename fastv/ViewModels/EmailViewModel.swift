@@ -376,6 +376,12 @@ class EmailViewModel: ObservableObject {
         updateMessagesFromStore()
     }
     
+    private func replaceMessageInList(with updated: EmailMessage) {
+        if let index = messages.firstIndex(where: { $0.id == updated.id }) {
+            messages[index] = updated
+        }
+    }
+    
     /// 选择邮件
     func selectMessage(_ message: EmailMessage) {
         selectedMessageId = message.id
@@ -463,6 +469,11 @@ class EmailViewModel: ObservableObject {
                 updated.preview = content.previewText
             }
             updated.isBodyLoaded = true
+            
+            await MainActor.run {
+                self.replaceMessageInList(with: updated)
+            }
+            
             try await emailStore.updateMessage(updated)
         } catch {
             errorMessage = "加载正文失败: \(error.localizedDescription)"
