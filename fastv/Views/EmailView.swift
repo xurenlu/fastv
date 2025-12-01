@@ -200,9 +200,15 @@ struct EmailView: View {
                             .buttonStyle(.plain)
                             .contentShape(Rectangle())
                             
-                            Label("所有邮件", systemImage: "tray.full")
-                                .tag(Optional<UUID>.none)
-                                .contentShape(Rectangle())
+                            HStack {
+                                Image(systemName: "tray.full")
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 20)
+                                Text("所有邮件")
+                                Spacer()
+                            }
+                            .contentShape(Rectangle())
+                            .tag(nil as UUID?)
                         }
                         ForEach(visibleFolders) { folder in
                             FolderRow(folder: folder)
@@ -399,23 +405,25 @@ struct EmailView: View {
                     
                     Divider()
                     
-                    // 邮件正文 - 增强卡片质感
+                    // 外部资源加载提示 - 移到正文最前面
+                    if message.containsRemoteResources && 
+                       !viewModel.showImages &&
+                       EmailImageDisplayPreferences.shared.shouldShowImages(for: message.from) == nil {
+                        remoteResourcesBanner(message: message)
+                    }
+                    
+                    // 邮件正文 - 使用 WKWebView 渲染，提供完整的 HTML/CSS 支持
                     Group {
-                        if let htmlBody = message.htmlBody,
-                           let attributed = htmlBody.toAttributedHTML() {
-                            Text(attributed)
-                                .textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(Color.white)
+                        if let htmlBody = message.htmlBody, !htmlBody.isEmpty {
+                            EmailBodyWebView(htmlBody: htmlBody, textBody: message.textBody, showImages: viewModel.showImages)
                         } else if let textBody = message.textBody, !textBody.isEmpty {
                             Text(textBody)
-                                .font(.system(size: 16)) // 匹配 HTML 注入的 16px
-                                .lineSpacing(6) // 匹配 line-height: 1.5
-                                .foregroundStyle(Color(red: 29/255, green: 29/255, blue: 31/255)) // Apple 文字黑 #1d1d1f
+                                .font(.system(size: 16))
+                                .lineSpacing(6)
+                                .foregroundStyle(Color(red: 29/255, green: 29/255, blue: 31/255))
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(20) // 匹配 CSS 中的 content-wrapper padding
-                                .background(Color.white)
+                                .padding(20)
                         } else {
                             Text(message.preview)
                                 .font(.system(size: 16))
@@ -423,7 +431,6 @@ struct EmailView: View {
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(20)
-                                .background(Color.white)
                         }
                     }
                     .background(Color.white)
@@ -441,11 +448,6 @@ struct EmailView: View {
                         (message.htmlBody?.isEmpty ?? true) {
                         ProgressView("正在加载正文...")
                             .padding(.vertical, 8)
-                    }
-                    
-                    // 外部资源加载提示
-                    if message.containsRemoteResources && !viewModel.showImages {
-                        remoteResourcesBanner(message: message)
                     }
                     
                     // 附件列表（始终显示，如果有附件）
@@ -638,24 +640,67 @@ struct EmailView: View {
     }
     
     private func remoteResourcesBanner(message: EmailMessage) -> some View {
-        HStack {
-            Image(systemName: "photo")
-                .foregroundStyle(.secondary)
-            Text("此邮件包含外部图片或资源")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Button(action: {
-                viewModel.showImages = true
-            }) {
-                Text("加载外部资源")
-                    .font(.subheadline)
+        RemoteResourcesBannerView(message: message, viewModel: viewModel)
+    }
+    
+    // MARK: - Remote Resources Banner View
+    private struct RemoteResourcesBannerView: View {
+    let message: EmailMessage
+    @ObservedObject var viewModel: EmailViewModel
+    @State private var rememberChoice = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: "photo.fill")
+                    .foregroundStyle(.blue)
+                    .font(.title3)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("此邮件包含外部图片")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+                    
+                    Text("为了保护您的隐私，图片默认不显示")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                Button(action: {
+                    viewModel.updateImageDisplayPreference(
+                        for: message,
+                        show: true,
+                        remember: rememberChoice
+                    )
+                }) {
+                    Text("显示图片")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                }
+                .buttonStyle(.borderedProminent)
             }
-            .buttonStyle(.borderedProminent)
+            
+            Toggle(isOn: $rememberChoice) {
+                Text("记住此选择（按发件人邮箱和域名）")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .toggleStyle(.checkbox)
         }
-        .padding()
-        .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(NSColor.controlBackgroundColor))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                }
+        }
+        .padding(.bottom, 8)
+    }
     }
     
     private func attachmentsView(attachments: [EmailAttachment]) -> some View {

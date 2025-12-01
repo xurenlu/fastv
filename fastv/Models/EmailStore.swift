@@ -164,55 +164,71 @@ class EmailStore: ObservableObject {
     
     /// 添加邮件（批量，增量更新）
     func addMessages(_ newMessages: [EmailMessage], folderId: UUID) async throws {
-        var existingMessages = messages[folderId] ?? []
+        // 由于 @MainActor，这里已经在主线程，但我们可以将耗时操作移到后台
+        let existingMessages = messages[folderId] ?? []
         var updatedMessages: [EmailMessage] = []
         var hasNewMessages = false
         
-        // 先更新内存,立即更新UI(不等待数据库写入)
-            for message in newMessages {
-                if let existingIndex = existingMessages.firstIndex(where: { $0.uid == message.uid }) {
-                    let existing = existingMessages[existingIndex]
-                    var updated = message
-                    if existing.isBodyLoaded {
-                        updated.textBody = existing.textBody
-                        updated.htmlBody = existing.htmlBody
-                        updated.isBodyLoaded = true
-                        updated.bodyCachedAt = existing.bodyCachedAt // 保留缓存时间
-                    }
-                    updatedMessages.append(updated)
-                    existingMessages[existingIndex] = updated
-                } else {
-                    updatedMessages.append(message)
-                    existingMessages.append(message)
-                    hasNewMessages = true
+        // 快速合并邮件（在主线程，但操作很快）
+        var workingMessages = existingMessages
+        for message in newMessages {
+            if let existingIndex = workingMessages.firstIndex(where: { $0.uid == message.uid }) {
+                let existing = workingMessages[existingIndex]
+                var updated = message
+                if existing.isBodyLoaded {
+                    updated.textBody = existing.textBody
+                    updated.htmlBody = existing.htmlBody
+                    updated.isBodyLoaded = true
+                    updated.bodyCachedAt = existing.bodyCachedAt // 保留缓存时间
+                }
+                updatedMessages.append(updated)
+                workingMessages[existingIndex] = updated
+            } else {
+                updatedMessages.append(message)
+                workingMessages.append(message)
+                hasNewMessages = true
             }
         }
         
         // 统一在后台线程排序（无论数据量大小，确保零卡顿）
-        print("📊 [EmailStore] 开始后台排序，数量: \(existingMessages.count)封")
+        print("📊 [EmailStore] 开始后台排序，数量: \(workingMessages.count)封")
         
-        Task.detached(priority: .userInitiated) { [weak self] in
-            guard let self = self else { return }
-            var sorted = existingMessages
+        // 在后台线程排序，然后回到主线程更新
+        let sortedMessages = await Task.detached(priority: .userInitiated) {
+            var sorted = workingMessages
             sorted.sort { $0.date > $1.date }
-            
-            await MainActor.run {
-                self.messages[folderId] = sorted
-                self.notifyChange()
-                print("✅ [EmailStore] 后台排序完成，通知UI更新")
-            }
-        }
+            return sorted
+        }.value
+        
+        // 在主线程更新 @Published 属性
+        self.messages[folderId] = sortedMessages
+        self.notifyChange()
+        print("✅ [EmailStore] 后台排序完成，通知UI更新")
         
         // 在后台线程异步写入数据库(不阻塞UI)
         Task.detached(priority: .background) { [weak self] in
             guard let self = self else { return }
             do {
+                // 应用规则引擎处理邮件
+                let ruleEngine = EmailRuleEngine.shared
+                var processedMessages: [EmailMessage] = []
+                
+                for message in updatedMessages {
+                    // 只对新邮件应用规则（避免重复处理）
+                    if hasNewMessages {
+                        let processed = await ruleEngine.processMessage(message)
+                        processedMessages.append(processed)
+                    } else {
+                        processedMessages.append(message)
+                    }
+                }
+                
                 try await self.database.asyncWrite { db in
-                    for message in updatedMessages {
+                    for message in processedMessages {
                         try self.saveMessage(message, db: db)
                     }
                 }
-                print("✅ [EmailStore] 后台保存了 \(updatedMessages.count) 封邮件到数据库")
+                print("✅ [EmailStore] 后台保存了 \(processedMessages.count) 封邮件到数据库（已应用规则引擎）")
             } catch {
                 print("❌ [EmailStore] 后台保存邮件失败: \(error)")
             }
@@ -230,7 +246,11 @@ class EmailStore: ObservableObject {
            let index = folderMessages.firstIndex(where: { $0.id == message.id }) {
             folderMessages[index] = updated
             messages[folderId] = folderMessages
+            let hasBody = updated.isBodyLoaded || (updated.textBody?.isEmpty == false) || (updated.htmlBody?.isEmpty == false)
+            print("✅ [EmailStore] 更新内存中的邮件: \(updated.subject), folderId=\(folderId), hasBody=\(hasBody), htmlBody长度=\(updated.htmlBody?.count ?? 0)")
             notifyChange()
+        } else {
+            print("⚠️ [EmailStore] 无法更新邮件（未找到）: \(updated.subject), folderId=\(message.folderId?.uuidString ?? "nil")")
         }
         
         // 后台异步写入数据库

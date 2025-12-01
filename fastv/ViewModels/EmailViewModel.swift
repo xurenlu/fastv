@@ -63,6 +63,7 @@ class EmailViewModel: ObservableObject {
     private let emailAIService = EmailAIService.shared
     private let notificationService = EmailNotificationService.shared
     private let preferences = UserPreferences.shared
+    private let imageDisplayPreferences = EmailImageDisplayPreferences.shared
     private var cancellables = Set<AnyCancellable>()
     
     // 防抖机制：避免短时间内多次排序
@@ -163,6 +164,26 @@ class EmailViewModel: ObservableObject {
                     if await self.selectedAccountId != nil {
                         await self.loadInitialData()
                     }
+                }
+            }
+            .store(in: &cancellables)
+        
+        // 监听选中邮件变化，自动更新图片显示偏好
+        $selectedMessageId
+            .sink { [weak self] messageId in
+                guard let self = self else { return }
+                if let messageId = messageId,
+                   let message = self.messages.first(where: { $0.id == messageId }) {
+                    // 检查是否有记住的偏好设置
+                    if let shouldShow = self.imageDisplayPreferences.shouldShowImages(for: message.from) {
+                        self.showImages = shouldShow
+                    } else {
+                        // 没有记住的偏好，使用全局设置
+                        self.showImages = self.preferences.emailShowImages
+                    }
+                } else {
+                    // 没有选中邮件，使用全局设置
+                    self.showImages = self.preferences.emailShowImages
                 }
             }
             .store(in: &cancellables)
@@ -275,66 +296,81 @@ class EmailViewModel: ObservableObject {
         let allMessages = emailStore.messages[folderId] ?? []
         let currentPageValue = currentPage
         let pageSizeValue = pageSize
-        let existingMessages = messages
         
         // 统一在后台线程处理排序（无论数据量大小，确保零卡顿）
         print("📊 [EmailViewModel] 开始后台处理邮件，数量: \(allMessages.count)")
         let sortStart = Date()
         
-        let result = await Task.detached(priority: .userInitiated) {
+        let processedMessages = await Task.detached(priority: .userInitiated) {
             // 排序
             let sorted = allMessages.sorted { $0.date > $1.date }
             let endIndex = min((currentPageValue + 1) * pageSizeValue, sorted.count)
-            var newMessages = Array(sorted.prefix(endIndex))
-            
-            // 保留已加载正文的邮件
-            for (index, newMsg) in newMessages.enumerated() {
-                if let existingMsg = existingMessages.first(where: { $0.id == newMsg.id }),
-                   existingMsg.isBodyLoaded && !newMsg.isBodyLoaded {
-                    var merged = newMsg
-                    merged.textBody = existingMsg.textBody
-                    merged.htmlBody = existingMsg.htmlBody
-                    merged.isBodyLoaded = true
-                    merged.bodyCachedAt = existingMsg.bodyCachedAt // 保留缓存时间
-                    newMessages[index] = merged
-                }
-            }
+            let newMessages = Array(sorted.prefix(endIndex))
             return (messages: newMessages, hasMore: sorted.count > endIndex)
         }.value
         
         let sortElapsed = Date().timeIntervalSince(sortStart)
-        print("📊 [EmailViewModel] 后台处理完成，耗时: \(String(format: "%.3f", sortElapsed * 1000))ms，结果: \(result.messages.count)封")
+        print("📊 [EmailViewModel] 后台处理完成，耗时: \(String(format: "%.3f", sortElapsed * 1000))ms，结果: \(processedMessages.messages.count)封")
         
-        // 更新UI
-        messages = result.messages
-        hasMoreMessages = result.hasMore
+        // 在主线程更新 UI，同时保留已加载的正文数据
+        // 重要：在这里读取最新的 messages，而不是方法开始时的快照
+        let existingMessages = messages
+        var finalMessages = processedMessages.messages
+        
+        // 保留已加载正文的邮件（优先使用 ViewModel 中已有的正文数据）
+        for (index, newMsg) in finalMessages.enumerated() {
+            if let existingMsg = existingMessages.first(where: { $0.id == newMsg.id }) {
+                // 检查 ViewModel 中是否有正文数据
+                let existingHasTextBody = existingMsg.textBody?.isEmpty == false
+                let existingHasHtmlBody = existingMsg.htmlBody?.isEmpty == false
+                let existingHasBody = existingMsg.isBodyLoaded || existingHasTextBody || existingHasHtmlBody
+                
+                // 检查 Store 中是否有正文数据
+                let newHasTextBody = newMsg.textBody?.isEmpty == false
+                let newHasHtmlBody = newMsg.htmlBody?.isEmpty == false
+                let newHasBody = newMsg.isBodyLoaded || newHasTextBody || newHasHtmlBody
+                
+                // 如果 ViewModel 中有正文但 Store 中没有，保留 ViewModel 的数据
+                if existingHasBody && !newHasBody {
+                    var merged = newMsg
+                    merged.textBody = existingMsg.textBody
+                    merged.htmlBody = existingMsg.htmlBody
+                    merged.isBodyLoaded = true
+                    merged.bodyCachedAt = existingMsg.bodyCachedAt
+                    merged.containsRemoteResources = existingMsg.containsRemoteResources
+                    merged.preview = existingMsg.preview.isEmpty ? newMsg.preview : existingMsg.preview
+                    finalMessages[index] = merged
+                    print("🔄 [EmailViewModel] 保留邮件正文: \(merged.subject)")
+                }
+            }
+        }
+        
+        messages = finalMessages
+        hasMoreMessages = processedMessages.hasMore
     }
     
     /// 更新所有文件夹的邮件（完全异步）
     private func updateMessagesForAllFolders() async {
-        // 快速读取必要数据
-        let accountId = await MainActor.run { selectedAccountId }
-        let currentPageValue = await MainActor.run { currentPage }
-        let pageSizeValue = await MainActor.run { pageSize }
-        let existingMessages = await MainActor.run { messages }
+        // 快速读取必要数据（注意：这里已经在 MainActor 上下文中）
+        let accountId = selectedAccountId
+        let currentPageValue = currentPage
+        let pageSizeValue = pageSize
         
         guard let accountId = accountId else {
-            await MainActor.run {
-                messages = []
-                hasMoreMessages = false
-            }
+            messages = []
+            hasMoreMessages = false
             return
         }
         
-        // 读取文件夹和邮件（在主线程快速读取引用）
-        let foldersForAccount = await MainActor.run { emailStore.getFolders(for: accountId) }
-        let allFolderMessages = await MainActor.run { emailStore.messages }
+        // 读取文件夹和邮件
+        let foldersForAccount = emailStore.getFolders(for: accountId)
+        let allFolderMessages = emailStore.messages
         
         print("📊 [EmailViewModel] 开始合并所有文件夹的邮件，文件夹数: \(foldersForAccount.count)")
         let mergeStart = Date()
         
-        // 全部在后台线程处理（合并、排序）
-        let result = await Task.detached(priority: .userInitiated) {
+        // 在后台线程处理合并和排序
+        let processedMessages = await Task.detached(priority: .userInitiated) {
             // 合并所有文件夹的邮件
             var combined: [EmailMessage] = []
             for folder in foldersForAccount {
@@ -346,31 +382,64 @@ class EmailViewModel: ObservableObject {
             // 排序
             let sorted = combined.sorted { $0.date > $1.date }
             let endIndex = min((currentPageValue + 1) * pageSizeValue, sorted.count)
-            var newMessages = Array(sorted.prefix(endIndex))
+            let newMessages = Array(sorted.prefix(endIndex))
             
-            // 保留已加载正文的邮件
-            for (index, newMsg) in newMessages.enumerated() {
-                if let existingMsg = existingMessages.first(where: { $0.id == newMsg.id }),
-                   existingMsg.isBodyLoaded && !newMsg.isBodyLoaded {
-                    var merged = newMsg
-                    merged.textBody = existingMsg.textBody
-                    merged.htmlBody = existingMsg.htmlBody
-                    merged.isBodyLoaded = true
-                    merged.bodyCachedAt = existingMsg.bodyCachedAt // 保留缓存时间
-                    newMessages[index] = merged
-                }
+            // 检查合并后的邮件是否有正文
+            let messagesWithBody = newMessages.filter { msg in
+                msg.isBodyLoaded || (msg.textBody?.isEmpty == false) || (msg.htmlBody?.isEmpty == false)
             }
+            print("📊 [EmailViewModel-AllFolders] 合并后邮件统计: 总数=\(newMessages.count), 有正文=\(messagesWithBody.count)")
+            
             return (messages: newMessages, hasMore: sorted.count > endIndex, totalCount: combined.count)
         }.value
         
         let mergeElapsed = Date().timeIntervalSince(mergeStart)
-        print("📊 [EmailViewModel] 邮件合并完成，总计: \(result.totalCount)封，耗时: \(String(format: "%.3f", mergeElapsed * 1000))ms")
+        print("📊 [EmailViewModel] 邮件合并完成，总计: \(processedMessages.totalCount)封，耗时: \(String(format: "%.3f", mergeElapsed * 1000))ms")
         
-        // 更新UI
-        await MainActor.run {
-            messages = result.messages
-            hasMoreMessages = result.hasMore
+        // 在主线程更新 UI，同时保留已加载的正文数据
+        // 重要：在这里读取最新的 messages，而不是方法开始时的快照
+        let existingMessages = messages
+        var finalMessages = processedMessages.messages
+        
+        // 检查当前选中的邮件状态
+        if let selectedId = selectedMessageId {
+            let existingSelected = existingMessages.first(where: { $0.id == selectedId })
+            let newSelected = finalMessages.first(where: { $0.id == selectedId })
+            let existingHasBody = existingSelected?.isBodyLoaded == true || (existingSelected?.textBody?.isEmpty == false) || (existingSelected?.htmlBody?.isEmpty == false)
+            let newHasBody = newSelected?.isBodyLoaded == true || (newSelected?.textBody?.isEmpty == false) || (newSelected?.htmlBody?.isEmpty == false)
+            print("📋 [EmailViewModel-AllFolders] 选中邮件检查: existingHasBody=\(existingHasBody), newHasBody=\(newHasBody)")
         }
+        
+        // 保留已加载正文的邮件（优先使用 ViewModel 中已有的正文数据）
+        for (index, newMsg) in finalMessages.enumerated() {
+            if let existingMsg = existingMessages.first(where: { $0.id == newMsg.id }) {
+                // 检查 ViewModel 中是否有正文数据
+                let existingHasTextBody = existingMsg.textBody?.isEmpty == false
+                let existingHasHtmlBody = existingMsg.htmlBody?.isEmpty == false
+                let existingHasBody = existingMsg.isBodyLoaded || existingHasTextBody || existingHasHtmlBody
+                
+                // 检查 Store 中是否有正文数据
+                let newHasTextBody = newMsg.textBody?.isEmpty == false
+                let newHasHtmlBody = newMsg.htmlBody?.isEmpty == false
+                let newHasBody = newMsg.isBodyLoaded || newHasTextBody || newHasHtmlBody
+                
+                // 如果 ViewModel 中有正文但 Store 中没有，保留 ViewModel 的数据
+                if existingHasBody && !newHasBody {
+                    var merged = newMsg
+                    merged.textBody = existingMsg.textBody
+                    merged.htmlBody = existingMsg.htmlBody
+                    merged.isBodyLoaded = true
+                    merged.bodyCachedAt = existingMsg.bodyCachedAt
+                    merged.containsRemoteResources = existingMsg.containsRemoteResources
+                    merged.preview = existingMsg.preview.isEmpty ? newMsg.preview : existingMsg.preview
+                    finalMessages[index] = merged
+                    print("🔄 [EmailViewModel-AllFolders] 保留邮件正文: \(merged.subject)")
+                }
+            }
+        }
+        
+        messages = finalMessages
+        hasMoreMessages = processedMessages.hasMore
     }
     
     private func aggregatedMessagesForCurrentAccount() -> [EmailMessage] {
@@ -483,6 +552,7 @@ class EmailViewModel: ObservableObject {
         
         let shouldAffectUI = affectsCurrentList && folderIdOverride == nil
         
+        // 在主线程更新 UI 状态
         if loadMore {
             isLoadingMore = true
             currentPage += 1
@@ -508,13 +578,16 @@ class EmailViewModel: ObservableObject {
             print("📥 [EmailViewModel] 开始同步邮件: \(folder.name), limit: \(pageSize)")
             let startTime = Date()
             
-            let fetched = try await emailService.syncMessages(
-                account: account,
-                folder: folder,
-                since: sinceDate,
-                limit: pageSize,
-                batchSize: 10
-            )
+            // 在后台线程执行网络请求，避免阻塞 UI
+            let fetched = try await Task.detached(priority: .userInitiated) { [emailService, account, folder, sinceDate, pageSize] in
+                return try await emailService.syncMessages(
+                    account: account,
+                    folder: folder,
+                    since: sinceDate,
+                    limit: pageSize,
+                    batchSize: 10
+                )
+            }.value
             
             let elapsed = Date().timeIntervalSince(startTime)
             print("⏱️ [EmailViewModel] 同步完成，耗时: \(String(format: "%.2f", elapsed))秒, 获取: \(fetched.count)封")
@@ -523,6 +596,7 @@ class EmailViewModel: ObservableObject {
                 print("💾 [EmailViewModel] 开始保存 \(fetched.count) 封邮件到Store...")
                 let saveStartTime = Date()
                 
+                // addMessages 内部已经使用 Task.detached 后台保存，这里只是触发
                 try await emailStore.addMessages(fetched, folderId: folderId)
                 
                 let saveElapsed = Date().timeIntervalSince(saveStartTime)
@@ -666,6 +740,8 @@ class EmailViewModel: ObservableObject {
     
     private func replaceMessageInList(with updated: EmailMessage) {
         if let index = messages.firstIndex(where: { $0.id == updated.id }) {
+            let hasBody = updated.isBodyLoaded || (updated.textBody?.isEmpty == false) || (updated.htmlBody?.isEmpty == false)
+            print("🔄 [EmailViewModel] replaceMessageInList: \(updated.subject), hasBody=\(hasBody), htmlBody长度=\(updated.htmlBody?.count ?? 0)")
             messages[index] = updated
         }
     }
@@ -702,18 +778,25 @@ class EmailViewModel: ObservableObject {
             // 加载正文（如果未加载或没有内容）
             let hasTextBody = currentMessage.textBody?.isEmpty == false
             let hasHtmlBody = currentMessage.htmlBody?.isEmpty == false
-            if !currentMessage.isBodyLoaded || (!hasTextBody && !hasHtmlBody) {
-                Task {
-                    await self.loadMessageBody(currentMessage)
-                }
-            }
+            let needsBodyLoad = !currentMessage.isBodyLoaded || (!hasTextBody && !hasHtmlBody)
             
             // 触发AI分析（如果启用任何AI功能，且还没有AI结果）
             let needsAIAnalysis = (self.preferences.emailAISmartTaggingEnabled && currentMessage.aiTags.isEmpty) ||
                                   (self.preferences.emailAISummaryEnabled && currentMessage.aiSummary == nil) ||
                                   (self.preferences.emailAIPriorityDetectionEnabled && currentMessage.aiPriority == nil)
             
-            if needsAIAnalysis {
+            // 如果需要加载正文，先加载正文，然后再进行 AI 分析
+            if needsBodyLoad {
+                Task {
+                    await self.loadMessageBody(currentMessage)
+                    
+                    // 正文加载完成后，如果需要 AI 分析，再执行
+                    if needsAIAnalysis {
+                        await self.analyzeMessageWithAI(currentMessage)
+                    }
+                }
+            } else if needsAIAnalysis {
+                // 如果不需要加载正文，直接进行 AI 分析
                 Task {
                     await self.analyzeMessageWithAI(currentMessage)
                 }
@@ -834,7 +917,8 @@ class EmailViewModel: ObservableObject {
             print("📧 [EmailViewModel] 邮件正文获取成功: textBody=\(content.textBody?.prefix(100) ?? "nil"), htmlBody=\(content.htmlBody?.prefix(100) ?? "nil")")
             
             var updated = message
-            updated.textBody = content.textBody ?? content.htmlBody?.strippingHTML()
+            // 如果有 textBody 直接使用，否则暂时使用空字符串（避免在主线程解析大型 HTML）
+            updated.textBody = content.textBody ?? ""
             updated.htmlBody = content.htmlBody
             updated.containsRemoteResources = content.containsRemoteResources
             if updated.preview.isEmpty {
@@ -843,14 +927,30 @@ class EmailViewModel: ObservableObject {
             updated.isBodyLoaded = true
             updated.bodyCachedAt = Date() // 记录缓存时间
             
-            // 立即更新UI
+            // 立即更新UI（使用 htmlBody 渲染，不需要等待 textBody）
             replaceMessageInList(with: updated)
+            print("📝 [EmailViewModel] 已更新 ViewModel 邮件列表，邮件: \(updated.subject), folderId: \(updated.folderId?.uuidString ?? "nil")")
             
-            // 后台保存到数据库
+            // 如果没有 textBody，在后台线程从 HTML 提取纯文本（用于搜索等功能）
+            if content.textBody == nil, let htmlBody = content.htmlBody, !htmlBody.isEmpty {
+                Task.detached(priority: .background) { [weak self] in
+                    guard let self = self else { return }
+                    let plainText = htmlBody.strippingHTML()
+                    await MainActor.run {
+                        // 更新 textBody（用于搜索）
+                        if var msg = self.messages.first(where: { $0.id == updated.id }) {
+                            msg.textBody = plainText
+                            self.replaceMessageInList(with: msg)
+                        }
+                    }
+                }
+            }
+            
+            // 后台保存到数据库和 EmailStore
             Task(priority: .background) {
                 do {
                     try await self.emailStore.updateMessage(updated)
-                    print("✅ [EmailViewModel] 邮件正文已保存到数据库")
+                    print("✅ [EmailViewModel] 邮件正文已保存到数据库和 EmailStore，folderId: \(updated.folderId?.uuidString ?? "nil")")
                 } catch {
                     print("⚠️ [EmailViewModel] 更新邮件正文缓存失败: \(error)")
                 }
@@ -1014,25 +1114,32 @@ class EmailViewModel: ObservableObject {
     /// 使用AI分析邮件
     func analyzeMessageWithAI(_ message: EmailMessage) async {
         do {
-            var updated = message
+            // 重要：从当前列表获取最新的邮件（可能已经加载了正文）
+            // 避免用旧的邮件覆盖新的正文数据
+            let currentMessage = messages.first(where: { $0.id == message.id }) ?? message
+            var updated = currentMessage
+            
+            print("🤖 [EmailViewModel] AI分析邮件: \(updated.subject), hasBody=\(updated.isBodyLoaded), htmlBody长度=\(updated.htmlBody?.count ?? 0)")
             
             // 生成标签（如果启用）
             if preferences.emailAISmartTaggingEnabled {
-                let tags = try await emailAIService.generateSmartTags(for: message)
+                let tags = try await emailAIService.generateSmartTags(for: currentMessage)
                 updated.aiTags = tags
             }
             
             // 检测优先级（如果启用）
             if preferences.emailAIPriorityDetectionEnabled {
-                let priority = try await emailAIService.detectPriority(for: message)
+                let priority = try await emailAIService.detectPriority(for: currentMessage)
                 updated.aiPriority = priority
             }
             
             // 生成摘要（如果启用）
             if preferences.emailAISummaryEnabled {
-                let summary = try await emailAIService.generateSummary(for: message)
+                let summary = try await emailAIService.generateSummary(for: currentMessage)
                 updated.aiSummary = summary
             }
+            
+            print("🤖 [EmailViewModel] AI分析完成，更新邮件: hasBody=\(updated.isBodyLoaded), htmlBody长度=\(updated.htmlBody?.count ?? 0)")
             
             try await emailStore.updateMessage(updated)
             
@@ -1370,6 +1477,23 @@ class EmailViewModel: ObservableObject {
         } catch {
             errorMessage = "打开附件失败: \(error.localizedDescription)"
             print("❌ [EmailViewModel] 预览附件失败: \(error)")
+        }
+    }
+    
+    // MARK: - Image Display Preferences
+    
+    /// 更新图片显示偏好
+    /// - Parameters:
+    ///   - message: 邮件消息
+    ///   - show: 是否显示图片
+    ///   - remember: 是否记住此选择
+    func updateImageDisplayPreference(for message: EmailMessage, show: Bool, remember: Bool) {
+        imageDisplayPreferences.setShowImages(show, for: message.from, remember: remember)
+        showImages = show
+        
+        // 如果记住，也更新全局设置（作为默认值）
+        if remember {
+            preferences.emailShowImages = show
         }
     }
     
