@@ -37,6 +37,9 @@ struct EmailMessage: Identifiable, Codable {
     var isImportant: Bool
     var isNoReply: Bool // 是否no-reply地址
     var hasAttachments: Bool
+    var isSpam: Bool // 是否标记为垃圾邮件
+    var isDeleted: Bool // 是否已删除
+    var containsRemoteResources: Bool // 是否包含外部资源（图片、CSS等）
     
     // 标签和分类
     var tags: [String]
@@ -53,6 +56,9 @@ struct EmailMessage: Identifiable, Codable {
     
     // 正文是否已加载（懒加载）
     var isBodyLoaded: Bool
+    
+    // 正文缓存时间（用于过期检查）
+    var bodyCachedAt: Date?
     
     init(
         id: UUID = UUID(),
@@ -77,6 +83,9 @@ struct EmailMessage: Identifiable, Codable {
         isImportant: Bool = false,
         isNoReply: Bool = false,
         hasAttachments: Bool = false,
+        isSpam: Bool = false,
+        isDeleted: Bool = false,
+        containsRemoteResources: Bool = false,
         tags: [String] = [],
         aiTags: [String] = [],
         aiSummary: String? = nil,
@@ -84,7 +93,8 @@ struct EmailMessage: Identifiable, Codable {
         attachments: [EmailAttachment] = [],
         syncedAt: Date = Date(),
         updatedAt: Date = Date(),
-        isBodyLoaded: Bool = false
+        isBodyLoaded: Bool = false,
+        bodyCachedAt: Date? = nil
     ) {
         self.id = id
         self.accountId = accountId
@@ -108,6 +118,9 @@ struct EmailMessage: Identifiable, Codable {
         self.isImportant = isImportant
         self.isNoReply = isNoReply
         self.hasAttachments = hasAttachments
+        self.isSpam = isSpam
+        self.isDeleted = isDeleted
+        self.containsRemoteResources = containsRemoteResources
         self.tags = tags
         self.aiTags = aiTags
         self.aiSummary = aiSummary
@@ -116,6 +129,7 @@ struct EmailMessage: Identifiable, Codable {
         self.syncedAt = syncedAt
         self.updatedAt = updatedAt
         self.isBodyLoaded = isBodyLoaded
+        self.bodyCachedAt = bodyCachedAt
     }
 }
 

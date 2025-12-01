@@ -387,6 +387,8 @@
         search_key = mailimap_search_key_new_all();
     }
     
+    NSLog(@"🔍 [LibEtPan] 开始搜索邮件，日期: %@, 限制: %lu", sinceDate, (unsigned long)limit);
+    
     clist *search_result = NULL;
     int r = mailimap_uid_search((mailimap *)_imapSession, "UTF-8", search_key, &search_result);
     
@@ -403,25 +405,32 @@
         return nil;
     }
     
-    NSMutableArray<NSDictionary *> *messages = [NSMutableArray array];
-    clistiter *iter;
-    NSUInteger count = 0;
-    
-    // 从最新的邮件开始（UID 通常是从小到大，但搜索结果可能无序，我们需要排序）
+    // 先收集所有UID
     NSMutableArray<NSNumber *> *uidArray = [NSMutableArray array];
+    clistiter *iter;
     for (iter = clist_begin(search_result); iter != NULL; iter = clist_next(iter)) {
         uint32_t uid = *((uint32_t *)clist_content(iter));
         [uidArray addObject:@(uid)];
     }
     
-    // 按 UID 降序排序（最新的在前）
+    NSUInteger totalFound = uidArray.count;
+    NSLog(@"📊 [LibEtPan] 搜索到 %lu 封邮件", (unsigned long)totalFound);
+    
+    // 按 UID 降序排序（最新的在前）- 这一步可能很慢
+    if (totalFound > 1000) {
+        NSLog(@"⚠️ [LibEtPan] 邮件数量较多(%lu封)，排序可能需要时间...", (unsigned long)totalFound);
+    }
     [uidArray sortUsingComparator:^NSComparisonResult(NSNumber *obj1, NSNumber *obj2) {
         return [obj2 compare:obj1]; // 降序
     }];
     
     // 限制数量
+    NSMutableArray<NSDictionary *> *messages = [NSMutableArray array];
+    NSUInteger count = 0;
+    NSUInteger actualLimit = (limit > 0) ? limit : totalFound;
+    
     for (NSNumber *uidNum in uidArray) {
-        if (limit > 0 && count >= limit) {
+        if (count >= actualLimit) {
             break;
         }
         [messages addObject:@{@"uid": uidNum}];
@@ -430,7 +439,112 @@
     
     mailimap_search_result_free(search_result);
     
-    NSLog(@"✅ [LibEtPan] 找到 %lu 封邮件（限制: %lu）", (unsigned long)messages.count, (unsigned long)limit);
+    NSLog(@"✅ [LibEtPan] 返回 %lu 封邮件（总共: %lu, 限制: %lu）", 
+          (unsigned long)messages.count, (unsigned long)totalFound, (unsigned long)actualLimit);
+    return messages;
+}
+
+/// 快速获取最新N封邮件的UID（不搜索，直接从最新开始获取）
+- (nullable NSArray<NSDictionary *> *)fetchLatestMessagesWithLimit:(NSUInteger)limit error:(NSError **)error {
+    if (!_imapSession) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError" 
+                                         code:-1 
+                                     userInfo:@{NSLocalizedDescriptionKey: @"IMAP 会话未初始化"}];
+        }
+        return nil;
+    }
+    
+    NSLog(@"⚡️ [LibEtPan] 快速获取最新 %lu 封邮件...", (unsigned long)limit);
+    
+    // 获取当前文件夹的状态信息(包含邮件总数)
+    mailimap *imap = (mailimap *)_imapSession;
+    if (!imap->imap_selection_info) {
+        NSLog(@"❌ [LibEtPan] 未选择文件夹");
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError" 
+                                         code:-1 
+                                     userInfo:@{NSLocalizedDescriptionKey: @"未选择文件夹"}];
+        }
+        return nil;
+    }
+    
+    uint32_t uidNext = imap->imap_selection_info->sel_uidnext;
+    uint32_t exists = imap->imap_selection_info->sel_exists;
+    
+    NSLog(@"📊 [LibEtPan] 文件夹状态 - 邮件总数: %u, 下一个UID: %u", exists, uidNext);
+    
+    if (exists == 0) {
+        NSLog(@"⚠️ [LibEtPan] 文件夹为空");
+        return @[];
+    }
+    
+    // 计算要获取的范围: 从 (uidNext - limit) 到 (uidNext - 1)
+    // 注意: UID 不是连续的,但这个方法会快很多
+    uint32_t startUID = (uidNext > limit) ? (uidNext - (uint32_t)limit) : 1;
+    uint32_t endUID = uidNext - 1;
+    
+    NSLog(@"🔍 [LibEtPan] 获取 UID 范围: %u:%u", startUID, endUID);
+    
+    // 使用 UID FETCH 获取这个范围的所有UID
+    struct mailimap_set *set = mailimap_set_new_interval(startUID, endUID);
+    struct mailimap_fetch_type *fetch_type = mailimap_fetch_type_new_fetch_att_list_empty();
+    struct mailimap_fetch_att *fetch_att = mailimap_fetch_att_new_uid();
+    mailimap_fetch_type_new_fetch_att_list_add(fetch_type, fetch_att);
+    
+    clist *fetch_result = NULL;
+    int r = mailimap_uid_fetch(imap, set, fetch_type, &fetch_result);
+    
+    mailimap_set_free(set);
+    mailimap_fetch_type_free(fetch_type);
+    
+    if (r != MAILIMAP_NO_ERROR) {
+        NSLog(@"❌ [LibEtPan] 获取邮件 UID 失败，错误代码: %d", r);
+        if (error) {
+            NSString *errorMsg = [NSString stringWithFormat:@"获取邮件失败: %d", r];
+            *error = [NSError errorWithDomain:@"LibEtPanError" 
+                                         code:r 
+                                     userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
+        }
+        return nil;
+    }
+    
+    // 收集UID
+    NSMutableArray<NSNumber *> *uidArray = [NSMutableArray array];
+    clistiter *iter;
+    for (iter = clist_begin(fetch_result); iter != NULL; iter = clist_next(iter)) {
+        struct mailimap_msg_att *msg_att = (struct mailimap_msg_att *)clist_content(iter);
+        clistiter *att_iter;
+        for (att_iter = clist_begin(msg_att->att_list); att_iter != NULL; att_iter = clist_next(att_iter)) {
+            struct mailimap_msg_att_item *item = (struct mailimap_msg_att_item *)clist_content(att_iter);
+            if (item->att_type == MAILIMAP_MSG_ATT_ITEM_STATIC) {
+                if (item->att_data.att_static->att_type == MAILIMAP_MSG_ATT_UID) {
+                    uint32_t uid = item->att_data.att_static->att_data.att_uid;
+                    [uidArray addObject:@(uid)];
+                }
+            }
+        }
+    }
+    
+    mailimap_fetch_list_free(fetch_result);
+    
+    // 按UID降序排序(最新的在前)
+    [uidArray sortUsingComparator:^NSComparisonResult(NSNumber *obj1, NSNumber *obj2) {
+        return [obj2 compare:obj1];
+    }];
+    
+    // 限制数量
+    NSMutableArray<NSDictionary *> *messages = [NSMutableArray array];
+    NSUInteger count = 0;
+    for (NSNumber *uidNum in uidArray) {
+        if (limit > 0 && count >= limit) {
+            break;
+        }
+        [messages addObject:@{@"uid": uidNum}];
+        count++;
+    }
+    
+    NSLog(@"✅ [LibEtPan] 快速获取完成: %lu 封邮件", (unsigned long)messages.count);
     return messages;
 }
 
@@ -553,6 +667,160 @@
     
     NSLog(@"✅ [LibEtPan] 获取邮件头成功，UID: %u", uid);
     return headers;
+}
+
+/// 批量获取多封邮件头信息
+- (nullable NSArray<NSDictionary *> *)fetchBatchMessageHeadersWithUIDs:(NSArray<NSNumber *> *)uids error:(NSError **)error {
+    if (!_imapSession) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError" 
+                                         code:-1 
+                                     userInfo:@{NSLocalizedDescriptionKey: @"IMAP 会话未初始化"}];
+        }
+        return nil;
+    }
+    
+    if (uids.count == 0) {
+        return @[];
+    }
+    
+    NSLog(@"📦 [LibEtPan] 批量获取 %lu 封邮件头...", (unsigned long)uids.count);
+    
+    // 构建UID set
+    struct mailimap_set *set = mailimap_set_new_empty();
+    for (NSNumber *uidNum in uids) {
+        uint32_t uid = [uidNum unsignedIntValue];
+        mailimap_set_add_single(set, uid);
+    }
+    
+    // 构建fetch请求: FETCH (UID ENVELOPE)
+    struct mailimap_fetch_type *fetch_type = mailimap_fetch_type_new_fetch_att_list_empty();
+    struct mailimap_fetch_att *fetch_att_uid = mailimap_fetch_att_new_uid();
+    struct mailimap_fetch_att *fetch_att_env = mailimap_fetch_att_new_envelope();
+    mailimap_fetch_type_new_fetch_att_list_add(fetch_type, fetch_att_uid);
+    mailimap_fetch_type_new_fetch_att_list_add(fetch_type, fetch_att_env);
+    
+    clist *fetch_result = NULL;
+    int r = mailimap_uid_fetch((mailimap *)_imapSession, set, fetch_type, &fetch_result);
+    
+    mailimap_set_free(set);
+    mailimap_fetch_type_free(fetch_type);
+    
+    if (r != MAILIMAP_NO_ERROR) {
+        NSLog(@"❌ [LibEtPan] 批量获取邮件头失败，错误代码: %d", r);
+        if (error) {
+            NSString *errorMsg = [NSString stringWithFormat:@"批量获取邮件头失败: %d", r];
+            *error = [NSError errorWithDomain:@"LibEtPanError" 
+                                         code:r 
+                                     userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
+        }
+        return nil;
+    }
+    
+    if (!fetch_result || clist_begin(fetch_result) == NULL) {
+        if (fetch_result) mailimap_fetch_list_free(fetch_result);
+        return @[];
+    }
+    
+    // 解析所有邮件头
+    NSMutableArray<NSDictionary *> *allHeaders = [NSMutableArray array];
+    
+    clistiter *iter;
+    for (iter = clist_begin(fetch_result); iter != NULL; iter = clist_next(iter)) {
+        struct mailimap_msg_att *msg_att = (struct mailimap_msg_att *)clist_content(iter);
+        
+        uint32_t uid = 0;
+        struct mailimap_envelope *env = NULL;
+        
+        // 提取UID和ENVELOPE
+        clistiter *att_iter;
+        for (att_iter = clist_begin(msg_att->att_list); att_iter != NULL; att_iter = clist_next(att_iter)) {
+            struct mailimap_msg_att_item *item = (struct mailimap_msg_att_item *)clist_content(att_iter);
+            
+            if (item->att_type == MAILIMAP_MSG_ATT_ITEM_STATIC) {
+                if (item->att_data.att_static->att_type == MAILIMAP_MSG_ATT_UID) {
+                    uid = item->att_data.att_static->att_data.att_uid;
+                } else if (item->att_data.att_static->att_type == MAILIMAP_MSG_ATT_ENVELOPE) {
+                    env = item->att_data.att_static->att_data.att_env;
+                }
+            }
+        }
+        
+        if (uid == 0 || !env) {
+            continue;
+        }
+        
+        // 解析ENVELOPE为字典
+        NSMutableDictionary<NSString *, id> *headers = [NSMutableDictionary dictionary];
+        headers[@"uid"] = @(uid);
+        
+        if (env->env_subject) {
+            headers[@"subject"] = [NSString stringWithUTF8String:env->env_subject];
+        }
+        if (env->env_from && env->env_from->frm_list) {
+            NSMutableString *fromStr = [NSMutableString string];
+            clistiter *from_iter = clist_begin(env->env_from->frm_list);
+            if (from_iter) {
+                struct mailimap_address *addr = (struct mailimap_address *)clist_content(from_iter);
+                if (addr) {
+                    if (addr->ad_personal_name) {
+                        [fromStr appendString:[NSString stringWithUTF8String:addr->ad_personal_name]];
+                        [fromStr appendString:@" <"];
+                    }
+                    if (addr->ad_mailbox_name) {
+                        [fromStr appendString:[NSString stringWithUTF8String:addr->ad_mailbox_name]];
+                    }
+                    if (addr->ad_host_name) {
+                        [fromStr appendString:@"@"];
+                        [fromStr appendString:[NSString stringWithUTF8String:addr->ad_host_name]];
+                    }
+                    if (addr->ad_personal_name) {
+                        [fromStr appendString:@">"];
+                    }
+                }
+            }
+            if (fromStr.length > 0) {
+                headers[@"from"] = fromStr;
+            }
+        }
+        if (env->env_to && env->env_to->to_list) {
+            NSMutableString *toStr = [NSMutableString string];
+            clistiter *to_iter;
+            for (to_iter = clist_begin(env->env_to->to_list); to_iter != NULL; to_iter = clist_next(to_iter)) {
+                struct mailimap_address *addr = (struct mailimap_address *)clist_content(to_iter);
+                if (addr) {
+                    NSMutableString *email = [NSMutableString string];
+                    if (addr->ad_mailbox_name) {
+                        [email appendString:[NSString stringWithUTF8String:addr->ad_mailbox_name]];
+                    }
+                    if (addr->ad_host_name) {
+                        if (email.length > 0) [email appendString:@"@"];
+                        [email appendString:[NSString stringWithUTF8String:addr->ad_host_name]];
+                    }
+                    if (email.length > 0) {
+                        if (toStr.length > 0) [toStr appendString:@", "];
+                        [toStr appendString:email];
+                    }
+                }
+            }
+            if (toStr.length > 0) {
+                headers[@"to"] = toStr;
+            }
+        }
+        if (env->env_date) {
+            headers[@"date"] = [NSString stringWithUTF8String:env->env_date];
+        }
+        if (env->env_message_id) {
+            headers[@"message-id"] = [NSString stringWithUTF8String:env->env_message_id];
+        }
+        
+        [allHeaders addObject:headers];
+    }
+    
+    mailimap_fetch_list_free(fetch_result);
+    
+    NSLog(@"✅ [LibEtPan] 批量获取完成: %lu 封邮件头", (unsigned long)allHeaders.count);
+    return allHeaders;
 }
 
 - (nullable NSData *)fetchMessageBodyWithUID:(uint32_t)uid error:(NSError **)error {

@@ -180,11 +180,12 @@ class GlobalShortcutMonitor {
         let targetModifiersFiltered = targetModifiers.intersection([.command, .shift, .option, .control])
         
         // 调试日志：记录所有按键事件（仅在调试模式下）
-        #if DEBUG
-        if event.type == .keyDown || event.type == .keyUp || event.type == .flagsChanged {
-            print("⌨️ [GlobalShortcutMonitor] 捕获到按键事件: type=\(event.type.rawValue), keyCode=\(event.keyCode), modifiers=\(eventModifiers.rawValue), 目标keyCode=\(targetKeyCode), 目标modifiers=\(targetModifiersFiltered.rawValue)")
-        }
-        #endif
+        // 已注释：语音输入法功能已稳定，不再需要此日志
+        // #if DEBUG
+        // if event.type == .keyDown || event.type == .keyUp || event.type == .flagsChanged {
+        //     print("⌨️ [GlobalShortcutMonitor] 捕获到按键事件: type=\(event.type.rawValue), keyCode=\(event.keyCode), modifiers=\(eventModifiers.rawValue), 目标keyCode=\(targetKeyCode), 目标modifiers=\(targetModifiersFiltered.rawValue)")
+        // }
+        // #endif
         
         // 特殊处理FN键（keyCode = 0x3F）
         if targetKeyCode == 0x3F {

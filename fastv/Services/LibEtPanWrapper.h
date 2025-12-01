@@ -39,8 +39,14 @@ NS_ASSUME_NONNULL_BEGIN
 /// 按日期搜索邮件（sinceDate 为 nil 时获取所有邮件）
 - (nullable NSArray<NSDictionary *> *)fetchMessagesSinceDate:(nullable NSDate *)sinceDate limit:(NSUInteger)limit error:(NSError **)error;
 
-/// 获取邮件头信息（Subject, From, To, Date等）
+/// 快速获取最新N封邮件的UID（不搜索，直接从最新开始获取）
+- (nullable NSArray<NSDictionary *> *)fetchLatestMessagesWithLimit:(NSUInteger)limit error:(NSError **)error;
+
+/// 获取单封邮件头信息（Subject, From, To, Date等）
 - (nullable NSDictionary<NSString *, id> *)fetchMessageHeadersWithUID:(uint32_t)uid error:(NSError **)error;
+
+/// 批量获取多封邮件头信息（性能优化：一次请求获取多封）
+- (nullable NSArray<NSDictionary *> *)fetchBatchMessageHeadersWithUIDs:(NSArray<NSNumber *> *)uids error:(NSError **)error;
 
 /// 获取邮件内容
 - (nullable NSData *)fetchMessageBodyWithUID:(uint32_t)uid error:(NSError **)error;

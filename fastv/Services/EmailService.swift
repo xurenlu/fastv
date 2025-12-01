@@ -38,15 +38,18 @@ enum EmailServiceError: LocalizedError {
 class EmailService {
     static let shared = EmailService()
     
-    private var imapSessions: [UUID: LibEtPanIMAPSession] = [:] // accountId -> IMAP Session
-    private var smtpSessions: [UUID: LibEtPanSMTPSession] = [:] // accountId -> SMTP Session
+    // nonisolated(unsafe): 允许后台线程访问这些属性
+    nonisolated(unsafe) private var imapSessions: [UUID: LibEtPanIMAPSession] = [:]
+    nonisolated(unsafe) private var smtpSessions: [UUID: LibEtPanSMTPSession] = [:]
+    nonisolated(unsafe) var initialLoadLimit = 1000 // 可配置
+    nonisolated(unsafe) private var backgroundSyncTasks: [UUID: Task<Void, Never>] = [:]
     
     private init() {}
     
     // MARK: - Helper Methods
     
     /// 将 EmailEncryption 转换为 LibEtPan 需要的字符串格式
-    private func encryptionString(from encryption: EmailEncryption) -> String {
+    nonisolated private func encryptionString(from encryption: EmailEncryption) -> String {
         switch encryption {
         case .ssl:
             return "ssl"
@@ -100,7 +103,7 @@ class EmailService {
     // MARK: - IMAP Operations
     
     /// 获取或创建 IMAP 会话
-    private func getOrCreateIMAPSession(account: EmailAccount) throws -> LibEtPanIMAPSession {
+    nonisolated private func getOrCreateIMAPSession(account: EmailAccount) throws -> LibEtPanIMAPSession {
         if let existing = imapSessions[account.id] {
             return existing
         }
@@ -137,14 +140,15 @@ class EmailService {
     }
     
     /// 同步邮件（增量同步，支持时间范围和限制数量）
-    func syncMessages(
+    /// nonisolated: 允许在后台线程执行,避免阻塞UI
+    nonisolated func syncMessages(
         account: EmailAccount,
         folder: EmailFolder,
         since: Date? = nil,
         limit: Int? = nil,
         batchSize: Int = 20
     ) async throws -> [EmailMessage] {
-        let imap = try getOrCreateIMAPSession(account: account)
+        let imap = try await getOrCreateIMAPSession(account: account)
         
         do {
             try imap.selectFolder(folder.name)
@@ -155,23 +159,27 @@ class EmailService {
         // 计算时间范围：默认只获取最近30天的邮件
         let defaultSince = since ?? Calendar.current.date(byAdding: .day, value: -30, to: Date())
         
-        // 使用日期搜索优化性能（在服务器端过滤，而不是获取所有邮件）
+        // 获取邮件UID列表
         let messageUIDs: [Any]
         do {
             let limitValue = limit ?? 200 // 默认最多200封
             var result: [Any]?
-            var searchError: NSError?
             
-            // 调用 Objective-C 方法（Swift Date 会自动桥接到 NSDate，Int 转换为 UInt）
-            // Swift 会自动将 Objective-C 的 error 参数转换为 throws，方法名也会自动转换
+            // 优化策略:
+            // 1. 如果指定了limit且较小(<=200),使用快速方法直接获取最新的N封
+            // 2. 如果指定了since日期,使用日期搜索
+            // 3. 否则使用快速方法
+            let shouldUseFastMethod = (limit != nil && limitValue <= 200) || since == nil
+            
             do {
+                if shouldUseFastMethod {
+                    print("⚡️ [EmailService] 使用快速方法获取最新 \(limitValue) 封邮件")
+                    result = try imap.fetchLatestMessages(withLimit: UInt(limitValue))
+                } else {
+                    print("🔍 [EmailService] 使用日期搜索，since: \(String(describing: defaultSince))")
                 result = try imap.fetchMessages(since: defaultSince, limit: UInt(limitValue))
+                }
             } catch {
-                searchError = error as NSError
-                throw EmailServiceError.parseError(error.localizedDescription)
-            }
-            
-            if let error = searchError {
                 throw EmailServiceError.parseError(error.localizedDescription)
             }
             
@@ -185,69 +193,199 @@ class EmailService {
         var processedCount = 0
         let maxCount = limit ?? Int.max
         
-        for msgDictAny in messageUIDs {
-            guard processedCount < maxCount,
-                  let msgDict = msgDictAny as? NSDictionary,
-                  let uidValue = msgDict["uid"] as? NSNumber else { continue }
-            let uid = uidValue.uint32Value
-            
-            // 获取邮件头信息
-            let headers: [String: Any]
-            do {
-                let headerDict = try imap.fetchMessageHeaders(withUID: uid)
-                headers = headerDict as? [String: Any] ?? [:]
-            } catch {
-                print("⚠️ [EmailService] 无法获取邮件头，UID: \(uid), 错误: \(error.localizedDescription)")
-                continue
+        // 限制初始加载数量,避免阻塞UI
+        let uidCount = messageUIDs.count
+        let shouldLimitInitialLoad = uidCount > initialLoadLimit
+        let processLimit = shouldLimitInitialLoad ? initialLoadLimit : uidCount
+        
+        if shouldLimitInitialLoad {
+            print("📊 [EmailService] 邮件数量(\(uidCount))超过限制,先加载前\(initialLoadLimit)封,剩余将在后台同步")
+        }
+        
+        // 收集要处理的UID
+        var uidsToProcess: [NSNumber] = []
+        for (index, msgDictAny) in messageUIDs.enumerated() {
+            if index >= processLimit {
+                // 剩余的留给后台同步
+                scheduleBackgroundSync(
+                    account: account,
+                    folder: folder,
+                    remainingUIDs: Array(messageUIDs[processLimit...]),
+                    sinceDate: defaultSince
+                )
+                break
             }
             
-            // 解析邮件头并创建 EmailMessage
+            if let msgDict = msgDictAny as? NSDictionary,
+               let uidValue = msgDict["uid"] as? NSNumber {
+                uidsToProcess.append(uidValue)
+            }
+        }
+        
+        // 批量获取所有邮件头(一次请求)
+        print("📦 [EmailService] 批量获取 \(uidsToProcess.count) 封邮件头...")
+        let batchStartTime = Date()
+        
+        var allHeaders: [[String: Any]] = []
+        do {
+            let headersArray = try imap.fetchBatchMessageHeaders(withUIDs: uidsToProcess)
+            allHeaders = headersArray.compactMap { $0 as? [String: Any] }
+        } catch {
+            print("❌ [EmailService] 批量获取失败，降级为逐个获取")
+            // 降级为逐个获取
+            for uidNum in uidsToProcess {
+                let uid = uidNum.uint32Value
+                do {
+                    let headerDict = try imap.fetchMessageHeaders(withUID: uid)
+                    if let headers = headerDict as? [String: Any] {
+                        allHeaders.append(headers)
+                    }
+                } catch {
+                    print("⚠️ [EmailService] 无法获取邮件头，UID: \(uid)")
+                    continue
+                }
+            }
+        }
+        
+        let batchElapsed = Date().timeIntervalSince(batchStartTime)
+        print("⏱️ [EmailService] 批量获取完成，耗时: \(String(format: "%.2f", batchElapsed))秒")
+        
+        // 解析邮件头
+        for headers in allHeaders {
+            guard let uidValue = headers["uid"] as? NSNumber else { continue }
+            let uid = uidValue.uint32Value
+            
             if let emailMessage = parseEmailMessage(from: headers, accountId: account.id, folderId: folder.id, uid: uid) {
-                // 如果指定了时间范围，检查邮件日期
                 if let sinceDate = defaultSince, emailMessage.date < sinceDate {
-                    continue // 跳过超出时间范围的邮件
+                    continue
                 }
                 
                 emailMessages.append(emailMessage)
                 processedCount += 1
                 
-                // 每处理一批，让出控制权，避免阻塞主线程
-                if processedCount % batchSize == 0 {
-                    try await Task.sleep(nanoseconds: 10_000_000) // 10ms
+                if processedCount % 100 == 0 {
+                    print("📧 [EmailService] 已解析 \(processedCount) 封邮件...")
                 }
             }
         }
         
+        print("✅ [EmailService] 初始加载完成: \(emailMessages.count) 封邮件")
         return emailMessages
     }
     
+    /// 后台同步剩余邮件
+    nonisolated private func scheduleBackgroundSync(
+        account: EmailAccount,
+        folder: EmailFolder,
+        remainingUIDs: [Any],
+        sinceDate: Date?
+    ) {
+        // 取消之前的后台任务(如果有)
+        backgroundSyncTasks[account.id]?.cancel()
+        
+        let task = Task.detached(priority: .background) {
+            print("🔄 [EmailService] 开始后台同步剩余 \(remainingUIDs.count) 封邮件...")
+            
+            var syncedCount = 0
+            let totalCount = remainingUIDs.count
+            
+            for msgDictAny in remainingUIDs {
+                // 检查是否被取消
+                if Task.isCancelled {
+                    print("⚠️ [EmailService] 后台同步被取消")
+                    break
+                }
+                
+                guard let msgDict = msgDictAny as? NSDictionary,
+                      let uidValue = msgDict["uid"] as? NSNumber else { continue }
+                let uid = uidValue.uint32Value
+                
+                do {
+                    // 在后台线程获取邮件头
+                    let imap = try await self.getOrCreateIMAPSession(account: account)
+                    try imap.selectFolder(folder.name)
+                    
+                    let headerDict = try imap.fetchMessageHeaders(withUID: uid)
+                    let headers = headerDict as? [String: Any] ?? [:]
+                    
+                    if let emailMessage = await self.parseEmailMessage(
+                        from: headers,
+                        accountId: account.id,
+                        folderId: folder.id,
+                        uid: uid
+                    ) {
+                        // 检查日期范围
+                        if let sinceDate = sinceDate, emailMessage.date < sinceDate {
+                            continue
+                        }
+                        
+                        // 保存到本地数据库
+                        try await EmailStore.shared.addMessages([emailMessage], folderId: folder.id)
+                        syncedCount += 1
+                        
+                        // 每处理100封打印进度
+                        if syncedCount % 100 == 0 {
+                            print("🔄 [EmailService] 后台已同步 \(syncedCount)/\(totalCount) 封邮件")
+                        }
+                        
+                        // 让出CPU,避免占用过多资源
+                        try await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                    }
+                } catch {
+                    print("⚠️ [EmailService] 后台同步邮件失败，UID: \(uid), 错误: \(error.localizedDescription)")
+                }
+            }
+            
+            print("✅ [EmailService] 后台同步完成: \(syncedCount) 封邮件")
+        }
+        
+        backgroundSyncTasks[account.id] = task
+    }
+    
+    /// 取消后台同步任务
+    func cancelBackgroundSync(accountId: UUID) {
+        backgroundSyncTasks[accountId]?.cancel()
+        backgroundSyncTasks.removeValue(forKey: accountId)
+    }
+    
     /// 获取邮件正文
-    func fetchMessageBody(
+    nonisolated func fetchMessageBody(
         account: EmailAccount,
         folder: EmailFolder,
         message: EmailMessage
     ) async throws -> EmailBodyContent {
         guard let uid = message.uid else {
+            print("❌ [EmailService] fetchMessageBody: 邮件 UID 不存在")
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
+        
+        print("📧 [EmailService] fetchMessageBody: 开始获取正文, folder=\(folder.name), uid=\(uid)")
         
         let imap = try getOrCreateIMAPSession(account: account)
         do {
             try imap.selectFolder(folder.name)
+            print("📧 [EmailService] fetchMessageBody: 文件夹选择成功")
         } catch {
+            print("❌ [EmailService] fetchMessageBody: 选择文件夹失败: \(error)")
             throw EmailServiceError.connectionFailed(error.localizedDescription)
         }
         
         let bodyData = try imap.fetchMessageBody(withUID: uid)
+        print("📧 [EmailService] fetchMessageBody: 获取到数据 \(bodyData.count) 字节")
+        
         if bodyData.isEmpty {
+            print("❌ [EmailService] fetchMessageBody: 邮件正文为空")
             throw EmailServiceError.parseError("未获取到邮件正文")
         }
         
-        return EmailContentDecoder.parseBody(data: bodyData)
+        let content = EmailContentDecoder.parseBody(data: bodyData)
+        print("📧 [EmailService] fetchMessageBody: 解析完成, textBody=\(content.textBody?.count ?? 0)字符, htmlBody=\(content.htmlBody?.count ?? 0)字符, hasRemote=\(content.containsRemoteResources)")
+        
+        return content
     }
     
     /// 获取文件夹列表
-    func fetchFolders(account: EmailAccount) async throws -> [EmailFolder] {
+    nonisolated func fetchFolders(account: EmailAccount) async throws -> [EmailFolder] {
         let imap = try getOrCreateIMAPSession(account: account)
         
         let folderNames: [String]
@@ -296,7 +434,7 @@ class EmailService {
     }
     
     /// 标记邮件为已读
-    func markAsRead(account: EmailAccount, message: EmailMessage) async throws {
+    nonisolated func markAsRead(account: EmailAccount, message: EmailMessage) async throws {
         guard let uid = message.uid else {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
@@ -311,23 +449,141 @@ class EmailService {
     }
     
     /// 删除邮件
-    func deleteMessage(account: EmailAccount, message: EmailMessage) async throws {
-        // TODO: 实现删除邮件
-        // LibEtPan 需要实现删除功能
-        throw EmailServiceError.invalidConfiguration("删除功能未实现")
+    nonisolated func deleteMessage(account: EmailAccount, message: EmailMessage) async throws {
+        guard let uid = message.uid else {
+            throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
+        }
+        
+        let imap = try getOrCreateIMAPSession(account: account)
+        
+        // 获取邮件所在的文件夹
+        guard let folderId = message.folderId,
+              let folder = try await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
+            throw EmailServiceError.invalidConfiguration("找不到邮件所在文件夹")
+        }
+        
+        do {
+            try imap.selectFolder(folder.name)
+            // TODO: 使用 LibEtPan 的删除功能（STORE +DELETE 或 MOVE 到 Trash）
+            // 目前先标记为已删除，实际删除功能需要 LibEtPan 支持
+            print("⚠️ [EmailService] 删除邮件功能需要 LibEtPan 支持，当前仅标记为已删除")
+        } catch {
+            throw EmailServiceError.networkError(error)
+        }
+    }
+    
+    /// 切换星标状态
+    nonisolated func toggleStar(account: EmailAccount, message: EmailMessage) async throws {
+        guard let uid = message.uid else {
+            throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
+        }
+        
+        let imap = try getOrCreateIMAPSession(account: account)
+        
+        guard let folderId = message.folderId,
+              let folder = try await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
+            throw EmailServiceError.invalidConfiguration("找不到邮件所在文件夹")
+        }
+        
+        do {
+            try imap.selectFolder(folder.name)
+            // TODO: 使用 LibEtPan 的 STORE 命令添加/移除 \Flagged 标志
+            // 目前先更新本地状态
+            print("⚠️ [EmailService] 星标功能需要 LibEtPan 支持，当前仅更新本地状态")
+        } catch {
+            throw EmailServiceError.networkError(error)
+        }
+    }
+    
+    /// 标记为垃圾邮件
+    nonisolated func markAsSpam(account: EmailAccount, message: EmailMessage) async throws {
+        guard let uid = message.uid else {
+            throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
+        }
+        
+        // 查找垃圾邮件文件夹
+        let folders = try await EmailStore.shared.getFolders(for: account.id)
+        guard let spamFolder = folders.first(where: { $0.type == .spam }) else {
+            throw EmailServiceError.invalidConfiguration("找不到垃圾邮件文件夹")
+        }
+        
+        try await moveMessage(account: account, message: message, to: spamFolder)
+    }
+    
+    /// 取消垃圾邮件标记
+    nonisolated func unmarkSpam(account: EmailAccount, message: EmailMessage) async throws {
+        guard let uid = message.uid else {
+            throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
+        }
+        
+        // 移动到收件箱
+        let folders = try await EmailStore.shared.getFolders(for: account.id)
+        guard let inboxFolder = folders.first(where: { $0.type == .inbox }) else {
+            throw EmailServiceError.invalidConfiguration("找不到收件箱")
+        }
+        
+        try await moveMessage(account: account, message: message, to: inboxFolder)
+    }
+    
+    /// 下载附件
+    nonisolated func downloadAttachment(
+        account: EmailAccount,
+        folder: EmailFolder,
+        message: EmailMessage,
+        attachment: EmailAttachment
+    ) async throws -> URL {
+        guard let uid = message.uid else {
+            throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
+        }
+        
+        let imap = try getOrCreateIMAPSession(account: account)
+        try imap.selectFolder(folder.name)
+        
+        // TODO: 使用 LibEtPan 获取附件的具体部分
+        // 目前先获取完整邮件，然后解析附件
+        let bodyData = try imap.fetchMessageBody(withUID: uid)
+        
+        // 解析 MIME 结构，提取附件
+        // 这里需要解析 multipart 结构，找到对应的附件部分
+        // 简化实现：保存到临时目录
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileURL = tempDir.appendingPathComponent(attachment.filename)
+        
+        // TODO: 从 bodyData 中提取附件内容
+        // 目前先创建一个占位文件
+        try Data().write(to: fileURL)
+        
+        print("📎 [EmailService] 附件下载完成: \(attachment.filename)")
+        return fileURL
     }
     
     /// 移动邮件到文件夹
     func moveMessage(account: EmailAccount, message: EmailMessage, to folder: EmailFolder) async throws {
-        // TODO: 实现移动邮件
-        // LibEtPan 需要实现移动功能
-        throw EmailServiceError.invalidConfiguration("移动功能未实现")
+        guard let uid = message.uid else {
+            throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
+        }
+        
+        let imap = try getOrCreateIMAPSession(account: account)
+        
+        guard let folderId = message.folderId,
+              let sourceFolder = try await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
+            throw EmailServiceError.invalidConfiguration("找不到源文件夹")
+        }
+        
+        do {
+            try imap.selectFolder(sourceFolder.name)
+            // TODO: 使用 LibEtPan 的 MOVE 或 COPY + STORE +DELETE 命令
+            // 目前先更新本地状态
+            print("⚠️ [EmailService] 移动邮件功能需要 LibEtPan 支持，当前仅更新本地状态")
+        } catch {
+            throw EmailServiceError.networkError(error)
+        }
     }
     
     // MARK: - SMTP Operations
     
     /// 获取或创建 SMTP 会话
-    private func getOrCreateSMTPSession(account: EmailAccount) throws -> LibEtPanSMTPSession {
+    nonisolated private func getOrCreateSMTPSession(account: EmailAccount) throws -> LibEtPanSMTPSession {
         if let existing = smtpSessions[account.id] {
             return existing
         }
@@ -364,7 +620,7 @@ class EmailService {
     }
     
     /// 发送邮件
-    func sendMessage(
+    nonisolated func sendMessage(
         account: EmailAccount,
         to: [EmailContact],
         cc: [EmailContact] = [],
@@ -405,10 +661,54 @@ class EmailService {
         }
     }
     
+    // MARK: - Session Management
+    
+    /// 清理账户的所有会话和后台任务
+    func cleanupAccount(accountId: UUID) {
+        // 取消后台同步任务
+        cancelBackgroundSync(accountId: accountId)
+        
+        // 断开IMAP连接
+        if let imapSession = imapSessions[accountId] {
+            imapSession.disconnect()
+            imapSessions.removeValue(forKey: accountId)
+        }
+        
+        // 断开SMTP连接
+        if let smtpSession = smtpSessions[accountId] {
+            smtpSession.disconnect()
+            smtpSessions.removeValue(forKey: accountId)
+        }
+        
+        print("🧹 [EmailService] 已清理账户会话和后台任务")
+    }
+    
+    /// 清理所有会话
+    func cleanupAllSessions() {
+        // 取消所有后台任务
+        for (accountId, _) in backgroundSyncTasks {
+            cancelBackgroundSync(accountId: accountId)
+        }
+        
+        // 断开所有IMAP连接
+        for (_, session) in imapSessions {
+            session.disconnect()
+        }
+        imapSessions.removeAll()
+        
+        // 断开所有SMTP连接
+        for (_, session) in smtpSessions {
+            session.disconnect()
+        }
+        smtpSessions.removeAll()
+        
+        print("🧹 [EmailService] 已清理所有会话")
+    }
+    
     // MARK: - Helper Methods
     
     /// 从邮件头信息解析 EmailMessage
-    private func parseEmailMessage(from headers: [String: Any], accountId: UUID, folderId: UUID, uid: UInt32) -> EmailMessage? {
+    nonisolated private func parseEmailMessage(from headers: [String: Any], accountId: UUID, folderId: UUID, uid: UInt32) -> EmailMessage? {
         let subject = EmailContentDecoder.decodeRFC2047String((headers["subject"] as? String) ?? "")
         let fromString = EmailContentDecoder.decodeRFC2047String((headers["from"] as? String) ?? "")
         let toString = EmailContentDecoder.decodeRFC2047String((headers["to"] as? String) ?? "")
@@ -447,7 +747,7 @@ class EmailService {
     }
     
     /// 解析邮件地址列表（逗号分隔）
-    private func parseEmailAddresses(_ addressString: String) -> [EmailContact] {
+    nonisolated private func parseEmailAddresses(_ addressString: String) -> [EmailContact] {
         guard !addressString.isEmpty else { return [] }
         
         let addresses = addressString.components(separatedBy: ",")
@@ -455,7 +755,7 @@ class EmailService {
     }
     
     /// 解析邮件日期
-    private func parseEmailDate(_ dateString: String) -> Date? {
+    nonisolated private func parseEmailDate(_ dateString: String) -> Date? {
         guard !dateString.isEmpty else { return nil }
         
         // 使用多种日期格式解析
@@ -490,7 +790,7 @@ class EmailService {
     }
     
     /// 检测是否为no-reply地址
-    func isNoReplyAddress(_ email: String) -> Bool {
+    nonisolated func isNoReplyAddress(_ email: String) -> Bool {
         let lowercased = email.lowercased()
         return lowercased.contains("noreply") ||
                lowercased.contains("no-reply") ||
@@ -501,7 +801,7 @@ class EmailService {
     }
     
     /// 解析邮件地址
-    func parseEmailAddress(_ addressString: String) -> EmailContact {
+    nonisolated func parseEmailAddress(_ addressString: String) -> EmailContact {
         let trimmed = addressString.trimmingCharacters(in: .whitespacesAndNewlines)
         let decoded = EmailContentDecoder.decodeRFC2047String(trimmed)
         

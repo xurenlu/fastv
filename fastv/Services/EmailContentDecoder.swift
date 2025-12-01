@@ -13,6 +13,7 @@ import AppKit
 struct EmailBodyContent {
     let textBody: String?
     let htmlBody: String?
+    let containsRemoteResources: Bool
     
     /// 生成用于列表预览的文本
     var previewText: String {
@@ -27,7 +28,7 @@ struct EmailBodyContent {
 /// MIME / 邮件内容解码工具
 enum EmailContentDecoder {
     /// 解码 RFC 2047 编码头（=?UTF-8?B?...?=）
-    static func decodeRFC2047String(_ string: String) -> String {
+    nonisolated static func decodeRFC2047String(_ string: String) -> String {
         let pattern = #"=\?([^?]+)\?([bBqQ])\?([^?]+)\?="#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
             return string
@@ -65,10 +66,10 @@ enum EmailContentDecoder {
     }
     
     /// 解析 MIME 邮件正文，返回纯文本与 HTML
-    static func parseBody(data: Data) -> EmailBodyContent {
+    nonisolated static func parseBody(data: Data) -> EmailBodyContent {
         guard var raw = String(data: data, encoding: .utf8) ??
                         String(data: data, encoding: .isoLatin1) else {
-            return EmailBodyContent(textBody: nil, htmlBody: nil)
+            return EmailBodyContent(textBody: nil, htmlBody: nil, containsRemoteResources: false)
         }
         
         // 标准化换行
@@ -76,7 +77,8 @@ enum EmailContentDecoder {
         
         let components = raw.components(separatedBy: "\n\n")
         guard components.count >= 2 else {
-            return EmailBodyContent(textBody: raw.trimmingCharacters(in: .whitespacesAndNewlines), htmlBody: nil)
+            let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            return EmailBodyContent(textBody: text, htmlBody: nil, containsRemoteResources: false)
         }
         
         let headerString = components.first ?? ""
@@ -92,18 +94,19 @@ enum EmailContentDecoder {
             let decoded = decodeBody(bodyString, encoding: encoding, charset: charset)
             
             if contentType.contains("text/html") {
-                return EmailBodyContent(textBody: nil, htmlBody: decoded)
+                let hasRemote = containsRemoteResources(html: decoded)
+                return EmailBodyContent(textBody: nil, htmlBody: decoded, containsRemoteResources: hasRemote)
             } else {
-                return EmailBodyContent(textBody: decoded, htmlBody: nil)
+                return EmailBodyContent(textBody: decoded, htmlBody: nil, containsRemoteResources: false)
             }
         }
     }
     
     // MARK: - Private helpers
     
-    private static func parseMultipart(body: String, headers: [String: String]) -> EmailBodyContent {
+    nonisolated private static func parseMultipart(body: String, headers: [String: String]) -> EmailBodyContent {
         guard let boundary = extractBoundary(from: headers["content-type"]) else {
-            return EmailBodyContent(textBody: nil, htmlBody: nil)
+            return EmailBodyContent(textBody: nil, htmlBody: nil, containsRemoteResources: false)
         }
         
         let delimiter = "--\(boundary)"
@@ -114,6 +117,7 @@ enum EmailContentDecoder {
         
         var textBody: String?
         var htmlBody: String?
+        var hasRemote = false
         
         for segment in segments {
             let parts = segment.components(separatedBy: "\n\n")
@@ -129,22 +133,34 @@ enum EmailContentDecoder {
                 let nested = parseMultipart(body: bodyString, headers: partHeaders)
                 if textBody == nil { textBody = nested.textBody }
                 if htmlBody == nil { htmlBody = nested.htmlBody }
+                hasRemote = hasRemote || nested.containsRemoteResources
                 continue
             }
             
             let decoded = decodeBody(bodyString, encoding: encoding, charset: charset)
             
             if partContentType.contains("text/html") {
-                if htmlBody == nil { htmlBody = decoded }
+                if htmlBody == nil {
+                    htmlBody = decoded
+                    hasRemote = hasRemote || containsRemoteResources(html: decoded)
+                }
             } else if partContentType.contains("text/plain") {
                 if textBody == nil { textBody = decoded }
             }
         }
         
-        return EmailBodyContent(textBody: textBody, htmlBody: htmlBody)
+        return EmailBodyContent(textBody: textBody, htmlBody: htmlBody, containsRemoteResources: hasRemote)
     }
     
-    private static func parseHeaders(_ headerString: String) -> [String: String] {
+    /// 检测 HTML 中是否包含远程资源
+    nonisolated private static func containsRemoteResources(html: String) -> Bool {
+        let lowercased = html.lowercased()
+        // 检测外部图片、CSS、脚本等
+        return lowercased.contains("http://") || lowercased.contains("https://") ||
+               lowercased.contains("src=\"//") || lowercased.contains("href=\"//")
+    }
+    
+    nonisolated private static func parseHeaders(_ headerString: String) -> [String: String] {
         var headers: [String: String] = [:]
         var currentKey: String?
         var currentValue = ""
@@ -169,7 +185,7 @@ enum EmailContentDecoder {
         return headers
     }
     
-    private static func extractBoundary(from contentType: String?) -> String? {
+    nonisolated private static func extractBoundary(from contentType: String?) -> String? {
         guard let contentType else { return nil }
         let pattern = #"boundary="?([^";]+)"?"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { return nil }
@@ -181,7 +197,7 @@ enum EmailContentDecoder {
         return (contentType as NSString).substring(with: match.range(at: 1))
     }
     
-    private static func extractCharset(from contentType: String?) -> String {
+    nonisolated private static func extractCharset(from contentType: String?) -> String {
         guard let contentType else { return "utf-8" }
         let pattern = #"charset="?([^";]+)"?"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
@@ -195,7 +211,7 @@ enum EmailContentDecoder {
         return (contentType as NSString).substring(with: match.range(at: 1))
     }
     
-    private static func decodeBody(_ body: String, encoding: String?, charset: String) -> String {
+    nonisolated private static func decodeBody(_ body: String, encoding: String?, charset: String) -> String {
         let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalized = trimmed.replacingOccurrences(of: "\n", with: "")
         
@@ -219,7 +235,7 @@ enum EmailContentDecoder {
         return trimmed
     }
     
-    private static func decodeBase64(_ value: String, charset: String) -> String? {
+    nonisolated private static func decodeBase64(_ value: String, charset: String) -> String? {
         let sanitized = value.replacingOccurrences(of: "\r", with: "")
             .replacingOccurrences(of: "\n", with: "")
         guard let data = Data(base64Encoded: sanitized) else { return nil }
@@ -227,7 +243,7 @@ enum EmailContentDecoder {
         return String(data: data, encoding: encoding)
     }
     
-    private static func decodeQuotedPrintable(_ value: String, charset: String) -> String? {
+    nonisolated private static func decodeQuotedPrintable(_ value: String, charset: String) -> String? {
         var cleaned = value.replacingOccurrences(of: "=\r\n", with: "")
         cleaned = cleaned.replacingOccurrences(of: "=\n", with: "")
         
@@ -260,7 +276,7 @@ enum EmailContentDecoder {
         return String(data: data, encoding: encoding)
     }
     
-    private static func stringEncoding(for charset: String) -> String.Encoding {
+    nonisolated private static func stringEncoding(for charset: String) -> String.Encoding {
         let lowercased = charset.lowercased()
         if lowercased == "gb2312" {
             return .init(rawValue: CFStringConvertEncodingToNSStringEncoding(CFStringEncoding(CFStringEncodings.GB_2312_80.rawValue)))

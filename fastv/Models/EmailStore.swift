@@ -22,11 +22,60 @@ class EmailStore: ObservableObject {
     private var saveTimer: Timer?
     private let saveDelay: TimeInterval = 2.0
     
-    private init() {
-        Task {
-            await loadAccounts()
-            await loadFolders()
+    private func notifyChange() {
+        DispatchQueue.main.async { [weak self] in
+            self?.objectWillChange.send()
         }
+    }
+    
+    private init() {
+        // 立即加载账号和文件夹（高优先级，确保快速显示）
+        Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self = self else { return }
+            await self.loadAccounts()
+            await self.loadFolders()
+            
+            // 预加载邮件缓存（低优先级，后台执行）
+            Task.detached(priority: .background) { [weak self] in
+                guard let self = self else { return }
+                await self.preloadMessageCache()
+            }
+        }
+    }
+    
+    /// 预加载邮件缓存（后台执行，智能优先级）
+    private func preloadMessageCache() async {
+        print("📦 [EmailStore] 开始预加载邮件缓存...")
+        let startTime = Date()
+        
+        // 获取所有文件夹
+        let allFolders = folders.values.flatMap { $0 }
+        
+        // 按优先级排序：收件箱 > 垃圾邮件 > 已发送 > 草稿 > 回收站
+        let priorityOrder: [EmailFolderType] = [.inbox, .spam, .sent, .drafts, .trash]
+        var sortedFolders: [EmailFolder] = []
+        
+        for type in priorityOrder {
+            let foldersOfType = allFolders.filter { $0.type == type }
+            sortedFolders.append(contentsOf: foldersOfType)
+        }
+        
+        print("📦 [EmailStore] 需要预加载 \(sortedFolders.count) 个重要文件夹")
+        
+        // 串行预加载（避免同时大量数据库操作造成卡顿）
+        for (index, folder) in sortedFolders.prefix(8).enumerated() {
+            print("📦 [EmailStore] 预加载 [\(index+1)/\(min(8, sortedFolders.count))]: \(folder.name) (\(folder.type.rawValue))")
+            await loadMessages(for: folder.id)
+            
+            // 每加载一个文件夹后稍微延迟，避免占用过多资源
+            if index < sortedFolders.count - 1 {
+                try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+            }
+        }
+        
+        let elapsed = Date().timeIntervalSince(startTime)
+        let totalMessages = messages.values.reduce(0) { $0 + $1.count }
+        print("📦 [EmailStore] 邮件缓存预加载完成，总计: \(totalMessages)封，耗时: \(String(format: "%.2f", elapsed))秒")
     }
     
     // MARK: - Account Management
@@ -119,37 +168,55 @@ class EmailStore: ObservableObject {
         var updatedMessages: [EmailMessage] = []
         var hasNewMessages = false
         
-        try await database.write { db in
+        // 先更新内存,立即更新UI(不等待数据库写入)
             for message in newMessages {
-                // 检查是否已存在（通过 UID）
                 if let existingIndex = existingMessages.firstIndex(where: { $0.uid == message.uid }) {
-                    // 更新现有邮件
                     let existing = existingMessages[existingIndex]
                     var updated = message
-                    // 保留已加载的正文
                     if existing.isBodyLoaded {
                         updated.textBody = existing.textBody
                         updated.htmlBody = existing.htmlBody
                         updated.isBodyLoaded = true
+                        updated.bodyCachedAt = existing.bodyCachedAt // 保留缓存时间
                     }
                     updatedMessages.append(updated)
                     existingMessages[existingIndex] = updated
                 } else {
-                    // 新邮件
                     updatedMessages.append(message)
                     existingMessages.append(message)
                     hasNewMessages = true
-                }
-                try self.saveMessage(message, db: db)
             }
         }
         
-        // 排序并更新内存中的消息列表
-        existingMessages.sort { $0.date > $1.date }
-        messages[folderId] = existingMessages
+        // 统一在后台线程排序（无论数据量大小，确保零卡顿）
+        print("📊 [EmailStore] 开始后台排序，数量: \(existingMessages.count)封")
         
-        // 总是触发 UI 更新（因为可能有新邮件或更新）
-        objectWillChange.send()
+        Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self = self else { return }
+            var sorted = existingMessages
+            sorted.sort { $0.date > $1.date }
+            
+            await MainActor.run {
+                self.messages[folderId] = sorted
+                self.notifyChange()
+                print("✅ [EmailStore] 后台排序完成，通知UI更新")
+            }
+        }
+        
+        // 在后台线程异步写入数据库(不阻塞UI)
+        Task.detached(priority: .background) { [weak self] in
+            guard let self = self else { return }
+            do {
+                try await self.database.asyncWrite { db in
+                    for message in updatedMessages {
+                        try self.saveMessage(message, db: db)
+                    }
+                }
+                print("✅ [EmailStore] 后台保存了 \(updatedMessages.count) 封邮件到数据库")
+            } catch {
+                print("❌ [EmailStore] 后台保存邮件失败: \(error)")
+            }
+        }
     }
     
     /// 更新邮件
@@ -157,12 +224,25 @@ class EmailStore: ObservableObject {
         var updated = message
         updated.updatedAt = Date()
         
-        try await database.write { db in
-            try self.saveMessage(updated, db: db)
+        // 先更新内存
+        if let folderId = message.folderId,
+           var folderMessages = messages[folderId],
+           let index = folderMessages.firstIndex(where: { $0.id == message.id }) {
+            folderMessages[index] = updated
+            messages[folderId] = folderMessages
+            notifyChange()
         }
         
-        if let folderId = message.folderId {
-            await loadMessages(for: folderId)
+        // 后台异步写入数据库
+        Task.detached(priority: .background) { [weak self] in
+            guard let self = self else { return }
+            do {
+                try await self.database.asyncWrite { db in
+                    try self.saveMessage(updated, db: db)
+                }
+            } catch {
+                print("❌ [EmailStore] 后台更新邮件失败: \(error)")
+            }
         }
     }
     
@@ -244,9 +324,10 @@ class EmailStore: ObservableObject {
                 subject, from_name, from_email, to_contacts, cc_contacts,
                 bcc_contacts, reply_to_contacts, text_body, html_body, preview,
                 date, received_date, is_read, is_starred, is_important,
-                is_no_reply, has_attachments, tags, ai_tags, ai_summary,
-                ai_priority, synced_at, updated_at, is_body_loaded
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                is_no_reply, has_attachments, is_spam, is_deleted, contains_remote_resources,
+                tags, ai_tags, ai_summary,
+                ai_priority, synced_at, updated_at, is_body_loaded, body_cached_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, arguments: [
             message.id.uuidString,
             message.accountId.uuidString,
@@ -271,13 +352,17 @@ class EmailStore: ObservableObject {
             message.isImportant ? 1 : 0,
             message.isNoReply ? 1 : 0,
             message.hasAttachments ? 1 : 0,
+            message.isSpam ? 1 : 0,
+            message.isDeleted ? 1 : 0,
+            message.containsRemoteResources ? 1 : 0,
             tags,
             aiTags,
             message.aiSummary,
             message.aiPriority?.rawValue,
             message.syncedAt.timeIntervalSince1970,
             message.updatedAt.timeIntervalSince1970,
-            message.isBodyLoaded ? 1 : 0
+            message.isBodyLoaded ? 1 : 0,
+            message.bodyCachedAt?.timeIntervalSince1970
         ])
         
         // 保存附件
@@ -306,7 +391,7 @@ class EmailStore: ObservableObject {
     
     private func loadAccounts() async {
         do {
-            let loaded = try await database.read { db -> [EmailAccount] in
+            let loaded = try await database.asyncRead { db -> [EmailAccount] in
                 var accounts: [EmailAccount] = []
                 let rows = try Row.fetchAll(db, sql: "SELECT * FROM email_accounts ORDER BY is_default DESC, created_at DESC")
                 
@@ -325,7 +410,7 @@ class EmailStore: ObservableObject {
     
     private func loadFolders() async {
         do {
-            let loaded = try await database.read { db -> [UUID: [EmailFolder]] in
+            let loaded = try await database.asyncRead { db -> [UUID: [EmailFolder]] in
                 var foldersDict: [UUID: [EmailFolder]] = [:]
                 let rows = try Row.fetchAll(db, sql: "SELECT * FROM email_folders ORDER BY type, name")
                 
@@ -364,15 +449,26 @@ class EmailStore: ObservableObject {
         return result
     }
     
-    private func loadMessages(for folderId: UUID) async {
+    /// 从数据库加载文件夹的邮件缓存（超高速版本）
+    func loadMessages(for folderId: UUID) async {
+        // 如果已经有缓存，跳过
+        if let existing = messages[folderId], !existing.isEmpty {
+            print("📦 [EmailStore] 文件夹 \(folderId) 已有缓存 \(existing.count) 封邮件，跳过加载")
+            return
+        }
+        
+        print("📦 [EmailStore] 开始从数据库加载文件夹 \(folderId) 的邮件...")
+        let loadStart = Date()
+        
         do {
-            let loaded = try await database.read { db -> [EmailMessage] in
+            // 分批加载：先加载100封立即显示，再加载剩余的
+            let firstBatch = try await database.asyncRead { db -> [EmailMessage] in
                 var messages: [EmailMessage] = []
                 let rows = try Row.fetchAll(db, sql: """
                     SELECT * FROM email_messages
                     WHERE folder_id = ?
                     ORDER BY date DESC
-                    LIMIT 1000
+                    LIMIT 100
                 """, arguments: [folderId.uuidString])
                 
                 for row in rows {
@@ -382,8 +478,51 @@ class EmailStore: ObservableObject {
                 return messages
             }
             
-            messages[folderId] = loaded
-            objectWillChange.send()
+            let loadElapsed = Date().timeIntervalSince(loadStart)
+            print("📦 [EmailStore] 首批加载完成: \(firstBatch.count) 封邮件，耗时: \(String(format: "%.3f", loadElapsed * 1000))ms")
+            
+            // 立即更新UI
+            await MainActor.run {
+                messages[folderId] = firstBatch
+                notifyChange()
+            }
+            
+            // 后台加载剩余邮件
+            if firstBatch.count >= 100 {
+                Task.detached(priority: .background) { [weak self] in
+                    guard let self = self else { return }
+                    
+                    do {
+                        let remainingMessages = try await self.database.asyncRead { db -> [EmailMessage] in
+                            var messages: [EmailMessage] = []
+                            let rows = try Row.fetchAll(db, sql: """
+                                SELECT * FROM email_messages
+                                WHERE folder_id = ?
+                                ORDER BY date DESC
+                                LIMIT 900 OFFSET 100
+                            """, arguments: [folderId.uuidString])
+                            
+                            for row in rows {
+                                let message = try self.parseMessage(from: row, db: db)
+                                messages.append(message)
+                            }
+                            return messages
+                        }
+                        
+                        if !remainingMessages.isEmpty {
+                            await MainActor.run {
+                                var combined = self.messages[folderId] ?? []
+                                combined.append(contentsOf: remainingMessages)
+                                self.messages[folderId] = combined
+                                self.notifyChange()
+                                print("📦 [EmailStore] 后台加载完成，新增: \(remainingMessages.count) 封邮件")
+                            }
+                        }
+                    } catch {
+                        print("❌ [EmailStore] 后台加载剩余邮件失败: \(error)")
+                    }
+                }
+            }
         } catch {
             print("❌ [EmailStore] 加载邮件失败: \(error)")
         }
@@ -467,6 +606,18 @@ class EmailStore: ObservableObject {
         // 加载附件
         let attachments = try loadAttachments(messageId: id, db: db)
         
+        // 检查数据库中是否有正文内容，自动设置 isBodyLoaded
+        let textBody = row["text_body"] as? String
+        let htmlBody = row["html_body"] as? String
+        let hasTextBody = textBody?.isEmpty == false
+        let hasHtmlBody = htmlBody?.isEmpty == false
+        let dbIsBodyLoaded = (row["is_body_loaded"] as? Int ?? 0) == 1
+        // 如果数据库标记为已加载，或者有正文内容，则标记为已加载
+        let isBodyLoaded = dbIsBodyLoaded || hasTextBody || hasHtmlBody
+        
+        // 读取正文缓存时间（如果字段存在）
+        let bodyCachedAt = (row["body_cached_at"] as? Double).map { Date(timeIntervalSince1970: $0) }
+        
         return EmailMessage(
             id: id,
             accountId: accountId,
@@ -480,8 +631,8 @@ class EmailStore: ObservableObject {
             cc: cc,
             bcc: bcc,
             replyTo: replyTo,
-            textBody: row["text_body"] as? String,
-            htmlBody: row["html_body"] as? String,
+            textBody: textBody,
+            htmlBody: htmlBody,
             preview: row["preview"] as? String ?? "",
             date: Date(timeIntervalSince1970: row["date"] as? Double ?? 0),
             receivedDate: (row["received_date"] as? Double).map { Date(timeIntervalSince1970: $0) },
@@ -490,6 +641,9 @@ class EmailStore: ObservableObject {
             isImportant: (row["is_important"] as? Int ?? 0) == 1,
             isNoReply: (row["is_no_reply"] as? Int ?? 0) == 1,
             hasAttachments: (row["has_attachments"] as? Int ?? 0) == 1,
+            isSpam: (row["is_spam"] as? Int ?? 0) == 1,
+            isDeleted: (row["is_deleted"] as? Int ?? 0) == 1,
+            containsRemoteResources: (row["contains_remote_resources"] as? Int ?? 0) == 1,
             tags: tags,
             aiTags: aiTags,
             aiSummary: row["ai_summary"] as? String,
@@ -497,7 +651,8 @@ class EmailStore: ObservableObject {
             attachments: attachments,
             syncedAt: Date(timeIntervalSince1970: row["synced_at"] as? Double ?? 0),
             updatedAt: Date(timeIntervalSince1970: row["updated_at"] as? Double ?? 0),
-            isBodyLoaded: (row["is_body_loaded"] as? Int ?? 0) == 1
+            isBodyLoaded: isBodyLoaded,
+            bodyCachedAt: bodyCachedAt
         )
     }
     

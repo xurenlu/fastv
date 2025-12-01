@@ -103,6 +103,9 @@ class EmailDatabase {
                     is_important INTEGER NOT NULL DEFAULT 0,
                     is_no_reply INTEGER NOT NULL DEFAULT 0,
                     has_attachments INTEGER NOT NULL DEFAULT 0,
+                    is_spam INTEGER NOT NULL DEFAULT 0,
+                    is_deleted INTEGER NOT NULL DEFAULT 0,
+                    contains_remote_resources INTEGER NOT NULL DEFAULT 0,
                     tags TEXT,
                     ai_tags TEXT,
                     ai_summary TEXT,
@@ -110,10 +113,14 @@ class EmailDatabase {
                     synced_at REAL NOT NULL,
                     updated_at REAL NOT NULL,
                     is_body_loaded INTEGER NOT NULL DEFAULT 0,
+                    body_cached_at REAL,
                     FOREIGN KEY(account_id) REFERENCES email_accounts(id) ON DELETE CASCADE,
                     FOREIGN KEY(folder_id) REFERENCES email_folders(id) ON DELETE SET NULL
                 )
             """)
+            
+            // 迁移：添加新字段（如果表已存在）
+            try migrateDatabase(db: db)
             
             // 创建附件表
             try db.execute(sql: """
@@ -139,12 +146,41 @@ class EmailDatabase {
         }
     }
     
+    /// 数据库迁移：添加新字段
+    private func migrateDatabase(db: Database) throws {
+        guard try db.tableExists("email_messages") else { return }
+        
+        // 检查列是否存在（通过尝试查询来判断）
+        let columns = try db.columns(in: "email_messages")
+        let columnNames = Set(columns.map { $0.name })
+        
+        // 添加 is_spam 字段
+        if !columnNames.contains("is_spam") {
+            try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN is_spam INTEGER NOT NULL DEFAULT 0")
+        }
+        
+        // 添加 is_deleted 字段
+        if !columnNames.contains("is_deleted") {
+            try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0")
+        }
+        
+        // 添加 contains_remote_resources 字段
+        if !columnNames.contains("contains_remote_resources") {
+            try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN contains_remote_resources INTEGER NOT NULL DEFAULT 0")
+        }
+        
+        // 添加 body_cached_at 字段（正文缓存时间）
+        if !columnNames.contains("body_cached_at") {
+            try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN body_cached_at REAL")
+        }
+    }
+    
     /// 获取数据库队列（用于异步操作）
     func getQueue() -> DatabaseQueue? {
         return dbQueue
     }
     
-    /// 执行写入操作
+    /// 执行写入操作(同步)
     func write<T>(_ block: @escaping (Database) throws -> T) throws -> T {
         guard let dbQueue = dbQueue else {
             throw EmailDatabaseError.notInitialized
@@ -152,12 +188,34 @@ class EmailDatabase {
         return try dbQueue.write(block)
     }
     
-    /// 执行读取操作
+    /// 执行写入操作(异步,不阻塞调用线程)
+    func asyncWrite<T: Sendable>(_ block: @escaping @Sendable (Database) throws -> T) async throws -> T {
+        guard let dbQueue = dbQueue else {
+            throw EmailDatabaseError.notInitialized
+        }
+        // 使用 Task.detached 确保在后台线程执行
+        return try await Task.detached(priority: .utility) {
+            try dbQueue.write(block)
+        }.value
+    }
+    
+    /// 执行读取操作(同步)
     func read<T>(_ block: @escaping (Database) throws -> T) throws -> T {
         guard let dbQueue = dbQueue else {
             throw EmailDatabaseError.notInitialized
         }
         return try dbQueue.read(block)
+    }
+    
+    /// 执行读取操作(异步,不阻塞调用线程)
+    func asyncRead<T: Sendable>(_ block: @escaping @Sendable (Database) throws -> T) async throws -> T {
+        guard let dbQueue = dbQueue else {
+            throw EmailDatabaseError.notInitialized
+        }
+        // 使用 Task.detached 确保在后台线程执行
+        return try await Task.detached(priority: .utility) {
+            try dbQueue.read(block)
+        }.value
     }
 }
 
