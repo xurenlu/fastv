@@ -96,5 +96,22 @@ extension EmailFolder {
         }
         return name
     }
+    
+    /// 判断是否包含未正确解码的乱码
+    var isGarbled: Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return true }
+        
+        if trimmed.contains("=?") || trimmed.contains("?=") {
+            return true
+        }
+        
+        let pattern = #"&[A-Za-z0-9+,/]+-"#
+        if trimmed.range(of: pattern, options: .regularExpression) != nil {
+            return true
+        }
+        
+        return false
+    }
 }
 

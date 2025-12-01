@@ -79,16 +79,18 @@ struct EmailView: View {
         VStack(spacing: 0) {
             // 账号选择器
             if !viewModel.accounts.isEmpty {
-                Picker("账号", selection: Binding(
-                    get: { viewModel.selectedAccountId ?? UUID() },
+                let accountBinding = Binding<UUID?>(
+                    get: { viewModel.selectedAccountId },
                     set: { id in
-                        if let account = viewModel.accounts.first(where: { $0.id == id }) {
-                            viewModel.selectAccount(account)
-                        }
+                        guard let id = id,
+                              let account = viewModel.accounts.first(where: { $0.id == id }) else { return }
+                        viewModel.selectAccount(account)
                     }
-                )) {
+                )
+                
+                Picker("账号", selection: accountBinding) {
                     ForEach(viewModel.accounts) { account in
-                        Text(account.displayName).tag(account.id)
+                        Text(account.displayName).tag(Optional(account.id))
                     }
                 }
                 .pickerStyle(.menu)
@@ -116,7 +118,9 @@ struct EmailView: View {
             
             // 文件夹列表
             if viewModel.selectedAccountId != nil {
-                if viewModel.folders.isEmpty {
+                let visibleFolders = viewModel.folders.filter { !$0.isGarbled }
+                
+                if visibleFolders.isEmpty {
                     // 文件夹列表为空时的提示
                     VStack(spacing: 8) {
                         if viewModel.isLoading {
@@ -150,7 +154,7 @@ struct EmailView: View {
                         get: { viewModel.selectedFolderId },
                         set: { folderId in
                             if let folderId = folderId,
-                               let folder = viewModel.folders.first(where: { $0.id == folderId }) {
+                               let folder = visibleFolders.first(where: { $0.id == folderId }) {
                                 viewModel.selectFolder(folder)
                             } else {
                                 viewModel.showAllMessages()
@@ -162,7 +166,7 @@ struct EmailView: View {
                                 .tag(Optional<UUID>.none)
                                 .contentShape(Rectangle())
                         }
-                        ForEach(viewModel.folders) { folder in
+                        ForEach(visibleFolders) { folder in
                             FolderRow(folder: folder)
                                 .tag(folder.id)
                         }
