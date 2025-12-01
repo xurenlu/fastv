@@ -1269,35 +1269,36 @@ class EmailViewModel: ObservableObject {
     /// 使用AI分析邮件
     func analyzeMessageWithAI(_ message: EmailMessage) async {
         do {
-            // 在主线程获取当前邮件和偏好设置
-            let (currentMessage, needsTagging, needsPriority, needsSummary) = await MainActor.run {
+            // 在主线程一次性获取所有需要的配置和数据，避免多次切换
+            let (currentMessage, needsTagging, needsPriority, needsSummary, config, prefs) = await MainActor.run {
                 let msg = messages.first(where: { $0.id == message.id }) ?? message
                 let tagging = preferences.emailAISmartTaggingEnabled && msg.aiTags.isEmpty
                 let priority = preferences.emailAIPriorityDetectionEnabled && msg.aiPriority == nil
                 let summary = preferences.emailAISummaryEnabled && msg.aiSummary == nil
-                return (msg, tagging, priority, summary)
+                let aiConfig = preferences.getConfig(for: .aiChat)
+                return (msg, tagging, priority, summary, aiConfig, preferences)
             }
             
             var updated = currentMessage
             
             print("🤖 [EmailViewModel] AI分析邮件: \(updated.subject), hasBody=\(updated.isBodyLoaded), htmlBody长度=\(updated.htmlBody?.count ?? 0)")
             
-            // 在后台线程执行AI请求
+            // 在后台线程执行AI请求，传递已获取的配置，避免再次切换到主线程
             // 生成标签（如果启用）
             if needsTagging {
-                let tags = try await emailAIService.generateSmartTags(for: currentMessage)
+                let tags = try await emailAIService.generateSmartTags(for: currentMessage, config: config, preferences: prefs)
                 updated.aiTags = tags
             }
             
             // 检测优先级（如果启用）
             if needsPriority {
-                let priority = try await emailAIService.detectPriority(for: currentMessage)
+                let priority = try await emailAIService.detectPriority(for: currentMessage, config: config, preferences: prefs)
                 updated.aiPriority = priority
             }
             
             // 生成摘要（如果启用）
             if needsSummary {
-                let summary = try await emailAIService.generateSummary(for: currentMessage)
+                let summary = try await emailAIService.generateSummary(for: currentMessage, config: config, preferences: prefs)
                 updated.aiSummary = summary
             }
             
