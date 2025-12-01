@@ -255,7 +255,6 @@ class EmailViewModel: ObservableObject {
             isLoading = true
             currentPage = 0
             loadedDateRange = nil
-            messages = []
         }
         
         errorMessage = nil
@@ -357,7 +356,9 @@ class EmailViewModel: ObservableObject {
         currentPage = 0
         hasMoreMessages = true
         loadedDateRange = nil
-        messages = [] // 清空当前列表
+        
+        // 先展示本地缓存，避免界面空白
+        updateMessagesFromStore()
         
         // 异步加载，不阻塞 UI
         Task.detached(priority: .userInitiated) { [weak self] in
