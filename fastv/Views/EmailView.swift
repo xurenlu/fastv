@@ -57,6 +57,20 @@ struct EmailView: View {
         .sheet(isPresented: $showAccountManagement) {
             EmailAccountManagementView()
         }
+        .onAppear {
+            // 视图出现时，确保加载了数据
+            Task {
+                await viewModel.loadInitialData()
+            }
+        }
+        .onChange(of: viewModel.selectedAccountId) { _, _ in
+            // 账号切换时，重新加载数据
+            Task {
+                if let account = viewModel.currentAccount {
+                    await viewModel.loadFolders(account: account)
+                }
+            }
+        }
     }
     
     // MARK: - Folder List
@@ -79,18 +93,88 @@ struct EmailView: View {
                 }
                 .pickerStyle(.menu)
                 .padding()
+            } else {
+                // 没有账号时的提示
+                VStack(spacing: 8) {
+                    Image(systemName: "person.crop.circle.badge.plus")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                    Text("没有邮箱账号")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Button("添加账号") {
+                        showAccountManagement = true
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
             }
             
             Divider()
             
             // 文件夹列表
-            List(selection: $viewModel.selectedFolderId) {
-                ForEach(viewModel.folders) { folder in
-                    FolderRow(folder: folder)
-                        .tag(folder.id)
+            if viewModel.selectedAccountId != nil {
+                if viewModel.folders.isEmpty {
+                    // 文件夹列表为空时的提示
+                    VStack(spacing: 8) {
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("正在加载文件夹...")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Image(systemName: "folder.badge.questionmark")
+                                .font(.title2)
+                                .foregroundStyle(.secondary)
+                            Text("没有文件夹")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Button("刷新") {
+                                if let account = viewModel.currentAccount {
+                                    Task {
+                                        await viewModel.loadFolders(account: account)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding()
+                } else {
+                    List(selection: Binding(
+                        get: { viewModel.selectedFolderId },
+                        set: { folderId in
+                            if let folderId = folderId,
+                               let folder = viewModel.folders.first(where: { $0.id == folderId }) {
+                                viewModel.selectFolder(folder)
+                            }
+                        }
+                    )) {
+                        ForEach(viewModel.folders) { folder in
+                            FolderRow(folder: folder)
+                                .tag(folder.id)
+                        }
+                    }
+                    .listStyle(.sidebar)
                 }
+            } else {
+                // 没有选择账号时的提示
+                VStack(spacing: 8) {
+                    Image(systemName: "person.crop.circle")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                    Text("请选择邮箱账号")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding()
             }
-            .listStyle(.sidebar)
         }
     }
     
@@ -111,19 +195,41 @@ struct EmailView: View {
             Divider()
             
             // 邮件列表
-            if viewModel.isLoading {
+            if viewModel.isLoading && viewModel.messages.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if viewModel.messages.isEmpty {
+            } else if viewModel.messages.isEmpty && !viewModel.isLoading {
                 emptyMessageListView
             } else {
-                List(selection: $viewModel.selectedMessageId) {
-                    ForEach(viewModel.searchText.isEmpty ? viewModel.messages : viewModel.searchMessages(query: viewModel.searchText)) { message in
-                        MessageRow(message: message, showAttachments: viewModel.showAttachments)
-                            .tag(message.id)
+                ScrollViewReader { proxy in
+                    List(selection: $viewModel.selectedMessageId) {
+                        ForEach(viewModel.searchText.isEmpty ? viewModel.messages : viewModel.searchMessages(query: viewModel.searchText)) { message in
+                            MessageRow(message: message, showAttachments: viewModel.showAttachments)
+                                .tag(message.id)
+                                .onAppear {
+                                    // 滚动到底部时自动加载更多
+                                    if message.id == viewModel.messages.last?.id {
+                                        viewModel.loadMoreMessages()
+                                    }
+                                }
+                        }
+                        
+                        // 加载更多指示器
+                        if viewModel.isLoadingMore {
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                Text("加载更多...")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                            }
+                            .padding()
+                        }
                     }
+                    .listStyle(.plain)
                 }
-                .listStyle(.plain)
             }
         }
     }

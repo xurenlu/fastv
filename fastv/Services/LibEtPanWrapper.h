@@ -36,6 +36,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// 获取邮件列表（UID范围，返回包含 UID 和基本信息的字典）
 - (nullable NSArray<NSDictionary *> *)fetchMessagesFromUID:(uint32_t)fromUID toUID:(uint32_t)toUID error:(NSError **)error;
 
+/// 按日期搜索邮件（sinceDate 为 nil 时获取所有邮件）
+- (nullable NSArray<NSDictionary *> *)fetchMessagesSinceDate:(nullable NSDate *)sinceDate limit:(NSUInteger)limit error:(NSError **)error;
+
 /// 获取邮件头信息（Subject, From, To, Date等）
 - (nullable NSDictionary<NSString *, id> *)fetchMessageHeadersWithUID:(uint32_t)uid error:(NSError **)error;
 
@@ -47,6 +50,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// 断开连接
 - (void)disconnect;
+
+/// 解码 Modified UTF-7 编码的文件夹名称
+- (NSString *)decodeModifiedUTF7:(NSString *)encoded;
+
+/// 编码 Modified UTF-7（用于选择文件夹）
+- (NSString *)encodeModifiedUTF7:(NSString *)folderName;
 
 @end
 

@@ -162,7 +162,40 @@
         return NO;
     }
     
-    const char *mb = [folderName UTF8String];
+    // 文件夹名称可能已经是 Modified UTF-7 编码的（从服务器返回的），直接使用
+    // 如果传入的是已解码的名称（包含中文等非ASCII字符），需要编码
+    NSString *encodedName = folderName;
+    
+    // 检查是否包含非ASCII字符（需要编码）
+    NSData *utf8Data = [folderName dataUsingEncoding:NSUTF8StringEncoding];
+    BOOL hasNonASCII = NO;
+    for (NSUInteger i = 0; i < utf8Data.length; i++) {
+        unsigned char byte = ((unsigned char *)utf8Data.bytes)[i];
+        if (byte > 127) {
+            hasNonASCII = YES;
+            break;
+        }
+    }
+    
+    // 如果包含非ASCII字符且不是已编码格式（不包含 &...- 模式），需要编码
+    if (hasNonASCII && [folderName rangeOfString:@"&-"].location == NSNotFound) {
+        // 检查是否已经是编码格式（包含 & 和 -，但不是 &-）
+        NSRange ampRange = [folderName rangeOfString:@"&"];
+        if (ampRange.location != NSNotFound) {
+            // 检查后面是否有 -（可能是编码格式）
+            NSRange dashRange = [folderName rangeOfString:@"-" options:0 range:NSMakeRange(ampRange.location, folderName.length - ampRange.location)];
+            if (dashRange.location == NSNotFound || dashRange.location == ampRange.location + 1) {
+                // 没有找到 - 或者 - 紧跟在 & 后面（&- 表示 &），需要编码
+                encodedName = [self encodeModifiedUTF7:folderName];
+            }
+            // 否则已经是编码格式，直接使用
+        } else {
+            // 没有 &，包含非ASCII字符，需要编码
+            encodedName = [self encodeModifiedUTF7:folderName];
+        }
+    }
+    // 如果已经是 ASCII 或已经是编码格式，直接使用
+    const char *mb = [encodedName UTF8String];
     int r = mailimap_select((mailimap *)_imapSession, mb);
     
     if (r != MAILIMAP_NO_ERROR) {
@@ -209,8 +242,10 @@
     for (iter = clist_begin(result); iter != NULL; iter = clist_next(iter)) {
         struct mailimap_mailbox_list *mb_list = (struct mailimap_mailbox_list *)clist_content(iter);
         if (mb_list && mb_list->mb_name) {
-            NSString *folderName = [NSString stringWithUTF8String:mb_list->mb_name];
-            [folders addObject:folderName];
+            // IMAP 文件夹名称使用 Modified UTF-7 编码，需要解码
+            NSString *encodedName = [NSString stringWithUTF8String:mb_list->mb_name];
+            NSString *decodedName = [self decodeModifiedUTF7:encodedName];
+            [folders addObject:decodedName];
         }
     }
     
@@ -218,6 +253,85 @@
     
     NSLog(@"✅ [LibEtPan] 获取到 %lu 个文件夹", (unsigned long)folders.count);
     return folders;
+}
+
+// 解码 Modified UTF-7 编码的文件夹名称
+- (NSString *)decodeModifiedUTF7:(NSString *)encoded {
+    if (!encoded || encoded.length == 0) {
+        return encoded;
+    }
+    
+    // 检查是否包含 Modified UTF-7 编码标记（& 开头）
+    if (![encoded containsString:@"&"]) {
+        // 不包含编码标记，直接返回
+        return encoded;
+    }
+    
+    NSMutableString *decoded = [NSMutableString string];
+    NSUInteger length = encoded.length;
+    NSUInteger i = 0;
+    
+    while (i < length) {
+        unichar ch = [encoded characterAtIndex:i];
+        
+        if (ch == '&') {
+            i++; // 跳过 &
+            
+            if (i < length && [encoded characterAtIndex:i] == '-') {
+                // "&-" 表示 "&"
+                [decoded appendString:@"&"];
+                i++; // 跳过 -
+            } else {
+                // 查找编码段的结束位置（-）
+                NSRange dashRange = [encoded rangeOfString:@"-" options:0 range:NSMakeRange(i, length - i)];
+                
+                if (dashRange.location != NSNotFound) {
+                    // 提取 Base64 编码部分
+                    NSRange encodedRange = NSMakeRange(i, dashRange.location - i);
+                    NSString *base64Part = [encoded substringWithRange:encodedRange];
+                    
+                    if (base64Part.length > 0) {
+                        // Modified UTF-7 使用 , 代替 /，需要转换回标准 Base64
+                        NSString *base64 = [base64Part stringByReplacingOccurrencesOfString:@"," withString:@"/"];
+                        
+                        // 添加必要的填充
+                        NSUInteger remainder = base64.length % 4;
+                        if (remainder > 0) {
+                            for (NSUInteger j = 0; j < (4 - remainder); j++) {
+                                base64 = [base64 stringByAppendingString:@"="];
+                            }
+                        }
+                        
+                        // Base64 解码
+                        NSData *data = [[NSData alloc] initWithBase64EncodedString:base64 options:0];
+                        if (data) {
+                            NSString *utf8String = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+                            if (utf8String) {
+                                [decoded appendString:utf8String];
+                            } else {
+                                // UTF-8 解码失败，保留原始编码
+                                [decoded appendFormat:@"&%@-", base64Part];
+                            }
+                        } else {
+                            // Base64 解码失败，保留原始编码
+                            [decoded appendFormat:@"&%@-", base64Part];
+                        }
+                    }
+                    
+                    i = dashRange.location + 1; // 跳过 -
+                } else {
+                    // 没有找到结束标记，可能是字符串结尾，保留原始字符
+                    [decoded appendString:@"&"];
+                }
+            }
+        } else {
+            // 普通字符
+            [decoded appendFormat:@"%C", ch];
+            i++;
+        }
+    }
+    
+    return decoded;
 }
 
 - (nullable NSArray<NSDictionary *> *)fetchMessagesFromUID:(uint32_t)fromUID toUID:(uint32_t)toUID error:(NSError **)error {
@@ -262,6 +376,82 @@
     mailimap_search_result_free(search_result);
     
     NSLog(@"✅ [LibEtPan] 找到 %lu 封邮件", (unsigned long)messages.count);
+    return messages;
+}
+
+/// 按日期搜索邮件（优化性能）
+- (nullable NSArray<NSDictionary *> *)fetchMessagesSinceDate:(nullable NSDate *)sinceDate limit:(NSUInteger)limit error:(NSError **)error {
+    if (!_imapSession) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError" 
+                                         code:-1 
+                                     userInfo:@{NSLocalizedDescriptionKey: @"IMAP 会话未初始化"}];
+        }
+        return nil;
+    }
+    
+    // 构建搜索条件
+    struct mailimap_search_key *search_key;
+    if (sinceDate) {
+        // 使用日期搜索：SINCE date
+        NSCalendar *calendar = [NSCalendar currentCalendar];
+        NSDateComponents *components = [calendar components:NSCalendarUnitDay | NSCalendarUnitMonth | NSCalendarUnitYear fromDate:sinceDate];
+        
+        struct mailimap_date *imap_date = mailimap_date_new(
+            (int32_t)components.day,
+            (int32_t)components.month,
+            (int32_t)components.year
+        );
+        search_key = mailimap_search_key_new_since(imap_date);
+    } else {
+        // 获取所有邮件
+        search_key = mailimap_search_key_new_all();
+    }
+    
+    clist *search_result = NULL;
+    int r = mailimap_uid_search((mailimap *)_imapSession, "UTF-8", search_key, &search_result);
+    
+    mailimap_search_key_free(search_key);
+    
+    if (r != MAILIMAP_NO_ERROR) {
+        NSLog(@"❌ [LibEtPan] 搜索邮件 UID 失败，错误代码: %d", r);
+        if (error) {
+            NSString *errorMsg = [NSString stringWithFormat:@"搜索邮件失败: %d", r];
+            *error = [NSError errorWithDomain:@"LibEtPanError" 
+                                         code:r 
+                                     userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
+        }
+        return nil;
+    }
+    
+    NSMutableArray<NSDictionary *> *messages = [NSMutableArray array];
+    clistiter *iter;
+    NSUInteger count = 0;
+    
+    // 从最新的邮件开始（UID 通常是从小到大，但搜索结果可能无序，我们需要排序）
+    NSMutableArray<NSNumber *> *uidArray = [NSMutableArray array];
+    for (iter = clist_begin(search_result); iter != NULL; iter = clist_next(iter)) {
+        uint32_t uid = *((uint32_t *)clist_content(iter));
+        [uidArray addObject:@(uid)];
+    }
+    
+    // 按 UID 降序排序（最新的在前）
+    [uidArray sortUsingComparator:^NSComparisonResult(NSNumber *obj1, NSNumber *obj2) {
+        return [obj2 compare:obj1]; // 降序
+    }];
+    
+    // 限制数量
+    for (NSNumber *uidNum in uidArray) {
+        if (limit > 0 && count >= limit) {
+            break;
+        }
+        [messages addObject:@{@"uid": uidNum}];
+        count++;
+    }
+    
+    mailimap_search_result_free(search_result);
+    
+    NSLog(@"✅ [LibEtPan] 找到 %lu 封邮件（限制: %lu）", (unsigned long)messages.count, (unsigned long)limit);
     return messages;
 }
 
@@ -513,6 +703,52 @@
 
 - (void)dealloc {
     [self disconnect];
+}
+
+// 编码 Modified UTF-7（用于选择文件夹）
+- (NSString *)encodeModifiedUTF7:(NSString *)folderName {
+    if (!folderName || folderName.length == 0) {
+        return folderName;
+    }
+    
+    NSMutableString *encoded = [NSMutableString string];
+    NSData *utf8Data = [folderName dataUsingEncoding:NSUTF8StringEncoding];
+    
+    NSUInteger i = 0;
+    while (i < utf8Data.length) {
+        unsigned char byte = ((unsigned char *)utf8Data.bytes)[i];
+        
+        // ASCII 字符（0x20-0x7E，除了 &）直接使用
+        if (byte >= 0x20 && byte <= 0x7E && byte != '&') {
+            [encoded appendFormat:@"%c", byte];
+            i++;
+        } else if (byte == '&') {
+            // & 用 &- 表示
+            [encoded appendString:@"&-"];
+            i++;
+        } else {
+            // 非 ASCII 字符，需要 Base64 编码
+            NSMutableData *nonAsciiData = [NSMutableData data];
+            while (i < utf8Data.length) {
+                byte = ((unsigned char *)utf8Data.bytes)[i];
+                if (byte >= 0x20 && byte <= 0x7E && byte != '&') {
+                    break; // 遇到 ASCII 字符，停止
+                }
+                [nonAsciiData appendBytes:&byte length:1];
+                i++;
+            }
+            
+            // Base64 编码，使用 , 代替 /
+            NSString *base64 = [nonAsciiData base64EncodedStringWithOptions:0];
+            base64 = [base64 stringByReplacingOccurrencesOfString:@"/" withString:@","];
+            // 移除填充的 =
+            base64 = [base64 stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"="]];
+            
+            [encoded appendFormat:@"&%@-", base64];
+        }
+    }
+    
+    return encoded;
 }
 
 @end
@@ -958,6 +1194,52 @@
 
 - (void)dealloc {
     [self disconnect];
+}
+
+// 编码 Modified UTF-7（用于选择文件夹）
+- (NSString *)encodeModifiedUTF7:(NSString *)folderName {
+    if (!folderName || folderName.length == 0) {
+        return folderName;
+    }
+    
+    NSMutableString *encoded = [NSMutableString string];
+    NSData *utf8Data = [folderName dataUsingEncoding:NSUTF8StringEncoding];
+    
+    NSUInteger i = 0;
+    while (i < utf8Data.length) {
+        unsigned char byte = ((unsigned char *)utf8Data.bytes)[i];
+        
+        // ASCII 字符（0x20-0x7E，除了 &）直接使用
+        if (byte >= 0x20 && byte <= 0x7E && byte != '&') {
+            [encoded appendFormat:@"%c", byte];
+            i++;
+        } else if (byte == '&') {
+            // & 用 &- 表示
+            [encoded appendString:@"&-"];
+            i++;
+        } else {
+            // 非 ASCII 字符，需要 Base64 编码
+            NSMutableData *nonAsciiData = [NSMutableData data];
+            while (i < utf8Data.length) {
+                byte = ((unsigned char *)utf8Data.bytes)[i];
+                if (byte >= 0x20 && byte <= 0x7E && byte != '&') {
+                    break; // 遇到 ASCII 字符，停止
+                }
+                [nonAsciiData appendBytes:&byte length:1];
+                i++;
+            }
+            
+            // Base64 编码，使用 , 代替 /
+            NSString *base64 = [nonAsciiData base64EncodedStringWithOptions:0];
+            base64 = [base64 stringByReplacingOccurrencesOfString:@"/" withString:@","];
+            // 移除填充的 =
+            base64 = [base64 stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"="]];
+            
+            [encoded appendFormat:@"&%@-", base64];
+        }
+    }
+    
+    return encoded;
 }
 
 @end

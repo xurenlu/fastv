@@ -73,8 +73,16 @@ class EmailStore: ObservableObject {
     
     // MARK: - Folder Management
     
-    /// 添加文件夹
+    /// 添加文件夹（检查重复）
     func addFolder(_ folder: EmailFolder) async throws {
+        // 检查是否已存在相同路径的文件夹
+        let existingFolders = folders[folder.accountId] ?? []
+        if existingFolders.contains(where: { $0.path == folder.path && $0.accountId == folder.accountId }) {
+            // 已存在，更新而不是添加
+            try await updateFolder(folder)
+            return
+        }
+        
         try await database.write { db in
             try self.saveFolder(folder, db: db)
         }
@@ -96,14 +104,43 @@ class EmailStore: ObservableObject {
     
     // MARK: - Message Management
     
-    /// 添加邮件（批量）
-    func addMessages(_ messages: [EmailMessage], folderId: UUID) async throws {
+    /// 添加邮件（批量，增量更新）
+    func addMessages(_ newMessages: [EmailMessage], folderId: UUID) async throws {
+        var existingMessages = messages[folderId] ?? []
+        var updatedMessages: [EmailMessage] = []
+        var hasNewMessages = false
+        
         try await database.write { db in
-            for message in messages {
+            for message in newMessages {
+                // 检查是否已存在（通过 UID）
+                if let existingIndex = existingMessages.firstIndex(where: { $0.uid == message.uid }) {
+                    // 更新现有邮件
+                    let existing = existingMessages[existingIndex]
+                    var updated = message
+                    // 保留已加载的正文
+                    if existing.isBodyLoaded {
+                        updated.textBody = existing.textBody
+                        updated.htmlBody = existing.htmlBody
+                        updated.isBodyLoaded = true
+                    }
+                    updatedMessages.append(updated)
+                    existingMessages[existingIndex] = updated
+                } else {
+                    // 新邮件
+                    updatedMessages.append(message)
+                    existingMessages.append(message)
+                    hasNewMessages = true
+                }
                 try self.saveMessage(message, db: db)
             }
         }
-        await loadMessages(for: folderId)
+        
+        // 排序并更新内存中的消息列表
+        existingMessages.sort { $0.date > $1.date }
+        messages[folderId] = existingMessages
+        
+        // 总是触发 UI 更新（因为可能有新邮件或更新）
+        objectWillChange.send()
     }
     
     /// 更新邮件

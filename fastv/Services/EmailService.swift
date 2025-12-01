@@ -136,8 +136,14 @@ class EmailService {
         return imap
     }
     
-    /// 同步邮件（增量同步）
-    func syncMessages(account: EmailAccount, folder: EmailFolder, since: Date? = nil) async throws -> [EmailMessage] {
+    /// 同步邮件（增量同步，支持时间范围和限制数量）
+    func syncMessages(
+        account: EmailAccount,
+        folder: EmailFolder,
+        since: Date? = nil,
+        limit: Int? = nil,
+        batchSize: Int = 20
+    ) async throws -> [EmailMessage] {
         let imap = try getOrCreateIMAPSession(account: account)
         
         do {
@@ -146,19 +152,42 @@ class EmailService {
             throw EmailServiceError.connectionFailed(error.localizedDescription)
         }
         
-        // 获取邮件列表（从 UID 1 开始，0 表示到最新）
+        // 计算时间范围：默认只获取最近30天的邮件
+        let defaultSince = since ?? Calendar.current.date(byAdding: .day, value: -30, to: Date())
+        
+        // 使用日期搜索优化性能（在服务器端过滤，而不是获取所有邮件）
         let messageUIDs: [Any]
         do {
-            let result = try imap.fetchMessages(fromUID: 1, toUID: 0)
+            let limitValue = limit ?? 200 // 默认最多200封
+            var result: [Any]?
+            var searchError: NSError?
+            
+            // 调用 Objective-C 方法（Swift Date 会自动桥接到 NSDate，Int 转换为 UInt）
+            // Swift 会自动将 Objective-C 的 error 参数转换为 throws，方法名也会自动转换
+            do {
+                result = try imap.fetchMessages(since: defaultSince, limit: UInt(limitValue))
+            } catch {
+                searchError = error as NSError
+                throw EmailServiceError.parseError(error.localizedDescription)
+            }
+            
+            if let error = searchError {
+                throw EmailServiceError.parseError(error.localizedDescription)
+            }
+            
             messageUIDs = result as? [NSDictionary] ?? []
         } catch {
             throw EmailServiceError.parseError(error.localizedDescription)
         }
         
-        // 解析每个邮件的头信息并转换为 EmailMessage
+        // 解析每个邮件的头信息并转换为 EmailMessage（分批处理）
         var emailMessages: [EmailMessage] = []
+        var processedCount = 0
+        let maxCount = limit ?? Int.max
+        
         for msgDictAny in messageUIDs {
-            guard let msgDict = msgDictAny as? NSDictionary,
+            guard processedCount < maxCount,
+                  let msgDict = msgDictAny as? NSDictionary,
                   let uidValue = msgDict["uid"] as? NSNumber else { continue }
             let uid = uidValue.uint32Value
             
@@ -174,7 +203,18 @@ class EmailService {
             
             // 解析邮件头并创建 EmailMessage
             if let emailMessage = parseEmailMessage(from: headers, accountId: account.id, folderId: folder.id, uid: uid) {
+                // 如果指定了时间范围，检查邮件日期
+                if let sinceDate = defaultSince, emailMessage.date < sinceDate {
+                    continue // 跳过超出时间范围的邮件
+                }
+                
                 emailMessages.append(emailMessage)
+                processedCount += 1
+                
+                // 每处理一批，让出控制权，避免阻塞主线程
+                if processedCount % batchSize == 0 {
+                    try await Task.sleep(nanoseconds: 10_000_000) // 10ms
+                }
             }
         }
         
@@ -192,7 +232,15 @@ class EmailService {
             throw EmailServiceError.connectionFailed(error.localizedDescription)
         }
         
-        return folderNames.map { name in
+        // 去重：使用 Set 存储已处理的文件夹名称
+        var seenNames = Set<String>()
+        return folderNames.compactMap { name in
+            // 跳过重复的文件夹名称
+            if seenNames.contains(name) {
+                return nil
+            }
+            seenNames.insert(name)
+            
             let folderType: EmailFolderType
             let upperName = name.uppercased()
             if upperName == "INBOX" {

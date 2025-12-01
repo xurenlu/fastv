@@ -75,7 +75,7 @@ struct VideoListView: View {
                 // 处理选项
                 Form {
                     Section {
-                        ProcessingOptionsView(provider: viewModel)
+                        ProcessingOptionsView(videoInfo: nil)
                     } header: {
                         Text("处理选项")
                     }
