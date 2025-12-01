@@ -183,6 +183,23 @@ struct EmailView: View {
                     
                     List(selection: folderBinding) {
                         Section {
+                            // 写邮件按钮
+                            Button(action: {
+                                viewModel.initComposeDraft()
+                            }) {
+                                HStack {
+                                    Image(systemName: "square.and.pencil")
+                                        .foregroundStyle(.blue)
+                                        .font(.system(size: 16, weight: .medium))
+                                    Text("写邮件")
+                                        .foregroundStyle(.primary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 4)
+                            }
+                            .buttonStyle(.plain)
+                            .contentShape(Rectangle())
+                            
                             Label("所有邮件", systemImage: "tray.full")
                                 .tag(Optional<UUID>.none)
                                 .contentShape(Rectangle())
