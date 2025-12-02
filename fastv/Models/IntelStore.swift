@@ -21,6 +21,34 @@ class IntelStore: ObservableObject {
     
     private init() {
         loadEntries()
+        // 异步迁移历史数据（为没有关键词的旧数据提取关键词）
+        Task { @MainActor in
+            await migrateHistoricalKeywordsIfNeeded()
+        }
+    }
+    
+    /// 迁移历史数据，为没有关键词的条目提取关键词
+    private func migrateHistoricalKeywordsIfNeeded() async {
+        let keywordService = KeywordExtractionService.shared
+        var needsSave = false
+        
+        for (index, entry) in entries.enumerated() {
+            // 如果条目没有关键词，提取关键词
+            if entry.keywords.isEmpty {
+                let (keywords, entities) = keywordService.extractKeywordsAndEntities(
+                    from: "\(entry.summary) \(entry.body)"
+                )
+                var updatedEntry = entry
+                updatedEntry.keywords = keywords
+                updatedEntry.entities = entities
+                entries[index] = updatedEntry
+                needsSave = true
+            }
+        }
+        
+        if needsSave {
+            saveEntries()
+        }
     }
     
     // MARK: - CRUD Operations

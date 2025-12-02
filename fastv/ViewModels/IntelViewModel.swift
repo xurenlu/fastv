@@ -30,8 +30,8 @@ struct IntelChatMessage: Identifiable {
 
 /// 标签页类型
 enum IntelTab: String, CaseIterable {
-    case today = "今天的情况"
-    case history = "历史回顾"
+    case today = "今日的情报"
+    case history = "历史情报"
 }
 
 /// 情报 ViewModel
@@ -48,9 +48,12 @@ class IntelViewModel: ObservableObject {
     @Published var historySearchText: String = ""
     @Published var chatSectionHeight: CGFloat = 200
     @Published var inputFieldHeight: CGFloat = 60  // 默认两行高度（约60像素）
+    @Published var selectedKeyword: String? = nil  // 用于词云筛选
+    @Published var calendarDisplayMonths: [Date] = []  // 当前显示的三个月
     
     private let store = IntelStore.shared
     private let aiService = IntelAIService.shared
+    private let keywordService = KeywordExtractionService.shared
     private var cancellables = Set<AnyCancellable>()
     private var hasCheckedTodayIntel = false
     
@@ -61,17 +64,27 @@ class IntelViewModel: ObservableObject {
         let today = Date()
         
         // 过滤掉今天的情报
-        let history = allEntries.filter { entry in
+        var history = allEntries.filter { entry in
             !calendar.isDate(entry.date, inSameDayAs: today)
+        }
+        
+        // 如果有关键词筛选，先按关键词筛选
+        if let keyword = selectedKeyword {
+            history = history.filter { entry in
+                entry.keywords.contains { $0.lowercased() == keyword.lowercased() } ||
+                entry.summary.lowercased().contains(keyword.lowercased()) ||
+                entry.body.lowercased().contains(keyword.lowercased())
+            }
         }
         
         // 如果搜索文本不为空，进行搜索
         if !historySearchText.isEmpty {
             let searchText = historySearchText.lowercased()
-            return history.filter { entry in
+            history = history.filter { entry in
                 entry.summary.lowercased().contains(searchText) ||
                 entry.body.lowercased().contains(searchText) ||
-                entry.sources.contains { $0.lowercased().contains(searchText) }
+                entry.sources.contains { $0.lowercased().contains(searchText) } ||
+                entry.keywords.contains { $0.lowercased().contains(searchText) }
             }
         }
         
@@ -88,6 +101,9 @@ class IntelViewModel: ObservableObject {
         
         // 初始化时加载当前日期的情报
         loadEntriesForSelectedDate()
+        
+        // 初始化日历显示月份（最近三个月）
+        updateCalendarDisplayMonths()
     }
     
     // MARK: - Load Operations
@@ -143,8 +159,20 @@ class IntelViewModel: ObservableObject {
                 timeout: config.timeout
             )
             
-            // 保存生成的情报
-            store.setEntries(generatedEntries, for: selectedDate)
+            // 为每条情报提取关键词
+            var entriesWithKeywords: [IntelEntry] = []
+            for entry in generatedEntries {
+                let (keywords, entities) = keywordService.extractKeywordsAndEntities(
+                    from: "\(entry.summary) \(entry.body)"
+                )
+                var updatedEntry = entry
+                updatedEntry.keywords = keywords
+                updatedEntry.entities = entities
+                entriesWithKeywords.append(updatedEntry)
+            }
+            
+            // 保存生成的情报（带关键词）
+            store.setEntries(entriesWithKeywords, for: selectedDate)
             
             // 刷新列表
             loadEntriesForSelectedDate()
@@ -274,10 +302,17 @@ class IntelViewModel: ObservableObject {
             print("   - 正文长度: \(body.count)")
             print("   - 来源: \(sources)")
             
+            // 提取关键词
+            let (keywords, entities) = keywordService.extractKeywordsAndEntities(
+                from: "\(summary) \(body)"
+            )
+            
             let entry = IntelEntry(
                 summary: summary,
                 body: body,
                 sources: sources,
+                keywords: keywords,
+                entities: entities,
                 date: selectedDate
             )
             newEntries.append(entry)
@@ -339,6 +374,112 @@ class IntelViewModel: ObservableObject {
     /// 获取指定日期的历史情报
     func historyEntries(for date: Date) -> [IntelEntry] {
         return store.entries(for: date)
+    }
+    
+    // MARK: - Calendar Operations
+    
+    /// 更新日历显示的月份（最近三个月）
+    func updateCalendarDisplayMonths() {
+        let calendar = Calendar.current
+        let today = Date()
+        
+        // 获取最近三个月的第一天
+        var months: [Date] = []
+        for i in 0..<3 {
+            if let month = calendar.date(byAdding: .month, value: -i, to: today) {
+                if let firstDay = calendar.date(from: calendar.dateComponents([.year, .month], from: month)) {
+                    months.append(firstDay)
+                }
+            }
+        }
+        
+        calendarDisplayMonths = months.reversed()  // 从旧到新排序
+    }
+    
+    /// 切换到下三个月
+    func nextThreeMonths() {
+        guard let lastMonth = calendarDisplayMonths.last else {
+            updateCalendarDisplayMonths()
+            return
+        }
+        
+        let calendar = Calendar.current
+        var newMonths: [Date] = []
+        
+        for i in 1...3 {
+            if let month = calendar.date(byAdding: .month, value: i, to: lastMonth) {
+                if let firstDay = calendar.date(from: calendar.dateComponents([.year, .month], from: month)) {
+                    newMonths.append(firstDay)
+                }
+            }
+        }
+        
+        if !newMonths.isEmpty {
+            calendarDisplayMonths = newMonths
+        }
+    }
+    
+    /// 切换到前三个月
+    func previousThreeMonths() {
+        guard let firstMonth = calendarDisplayMonths.first else {
+            updateCalendarDisplayMonths()
+            return
+        }
+        
+        let calendar = Calendar.current
+        var newMonths: [Date] = []
+        
+        for i in 1...3 {
+            if let month = calendar.date(byAdding: .month, value: -i, to: firstMonth) {
+                if let firstDay = calendar.date(from: calendar.dateComponents([.year, .month], from: month)) {
+                    newMonths.append(firstDay)
+                }
+            }
+        }
+        
+        if !newMonths.isEmpty {
+            calendarDisplayMonths = newMonths.reversed()
+        }
+    }
+    
+    // MARK: - Keyword Operations
+    
+    /// 计算指定日期范围的关键词频率
+    func keywordFrequency(from startDate: Date, to endDate: Date) -> [String: Int] {
+        return keywordService.analyzeKeywordFrequency(from: store.entries, dateRange: (from: startDate, to: endDate))
+    }
+    
+    /// 获取最近三个月的关键词频率（用于词云）
+    var recentThreeMonthsKeywordFrequency: [String: Int] {
+        guard let firstMonth = calendarDisplayMonths.first,
+              let lastMonth = calendarDisplayMonths.last else {
+            return [:]
+        }
+        
+        let calendar = Calendar.current
+        let startDate = calendar.startOfDay(for: firstMonth)
+        
+        // 获取最后一个月最后一天
+        var endComponents = calendar.dateComponents([.year, .month], from: lastMonth)
+        endComponents.day = calendar.range(of: .day, in: .month, for: lastMonth)?.count ?? 31
+        let endDate = calendar.date(from: endComponents) ?? lastMonth
+        
+        return keywordFrequency(from: startDate, to: endDate)
+    }
+    
+    /// 按关键词筛选情报
+    func filterByKeyword(_ keyword: String?) {
+        selectedKeyword = keyword
+    }
+    
+    /// 清除关键词筛选
+    func clearKeywordFilter() {
+        selectedKeyword = nil
+    }
+    
+    /// 检查指定日期是否有情报
+    func hasEntries(for date: Date) -> Bool {
+        return !store.entries(for: date).isEmpty
     }
 }
 

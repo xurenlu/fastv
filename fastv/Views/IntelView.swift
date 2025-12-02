@@ -14,29 +14,33 @@ struct IntelView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // 顶部：日期选择器
-            datePickerSection
-            
-            Divider()
+            // 顶部：日期选择器（仅在今日的情报标签页显示）
+            if viewModel.selectedTab == .today {
+                datePickerSection
+                Divider()
+            }
             
             // 主要内容区域（可调整高度）
             GeometryReader { geometry in
                 VStack(spacing: 0) {
                     // 上半部分：情报展示区域
                     contentSection
-                        .frame(height: geometry.size.height - viewModel.chatSectionHeight)
+                        .frame(height: viewModel.selectedTab == .today ? 
+                               (geometry.size.height - viewModel.chatSectionHeight) : 
+                               geometry.size.height)
                     
-                    // 可调整的分割线
-                    ResizableDivider(
-                        height: $viewModel.chatSectionHeight,
-                        totalHeight: geometry.size.height,
-                        minHeight: 150,
-                        maxHeight: geometry.size.height - 200
-                    )
-                    
-                    // 下半部分：聊天区域
-                    chatSection
-                        .frame(height: viewModel.chatSectionHeight)
+                    // 可调整的分割线和聊天区域（仅在今日的情报标签页显示）
+                    if viewModel.selectedTab == .today {
+                        ResizableDivider(
+                            height: $viewModel.chatSectionHeight,
+                            totalHeight: geometry.size.height,
+                            minHeight: 150,
+                            maxHeight: geometry.size.height - 200
+                        )
+                        
+                        chatSection
+                            .frame(height: viewModel.chatSectionHeight)
+                    }
                 }
             }
         }
@@ -123,39 +127,68 @@ struct IntelView: View {
     
     private var historyContentSection: some View {
         HStack(spacing: 0) {
-            // 左侧：历史情报卡片列表
-            VStack(spacing: 0) {
-                // 搜索栏
-                HStack(spacing: 12) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
-                    TextField("搜索历史情报...", text: $viewModel.historySearchText)
-                        .textFieldStyle(.plain)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color(NSColor.controlBackgroundColor))
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                
-                Divider()
-                
-                // 历史情报卡片列表
-                if viewModel.historyEntries.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .font(.system(size: 48))
-                            .foregroundStyle(.secondary.opacity(0.5))
-                        Text(viewModel.historySearchText.isEmpty ? "暂无历史情报" : "未找到匹配的历史情报")
-                            .font(.headline)
-                            .foregroundStyle(.secondary)
+            // 左侧：日历、词云和列表
+            ScrollView {
+                VStack(spacing: 16) {
+                    // 顶部：三个月日历
+                    ThreeMonthCalendarView(viewModel: viewModel)
+                        .padding(.top, 16)
+                    
+                    // 中部：词云
+                    WordCloudContainerView(viewModel: viewModel)
+                    
+                    // 搜索栏和筛选提示
+                    HStack(spacing: 12) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundStyle(.secondary)
+                            TextField("搜索历史情报...", text: $viewModel.historySearchText)
+                                .textFieldStyle(.plain)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color(NSColor.controlBackgroundColor))
+                        }
+                        
+                        if let keyword = viewModel.selectedKeyword {
+                            HStack(spacing: 8) {
+                                Text("筛选: \(keyword)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Button(action: {
+                                    viewModel.clearKeywordFilter()
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background {
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color.accentColor.opacity(0.1))
+                            }
+                        }
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ScrollView {
+                    .padding(.horizontal, 16)
+                    
+                    // 历史情报卡片列表
+                    if viewModel.historyEntries.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.system(size: 48))
+                                .foregroundStyle(.secondary.opacity(0.5))
+                            Text(viewModel.historySearchText.isEmpty && viewModel.selectedKeyword == nil ? 
+                                 "暂无历史情报" : "未找到匹配的历史情报")
+                                .font(.headline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 60)
+                    } else {
                         LazyVGrid(columns: [
                             GridItem(.adaptive(minimum: 300, maximum: 400), spacing: 16)
                         ], spacing: 16) {
@@ -166,17 +199,18 @@ struct IntelView: View {
                                     }
                             }
                         }
-                        .padding(16)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
                     }
                 }
             }
-            .frame(width: 500)
             
-            Divider()
-            
-            // 右侧：详情区域（与今天的情况共用）
-            detailSection
-                .frame(minWidth: 400)
+            // 右侧：详情区域（如果选中了条目）
+            if viewModel.selectedEntry != nil {
+                Divider()
+                detailSection
+                    .frame(width: 400)
+            }
         }
     }
     
