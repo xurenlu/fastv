@@ -195,6 +195,8 @@ struct EmailView: View {
                             // 写邮件按钮
                             Button(action: {
                                 viewModel.initComposeDraft()
+                                composeWindowType = .new
+                                showComposeWindow = true
                             }) {
                                 HStack {
                                     Image(systemName: "square.and.pencil")

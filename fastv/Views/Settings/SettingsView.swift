@@ -127,10 +127,12 @@ struct TabBarItem: View {
             HStack(spacing: 6) {
                 Image(systemName: tab.icon)
                     .font(.system(size: 13))
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(isSelected ? .primary : .secondary)
                 Text(tab.rawValue)
                     .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? .primary : .secondary)
             }
-            .foregroundStyle(isSelected ? .primary : .secondary)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity)
