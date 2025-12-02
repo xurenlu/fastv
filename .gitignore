@@ -53,3 +53,7 @@ Thumbs.db
 *.tmp
 *.temp
 
+
+# ONNX模型文件
+*.onnx
+fastv/Resources/Models/**/*.onnx
