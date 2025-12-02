@@ -2,33 +2,19 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- 麦克风权限 - 用于语音输入 -->
-	<key>com.apple.security.device.audio-input</key>
-	<true/>
-	<!-- 辅助功能权限 - 用于全局快捷键监听和文本插入 -->
 	<key>com.apple.security.automation.apple-events</key>
 	<true/>
-	<!-- 网络访问权限 - 用于下载模型文件 -->
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
+	<key>com.apple.security.get-task-allow</key>
+	<true/>
 	<key>com.apple.security.network.client</key>
 	<true/>
-	<!-- 用户选择的文件读取权限 - 用于文件选择器（NSOpenPanel） -->
-	<key>com.apple.security.files.user-selected.read-only</key>
-	<true/>
-	<!-- 用户选择的文件写入权限 - 用于保存文件到用户选择的位置 -->
-	<key>com.apple.security.files.user-selected.read-write</key>
-	<true/>
-	<!-- 提醒事项访问权限 - 用于同步系统提醒事项 -->
-	<key>com.apple.security.personal-information.reminders</key>
-	<true/>
-	<!-- 日历访问权限 - EventKit 可能需要访问日历服务 -->
-	<key>com.apple.security.personal-information.calendars</key>
-	<true/>
-	<!-- 地址簿访问权限 - EventKit 可能需要访问地址簿 -->
 	<key>com.apple.security.personal-information.addressbook</key>
 	<true/>
-	<!-- Debug模式权限 - 仅在Debug构建时使用 -->
-	<key>com.apple.security.get-task-allow</key>
+	<key>com.apple.security.personal-information.calendars</key>
+	<true/>
+	<key>com.apple.security.personal-information.reminders</key>
 	<true/>
 </dict>
 </plist>
-

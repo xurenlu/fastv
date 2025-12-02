@@ -39,6 +39,28 @@ enum AIProtocolType: String, Codable, CaseIterable {
         }
     }
     
+    /// 图标名称（SF Symbols）
+    var iconName: String {
+        switch self {
+        case .openAI:
+            return "sparkles"
+        case .azureOpenAI:
+            return "cloud.fill"
+        case .dashScope:
+            return "cloud.sun.fill"
+        case .ollama:
+            return "server.rack"
+        case .claude:
+            return "brain.head.profile"
+        case .someIM:
+            return "message.fill"
+        case .gemini:
+            return "star.fill"
+        case .custom:
+            return "gearshape.fill"
+        }
+    }
+    
     /// 默认 API Endpoint
     var defaultEndpoint: String? {
         switch self {

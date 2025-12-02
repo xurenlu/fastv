@@ -671,10 +671,17 @@ class EmailStore: ObservableObject {
         do {
             let currentCount = messages[folderId]?.count ?? 0
             let offset = forceLoadMore ? currentCount : 0
-            let limit = forceLoadMore ? 100 : 100
+            let limit = forceLoadMore ? 500 : 100 // 加载更多时增加到500封，确保能加载足够多的邮件
             
-            // 分批加载：先加载100封立即显示，再加载剩余的
-            let firstBatch = try await database.asyncRead { db -> [EmailMessage] in
+            // 分批加载：先加载一批立即显示，同时查询总数以判断是否还有更多
+            let (firstBatch, totalCount) = try await database.asyncRead { db -> ([EmailMessage], Int) in
+                // 先查询总数
+                let totalCount = try Int.fetchOne(db, sql: """
+                    SELECT COUNT(*) FROM email_messages
+                    WHERE folder_id = ?
+                """, arguments: [folderId.uuidString]) ?? 0
+                
+                // 再加载一批
                 var messages: [EmailMessage] = []
                 let rows = try Row.fetchAll(db, sql: """
                     SELECT * FROM email_messages
@@ -687,11 +694,12 @@ class EmailStore: ObservableObject {
                     let message = try self.parseMessage(from: row, db: db)
                     messages.append(message)
                 }
-                return messages
+                return (messages, totalCount)
             }
             
             let loadElapsed = Date().timeIntervalSince(loadStart)
-            print("📦 [EmailStore] 首批加载完成: \(firstBatch.count) 封邮件，耗时: \(String(format: "%.3f", loadElapsed * 1000))ms")
+            let hasMoreInDatabase = (offset + firstBatch.count) < totalCount
+            print("📦 [EmailStore] 加载完成: \(firstBatch.count) 封邮件，数据库总数: \(totalCount)，已加载: \(offset + firstBatch.count)，还有更多: \(hasMoreInDatabase)，耗时: \(String(format: "%.3f", loadElapsed * 1000))ms")
             
             // 立即更新UI
             await MainActor.run {
@@ -707,8 +715,8 @@ class EmailStore: ObservableObject {
                 notifyChange()
             }
             
-            // 后台加载剩余邮件（只在非强制加载模式下）
-            if !forceLoadMore && firstBatch.count >= 100 {
+            // 后台加载剩余邮件（只在非强制加载模式下，且数据库中有更多邮件时）
+            if !forceLoadMore && firstBatch.count >= 100 && hasMoreInDatabase {
                 Task.detached(priority: .background) { [weak self] in
                     guard let self = self else { return }
                     

@@ -24,21 +24,21 @@
 			containerPortal = 5C0423762ECD792D00821B50 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 5C04237D2ECD792D00821B50;
-			remoteInfo = typecho;
+			remoteInfo = row1;
 		};
 		5C0423982ECD793000821B50 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 5C0423762ECD792D00821B50 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 5C04237D2ECD792D00821B50;
-			remoteInfo = typecho;
+			remoteInfo = row1;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		29D214D841CB811225CD3A43 /* Pods-typecho.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-typecho.debug.xcconfig"; path = "Target Support Files/Pods-typecho/Pods-typecho.debug.xcconfig"; sourceTree = "<group>"; };
 		2C66E9B939880D1E6107BBBD /* Pods_typecho.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_typecho.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		5C04237E2ECD792D00821B50 /* typecho.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = typecho.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5C04237E2ECD792D00821B50 /* row1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = row1.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C04238D2ECD793000821B50 /* typecho.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = typecho.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C0423972ECD793000821B50 /* fastvUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = fastvUITests.xctest; path = typecho.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C33D8712EDC849D00527815 /* libetpan.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libetpan.a; sourceTree = "<group>"; };
@@ -128,7 +128,7 @@
 		5C04237F2ECD792D00821B50 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				5C04237E2ECD792D00821B50 /* typecho.app */,
+				5C04237E2ECD792D00821B50 /* row1.app */,
 				5C04238D2ECD793000821B50 /* typecho.xctest */,
 				5C0423972ECD793000821B50 /* fastvUITests.xctest */,
 			);
@@ -152,9 +152,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		5C04237D2ECD792D00821B50 /* typecho */ = {
+		5C04237D2ECD792D00821B50 /* row1 */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 5C0423A12ECD793000821B50 /* Build configuration list for PBXNativeTarget "typecho" */;
+			buildConfigurationList = 5C0423A12ECD793000821B50 /* Build configuration list for PBXNativeTarget "row1" */;
 			buildPhases = (
 				24ADEB328C96006508A84D48 /* [CP] Check Pods Manifest.lock */,
 				5C04237A2ECD792D00821B50 /* Sources */,
@@ -171,9 +171,9 @@
 			fileSystemSynchronizedGroups = (
 				5C0423802ECD792D00821B50 /* fastv */,
 			);
-			name = typecho;
-			productName = typecho;
-			productReference = 5C04237E2ECD792D00821B50 /* typecho.app */;
+			name = row1;
+			productName = row1;
+			productReference = 5C04237E2ECD792D00821B50 /* row1.app */;
 			productType = "com.apple.product-type.application";
 		};
 		5C04238C2ECD793000821B50 /* fastvTests */ = {
@@ -259,7 +259,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				5C04237D2ECD792D00821B50 /* typecho */,
+				5C04237D2ECD792D00821B50 /* row1 */,
 				5C04238C2ECD793000821B50 /* fastvTests */,
 				5C0423962ECD793000821B50 /* fastvUITests */,
 			);
@@ -404,12 +404,12 @@
 /* Begin PBXTargetDependency section */
 		5C04238F2ECD793000821B50 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 5C04237D2ECD792D00821B50 /* typecho */;
+			target = 5C04237D2ECD792D00821B50 /* row1 */;
 			targetProxy = 5C04238E2ECD793000821B50 /* PBXContainerItemProxy */;
 		};
 		5C0423992ECD793000821B50 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 5C04237D2ECD792D00821B50 /* typecho */;
+			target = 5C04237D2ECD792D00821B50 /* row1 */;
 			targetProxy = 5C0423982ECD793000821B50 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -548,7 +548,18 @@
 				DEVELOPMENT_TEAM = W49B66SUW3;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -560,10 +571,10 @@
 				INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)";
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "智响 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "若一智能助手 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "智响 需要访问您的麦克风以进行语音输入和语音转文字功能。";
-				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "智响 需要访问您的提醒事项以同步待办事项到 AI Todo 功能中。应用只会读取未完成的提醒事项，不会修改或删除您的提醒事项。";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "若一智能助手 需要访问您的麦克风以进行语音输入和语音转文字功能。";
+				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "若一智能助手 需要访问您的提醒事项以同步待办事项到 AI Todo 功能中。应用只会读取未完成的提醒事项，不会修改或删除您的提醒事项。";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -580,8 +591,8 @@
 					"$(inherited)",
 					"-lonnxruntime",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv;
-				PRODUCT_NAME = typecho;
+				PRODUCT_BUNDLE_IDENTIFIER = com.17push.row1;
+				PRODUCT_NAME = row1;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -606,7 +617,18 @@
 				DEVELOPMENT_TEAM = W49B66SUW3;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -618,10 +640,10 @@
 				INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)";
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "智响 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "若一智能助手 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "智响 需要访问您的麦克风以进行语音输入和语音转文字功能。";
-				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "智响 需要访问您的提醒事项以同步待办事项到 AI Todo 功能中。应用只会读取未完成的提醒事项，不会修改或删除您的提醒事项。";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "若一智能助手 需要访问您的麦克风以进行语音输入和语音转文字功能。";
+				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "若一智能助手 需要访问您的提醒事项以同步待办事项到 AI Todo 功能中。应用只会读取未完成的提醒事项，不会修改或删除您的提醒事项。";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -638,8 +660,8 @@
 					"$(inherited)",
 					"-lonnxruntime",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv;
-				PRODUCT_NAME = typecho;
+				PRODUCT_BUNDLE_IDENTIFIER = com.17push.row1;
+				PRODUCT_NAME = row1;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -755,7 +777,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		5C0423A12ECD793000821B50 /* Build configuration list for PBXNativeTarget "typecho" */ = {
+		5C0423A12ECD793000821B50 /* Build configuration list for PBXNativeTarget "row1" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				5C0423A22ECD793000821B50 /* Debug */,

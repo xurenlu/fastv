@@ -65,6 +65,7 @@ class UserPreferences: ObservableObject {
         static let enableSpeakerDiarization = "enableSpeakerDiarization"
         static let diarizationMinSpeakers = "diarizationMinSpeakers"
         static let diarizationMaxSpeakers = "diarizationMaxSpeakers"
+        static let autoStartDiarizationService = "autoStartDiarizationService"
         // AI 聊天参数相关
         static let chatTopP = "chatTopP"
         static let chatTopK = "chatTopK"
@@ -258,6 +259,10 @@ class UserPreferences: ObservableObject {
     
     @Published var diarizationMaxSpeakers: Int? {
         willSet { defaults.set(newValue ?? 0, forKey: Keys.diarizationMaxSpeakers) }
+    }
+    
+    @Published var autoStartDiarizationService: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.autoStartDiarizationService) }
     }
     
     // AI 聊天参数相关
@@ -529,8 +534,8 @@ class UserPreferences: ObservableObject {
         enableFastCorrection = defaults.object(forKey: Keys.enableFastCorrection) as? Bool ?? false
         
         // 模型下载设置
-        // 默认下载地址（用户稍后会提供，先用占位符）
-        modelDownloadURL = defaults.string(forKey: Keys.modelDownloadURL) ?? ""
+        // 默认下载地址
+        modelDownloadURL = defaults.string(forKey: Keys.modelDownloadURL) ?? "https://cdn.wxside.com/upload/202511/1763737361-dTESP.onnx"
         
         // 默认模型存储路径：~/Library/Application Support/fastv/Models/sensevoice-small/
         if let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
@@ -550,6 +555,7 @@ class UserPreferences: ObservableObject {
         diarizationMinSpeakers = minSpeakers > 0 ? minSpeakers : nil
         let maxSpeakers = defaults.object(forKey: Keys.diarizationMaxSpeakers) as? Int ?? 0
         diarizationMaxSpeakers = maxSpeakers > 0 ? maxSpeakers : nil
+        autoStartDiarizationService = defaults.object(forKey: Keys.autoStartDiarizationService) as? Bool ?? false
         
         // AI 聊天参数设置
         chatTopP = defaults.object(forKey: Keys.chatTopP) as? Double ?? 0.9

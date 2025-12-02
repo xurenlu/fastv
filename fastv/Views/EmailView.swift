@@ -297,8 +297,8 @@ struct EmailView: View {
                                 .tag(message.id)
                         }
                         
-                        // 底部加载触发器和加载指示器
-                        if viewModel.hasMoreMessages {
+                        // 底部加载区域：加载触发器 / 加载指示器 / 没有更多提示
+                        Group {
                             if viewModel.isLoadingMore {
                                 // 加载中：显示加载指示器
                                 HStack {
@@ -311,7 +311,7 @@ struct EmailView: View {
                                     Spacer()
                                 }
                                 .padding()
-                            } else {
+                            } else if viewModel.hasMoreMessages {
                                 // 未加载：显示触发器（滚动到底部时自动加载）
                                 Color.clear
                                     .frame(height: 1)
@@ -326,6 +326,16 @@ struct EmailView: View {
                                             }
                                         }
                                     }
+                            } else {
+                                // 已经没有更多邮件：显示提示文案
+                                HStack {
+                                    Spacer()
+                                    Text("已经没有更多邮件")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                }
+                                .padding(.vertical, 8)
                             }
                         }
                     }

@@ -55,7 +55,6 @@ enum SidebarItem: String, Identifiable, CaseIterable {
 struct ContentView: View {
     @StateObject private var viewModel = VideoProcessorViewModel()
     @State private var showSettings = false
-    @State private var showWelcome = false
     @State private var selectedSidebarItem: SidebarItem = .voiceInput
     @ObservedObject private var preferences = UserPreferences.shared
     
@@ -203,10 +202,6 @@ struct ContentView: View {
                     SettingsView()
                         .frame(minWidth: 800, idealWidth: 900, maxWidth: 1000, minHeight: 600, idealHeight: 700, maxHeight: 800)
                 }
-                .sheet(isPresented: $showWelcome) {
-                    WelcomeView()
-                        .frame(width: 600, height: 650)
-                }
                 .alert("错误", isPresented: Binding(
                     get: { viewModel.errorMessage != nil },
                     set: { if !$0 { viewModel.errorMessage = nil } }
@@ -221,15 +216,6 @@ struct ContentView: View {
                 }
             }
             .frame(minWidth: 720, minHeight: 520)
-            .onAppear {
-                // 延迟显示欢迎窗口，确保界面已加载完成
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    // 检查是否首次启动
-                    if !UserPreferences.shared.hasShownWelcome {
-                        showWelcome = true
-                    }
-                }
-            }
         }
     }
     

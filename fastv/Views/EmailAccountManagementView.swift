@@ -143,7 +143,52 @@ struct EmailAccountManagementView: View {
                 } header: {
                     Text("账号信息")
                 } footer: {
-                    if viewModel.serviceType != .custom {
+                    if viewModel.serviceType == .gmail {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "info.circle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                                Text("客户端登录密码与网页登录密码不同，需要使用应用专用密码")
+                                    .font(.caption)
+                                    .foregroundStyle(.primary)
+                            }
+                            
+                            Button(action: {
+                                if let url = URL(string: "https://myaccount.google.com/apppasswords") {
+                                    NSWorkspace.shared.open(url)
+                                }
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "link")
+                                        .font(.caption2)
+                                    Text("在浏览器中设置 Gmail 应用专用密码")
+                                        .font(.caption)
+                                }
+                                .foregroundStyle(.blue)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.leading, 20)
+                        }
+                    } else if viewModel.serviceType == .outlook {
+                        HStack(spacing: 6) {
+                            Image(systemName: "info.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                            Text("客户端登录密码与网页登录密码可能不同，请使用应用专用密码")
+                                .font(.caption)
+                                .foregroundStyle(.primary)
+                        }
+                    } else if viewModel.serviceType == .aliyun || viewModel.serviceType == .tencent {
+                        HStack(spacing: 6) {
+                            Image(systemName: "info.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                            Text("客户端登录密码与网页登录密码可能不同，请查看邮箱服务商说明")
+                                .font(.caption)
+                                .foregroundStyle(.primary)
+                        }
+                    } else if viewModel.serviceType != .custom {
                         Text("服务器配置已自动设置")
                             .font(.caption)
                     }

@@ -11,6 +11,9 @@ import SwiftUI
 /// 包含：会议记录相关设置、自动录音、静音检测等
 struct MeetingRecordingSettingsTab: View {
     @ObservedObject var preferences = UserPreferences.shared
+    @StateObject private var serviceManager = DiarizationServiceManager.shared
+    @State private var isStartingService = false
+    @State private var errorMessage: String?
     
     var body: some View {
         Form {
@@ -69,6 +72,182 @@ struct MeetingRecordingSettingsTab: View {
                     }
                 }
                 .padding(.vertical, 4)
+                
+                Divider()
+                
+                // 说话人分离配置
+                VStack(alignment: .leading, spacing: 12) {
+                    Toggle("启用说话人分离", isOn: $preferences.enableSpeakerDiarization)
+                        .font(.headline)
+                    
+                    if preferences.enableSpeakerDiarization {
+                        // 服务管理
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("服务状态")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                
+                                Spacer()
+                                
+                                // 状态指示器
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(statusColor)
+                                        .frame(width: 8, height: 8)
+                                    
+                                    Text(statusText)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            
+                            // 模型状态
+                            if case .running = serviceManager.status {
+                                HStack {
+                                    Text("模型状态")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                    
+                                    Spacer()
+                                    
+                                    HStack(spacing: 6) {
+                                        Image(systemName: serviceManager.isModelLoaded ? "checkmark.circle.fill" : "arrow.down.circle")
+                                            .foregroundStyle(serviceManager.isModelLoaded ? .green : .orange)
+                                            .font(.caption)
+                                        
+                                        Text(serviceManager.isModelLoaded ? "已加载" : "下载中...")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                            
+                            // 控制按钮
+                            HStack(spacing: 8) {
+                                if case .running = serviceManager.status {
+                                    Button(action: {
+                                        serviceManager.stopServiceManually()
+                                    }) {
+                                        Label("停止服务", systemImage: "stop.circle")
+                                    }
+                                    .buttonStyle(.bordered)
+                                } else {
+                                    Button(action: {
+                                        startService()
+                                    }) {
+                                        Label(isStartingService ? "启动中..." : "启动服务", systemImage: "play.circle")
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .disabled(isStartingService)
+                                }
+                                
+                                Spacer()
+                            }
+                            
+                            // 自动启动选项
+                            Toggle("应用启动时自动启动服务", isOn: $preferences.autoStartDiarizationService)
+                                .font(.subheadline)
+                            
+                            // 错误信息
+                            if let error = errorMessage {
+                                Text(error)
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 12)
+                        .background {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color.secondary.opacity(0.05))
+                        }
+                        
+                        Divider()
+                            .padding(.vertical, 8)
+                        
+                        VStack(alignment: .leading, spacing: 12) {
+                            // 最小说话人数量
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("最小说话人数量")
+                                    Spacer()
+                                    if let minSpeakers = preferences.diarizationMinSpeakers {
+                                        Text("\(minSpeakers) 人")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(.secondary)
+                                            .monospacedDigit()
+                                    } else {
+                                        Text("自动检测")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                
+                                HStack(spacing: 8) {
+                                    Slider(
+                                        value: Binding(
+                                            get: { Double(preferences.diarizationMinSpeakers ?? 1) },
+                                            set: { preferences.diarizationMinSpeakers = Int($0) >= 1 ? Int($0) : nil }
+                                        ),
+                                        in: 1...10,
+                                        step: 1
+                                    )
+                                    
+                                    Button(action: {
+                                        preferences.diarizationMinSpeakers = nil
+                                    }) {
+                                        Text("清除")
+                                            .font(.caption)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .disabled(preferences.diarizationMinSpeakers == nil)
+                                }
+                            }
+                            
+                            // 最大说话人数量
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("最大说话人数量")
+                                    Spacer()
+                                    if let maxSpeakers = preferences.diarizationMaxSpeakers {
+                                        Text("\(maxSpeakers) 人")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(.secondary)
+                                            .monospacedDigit()
+                                    } else {
+                                        Text("自动检测")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                
+                                HStack(spacing: 8) {
+                                    Slider(
+                                        value: Binding(
+                                            get: { Double(preferences.diarizationMaxSpeakers ?? 2) },
+                                            set: { preferences.diarizationMaxSpeakers = Int($0) >= 1 ? Int($0) : nil }
+                                        ),
+                                        in: 1...20,
+                                        step: 1
+                                    )
+                                    
+                                    Button(action: {
+                                        preferences.diarizationMaxSpeakers = nil
+                                    }) {
+                                        Text("清除")
+                                            .font(.caption)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .disabled(preferences.diarizationMaxSpeakers == nil)
+                                }
+                            }
+                        }
+                        .padding(.leading, 20)
+                        .padding(.top, 8)
+                    }
+                }
+                .padding(.vertical, 4)
             } header: {
                 Text("会议记录")
             } footer: {
@@ -86,10 +265,62 @@ struct MeetingRecordingSettingsTab: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.top, 4)
+                    
+                    if preferences.enableSpeakerDiarization {
+                        Text("说话人分离：自动识别和区分不同的说话人。如果知道会议的人数范围，可以设置最小/最大说话人数量以提高准确性。不设置时，模型会自动检测说话人数量。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 4)
+                    }
                 }
             }
         }
         .formStyle(.grouped)
+    }
+    
+    // MARK: - Computed Properties
+    
+    private var statusColor: Color {
+        switch serviceManager.status {
+        case .stopped:
+            return .gray
+        case .starting:
+            return .orange
+        case .running:
+            return .green
+        case .error:
+            return .red
+        }
+    }
+    
+    private var statusText: String {
+        switch serviceManager.status {
+        case .stopped:
+            return "已停止"
+        case .starting:
+            return "启动中"
+        case .running:
+            return "运行中"
+        case .error(let message):
+            return "错误: \(message)"
+        }
+    }
+    
+    // MARK: - Methods
+    
+    private func startService() {
+        isStartingService = true
+        errorMessage = nil
+        
+        Task {
+            do {
+                try await serviceManager.startServiceManually()
+                isStartingService = false
+            } catch {
+                isStartingService = false
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 }
 

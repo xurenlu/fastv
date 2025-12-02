@@ -34,30 +34,32 @@ struct OnboardingView: View {
             .padding(.bottom, 20)
             
             // 内容区域
-            Group {
-                switch currentStep {
-                case 0:
-                    LanguageSelectionStep()
-                case 1:
-                    ShortcutSetupStep()
-                case 2:
-                    ModelDownloadStep(
-                        isDownloading: $isDownloading,
-                        downloadProgress: $downloadProgress,
-                        downloadStatus: $downloadStatus,
-                        downloadError: $downloadError
-                    )
-                case 3:
-                    AIConfigurationStep(onAPIKeyChanged: { hasAPIKey in
-                        aiConfigHasAPIKey = hasAPIKey
-                    })
-                case 4:
-                    UsageGuideStep()
-                default:
-                    LanguageSelectionStep()
+            ScrollView {
+                Group {
+                    switch currentStep {
+                    case 0:
+                        LanguageSelectionStep()
+                    case 1:
+                        ShortcutSetupStep()
+                    case 2:
+                        ModelDownloadStep(
+                            isDownloading: $isDownloading,
+                            downloadProgress: $downloadProgress,
+                            downloadStatus: $downloadStatus,
+                            downloadError: $downloadError
+                        )
+                    case 3:
+                        AIConfigurationStep(onAPIKeyChanged: { hasAPIKey in
+                            aiConfigHasAPIKey = hasAPIKey
+                        })
+                    case 4:
+                        UsageGuideStep()
+                    default:
+                        LanguageSelectionStep()
+                    }
                 }
+                .transition(.opacity)
             }
-            .transition(.opacity)
             
             // 底部按钮
             HStack {
@@ -492,7 +494,7 @@ struct AIConfigurationStep: View {
     private let aliyunAPIKeyURL = "https://bailian.console.aliyun.com/?accounttraceid=ecf52b9459854c13be278b89515acd5ekwwf&tab=model#/api-key"
     
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 16) {
             Image(systemName: "brain.head.profile")
                 .font(.system(size: 64))
                 .foregroundStyle(.tint)
@@ -500,12 +502,6 @@ struct AIConfigurationStep: View {
             Text(NSLocalizedString("onboarding.ai.config.title", comment: ""))
                 .font(.title)
                 .fontWeight(.bold)
-            
-            Text(NSLocalizedString("onboarding.ai.config.description", comment: ""))
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
             
             // AI优化好处说明
             VStack(alignment: .leading, spacing: 8) {
@@ -532,8 +528,8 @@ struct AIConfigurationStep: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 
-                // 显示主要服务选项
-                VStack(spacing: 8) {
+                // 横向图标按钮
+                HStack(spacing: 16) {
                     // 阿里云 DashScope (推荐)
                     ServiceOptionButton(
                         protocolType: .dashScope,
@@ -617,7 +613,9 @@ struct AIConfigurationStep: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
-        .padding(40)
+        .padding(.top, 20)
+        .padding(.horizontal, 40)
+        .padding(.bottom, 20)
         .onAppear {
             // 检查是否已有配置
             if let defaultProfile = preferences.getDefaultProfile(),
@@ -747,35 +745,66 @@ struct ServiceOptionButton: View {
     
     var body: some View {
         Button(action: onSelect) {
-            HStack {
-                Text(protocolType.displayName)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                
-                if isRecommended {
-                    Text(NSLocalizedString("onboarding.ai.config.recommended", comment: ""))
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background {
-                            Capsule()
-                                .fill(Color.orange.opacity(0.2))
+            VStack(spacing: 8) {
+                ZStack {
+                    // 图标背景
+                    Circle()
+                        .fill(isSelected ? Color.accentColor.opacity(0.15) : Color.gray.opacity(0.1))
+                        .frame(width: 56, height: 56)
+                    
+                    // 图标
+                    Image(systemName: protocolType.iconName)
+                        .font(.system(size: 24))
+                        .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                    
+                    // 选中标记
+                    if isSelected {
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(Color.accentColor)
+                                    .background {
+                                        Circle()
+                                            .fill(Color.white)
+                                            .frame(width: 18, height: 18)
+                                    }
+                            }
                         }
-                        .foregroundStyle(.orange)
+                        .frame(width: 56, height: 56)
+                    }
+                    
+                    // 推荐标记
+                    if isRecommended {
+                        VStack {
+                            HStack {
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.orange)
+                                    .padding(4)
+                                    .background {
+                                        Circle()
+                                            .fill(Color.white)
+                                            .frame(width: 18, height: 18)
+                                    }
+                                Spacer()
+                            }
+                            Spacer()
+                        }
+                        .frame(width: 56, height: 56)
+                    }
                 }
                 
-                Spacer()
-                
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.tint)
-                }
+                // 服务名称
+                Text(protocolType.displayName)
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
-            .padding()
-            .background {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(isSelected ? Color.accentColor.opacity(0.1) : Color.gray.opacity(0.1))
-            }
+            .frame(width: 80)
         }
         .buttonStyle(.plain)
     }

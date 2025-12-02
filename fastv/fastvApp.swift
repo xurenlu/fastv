@@ -115,6 +115,9 @@ struct fastvApp: App {
                         // 延迟初始化，确保窗口已显示
                         try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
                         setupVoiceInput()
+                        
+                        // 检查是否需要自动启动说话人分离服务
+                        checkAndAutoStartDiarizationService()
                     }
                 }
         }
@@ -126,6 +129,24 @@ struct fastvApp: App {
     private func cleanupWaveformWindow() {
         print("🧹 [fastvApp] 清理波形窗口（兜底方案）")
         WaveformWindowManager.shared.cleanup()
+    }
+    
+    /// 检查并自动启动说话人分离服务
+    private func checkAndAutoStartDiarizationService() {
+        let preferences = UserPreferences.shared
+        
+        // 如果启用了自动启动且启用了说话人分离功能
+        if preferences.autoStartDiarizationService && preferences.enableSpeakerDiarization {
+            Task { @MainActor in
+                print("🚀 [fastvApp] 自动启动说话人分离服务...")
+                do {
+                    try await DiarizationServiceManager.shared.startServiceManually()
+                    print("✅ [fastvApp] 说话人分离服务已自动启动")
+                } catch {
+                    print("⚠️ [fastvApp] 自动启动说话人分离服务失败: \(error.localizedDescription)")
+                }
+            }
+        }
     }
     
     private func setupVoiceInput() {

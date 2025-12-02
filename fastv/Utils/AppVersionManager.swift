@@ -41,7 +41,7 @@ struct AppVersionManager {
     
     /// 获取 Bundle ID
     static var bundleIdentifier: String {
-        return Bundle.main.bundleIdentifier ?? "com.wxside.typecho"
+        return Bundle.main.bundleIdentifier ?? "com.17push.row1"
     }
 }
 

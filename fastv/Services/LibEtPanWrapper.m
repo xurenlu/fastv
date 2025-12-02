@@ -494,28 +494,67 @@ static void ensureUserInitiatedQoS(void) {
     
     NSLog(@"🔍 [LibEtPan] 开始搜索邮件，查询: %@, 限制: %lu", query, (unsigned long)limit);
     
+    // 确保字符串编码正确，使用 UTF-8
+    const char *queryUTF8 = [query UTF8String];
+    if (!queryUTF8) {
+        NSLog(@"❌ [LibEtPan] 无法将查询字符串转换为 UTF-8");
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError" 
+                                         code:-1 
+                                     userInfo:@{NSLocalizedDescriptionKey: @"查询字符串编码失败"}];
+        }
+        return nil;
+    }
+    
     // 构建搜索条件：使用 TEXT 搜索，这会搜索邮件的所有文本字段（主题、正文等）
-    // TEXT 搜索是 IMAP 标准中最通用的搜索方式
-    struct mailimap_search_key *searchKey = mailimap_search_key_new_text([query UTF8String]);
+    struct mailimap_search_key *searchKey = mailimap_search_key_new_text(queryUTF8);
+    
+    if (!searchKey) {
+        NSLog(@"❌ [LibEtPan] 无法创建搜索条件（返回 NULL）");
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError" 
+                                         code:-1 
+                                     userInfo:@{NSLocalizedDescriptionKey: @"创建搜索条件失败"}];
+        }
+        return nil;
+    }
     
     // 设置线程 QoS，避免优先级反转
     ensureUserInitiatedQoS();
     
     clist *search_result = NULL;
-    int r = mailimap_uid_search((mailimap *)_imapSession, "UTF-8", searchKey, &search_result);
+    int r = MAILIMAP_NO_ERROR;
     
-    // 释放搜索条件
-    mailimap_search_key_free(searchKey);
+    // 执行搜索
+    r = mailimap_uid_search((mailimap *)_imapSession, "UTF-8", searchKey, &search_result);
     
+    // 检查搜索结果
     if (r != MAILIMAP_NO_ERROR) {
         NSLog(@"❌ [LibEtPan] 搜索邮件失败，错误代码: %d", r);
+        
+        // 搜索失败时，searchKey 可能已被 mailimap_uid_search 修改或部分释放
+        // 为了安全起见，我们不再尝试释放它，避免崩溃
+        // 这是一个已知的 LibEtPan 问题：某些错误情况下会损坏 searchKey 的内部结构
+        searchKey = NULL; // 标记为 NULL，不再释放
+        
         if (error) {
             NSString *errorMsg = [NSString stringWithFormat:@"搜索邮件失败: %d", r];
             *error = [NSError errorWithDomain:@"LibEtPanError" 
                                          code:r 
                                      userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
         }
+        // 即使搜索失败，也要清理结果（如果有）
+        if (search_result) {
+            mailimap_search_result_free(search_result);
+        }
         return nil;
+    }
+    
+    // 搜索成功后才安全释放搜索条件
+    // 注意：只有在搜索成功时，searchKey 的结构才是完整的，可以安全释放
+    if (searchKey) {
+        mailimap_search_key_free(searchKey);
+        searchKey = NULL;
     }
     
     // 收集所有 UID
