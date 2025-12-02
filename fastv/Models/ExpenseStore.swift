@@ -98,6 +98,67 @@ class ExpenseStore: ObservableObject {
         return result
     }
     
+    /// 获取指定月份的所有日期及其花费金额
+    func dailyAmounts(for month: Date, type: ExpenseType? = nil) -> [Date: Decimal] {
+        let calendar = Calendar.current
+        guard let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: month)),
+              let monthEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: monthStart) else {
+            return [:]
+        }
+        
+        var filteredItems = items(from: monthStart, to: monthEnd)
+        if let type = type {
+            filteredItems = filteredItems.filter { $0.type == type }
+        }
+        
+        var result: [Date: Decimal] = [:]
+        for item in filteredItems {
+            let dayStart = calendar.startOfDay(for: item.date)
+            result[dayStart, default: 0] += item.amount
+        }
+        return result
+    }
+    
+    /// 获取指定月份每日的收入和支出金额
+    func dailyIncomeAndExpense(for month: Date) -> [Date: (income: Decimal, expense: Decimal)] {
+        let calendar = Calendar.current
+        guard let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: month)),
+              let monthEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: monthStart) else {
+            return [:]
+        }
+        
+        let filteredItems = items(from: monthStart, to: monthEnd)
+        
+        var result: [Date: (income: Decimal, expense: Decimal)] = [:]
+        for item in filteredItems {
+            let dayStart = calendar.startOfDay(for: item.date)
+            var dayData = result[dayStart] ?? (income: 0, expense: 0)
+            
+            switch item.type {
+            case .income:
+                dayData.income += item.amount
+            case .expense:
+                dayData.expense += item.amount
+            case .transfer:
+                // 转账不计入收入或支出
+                break
+            }
+            
+            result[dayStart] = dayData
+        }
+        return result
+    }
+    
+    /// 计算指定月份的总花费（按类型）
+    func monthTotal(for month: Date, type: ExpenseType) -> Decimal {
+        let calendar = Calendar.current
+        guard let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: month)),
+              let monthEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: monthStart) else {
+            return 0
+        }
+        return totalAmount(for: type, from: monthStart, to: monthEnd)
+    }
+    
     // MARK: - Category Management
     
     /// 获取指定类型的所有分类

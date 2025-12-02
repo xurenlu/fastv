@@ -83,11 +83,11 @@ class EmailAIService {
     /// 生成智能标签
     /// - Parameters:
     ///   - message: 邮件消息
-    ///   - config: AI配置（可选，如果为nil则从preferences获取）
+    ///   - config: AI配置元组（可选，如果为nil则从preferences获取）
     ///   - preferences: 用户偏好设置（可选，如果为nil则从MainActor获取）
-    func generateSmartTags(for message: EmailMessage, config: AIServiceConfig? = nil, preferences: UserPreferences? = nil) async throws -> [String] {
+    func generateSmartTags(for message: EmailMessage, config: (profile: AIServiceProfile, model: String, timeout: Double)? = nil, preferences: UserPreferences? = nil) async throws -> [String] {
         // 在后台线程一次性获取配置，避免多次切换到主线程
-        let effectiveConfig: AIServiceConfig
+        let effectiveConfig: (profile: AIServiceProfile, model: String, timeout: Double)
         let effectivePrefs: UserPreferences
         
         if let config = config, let prefs = preferences {
@@ -95,9 +95,11 @@ class EmailAIService {
             effectivePrefs = prefs
         } else {
             // 如果未提供配置，则一次性从主线程获取
-            (effectiveConfig, effectivePrefs) = await MainActor.run {
+            let (configResult, prefs) = await MainActor.run {
                 (self.preferences.getConfig(for: .aiChat), self.preferences)
             }
+            effectiveConfig = configResult
+            effectivePrefs = prefs
         }
         
         let textContent = getTextContent(from: message)
@@ -128,7 +130,7 @@ class EmailAIService {
         // 解析标签
         let tags = result.content
             .components(separatedBy: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .map { $0.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         
         return tags
@@ -139,11 +141,11 @@ class EmailAIService {
     /// 识别邮件优先级
     /// - Parameters:
     ///   - message: 邮件消息
-    ///   - config: AI配置（可选，如果为nil则从preferences获取）
+    ///   - config: AI配置元组（可选，如果为nil则从preferences获取）
     ///   - preferences: 用户偏好设置（可选，如果为nil则从MainActor获取）
-    func detectPriority(for message: EmailMessage, config: AIServiceConfig? = nil, preferences: UserPreferences? = nil) async throws -> EmailPriority {
+    func detectPriority(for message: EmailMessage, config: (profile: AIServiceProfile, model: String, timeout: Double)? = nil, preferences: UserPreferences? = nil) async throws -> EmailPriority {
         // 在后台线程一次性获取配置，避免多次切换到主线程
-        let effectiveConfig: AIServiceConfig
+        let effectiveConfig: (profile: AIServiceProfile, model: String, timeout: Double)
         let effectivePrefs: UserPreferences
         
         if let config = config, let prefs = preferences {
@@ -151,9 +153,11 @@ class EmailAIService {
             effectivePrefs = prefs
         } else {
             // 如果未提供配置，则一次性从主线程获取
-            (effectiveConfig, effectivePrefs) = await MainActor.run {
+            let (configResult, prefs) = await MainActor.run {
                 (self.preferences.getConfig(for: .aiChat), self.preferences)
             }
+            effectiveConfig = configResult
+            effectivePrefs = prefs
         }
         
         let textContent = getTextContent(from: message)
@@ -180,7 +184,7 @@ class EmailAIService {
             preferences: effectivePrefs
         )
         
-        let priorityString = result.content.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let priorityString = result.content.lowercased().trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         
         if priorityString.contains("urgent") {
             return .urgent
@@ -198,11 +202,11 @@ class EmailAIService {
     /// 生成邮件摘要
     /// - Parameters:
     ///   - message: 邮件消息
-    ///   - config: AI配置（可选，如果为nil则从preferences获取）
+    ///   - config: AI配置元组（可选，如果为nil则从preferences获取）
     ///   - preferences: 用户偏好设置（可选，如果为nil则从MainActor获取）
-    func generateSummary(for message: EmailMessage, config: AIServiceConfig? = nil, preferences: UserPreferences? = nil) async throws -> String {
+    func generateSummary(for message: EmailMessage, config: (profile: AIServiceProfile, model: String, timeout: Double)? = nil, preferences: UserPreferences? = nil) async throws -> String {
         // 在后台线程一次性获取配置，避免多次切换到主线程
-        let effectiveConfig: AIServiceConfig
+        let effectiveConfig: (profile: AIServiceProfile, model: String, timeout: Double)
         let effectivePrefs: UserPreferences
         
         if let config = config, let prefs = preferences {
@@ -210,9 +214,11 @@ class EmailAIService {
             effectivePrefs = prefs
         } else {
             // 如果未提供配置，则一次性从主线程获取
-            (effectiveConfig, effectivePrefs) = await MainActor.run {
+            let (configResult, prefs) = await MainActor.run {
                 (self.preferences.getConfig(for: .aiChat), self.preferences)
             }
+            effectiveConfig = configResult
+            effectivePrefs = prefs
         }
         
         let textContent = getTextContent(from: message)

@@ -11,8 +11,12 @@ import Combine
 
 /// 波形窗口状态
 enum WaveformWindowState {
-    case recording      // 录音中
-    case transcribing   // 转文字中
+    case recording           // 录音中
+    case transcribing       // 转文字中
+    case aiCorrecting       // AI修正中
+    case aiCorrected        // AI修正成功
+    case aiCorrectionFailed // AI修正失败
+    case aiCorrectionDisabled // AI修正未启用
 }
 
 /// 波形显示器窗口管理器
@@ -167,6 +171,49 @@ class WaveformWindowManager: ObservableObject {
         // 立即切换状态，不使用动画延迟，确保用户感觉不到停顿
         state = .transcribing
         audioLevel = 0.0
+    }
+    
+    /// 设置AI修正状态
+    func setAICorrecting() {
+        print("📊 [WaveformWindowManager] 设置AI修正中状态")
+        state = .aiCorrecting
+        audioLevel = 0.0
+    }
+    
+    /// 设置AI修正成功状态（会自动在1秒后隐藏）
+    func setAICorrected() {
+        print("📊 [WaveformWindowManager] 设置AI修正成功状态")
+        state = .aiCorrected
+        audioLevel = 0.0
+        
+        // 1秒后自动隐藏窗口
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.hide()
+        }
+    }
+    
+    /// 设置AI修正失败状态（会自动在0.8秒后隐藏）
+    func setAICorrectionFailed() {
+        print("📊 [WaveformWindowManager] 设置AI修正失败状态")
+        state = .aiCorrectionFailed
+        audioLevel = 0.0
+        
+        // 0.8秒后自动隐藏窗口
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            self?.hide()
+        }
+    }
+    
+    /// 设置AI修正未启用状态（会自动在0.8秒后隐藏）
+    func setAICorrectionDisabled() {
+        print("📊 [WaveformWindowManager] 设置AI修正未启用状态")
+        state = .aiCorrectionDisabled
+        audioLevel = 0.0
+        
+        // 0.8秒后自动隐藏窗口
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            self?.hide()
+        }
     }
     
     /// 强制清理窗口（用于应用退出时的兜底方案）
@@ -329,8 +376,8 @@ struct WaveformView: View {
                         removal: .scale(scale: 1.05).combined(with: .opacity)
                     ))
                     
-                case .transcribing:
-                    // 转文字中：显示旋转加载动画 - 更流畅的动画
+                case .transcribing, .aiCorrecting:
+                    // 转文字中或AI修正中：显示旋转加载动画 - 更流畅的动画
                     VStack(spacing: 6) {
                         ZStack {
                             // 背景圆环 - 更细腻
@@ -374,8 +421,8 @@ struct WaveformView: View {
                             startTranscribingAnimation()
                         }
                         .onChange(of: state) { _, newState in
-                            // 当状态切换到转文字时，立即启动动画
-                            if newState == .transcribing {
+                            // 当状态切换到转文字或AI修正时，立即启动动画
+                            if newState == .transcribing || newState == .aiCorrecting {
                                 startTranscribingAnimation()
                             }
                         }
@@ -386,6 +433,66 @@ struct WaveformView: View {
                     .transition(.asymmetric(
                         insertion: .scale(scale: 1.05),
                         removal: .scale(scale: 0.85).combined(with: .opacity)
+                    ))
+                    
+                case .aiCorrected:
+                    // AI修正成功：显示成功图标和提示
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.green)
+                        
+                        if style != .compact {
+                            Text("AI已优化")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(.primary)
+                        }
+                    }
+                    .padding(.horizontal, style.horizontalPadding)
+                    .padding(.vertical, style.verticalPadding)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.9).combined(with: .opacity),
+                        removal: .scale(scale: 1.1).combined(with: .opacity)
+                    ))
+                    
+                case .aiCorrectionFailed:
+                    // AI修正失败：显示失败图标
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.orange)
+                        
+                        if style != .compact {
+                            Text("AI优化失败")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, style.horizontalPadding)
+                    .padding(.vertical, style.verticalPadding)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.9).combined(with: .opacity),
+                        removal: .scale(scale: 1.1).combined(with: .opacity)
+                    ))
+                    
+                case .aiCorrectionDisabled:
+                    // AI修正未启用：显示禁用图标
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles.slash")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                        
+                        if style != .compact {
+                            Text("AI未启用")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, style.horizontalPadding)
+                    .padding(.vertical, style.verticalPadding)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.9).combined(with: .opacity),
+                        removal: .scale(scale: 1.1).combined(with: .opacity)
                     ))
                 }
             }

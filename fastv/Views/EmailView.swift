@@ -24,15 +24,17 @@ struct EmailView: View {
             
             // 中间：邮件列表
             messageListView
-                .frame(minWidth: 300, idealWidth: 400)
+                .frame(minWidth: 300, idealWidth: 350)
             
-            // 右侧：邮件详情
+            // 右侧：邮件详情（正文列）- 占据最大宽度
             if let message = viewModel.selectedMessage {
                 messageDetailView(message: message)
-                    .frame(minWidth: 400, idealWidth: 500)
+                    .frame(minWidth: 400, idealWidth: 800)
+                    .layoutPriority(1)
             } else {
                 emptyDetailView
-                    .frame(minWidth: 400, idealWidth: 500)
+                    .frame(minWidth: 400, idealWidth: 800)
+                    .layoutPriority(1)
             }
         }
         .navigationTitle("邮箱")
@@ -287,18 +289,23 @@ struct EmailView: View {
                     )
                     
                     List(selection: messageBinding) {
-                        ForEach(viewModel.searchText.isEmpty ? viewModel.messages : viewModel.searchResults) { message in
+                        let displayedMessages = viewModel.searchText.isEmpty ? viewModel.messages : viewModel.searchResults
+                        ForEach(Array(displayedMessages.enumerated()), id: \.element.id) { index, message in
                             MessageRow(message: message, showAttachments: viewModel.showAttachments)
                                 .tag(message.id)
                                 .onAppear {
-                                    // 滚动到底部时自动加载更多（防抖处理）
-                                    // 只在列表末尾的邮件出现时触发，避免频繁调用
-                                    if message.id == viewModel.messages.last?.id {
+                                    // 滚动到底部时自动加载更多（改进的检测逻辑）
+                                    // 当显示倒数第3条邮件时就开始加载，提前准备
+                                    let threshold = max(3, displayedMessages.count - 3)
+                                    if index >= threshold && viewModel.hasMoreMessages && !viewModel.isLoadingMore {
                                         // 使用 Task 而不是 DispatchQueue，避免阻塞 UI
                                         Task { @MainActor in
                                             // 稍微延迟，避免快速滚动时频繁触发
-                                            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒
-                                            viewModel.loadMoreMessages()
+                                            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2秒防抖
+                                            // 再次检查状态，避免重复加载
+                                            if viewModel.hasMoreMessages && !viewModel.isLoadingMore {
+                                                viewModel.loadMoreMessages()
+                                            }
                                         }
                                     }
                                 }

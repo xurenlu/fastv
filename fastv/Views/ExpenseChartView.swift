@@ -98,33 +98,96 @@ struct ExpenseChartView: View {
         
         return AnyView(
             ScrollView {
-                VStack(spacing: 12) {
-                    ForEach(chartData) { item in
-                        HStack {
-                            Circle()
+                VStack(spacing: 24) {
+                    // 饼图可视化
+                    GeometryReader { geometry in
+                        let size = min(geometry.size.width, geometry.size.height)
+                        let radius = size / 2 - 20
+                        let center = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                        
+                        ZStack {
+                            // 绘制饼图扇形
+                            ForEach(Array(chartData.enumerated()), id: \.element.id) { index, item in
+                                PieSliceShape(
+                                    startAngle: angleForSlice(at: index, in: chartData, total: total),
+                                    endAngle: angleForSlice(at: index + 1, in: chartData, total: total)
+                                )
                                 .fill(Color(hex: item.category.color))
-                                .frame(width: 12, height: 12)
+                                .frame(width: radius * 2, height: radius * 2)
+                                .position(center)
+                            }
                             
-                            Text(item.category.name)
-                                .font(.body)
+                            // 中心空白（可选，创建环形图效果）
+                            Circle()
+                                .fill(.regularMaterial)
+                                .frame(width: radius * 0.6, height: radius * 0.6)
+                                .position(center)
                             
-                            Spacer()
-                            
-                            Text("¥\(formatAmount(item.amount))")
-                                .font(.body)
-                                .fontWeight(.medium)
-                            
-                            Text("(\(formatPercent(item.amount, total: total)))")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            // 中心显示总计
+                            VStack(spacing: 4) {
+                                Text("总计")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text("¥\(formatAmount(total))")
+                                    .font(.headline)
+                                    .fontWeight(.bold)
+                            }
+                            .position(center)
                         }
-                        .padding(.horizontal)
                     }
+                    .frame(height: 300)
+                    .padding()
+                    
+                    // 图例列表
+                    VStack(spacing: 12) {
+                        ForEach(chartData) { item in
+                            HStack {
+                                Circle()
+                                    .fill(Color(hex: item.category.color))
+                                    .frame(width: 12, height: 12)
+                                
+                                Text(item.category.name)
+                                    .font(.body)
+                                
+                                Spacer()
+                                
+                                Text("¥\(formatAmount(item.amount))")
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                
+                                Text("(\(formatPercent(item.amount, total: total)))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+                    .padding()
                 }
-                .padding()
             }
-            .frame(height: 400)
+            .frame(height: 500)
         )
+    }
+    
+    private func angleForSlice(at index: Int, in data: [ChartData], total: Decimal) -> Angle {
+        guard total > 0, index >= 0 else { return .zero }
+        
+        // 如果 index 等于数据长度，返回完整圆（2π）
+        if index >= data.count {
+            let fullCircle = 2 * Double.pi
+            return Angle(radians: fullCircle - .pi / 2)
+        }
+        
+        var cumulative: Decimal = 0
+        for i in 0..<index {
+            cumulative += data[i].amount
+        }
+        
+        let startAngle = (cumulative / total) * 360
+        let angleInRadians = Double(truncating: startAngle as NSDecimalNumber) * .pi / 180
+        
+        // SwiftUI 的角度从顶部开始，顺时针为正，需要调整到从顶部开始
+        return Angle(radians: angleInRadians - .pi / 2)
     }
     
     // MARK: - Bar Chart
@@ -221,6 +284,42 @@ struct ChartData: Identifiable {
         self.id = category.id
         self.category = category
         self.amount = amount
+    }
+}
+
+// MARK: - Pie Slice Shape
+
+struct PieSliceShape: Shape {
+    let startAngle: Angle
+    let endAngle: Angle
+    
+    func path(in rect: CGRect) -> Path {
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2
+        
+        var path = Path()
+        
+        // 移动到中心
+        path.move(to: center)
+        
+        // 添加起始角度线
+        let startX = center.x + radius * cos(startAngle.radians)
+        let startY = center.y + radius * sin(startAngle.radians)
+        path.addLine(to: CGPoint(x: startX, y: startY))
+        
+        // 添加弧线
+        path.addArc(
+            center: center,
+            radius: radius,
+            startAngle: startAngle,
+            endAngle: endAngle,
+            clockwise: false
+        )
+        
+        // 闭合路径
+        path.closeSubpath()
+        
+        return path
     }
 }
 

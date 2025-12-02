@@ -467,9 +467,13 @@ struct fastvApp: App {
                 }
             }
             
-            // AI 优化（如果启用且按了Ctrl键）
-            if hasCtrl && preferences.enableAIOptimization {
+            // AI 优化（如果启用）
+            // 注意：已移除Control键检测，现在只根据设置决定是否启用AI优化
+            if preferences.enableAIOptimization {
                 print("🤖 [fastvApp] AI 优化已启用，开始优化文本（超时: \(preferences.aiTimeout)秒）...")
+                // 设置AI修正中状态
+                waveformManager.setAICorrecting()
+                
                 let aiStartTime = Date()
                 do {
                     let optimizedText = try await OllamaService.shared.optimizeTranscript(
@@ -484,12 +488,19 @@ struct fastvApp: App {
                     print("📝 [fastvApp] 原文: \(text.prefix(50))...")
                     print("📝 [fastvApp] 优化后: \(optimizedText.prefix(50))...")
                     text = optimizedText
+                    
+                    // AI修正成功：设置成功状态（会自动在1秒后隐藏窗口）
+                    waveformManager.setAICorrected()
                 } catch {
                     print("⚠️ [fastvApp] AI 优化失败，使用原始文本: \(error.localizedDescription)")
                     // AI 优化失败不影响主流程，继续使用原始文本
+                    // AI修正失败：设置失败状态（会自动在0.8秒后隐藏窗口）
+                    waveformManager.setAICorrectionFailed()
                 }
             } else {
-                print("ℹ️ [fastvApp] AI 优化未启用，使用原始文本")
+                print("ℹ️ [fastvApp] AI 优化未启用（设置中已关闭），使用原始文本")
+                // AI修正未启用：设置未启用状态（会自动在0.8秒后隐藏窗口）
+                waveformManager.setAICorrectionDisabled()
             }
             
             // 先插入文本（优先保证用户体验）
@@ -501,10 +512,13 @@ struct fastvApp: App {
                 print("ℹ️ [fastvApp] 识别结果为空，跳过文本插入")
             }
             
-            // 转文字完成后，隐藏波形窗口
-            print("📊 [fastvApp] 转文字完成，隐藏波形窗口...")
-            waveformManager.hide()
-            print("✅ [fastvApp] 波形窗口已隐藏")
+            // 注意：波形窗口的隐藏由AI修正状态方法自动处理
+            // - AI修正成功：setAICorrected() 会在1秒后自动隐藏
+            // - AI修正失败：setAICorrectionFailed() 会在0.8秒后自动隐藏
+            // - AI修正未启用：setAICorrectionDisabled() 会在0.8秒后自动隐藏
+            // 如果AI优化未启用，窗口会在显示未启用状态后自动隐藏
+            // 如果AI优化启用但失败，窗口会在显示失败状态后自动隐藏
+            // 如果AI优化成功，窗口会在显示成功状态1秒后自动隐藏
             
             // 最后保存到历史记录（延迟保存，不阻塞文本插入）
             history.add(text, duration: duration)

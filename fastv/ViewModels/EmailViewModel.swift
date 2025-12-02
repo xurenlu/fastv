@@ -577,15 +577,22 @@ class EmailViewModel: ObservableObject {
         do {
             let sinceDate: Date?
             if loadMore {
+                // 加载更多时，获取当前已加载邮件中最旧的日期，然后往前加载
                 let existing = emailStore.messages[folderId] ?? []
-                let earliest = existing.last?.date ?? Date()
-                sinceDate = Calendar.current.date(byAdding: .day, value: -30, to: earliest)
+                if let earliestMessage = existing.min(by: { $0.date < $1.date }) {
+                    // 从最旧的邮件日期往前推，加载更早的邮件
+                    sinceDate = Calendar.current.date(byAdding: .day, value: -60, to: earliestMessage.date)
+                    print("📥 [EmailViewModel] 加载更多：从 \(earliestMessage.date) 往前加载更早的邮件")
+                } else {
+                    // 如果没有已加载的邮件，使用当前日期往前推
+                    sinceDate = Calendar.current.date(byAdding: .day, value: -30, to: Date())
+                }
             } else {
                 sinceDate = Calendar.current.date(byAdding: .day, value: -30, to: Date())
             }
             loadedDateRange = sinceDate
             
-            print("📥 [EmailViewModel] 开始同步邮件: \(folder.name), limit: \(pageSize)")
+            print("📥 [EmailViewModel] 开始同步邮件: \(folder.name), loadMore: \(loadMore), limit: \(pageSize)")
             let startTime = Date()
             
             // 在后台线程执行网络请求，避免阻塞 UI
@@ -616,11 +623,17 @@ class EmailViewModel: ObservableObject {
                     await updateMessagesFromStore()
                 }
                 
-                 if fetched.count < pageSize {
-                     hasMoreMessages = false
-                 } else if !loadMore {
-                     hasMoreMessages = true
-                 }
+                // 更新 hasMoreMessages 状态
+                // 如果返回的邮件数量少于 pageSize，说明没有更多邮件了
+                // 如果返回的数量等于 pageSize，说明可能还有更多邮件
+                if fetched.count < pageSize {
+                    hasMoreMessages = false
+                    print("📄 [EmailViewModel] 已加载所有邮件（返回 \(fetched.count) 封，少于 pageSize \(pageSize)）")
+                } else {
+                    // 返回数量等于或大于 pageSize，假设还有更多邮件
+                    hasMoreMessages = true
+                    print("📄 [EmailViewModel] 可能还有更多邮件（返回 \(fetched.count) 封，等于 pageSize \(pageSize)）")
+                }
                 
                 Task.detached(priority: .background) { [weak self] in
                     guard let self else { return }
@@ -632,14 +645,23 @@ class EmailViewModel: ObservableObject {
                         }
                     }
                 }
-            } else if loadMore {
-                hasMoreMessages = false
             } else {
-                hasMoreMessages = false
+                // 没有获取到任何邮件
+                if loadMore {
+                    // 加载更多时没有获取到邮件，说明没有更多了
+                    hasMoreMessages = false
+                    print("📄 [EmailViewModel] 加载更多时未获取到邮件，已加载所有邮件")
+                } else {
+                    // 首次加载时没有邮件，可能真的没有邮件，也可能需要继续尝试
+                    // 这里设置为 false，因为如果真的有邮件，后续加载会更新这个状态
+                    hasMoreMessages = false
+                    print("📄 [EmailViewModel] 首次加载未获取到邮件")
+                }
             }
         } catch {
             errorMessage = error.localizedDescription
             print("❌ [EmailViewModel] 加载邮件失败: \(error)")
+            // 加载失败时，不改变 hasMoreMessages 状态，允许重试
         }
         
         isLoading = false
@@ -648,8 +670,14 @@ class EmailViewModel: ObservableObject {
     
     /// 加载更多邮件（滚动到底部时调用）
     func loadMoreMessages() {
+        // 防止重复调用
+        guard !isLoadingMore && hasMoreMessages else {
+            print("📄 [EmailViewModel] loadMoreMessages 跳过：isLoadingMore=\(isLoadingMore), hasMoreMessages=\(hasMoreMessages)")
+            return
+        }
+        
         if selectedFolderId == nil {
-            guard !isLoadingMore && hasMoreMessages else { return }
+            // "所有邮件"视图：从数据库加载更多
             isLoadingMore = true
             currentPage += 1
             
@@ -658,7 +686,7 @@ class EmailViewModel: ObservableObject {
                 await updateMessagesFromStore()
                 
                 // 如果内存中没有更多邮件，尝试从数据库加载更多
-                if !hasMoreMessages {
+                if hasMoreMessages {
                     await loadMoreMessagesFromDatabase()
                 }
                 
@@ -667,7 +695,8 @@ class EmailViewModel: ObservableObject {
             return
         }
         
-        guard !isLoadingMore && hasMoreMessages else { return }
+        // 单个文件夹视图：从服务器加载更多
+        isLoadingMore = true
         Task {
             await loadMessagesAsync(loadMore: true)
         }
@@ -677,17 +706,58 @@ class EmailViewModel: ObservableObject {
     private func loadMoreMessagesFromDatabase() async {
         guard let accountId = selectedAccountId else { return }
         
-        let foldersForAccount = emailStore.getFolders(for: accountId)
+        let foldersForAccount = await MainActor.run {
+            emailStore.getFolders(for: accountId)
+        }
+        
+        var totalLoaded = 0
+        var hasMoreInAnyFolder = false
         
         // 从所有文件夹加载更多邮件
         for folder in foldersForAccount {
-            let existingMessages = emailStore.messages[folder.id] ?? []
+            let existingMessages = await MainActor.run {
+                emailStore.messages[folder.id] ?? []
+            }
+            
+            let beforeCount = existingMessages.count
+            
             if existingMessages.isEmpty {
                 // 如果内存中没有该文件夹的邮件，从数据库加载
                 await emailStore.loadMessages(for: folder.id)
             } else {
                 // 如果内存中已有邮件，强制加载更多（追加到现有列表）
                 await emailStore.loadMessages(for: folder.id, forceLoadMore: true)
+            }
+            
+            // 检查加载后是否有新增邮件
+            let afterMessages = await MainActor.run {
+                emailStore.messages[folder.id] ?? []
+            }
+            let afterCount = afterMessages.count
+            let loaded = afterCount - beforeCount
+            
+            totalLoaded += loaded
+            
+            // 如果加载了100封邮件，可能还有更多
+            if loaded >= 100 {
+                hasMoreInAnyFolder = true
+            }
+        }
+        
+        // 更新 hasMoreMessages 状态
+        // 如果任何文件夹加载了100封或更多邮件，说明可能还有更多
+        // 如果所有文件夹都加载了少于100封，说明可能没有更多了
+        await MainActor.run {
+            if totalLoaded == 0 {
+                // 没有加载到任何新邮件，说明没有更多了
+                hasMoreMessages = false
+                print("📄 [EmailViewModel] 从数据库加载更多邮件，更新 hasMoreMessages 状态")
+            } else if hasMoreInAnyFolder {
+                // 如果任何文件夹加载了100封或更多，说明可能还有更多
+                hasMoreMessages = true
+            } else {
+                // 加载了但少于100封，可能还有更多，但不确定
+                hasMoreMessages = true
             }
         }
         

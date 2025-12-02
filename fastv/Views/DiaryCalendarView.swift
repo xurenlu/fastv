@@ -1,5 +1,5 @@
 //
-//  ExpenseCalendarView.swift
+//  DiaryCalendarView.swift
 //  fastv
 //
 //  Created on 2025/01/XX.
@@ -7,9 +7,9 @@
 
 import SwiftUI
 
-struct ExpenseCalendarView: View {
-    @ObservedObject var viewModel: ExpenseViewModel
-    @ObservedObject private var store = ExpenseStore.shared
+struct DiaryCalendarView: View {
+    @ObservedObject var viewModel: DiaryViewModel
+    @ObservedObject private var store = DiaryStore.shared
     @State private var currentMonth: Date = Date()
     @State private var selectedDate: Date? = nil
     @State private var showingDayDetail = false
@@ -19,8 +19,8 @@ struct ExpenseCalendarView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // 顶部统计卡片 - 本月总花费
-            monthSummaryCard
+            // 搜索框
+            searchSection
             
             Divider()
             
@@ -43,52 +43,32 @@ struct ExpenseCalendarView: View {
         }
     }
     
-    // MARK: - Month Summary Card
+    // MARK: - Search Section
     
-    private var monthSummaryCard: some View {
-        let monthExpense = store.monthTotal(for: currentMonth, type: .expense)
-        let monthIncome = store.monthTotal(for: currentMonth, type: .income)
-        let monthBalance = monthIncome - monthExpense
-        
-        return HStack(spacing: 40) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("本月支出")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text("¥\(formatAmount(monthExpense))")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.red)
-            }
+    private var searchSection: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
             
-            VStack(alignment: .leading, spacing: 4) {
-                Text("本月收入")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text("¥\(formatAmount(monthIncome))")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.green)
-            }
+            TextField("搜索日记内容...", text: $viewModel.searchText)
+                .textFieldStyle(.roundedBorder)
             
-            VStack(alignment: .leading, spacing: 4) {
-                Text("本月结余")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text("¥\(formatAmount(monthBalance))")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundStyle(monthBalance >= 0 ? .green : .red)
+            if !viewModel.searchText.isEmpty {
+                Button(action: {
+                    viewModel.searchText = ""
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
             }
-            
-            Spacer()
         }
-        .padding()
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
         .background {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            Rectangle()
                 .fill(.regularMaterial)
         }
-        .padding()
     }
     
     // MARK: - Month Navigation
@@ -145,11 +125,19 @@ struct ExpenseCalendarView: View {
     // MARK: - Calendar Grid
     
     private var calendarGridView: some View {
-        let dailyData = store.dailyIncomeAndExpense(for: currentMonth)
         let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: currentMonth)) ?? currentMonth
         let firstWeekday = calendar.component(.weekday, from: monthStart)
         let adjustedFirstWeekday = (firstWeekday + 5) % 7 // 转换为周一为0的格式
         let daysInMonth = calendar.range(of: .day, in: .month, for: currentMonth)?.count ?? 30
+        
+        // 获取搜索匹配的日期集合
+        let searchMatchedDates: Set<Date>
+        if !viewModel.searchText.isEmpty {
+            let matchedEntries = store.searchEntries(query: viewModel.searchText)
+            searchMatchedDates = Set(matchedEntries.map { calendar.startOfDay(for: $0.date) })
+        } else {
+            searchMatchedDates = Set<Date>()
+        }
         
         return VStack(spacing: 0) {
             // 星期标题
@@ -174,8 +162,17 @@ struct ExpenseCalendarView: View {
                 // 日期单元格
                 ForEach(1...daysInMonth, id: \.self) { day in
                     if let date = calendar.date(byAdding: .day, value: day - 1, to: monthStart) {
-                        let dayData = dailyData[calendar.startOfDay(for: date)] ?? (income: 0, expense: 0)
-                        calendarDayCell(date: date, day: day, income: dayData.income, expense: dayData.expense)
+                        let dayStart = calendar.startOfDay(for: date)
+                        let dayEntries = store.entries(for: date)
+                        let hasEntries = !dayEntries.isEmpty
+                        let isSearchMatched = searchMatchedDates.contains(dayStart)
+                        
+                        calendarDayCell(
+                            date: date,
+                            day: day,
+                            hasEntries: hasEntries,
+                            isSearchMatched: isSearchMatched
+                        )
                     }
                 }
             }
@@ -184,12 +181,9 @@ struct ExpenseCalendarView: View {
     
     // MARK: - Calendar Day Cell
     
-    private func calendarDayCell(date: Date, day: Int, income: Decimal, expense: Decimal) -> some View {
+    private func calendarDayCell(date: Date, day: Int, hasEntries: Bool, isSearchMatched: Bool) -> some View {
         let isToday = calendar.isDateInToday(date)
         let isSelected = selectedDate.map { calendar.isDate($0, inSameDayAs: date) } ?? false
-        let hasIncome = income > 0
-        let hasExpense = expense > 0
-        let hasData = hasIncome || hasExpense
         
         return Button(action: {
             withAnimation {
@@ -200,39 +194,15 @@ struct ExpenseCalendarView: View {
                 }
             }
         }) {
-            VStack(spacing: 1) {
+            VStack(spacing: 4) {
                 Text("\(day)")
                     .font(.system(size: 14, weight: isToday ? .bold : .regular))
                     .foregroundStyle(isToday ? .white : (isSelected ? .blue : .primary))
                 
-                if hasIncome || hasExpense {
-                    VStack(spacing: 1) {
-                        if hasIncome {
-                            HStack(spacing: 1) {
-                                Text("+")
-                                    .font(.system(size: 7, weight: .bold))
-                                    .foregroundStyle(isToday ? .white.opacity(0.9) : .green)
-                                Text(formatShortAmount(income))
-                                    .font(.system(size: 8))
-                                    .foregroundStyle(isToday ? .white.opacity(0.9) : .green)
-                            }
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.5)
-                        }
-                        
-                        if hasExpense {
-                            HStack(spacing: 1) {
-                                Text("-")
-                                    .font(.system(size: 7, weight: .bold))
-                                    .foregroundStyle(isToday ? .white.opacity(0.9) : .red)
-                                Text(formatShortAmount(expense))
-                                    .font(.system(size: 8))
-                                    .foregroundStyle(isToday ? .white.opacity(0.9) : .red)
-                            }
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.5)
-                        }
-                    }
+                if hasEntries {
+                    Circle()
+                        .fill(isToday ? Color.white.opacity(0.8) : Color.blue)
+                        .frame(width: 6, height: 6)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -242,9 +212,13 @@ struct ExpenseCalendarView: View {
                     .fill(isToday ? Color.blue : (isSelected ? Color.blue.opacity(0.1) : Color.clear))
             }
             .overlay {
-                if hasData && !isToday {
+                if hasEntries && !isToday {
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
                         .strokeBorder(Color.blue.opacity(0.3), lineWidth: 1)
+                }
+                if isSearchMatched && !isToday {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(Color.orange.opacity(0.6), lineWidth: 2)
                 }
             }
         }
@@ -255,8 +229,15 @@ struct ExpenseCalendarView: View {
     
     @ViewBuilder
     private func dayDetailView(for date: Date) -> some View {
-        let dayItems = store.items(for: date)
-        let dayTotal = dayItems.reduce(Decimal(0)) { $0 + $1.amount }
+        let dayEntries: [DiaryEntry] = {
+            if !viewModel.searchText.isEmpty {
+                // 如果正在搜索，只显示匹配的日记
+                let allMatched = store.searchEntries(query: viewModel.searchText)
+                return allMatched.filter { calendar.isDate($0.date, inSameDayAs: date) }
+            } else {
+                return store.entries(for: date)
+            }
+        }()
         
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -265,15 +246,15 @@ struct ExpenseCalendarView: View {
                 
                 Spacer()
                 
-                Text("总计: ¥\(formatAmount(dayTotal))")
+                Text("共 \(dayEntries.count) 篇")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal)
             .padding(.top)
             
-            if dayItems.isEmpty {
-                Text("当日无记录")
+            if dayEntries.isEmpty {
+                Text(viewModel.searchText.isEmpty ? "当日无日记" : "当日无匹配的日记")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -281,8 +262,8 @@ struct ExpenseCalendarView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(dayItems) { item in
-                            ExpenseRow(item: item, viewModel: viewModel)
+                        ForEach(dayEntries) { entry in
+                            DiaryRow(entry: entry, viewModel: viewModel)
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 4)
                         }
@@ -305,26 +286,6 @@ struct ExpenseCalendarView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy年M月"
         return formatter.string(from: currentMonth)
-    }
-    
-    private func formatAmount(_ amount: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: amount as NSDecimalNumber) ?? "0.00"
-    }
-    
-    private func formatShortAmount(_ amount: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 0
-        let value = amount as NSDecimalNumber
-        if value.doubleValue >= 1000 {
-            return String(format: "%.1fk", value.doubleValue / 1000)
-        }
-        return formatter.string(from: value) ?? "0"
     }
     
     private func formatDateHeader(_ date: Date) -> String {

@@ -36,17 +36,17 @@ enum DiaryMood: String, Codable, CaseIterable {
     var icon: String {
         switch self {
         case .happy:
-            return "face.smiling"
+            return "face.smiling.fill"
         case .calm:
             return "leaf.fill"
         case .sad:
-            return "cloud.fill"
+            return "cloud.rain.fill"
         case .anxious:
             return "exclamationmark.triangle.fill"
         case .excited:
             return "star.fill"
         case .tired:
-            return "moon.fill"
+            return "moon.zzz.fill"
         }
     }
 }

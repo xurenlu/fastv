@@ -64,10 +64,28 @@ class OllamaService {
             return url
         }
         
+        // 检测是否为 DashScope 兼容模式
+        let isDashScope = isDashScope(endpoint: cleanEndpoint)
+        let isDashScopeCompatibleMode = lowercased.contains("/compatible-mode/v1")
+        
         // 根据 API 类型或参数决定拼接的路径
         let apiType = detectAPIType(endpoint: cleanEndpoint)
         let shouldUseChat = useChatCompletions ?? (apiType == .openAI)
-        let path = shouldUseChat ? "/v1/chat/completions" : "/api/generate"
+        
+        let path: String
+        if isDashScopeCompatibleMode {
+            // DashScope 兼容模式：如果已经包含 /compatible-mode/v1，只添加 /chat/completions
+            path = "/chat/completions"
+        } else if isDashScope && shouldUseChat {
+            // DashScope 非兼容模式：使用兼容模式路径
+            path = "/compatible-mode/v1/chat/completions"
+        } else if shouldUseChat {
+            // OpenAI 兼容格式
+            path = "/v1/chat/completions"
+        } else {
+            // Ollama 格式
+            path = "/api/generate"
+        }
         
         guard let url = URL(string: "\(cleanEndpoint)\(path)") else {
             throw OllamaError.invalidEndpoint
@@ -260,77 +278,92 @@ class OllamaService {
             throw OllamaError.requestFailed(httpResponse.statusCode, errorMessage)
         }
         
-        // 解析响应 - 根据 API 类型解析不同的响应格式
+        // 解析响应 - 尝试多种格式（OpenAI 兼容、DashScope 原生、Ollama）
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             print("❌ [OllamaService] 无法解析响应 JSON")
             throw OllamaError.invalidResponse
         }
         
-        let optimizedText: String
+        var optimizedText: String?
         
-        if isDashScope {
-            // DashScope 格式：响应在 output.choices[0].message.content 或 output.text
-            if let output = json["output"] as? [String: Any] {
-                // 先检查文本生成端点格式（output.text）
-                if let text = output["text"] as? String {
-                    optimizedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                }
-                // 再检查聊天端点格式（output.choices[0].message.content）
-                else if let choices = output["choices"] as? [[String: Any]],
-                        let firstChoice = choices.first,
-                        let message = firstChoice["message"] as? [String: Any] {
-                    // 提取 content（可能是字符串或数组）
-                    if let contentArray = message["content"] as? [[String: Any]] {
-                        // 多模态响应：提取文本部分
-                        var textParts: [String] = []
-                        for item in contentArray {
-                            if let text = item["text"] as? String {
-                                textParts.append(text)
-                            }
-                        }
-                        optimizedText = textParts.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-                    } else if let content = message["content"] as? String {
-                        optimizedText = content.trimmingCharacters(in: .whitespacesAndNewlines)
-                    } else {
-                        print("❌ [OllamaService] DashScope 格式响应解析失败：无法找到 content")
-                        print("📄 [OllamaService] message 对象内容: \(message)")
-                        throw OllamaError.invalidResponse
-                    }
-                } else {
-                    print("❌ [OllamaService] DashScope 格式响应解析失败：output 中没有 text 或 choices")
-                    print("📄 [OllamaService] output 对象内容: \(output)")
-                    throw OllamaError.invalidResponse
-                }
-            } else {
-                print("❌ [OllamaService] DashScope 格式响应解析失败：json 中没有 output 字段")
-                print("📄 [OllamaService] json 对象内容: \(json)")
-                throw OllamaError.invalidResponse
-            }
-        } else if apiType == .openAI {
-            // OpenAI 格式：响应在 choices[0].message.content
-            if let choices = json["choices"] as? [[String: Any]],
-               let firstChoice = choices.first,
-               let message = firstChoice["message"] as? [String: Any],
-               let content = message["content"] as? String {
+        // 按顺序尝试多种响应格式
+        // 格式1: OpenAI 兼容格式（choices 字段）- DashScope 兼容模式也使用此格式
+        if optimizedText == nil,
+           let choices = json["choices"] as? [[String: Any]],
+           let firstChoice = choices.first,
+           let message = firstChoice["message"] as? [String: Any] {
+            // 提取 content（可能是字符串或数组）
+            if let content = message["content"] as? String {
+                // 字符串格式的 content
                 optimizedText = content.trimmingCharacters(in: .whitespacesAndNewlines)
+                print("✅ [OllamaService] 使用 OpenAI 兼容格式解析成功")
+            } else if let contentArray = message["content"] as? [[String: Any]] {
+                // 多模态响应：提取文本部分
+                var textParts: [String] = []
+                for item in contentArray {
+                    if let text = item["text"] as? String {
+                        textParts.append(text)
+                    }
+                }
+                optimizedText = textParts.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+                print("✅ [OllamaService] 使用 OpenAI 兼容格式（多模态）解析成功")
             } else {
-                print("❌ [OllamaService] OpenAI 格式响应解析失败")
-                print("📄 [OllamaService] json 对象内容: \(json)")
-                throw OllamaError.invalidResponse
+                print("⚠️ [OllamaService] OpenAI 兼容格式：无法找到 content，尝试其他格式")
+                print("📄 [OllamaService] message 对象: \(message)")
             }
-        } else {
-            // Ollama 格式：响应在 response 字段
-            guard let responseText = json["response"] as? String else {
-                print("❌ [OllamaService] Ollama 格式响应解析失败")
-                print("📄 [OllamaService] json 对象内容: \(json)")
-                throw OllamaError.invalidResponse
-            }
-            optimizedText = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         
-        print("✅ [OllamaService] 文本优化完成（\(apiTypeName)），优化后长度: \(optimizedText.count)")
+        // 格式2: DashScope 原生格式（output 字段）
+        if optimizedText == nil,
+           let output = json["output"] as? [String: Any] {
+            // 先检查文本生成端点格式（output.text）
+            if let text = output["text"] as? String {
+                optimizedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                print("✅ [OllamaService] 使用 DashScope 原生格式（text）解析成功")
+            }
+            // 再检查聊天端点格式（output.choices[0].message.content）
+            else if let choices = output["choices"] as? [[String: Any]],
+                    let firstChoice = choices.first,
+                    let message = firstChoice["message"] as? [String: Any] {
+                // 提取 content（可能是字符串或数组）
+                if let content = message["content"] as? String {
+                    optimizedText = content.trimmingCharacters(in: .whitespacesAndNewlines)
+                    print("✅ [OllamaService] 使用 DashScope 原生格式（choices）解析成功")
+                } else if let contentArray = message["content"] as? [[String: Any]] {
+                    // 多模态响应：提取文本部分
+                    var textParts: [String] = []
+                    for item in contentArray {
+                        if let text = item["text"] as? String {
+                            textParts.append(text)
+                        }
+                    }
+                    optimizedText = textParts.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+                    print("✅ [OllamaService] 使用 DashScope 原生格式（多模态）解析成功")
+                } else {
+                    print("⚠️ [OllamaService] DashScope 原生格式：无法找到 content，尝试其他格式")
+                }
+            } else {
+                print("⚠️ [OllamaService] DashScope 原生格式：output 中没有 text 或 choices，尝试其他格式")
+            }
+        }
         
-        return optimizedText
+        // 格式3: Ollama 格式（response 字段）
+        if optimizedText == nil,
+           let responseText = json["response"] as? String {
+            optimizedText = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
+            print("✅ [OllamaService] 使用 Ollama 格式解析成功")
+        }
+        
+        // 所有格式都失败
+        guard let finalText = optimizedText else {
+            print("❌ [OllamaService] 无法识别响应格式，尝试了 OpenAI、DashScope、Ollama 格式均失败")
+            print("📄 [OllamaService] json 对象内容: \(json)")
+            throw OllamaError.invalidResponse
+        }
+        
+        print("✅ [OllamaService] 文本优化完成（\(apiTypeName)），优化后长度: \(finalText.count)")
+        
+        return finalText
     }
     
     /// 测试 API 连接
@@ -1011,76 +1044,90 @@ class OllamaService {
             throw OllamaError.requestFailed(httpResponse.statusCode, errorMessage)
         }
         
-        // 解析响应 - 根据 API 类型解析不同的响应格式
+        // 解析响应 - 尝试多种格式（OpenAI 兼容、DashScope 原生、Ollama）
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             print("❌ [OllamaService] 无法解析响应 JSON")
             throw OllamaError.invalidResponse
         }
         
-        let rawResponse: String
+        var rawResponse: String?
         
-        if isDashScopeAPI {
-            // DashScope 格式：响应在 output.choices[0].message.content 或 output.text
-            if let output = json["output"] as? [String: Any] {
-                // 先检查文本生成端点格式（output.text）
-                if let text = output["text"] as? String {
-                    rawResponse = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                }
-                // 再检查聊天端点格式（output.choices[0].message.content）
-                else if let choices = output["choices"] as? [[String: Any]],
-                        let firstChoice = choices.first,
-                        let message = firstChoice["message"] as? [String: Any] {
-                    // 提取 content（可能是字符串或数组）
-                    if let contentArray = message["content"] as? [[String: Any]] {
-                        // 多模态响应：提取文本部分
-                        var textParts: [String] = []
-                        for item in contentArray {
-                            if let text = item["text"] as? String {
-                                textParts.append(text)
-                            }
-                        }
-                        rawResponse = textParts.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-                    } else if let content = message["content"] as? String {
-                        rawResponse = content.trimmingCharacters(in: .whitespacesAndNewlines)
-                    } else {
-                        print("❌ [OllamaService] DashScope 格式响应解析失败：无法找到 content")
-                        print("📄 [OllamaService] message 对象内容: \(message)")
-                        throw OllamaError.invalidResponse
-                    }
-                } else {
-                    print("❌ [OllamaService] DashScope 格式响应解析失败：output 中没有 text 或 choices")
-                    print("📄 [OllamaService] output 对象内容: \(output)")
-                    throw OllamaError.invalidResponse
-                }
-            } else {
-                print("❌ [OllamaService] DashScope 格式响应解析失败：json 中没有 output 字段")
-                print("📄 [OllamaService] json 对象内容: \(json)")
-                throw OllamaError.invalidResponse
-            }
-        } else if apiType == .openAI {
-            // OpenAI 格式：响应在 choices[0].message.content
-            if let choices = json["choices"] as? [[String: Any]],
-               let firstChoice = choices.first,
-               let message = firstChoice["message"] as? [String: Any],
-               let content = message["content"] as? String {
+        // 格式1: OpenAI 兼容格式（choices 字段）- DashScope 兼容模式也使用此格式
+        if rawResponse == nil,
+           let choices = json["choices"] as? [[String: Any]],
+           let firstChoice = choices.first,
+           let message = firstChoice["message"] as? [String: Any] {
+            // 提取 content（可能是字符串或数组）
+            if let content = message["content"] as? String {
+                // 字符串格式的 content
                 rawResponse = content.trimmingCharacters(in: .whitespacesAndNewlines)
+                print("✅ [OllamaService] 使用 OpenAI 兼容格式解析成功")
+            } else if let contentArray = message["content"] as? [[String: Any]] {
+                // 多模态响应：提取文本部分
+                var textParts: [String] = []
+                for item in contentArray {
+                    if let text = item["text"] as? String {
+                        textParts.append(text)
+                    }
+                }
+                rawResponse = textParts.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+                print("✅ [OllamaService] 使用 OpenAI 兼容格式（多模态）解析成功")
             } else {
-                print("❌ [OllamaService] OpenAI 格式响应解析失败")
-                print("📄 [OllamaService] json 对象内容: \(json)")
-                throw OllamaError.invalidResponse
+                print("⚠️ [OllamaService] OpenAI 兼容格式：无法找到 content，尝试其他格式")
+                print("📄 [OllamaService] message 对象: \(message)")
             }
-        } else {
-            // Ollama 格式：响应在 response 字段
-            guard let responseText = json["response"] as? String else {
-                print("❌ [OllamaService] Ollama 格式响应解析失败")
-                print("📄 [OllamaService] json 对象内容: \(json)")
-                throw OllamaError.invalidResponse
+        }
+        
+        // 格式2: DashScope 原生格式（output 字段）
+        if rawResponse == nil,
+           let output = json["output"] as? [String: Any] {
+            // 先检查文本生成端点格式（output.text）
+            if let text = output["text"] as? String {
+                rawResponse = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                print("✅ [OllamaService] 使用 DashScope 原生格式（text）解析成功")
             }
+            // 再检查聊天端点格式（output.choices[0].message.content）
+            else if let choices = output["choices"] as? [[String: Any]],
+                    let firstChoice = choices.first,
+                    let message = firstChoice["message"] as? [String: Any] {
+                // 提取 content（可能是字符串或数组）
+                if let content = message["content"] as? String {
+                    rawResponse = content.trimmingCharacters(in: .whitespacesAndNewlines)
+                    print("✅ [OllamaService] 使用 DashScope 原生格式（choices）解析成功")
+                } else if let contentArray = message["content"] as? [[String: Any]] {
+                    // 多模态响应：提取文本部分
+                    var textParts: [String] = []
+                    for item in contentArray {
+                        if let text = item["text"] as? String {
+                            textParts.append(text)
+                        }
+                    }
+                    rawResponse = textParts.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+                    print("✅ [OllamaService] 使用 DashScope 原生格式（多模态）解析成功")
+                } else {
+                    print("⚠️ [OllamaService] DashScope 原生格式：无法找到 content，尝试其他格式")
+                }
+            } else {
+                print("⚠️ [OllamaService] DashScope 原生格式：output 中没有 text 或 choices，尝试其他格式")
+            }
+        }
+        
+        // 格式3: Ollama 格式（response 字段）
+        if rawResponse == nil,
+           let responseText = json["response"] as? String {
             rawResponse = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
+            print("✅ [OllamaService] 使用 Ollama 格式解析成功")
+        }
+        
+        // 所有格式都失败
+        guard let finalResponse = rawResponse else {
+            print("❌ [OllamaService] 无法识别响应格式，尝试了 OpenAI、DashScope、Ollama 格式均失败")
+            print("📄 [OllamaService] json 对象内容: \(json)")
+            throw OllamaError.invalidResponse
         }
         
         // 尝试解析 JSON（可能包含在代码块中）
-        var jsonString = rawResponse
+        var jsonString = finalResponse
         
         // 移除可能的 markdown 代码块标记
         if jsonString.hasPrefix("```json") {
@@ -1116,11 +1163,11 @@ class OllamaService {
         print("⚠️ [OllamaService] JSON 解析失败，尝试从文本中提取信息")
         
         // 降级方案：使用原始响应作为摘要，尝试提取待办事项
-        var summary = rawResponse
+        var summary = finalResponse
         var actionItems: [String] = []
         
         // 尝试提取待办事项（查找以 "- " 开头的行）
-        let lines = rawResponse.components(separatedBy: .newlines)
+        let lines = finalResponse.components(separatedBy: .newlines)
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.hasPrefix("- ") {

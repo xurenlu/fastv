@@ -56,6 +56,18 @@ class DiaryStore: ObservableObject {
         return entries.filter { $0.date >= startDate && $0.date <= endDate }
     }
     
+    /// 搜索日记（搜索标题和内容）
+    func searchEntries(query: String) -> [DiaryEntry] {
+        guard !query.isEmpty else {
+            return entries
+        }
+        let lowercasedQuery = query.lowercased()
+        return entries.filter { entry in
+            entry.title.lowercased().contains(lowercasedQuery) ||
+            entry.content.lowercased().contains(lowercasedQuery)
+        }
+    }
+    
     // MARK: - Persistence
     
     private func scheduleSave() {

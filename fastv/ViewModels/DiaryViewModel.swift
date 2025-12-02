@@ -8,6 +8,30 @@
 import Foundation
 import Combine
 
+/// 日记视图模式
+enum DiaryViewMode: String, CaseIterable {
+    case list = "list"          // 列表视图
+    case calendar = "calendar"   // 日历视图
+    
+    var displayName: String {
+        switch self {
+        case .list:
+            return "列表"
+        case .calendar:
+            return "日历"
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .list:
+            return "list.bullet"
+        case .calendar:
+            return "calendar"
+        }
+    }
+}
+
 /// 日记 ViewModel
 @MainActor
 class DiaryViewModel: ObservableObject {
@@ -16,6 +40,11 @@ class DiaryViewModel: ObservableObject {
     @Published var isProcessingAI: Bool = false
     @Published var aiErrorMessage: String?
     @Published var aiSuccessMessage: String?
+    @Published var viewMode: DiaryViewMode = .list
+    @Published var editingEntry: DiaryEntry? = nil
+    @Published var searchText: String = ""
+    @Published var selectedMood: DiaryMood? = nil  // 选中的心情筛选
+    @Published var showNormalOnly: Bool = false  // 是否只显示没有心情的日记
     
     private let store = DiaryStore.shared
     private let aiService = DiaryAIService.shared
@@ -32,7 +61,47 @@ class DiaryViewModel: ObservableObject {
     }
     
     var entries: [DiaryEntry] {
-        store.entries
+        var filtered = store.entries
+        
+        // 心情筛选
+        if showNormalOnly {
+            // 只显示没有心情的日记
+            filtered = filtered.filter { $0.mood == nil }
+        } else if let selectedMood = selectedMood {
+            filtered = filtered.filter { $0.mood == selectedMood }
+        }
+        
+        // 搜索筛选
+        if !searchText.isEmpty {
+            let searchResults = store.searchEntries(query: searchText)
+            // 如果同时有心情筛选，需要再次过滤
+            if showNormalOnly {
+                filtered = searchResults.filter { $0.mood == nil }
+            } else if let selectedMood = selectedMood {
+                filtered = searchResults.filter { $0.mood == selectedMood }
+            } else {
+                filtered = searchResults
+            }
+        }
+        
+        return filtered
+    }
+    
+    /// 获取指定心情的日记数量
+    func count(for mood: DiaryMood?) -> Int {
+        if let mood = mood {
+            return store.entries.filter { $0.mood == mood }.count
+        } else {
+            // 没有心情的日记
+            return store.entries.filter { $0.mood == nil }.count
+        }
+    }
+    
+    /// 清除所有筛选
+    func clearFilters() {
+        selectedMood = nil
+        searchText = ""
+        showNormalOnly = false
     }
     
     // MARK: - Voice Input
@@ -152,10 +221,22 @@ class DiaryViewModel: ObservableObject {
         store.delete(entry)
     }
     
-    func updateEntry(_ entry: DiaryEntry, title: String? = nil, content: String? = nil, mood: DiaryMood? = nil) {
+    func updateEntry(_ entry: DiaryEntry, title: String? = nil, content: String? = nil, mood: DiaryMood? = nil, date: Date? = nil) {
         var updated = entry
         updated.update(title: title, content: content, mood: mood)
+        if let date = date {
+            updated.date = date
+        }
         store.update(updated)
+        editingEntry = nil
+    }
+    
+    func showEditEntry(_ entry: DiaryEntry) {
+        editingEntry = entry
+    }
+    
+    func cancelEditEntry() {
+        editingEntry = nil
     }
 }
 
