@@ -41,6 +41,7 @@ struct EmailMessage: Identifiable, Codable {
     var isDeleted: Bool // 是否已删除
     var containsRemoteResources: Bool // 是否包含外部资源（图片、CSS等）
     var hasBeenReplied: Bool // 是否已回复
+    var isDraft: Bool // 是否为草稿
     
     // 标签和分类
     var tags: [String]
@@ -88,6 +89,7 @@ struct EmailMessage: Identifiable, Codable {
         isDeleted: Bool = false,
         containsRemoteResources: Bool = false,
         hasBeenReplied: Bool = false,
+        isDraft: Bool = false,
         tags: [String] = [],
         aiTags: [String] = [],
         aiSummary: String? = nil,
@@ -124,6 +126,7 @@ struct EmailMessage: Identifiable, Codable {
         self.isDeleted = isDeleted
         self.containsRemoteResources = containsRemoteResources
         self.hasBeenReplied = hasBeenReplied
+        self.isDraft = isDraft
         self.tags = tags
         self.aiTags = aiTags
         self.aiSummary = aiSummary

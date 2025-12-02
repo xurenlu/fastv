@@ -293,12 +293,28 @@ struct EmailView: View {
                         ForEach(Array(displayedMessages.enumerated()), id: \.element.id) { index, message in
                             MessageRow(message: message, showAttachments: viewModel.showAttachments)
                                 .tag(message.id)
-                                .onAppear {
-                                    // 滚动到底部时自动加载更多（改进的检测逻辑）
-                                    // 当显示倒数第3条邮件时就开始加载，提前准备
-                                    let threshold = max(3, displayedMessages.count - 3)
-                                    if index >= threshold && viewModel.hasMoreMessages && !viewModel.isLoadingMore {
-                                        // 使用 Task 而不是 DispatchQueue，避免阻塞 UI
+                        }
+                        
+                        // 底部加载触发器和加载指示器
+                        if viewModel.hasMoreMessages {
+                            if viewModel.isLoadingMore {
+                                // 加载中：显示加载指示器
+                                HStack {
+                                    Spacer()
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                    Text("加载更多...")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                }
+                                .padding()
+                            } else {
+                                // 未加载：显示触发器（滚动到底部时自动加载）
+                                Color.clear
+                                    .frame(height: 1)
+                                    .onAppear {
+                                        // 使用 Task 避免阻塞 UI
                                         Task { @MainActor in
                                             // 稍微延迟，避免快速滚动时频繁触发
                                             try? await Task.sleep(nanoseconds: 200_000_000) // 0.2秒防抖
@@ -308,21 +324,7 @@ struct EmailView: View {
                                             }
                                         }
                                     }
-                                }
-                        }
-                        
-                        // 加载更多指示器
-                        if viewModel.isLoadingMore {
-                            HStack {
-                                Spacer()
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                Text("加载更多...")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
                             }
-                            .padding()
                         }
                     }
                     .listStyle(.plain)
@@ -427,7 +429,9 @@ struct EmailView: View {
                     // 邮件正文 - 使用 WKWebView 渲染，提供完整的 HTML/CSS 支持
                     Group {
                         if let htmlBody = message.htmlBody, !htmlBody.isEmpty {
-                            EmailBodyWebView(htmlBody: htmlBody, textBody: message.textBody, showImages: viewModel.showImages)
+                            // 优先使用AI优化后的HTML，如果没有则使用原始HTML
+                            let displayHTML = viewModel.getOptimizedHTML(for: message) ?? htmlBody
+                            EmailBodyWebView(htmlBody: displayHTML, textBody: message.textBody, showImages: viewModel.showImages)
                         } else if let textBody = message.textBody, !textBody.isEmpty {
                             Text(textBody)
                                 .font(.system(size: 16))
@@ -560,6 +564,29 @@ struct EmailView: View {
                 
                 // 右侧操作按钮组 - 使用图标按钮，更紧凑
                 HStack(spacing: 4) {
+                    // AI智能排版按钮 - 只对HTML邮件显示
+                    if message.htmlBody != nil && !message.htmlBody!.isEmpty {
+                        Button(action: {
+                            // 同步调用，不阻塞UI（内部使用Task.detached）
+                            viewModel.optimizeHTMLLayout(for: message)
+                        }) {
+                            if viewModel.isOptimizing(for: message) {
+                                // 正在优化中：显示进度指示器
+                                ProgressView()
+                                    .scaleEffect(0.6)
+                                    .frame(width: 32, height: 32)
+                            } else {
+                                // 根据是否已优化显示不同的图标和颜色
+                                Image(systemName: viewModel.isLayoutOptimized(for: message) ? "sparkles.rectangle.stack.fill" : "sparkles.rectangle.stack")
+                                    .foregroundStyle(viewModel.isLayoutOptimized(for: message) ? .purple : .secondary)
+                                    .frame(width: 32, height: 32)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .help(viewModel.isLayoutOptimized(for: message) ? "恢复原始排版" : "AI智能排版优化")
+                        .disabled(viewModel.isOptimizing(for: message))
+                    }
+                    
                     // 星标按钮
                     Button(action: {
                         Task {

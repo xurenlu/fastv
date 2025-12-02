@@ -150,7 +150,8 @@ struct fastvApp: App {
             } else {
                 print("⚠️ [fastvApp] 辅助功能权限未授权，请求权限...")
                 print("💡 [fastvApp] 提示：系统将弹出权限请求对话框，请点击'打开系统偏好设置'")
-                print("💡 [fastvApp] 然后在'系统设置 > 隐私与安全性 > 辅助功能'中找到 妙打 并勾选")
+                let appName = NSLocalizedString("app.name", comment: "")
+                print("💡 [fastvApp] 然后在'系统设置 > 隐私与安全性 > 辅助功能'中找到 \(appName) 并勾选")
                 TextInsertionService.requestAccessibilityPermission()
             }
         }

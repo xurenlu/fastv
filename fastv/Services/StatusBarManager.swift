@@ -30,9 +30,10 @@ class StatusBarManager: NSObject, ObservableObject {
         if let button = statusItem.button {
             statusBarButton = button
             // 使用闪电图标，表示快速打字输入
-            button.image = NSImage(systemSymbolName: "bolt.fill", accessibilityDescription: "妙打")
+            let appName = NSLocalizedString("app.name", comment: "")
+            button.image = NSImage(systemSymbolName: "bolt.fill", accessibilityDescription: appName)
             button.image?.isTemplate = true // 让图标适配深色/浅色模式
-            button.toolTip = "妙打"
+            button.toolTip = appName
         }
         
         // 创建菜单（设置菜单后，点击图标会自动显示菜单）
@@ -45,8 +46,9 @@ class StatusBarManager: NSObject, ObservableObject {
         let menu = NSMenu()
         
         // 显示主界面
+        let appName = NSLocalizedString("app.name", comment: "")
         let showMenuItem = NSMenuItem(
-            title: "显示妙打",
+            title: String(format: NSLocalizedString("show.app", value: "显示 %@", comment: ""), appName),
             action: #selector(showMainWindow(_:)),
             keyEquivalent: ""
         )

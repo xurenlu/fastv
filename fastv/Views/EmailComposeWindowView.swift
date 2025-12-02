@@ -113,6 +113,8 @@ struct EmailComposeWindowView: View {
     @FocusState private var focusedField: ComposeField?
     @State private var selectedText: String = ""
     @State private var selectedRange: NSRange? = nil
+    @State private var draftId: UUID
+    @State private var autoSaveTask: Task<Void, Never>?
     
     enum ComposeField {
         case to, cc, bcc, subject, body
@@ -132,12 +134,17 @@ struct EmailComposeWindowView: View {
         self.viewModel = viewModel
         self.composeType = composeType
         
+        // 生成草稿ID：新邮件使用新UUID，回复/转发使用原邮件ID
+        let draftIdValue: UUID
         switch composeType {
         case .new:
             self.originalMessage = nil
+            draftIdValue = UUID()
         case .reply(let msg), .replyAll(let msg), .forward(let msg):
             self.originalMessage = msg
+            draftIdValue = msg.id // 使用原邮件ID作为草稿ID
         }
+        self._draftId = State(initialValue: draftIdValue)
     }
     
     var body: some View {
@@ -208,6 +215,21 @@ struct EmailComposeWindowView: View {
                         .frame(minHeight: 300)
                         .background(Color(NSColor.textBackgroundColor))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
+                        
+                        // 发送进度条（在正文下方）
+                        if isSending {
+                            VStack(alignment: .leading, spacing: 8) {
+                                ProgressView(value: viewModel.sendProgress, total: 1.0)
+                                    .progressViewStyle(.linear)
+                                
+                                if !viewModel.sendStatusText.isEmpty {
+                                    Text(viewModel.sendStatusText)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(.top, 8)
+                        }
                     }
                     .padding()
                 }
@@ -229,7 +251,7 @@ struct EmailComposeWindowView: View {
                     }) {
                         Label("发送", systemImage: "paperplane.fill")
                     }
-                    .disabled(!canSend)
+                    .disabled(!canSend || isSending)
                 }
                 
                 ToolbarItem(placement: .automatic) {
@@ -295,6 +317,25 @@ struct EmailComposeWindowView: View {
         }
         .onAppear {
             initializeComposeFields()
+            // 加载草稿（如果有）
+            Task {
+                await loadDraft()
+            }
+        }
+        .onChange(of: toText) { _, _ in
+            autoSaveDraft()
+        }
+        .onChange(of: ccText) { _, _ in
+            autoSaveDraft()
+        }
+        .onChange(of: bccText) { _, _ in
+            autoSaveDraft()
+        }
+        .onChange(of: subjectText) { _, _ in
+            autoSaveDraft()
+        }
+        .onChange(of: bodyText) { _, _ in
+            autoSaveDraft()
         }
         .onChange(of: viewModel.composeDraft?.body) { _, newValue in
             if let newValue = newValue, case .new = composeType {
@@ -308,6 +349,23 @@ struct EmailComposeWindowView: View {
                     bodyText = newValue
                 case .new:
                     break
+                }
+            }
+        }
+        .onChange(of: viewModel.sendStatusText) { _, newStatus in
+            // 当状态文本显示"发送成功！"时，等待提示音播放后关闭窗口
+            if newStatus == "发送成功！" {
+                // ViewModel 中已经有 0.5 秒延迟并播放提示音，这里再等待 0.3 秒确保提示音播放完成
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    dismiss()
+                }
+            }
+        }
+        .onDisappear {
+            // 窗口关闭时，如果未发送成功，保存草稿
+            if viewModel.sendStatusText != "发送成功！" {
+                Task {
+                    await saveDraft()
                 }
             }
         }
@@ -450,6 +508,15 @@ struct EmailComposeWindowView: View {
             return viewModel.isPolishingCompose
         case .reply, .replyAll, .forward:
             return viewModel.isPolishingReply
+        }
+    }
+    
+    private var isSending: Bool {
+        switch composeType {
+        case .new:
+            return viewModel.isSendingCompose
+        case .reply, .replyAll, .forward:
+            return viewModel.isSendingReply
         }
     }
     
@@ -675,10 +742,24 @@ struct EmailComposeWindowView: View {
                 )
             }
             
-            dismiss()
+            // 发送成功，删除草稿
+            await deleteDraft()
+            
+            // 注意：窗口关闭由 sendProgress 的 onChange 监听器处理
+            // 这里不再直接调用 dismiss()，让进度条完成后再关闭
         } catch {
             print("❌ [EmailComposeWindow] 发送失败: \(error)")
             viewModel.errorMessage = error.localizedDescription
+            // 发送失败时，重置发送状态，允许用户重试
+            // 注意：草稿会保留，用户可以继续编辑
+            switch composeType {
+            case .new:
+                viewModel.isSendingCompose = false
+            case .reply, .replyAll, .forward:
+                viewModel.isSendingReply = false
+            }
+            viewModel.sendProgress = 0.0
+            viewModel.sendStatusText = ""
         }
     }
     
@@ -697,6 +778,89 @@ struct EmailComposeWindowView: View {
             }
             
             return EmailContact(email: trimmed)
+        }
+    }
+    
+    // MARK: - Draft Management
+    
+    /// 自动保存草稿（防抖，延迟2秒）
+    private func autoSaveDraft() {
+        // 取消之前的保存任务
+        autoSaveTask?.cancel()
+        
+        // 创建新的保存任务（延迟2秒）
+        autoSaveTask = Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2秒防抖
+            
+            // 检查是否被取消
+            guard !Task.isCancelled else { return }
+            
+            // 保存草稿
+            await saveDraft()
+        }
+    }
+    
+    /// 保存草稿
+    private func saveDraft() async {
+        guard let accountId = viewModel.currentAccount?.id else { return }
+        
+        // 解析收件人
+        let toContacts = parseEmailAddresses(toText)
+        let ccContacts = parseEmailAddresses(ccText)
+        let bccContacts = parseEmailAddresses(bccText)
+        
+        // 如果没有收件人和主题，不保存草稿
+        guard !toText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+              !subjectText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+              !bodyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+        
+        do {
+            // 获取附件
+            let attachments = currentAttachments
+            
+            try await EmailStore.shared.saveDraft(
+                draftId: draftId,
+                accountId: accountId,
+                to: toContacts,
+                cc: ccContacts,
+                bcc: bccContacts,
+                subject: subjectText,
+                body: bodyText,
+                htmlBody: htmlBodyText,
+                attachments: attachments,
+                originalMessageId: originalMessage?.id
+            )
+        } catch {
+            print("❌ [EmailComposeWindow] 保存草稿失败: \(error)")
+        }
+    }
+    
+    /// 加载草稿
+    private func loadDraft() async {
+        guard let draft = await EmailStore.shared.loadDraft(draftId: draftId) else {
+            // 没有草稿，使用默认值
+            return
+        }
+        
+        // 加载草稿内容
+        toText = draft.to.map { $0.email }.joined(separator: ", ")
+        ccText = draft.cc.map { $0.email }.joined(separator: ", ")
+        bccText = draft.bcc.map { $0.email }.joined(separator: ", ")
+        subjectText = draft.subject
+        bodyText = draft.textBody ?? ""
+        htmlBodyText = draft.htmlBody
+        
+        print("✅ [EmailComposeWindow] 草稿已加载: \(draft.subject)")
+    }
+    
+    /// 删除草稿
+    private func deleteDraft() async {
+        do {
+            try await EmailStore.shared.deleteDraft(draftId: draftId)
+        } catch {
+            print("❌ [EmailComposeWindow] 删除草稿失败: \(error)")
         }
     }
 }

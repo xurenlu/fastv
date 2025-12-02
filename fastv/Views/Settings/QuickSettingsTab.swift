@@ -202,51 +202,6 @@ struct QuickSettingsTab: View {
                             .padding(.top, 4)
                         }
                         
-                        // AI 优化快捷键说明（如果启用了 AI 优化）
-                        if preferences.enableAIOptimization {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "wand.and.stars")
-                                        .font(.caption)
-                                        .foregroundStyle(.blue)
-                                    
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(NSLocalizedString("ai.shortcut.usage.hint", comment: ""))
-                                            .font(.system(size: 11))
-                                            .foregroundStyle(.secondary)
-                                        
-                                        // 显示两套快捷键组合
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            HStack(spacing: 6) {
-                                                Text(NSLocalizedString("ai.shortcut.normal", comment: ""))
-                                                    .font(.system(size: 10))
-                                                    .foregroundStyle(.tertiary)
-                                                
-                                                ShortcutDisplayView(
-                                                    keyCode: preferences.voiceInputShortcutKeyCode,
-                                                    modifiers: preferences.voiceInputShortcutModifiers
-                                                )
-                                            }
-                                            
-                                            HStack(spacing: 6) {
-                                                Text(NSLocalizedString("ai.shortcut.with.ai", comment: ""))
-                                                    .font(.system(size: 10))
-                                                    .foregroundStyle(.tertiary)
-                                                
-                                                ShortcutDisplayView(
-                                                    keyCode: preferences.voiceInputShortcutKeyCode,
-                                                    modifiers: preferences.voiceInputShortcutModifiers,
-                                                    showCtrl: true
-                                                )
-                                            }
-                                        }
-                                        .padding(.top, 4)
-                                    }
-                                }
-                            }
-                            .padding(.top, 4)
-                        }
-                        
                         // Control键提示
                         if preferences.voiceInputShortcutKeyCode == 0xFFFF {
                             VStack(alignment: .leading, spacing: 8) {

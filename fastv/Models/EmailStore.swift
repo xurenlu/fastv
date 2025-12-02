@@ -331,6 +331,115 @@ class EmailStore: ObservableObject {
         return messages[folderId]?.count ?? 0
     }
     
+    // MARK: - Draft Management
+    
+    /// 保存草稿
+    /// - Parameters:
+    ///   - draftId: 草稿ID（用于标识草稿，可以是原邮件的ID或新生成的UUID）
+    ///   - accountId: 账号ID
+    ///   - to: 收件人
+    ///   - cc: 抄送
+    ///   - bcc: 密送
+    ///   - subject: 主题
+    ///   - body: 正文
+    ///   - htmlBody: HTML正文（可选）
+    ///   - attachments: 附件
+    ///   - originalMessageId: 原邮件ID（如果是回复/转发）
+    func saveDraft(
+        draftId: UUID,
+        accountId: UUID,
+        to: [EmailContact],
+        cc: [EmailContact] = [],
+        bcc: [EmailContact] = [],
+        subject: String,
+        body: String,
+        htmlBody: String? = nil,
+        attachments: [EmailAttachment] = [],
+        originalMessageId: UUID? = nil
+    ) async throws {
+        // 创建草稿邮件对象
+        let draftMessage = EmailMessage(
+            id: draftId,
+            accountId: accountId,
+            folderId: nil, // 草稿没有文件夹
+            subject: subject,
+            from: EmailContact(email: getAccount(id: accountId)?.emailAddress ?? ""),
+            to: to,
+            cc: cc,
+            bcc: bcc,
+            textBody: body,
+            htmlBody: htmlBody,
+            preview: String(body.prefix(200)),
+            date: Date(),
+            isDraft: true,
+            attachments: attachments
+        )
+        
+        // 保存到数据库
+        try await database.asyncWrite { db in
+            try self.saveMessage(draftMessage, db: db)
+        }
+        
+        print("✅ [EmailStore] 草稿已保存: \(subject), draftId=\(draftId)")
+    }
+    
+    /// 加载草稿
+    /// - Parameter draftId: 草稿ID
+    /// - Returns: 草稿邮件，如果不存在则返回 nil
+    func loadDraft(draftId: UUID) async -> EmailMessage? {
+        do {
+            return try await database.asyncRead { db -> EmailMessage? in
+                let row = try Row.fetchOne(db, sql: """
+                    SELECT * FROM email_messages
+                    WHERE id = ? AND is_draft = 1
+                """, arguments: [draftId.uuidString])
+                
+                guard let row = row else { return nil }
+                return try self.parseMessage(from: row, db: db)
+            }
+        } catch {
+            print("❌ [EmailStore] 加载草稿失败: \(error)")
+            return nil
+        }
+    }
+    
+    /// 删除草稿
+    /// - Parameter draftId: 草稿ID
+    func deleteDraft(draftId: UUID) async throws {
+        try await database.asyncWrite { db in
+            try db.execute(sql: """
+                DELETE FROM email_messages
+                WHERE id = ? AND is_draft = 1
+            """, arguments: [draftId.uuidString])
+        }
+        print("✅ [EmailStore] 草稿已删除: draftId=\(draftId)")
+    }
+    
+    /// 获取账号的所有草稿
+    /// - Parameter accountId: 账号ID
+    /// - Returns: 草稿列表
+    func getDrafts(for accountId: UUID) async -> [EmailMessage] {
+        do {
+            return try await database.asyncRead { db -> [EmailMessage] in
+                var drafts: [EmailMessage] = []
+                let rows = try Row.fetchAll(db, sql: """
+                    SELECT * FROM email_messages
+                    WHERE account_id = ? AND is_draft = 1
+                    ORDER BY updated_at DESC
+                """, arguments: [accountId.uuidString])
+                
+                for row in rows {
+                    let draft = try self.parseMessage(from: row, db: db)
+                    drafts.append(draft)
+                }
+                return drafts
+            }
+        } catch {
+            print("❌ [EmailStore] 获取草稿列表失败: \(error)")
+            return []
+        }
+    }
+    
     // MARK: - Database Operations
     
     private func saveAccount(_ account: EmailAccount, db: Database) throws {
@@ -420,8 +529,8 @@ class EmailStore: ObservableObject {
                 date, received_date, is_read, is_starred, is_important,
                 is_no_reply, has_attachments, is_spam, is_deleted, contains_remote_resources,
                 tags, ai_tags, ai_summary,
-                ai_priority, synced_at, updated_at, is_body_loaded, body_cached_at, has_been_replied
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ai_priority, synced_at, updated_at, is_body_loaded, body_cached_at, has_been_replied, is_draft
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, arguments: [
             message.id.uuidString,
             message.accountId.uuidString,
@@ -457,7 +566,8 @@ class EmailStore: ObservableObject {
             message.updatedAt.timeIntervalSince1970,
             message.isBodyLoaded ? 1 : 0,
             message.bodyCachedAt?.timeIntervalSince1970,
-            message.hasBeenReplied ? 1 : 0
+            message.hasBeenReplied ? 1 : 0,
+            message.isDraft ? 1 : 0
         ])
         
         // 保存附件
@@ -783,6 +893,7 @@ class EmailStore: ObservableObject {
             isDeleted: (row["is_deleted"] as? Int ?? 0) == 1,
             containsRemoteResources: (row["contains_remote_resources"] as? Int ?? 0) == 1,
             hasBeenReplied: (row["has_been_replied"] as? Int ?? 0) == 1,
+            isDraft: (row["is_draft"] as? Int ?? 0) == 1,
             tags: tags,
             aiTags: aiTags,
             aiSummary: row["ai_summary"] as? String,

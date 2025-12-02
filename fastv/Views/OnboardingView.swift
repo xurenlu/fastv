@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
@@ -14,6 +15,7 @@ struct OnboardingView: View {
     @State private var downloadProgress: Double = 0.0
     @State private var downloadStatus: String = ""
     @State private var downloadError: Error?
+    @State private var aiConfigHasAPIKey = false // 跟踪AI配置步骤是否有API Key
     
     @ObservedObject private var preferences = UserPreferences.shared
     @ObservedObject private var downloader = ModelDownloader.shared
@@ -22,7 +24,7 @@ struct OnboardingView: View {
         VStack(spacing: 0) {
             // 步骤指示器
             HStack(spacing: 8) {
-                ForEach(0..<4) { index in
+                ForEach(0..<5) { index in
                     Circle()
                         .fill(index <= currentStep ? Color.accentColor : Color.gray.opacity(0.3))
                         .frame(width: 8, height: 8)
@@ -46,6 +48,10 @@ struct OnboardingView: View {
                         downloadError: $downloadError
                     )
                 case 3:
+                    AIConfigurationStep(onAPIKeyChanged: { hasAPIKey in
+                        aiConfigHasAPIKey = hasAPIKey
+                    })
+                case 4:
                     UsageGuideStep()
                 default:
                     LanguageSelectionStep()
@@ -66,31 +72,59 @@ struct OnboardingView: View {
                 
                 Spacer()
                 
-                Button(currentStep == 3 ? NSLocalizedString("onboarding.complete", comment: "") : NSLocalizedString("onboarding.next", comment: "")) {
-                    if currentStep == 3 {
-                        // 完成引导
-                        preferences.markOnboardingCompleted()
-                        dismiss()
-                    } else if currentStep == 2 {
-                        // 从模型下载步骤进入下一步时，异步检查模型是否已下载
-                        Task { @MainActor in
-                            let modelExists = await ModelDownloader.shared.checkModelFilesExistAsync()
-                            if modelExists {
-                                preferences.isModelDownloaded = true
-                                withAnimation {
-                                    currentStep += 1
-                                }
-                            }
-                        }
-                    } else {
+                // AI配置步骤（步骤3）的特殊按钮逻辑
+                if currentStep == 3 {
+                    // 跳过按钮
+                    Button(NSLocalizedString("onboarding.skip", comment: "")) {
                         withAnimation {
                             currentStep += 1
                         }
                     }
+                    .buttonStyle(.bordered)
+                    
+                    // 完成或下一步按钮
+                    Button(aiConfigHasAPIKey ? NSLocalizedString("onboarding.complete", comment: "") : NSLocalizedString("onboarding.next", comment: "")) {
+                        if aiConfigHasAPIKey {
+                            // 如果已配置API Key，直接完成引导
+                            preferences.markOnboardingCompleted()
+                            dismiss()
+                        } else {
+                            // 否则进入下一步
+                            withAnimation {
+                                currentStep += 1
+                            }
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                } else {
+                    // 其他步骤的按钮逻辑
+                    Button(currentStep == 4 ? NSLocalizedString("onboarding.complete", comment: "") : NSLocalizedString("onboarding.next", comment: "")) {
+                        if currentStep == 4 {
+                            // 完成引导
+                            preferences.markOnboardingCompleted()
+                            dismiss()
+                        } else if currentStep == 2 {
+                            // 从模型下载步骤进入下一步时，异步检查模型是否已下载
+                            Task { @MainActor in
+                                let modelExists = await ModelDownloader.shared.checkModelFilesExistAsync()
+                                if modelExists {
+                                    preferences.isModelDownloaded = true
+                                }
+                                withAnimation {
+                                    currentStep += 1
+                                }
+                            }
+                        } else {
+                            withAnimation {
+                                currentStep += 1
+                            }
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(currentStep == 2 && !preferences.isModelDownloaded)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(currentStep == 2 && !preferences.isModelDownloaded)
             }
             .padding(20)
         }
@@ -445,7 +479,309 @@ struct ModelDownloadStep: View {
     }
 }
 
-// MARK: - 步骤4: 使用引导
+// MARK: - 步骤4: AI配置
+struct AIConfigurationStep: View {
+    @ObservedObject private var preferences = UserPreferences.shared
+    @State private var selectedProtocolType: AIProtocolType = .dashScope
+    @State private var apiKey: String = ""
+    @State private var hasConfigured: Bool = false
+    
+    var onAPIKeyChanged: ((Bool) -> Void)?
+    
+    // 阿里云API Key申请链接
+    private let aliyunAPIKeyURL = "https://bailian.console.aliyun.com/?accounttraceid=ecf52b9459854c13be278b89515acd5ekwwf&tab=model#/api-key"
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "brain.head.profile")
+                .font(.system(size: 64))
+                .foregroundStyle(.tint)
+            
+            Text(NSLocalizedString("onboarding.ai.config.title", comment: ""))
+                .font(.title)
+                .fontWeight(.bold)
+            
+            Text(NSLocalizedString("onboarding.ai.config.description", comment: ""))
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+            
+            // AI优化好处说明
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(.orange)
+                    Text(NSLocalizedString("onboarding.ai.config.benefit", comment: ""))
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.orange.opacity(0.1))
+            }
+            .padding(.horizontal, 40)
+            
+            // 服务选择器
+            VStack(alignment: .leading, spacing: 12) {
+                Text(NSLocalizedString("onboarding.ai.config.select.service", comment: ""))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                
+                // 显示主要服务选项
+                VStack(spacing: 8) {
+                    // 阿里云 DashScope (推荐)
+                    ServiceOptionButton(
+                        protocolType: .dashScope,
+                        isSelected: selectedProtocolType == .dashScope,
+                        isRecommended: true,
+                        onSelect: {
+                            selectedProtocolType = .dashScope
+                        }
+                    )
+                    
+                    // 其他服务选项
+                    ServiceOptionButton(
+                        protocolType: .ollama,
+                        isSelected: selectedProtocolType == .ollama,
+                        isRecommended: false,
+                        onSelect: {
+                            selectedProtocolType = .ollama
+                        }
+                    )
+                    
+                    ServiceOptionButton(
+                        protocolType: .openAI,
+                        isSelected: selectedProtocolType == .openAI,
+                        isRecommended: false,
+                        onSelect: {
+                            selectedProtocolType = .openAI
+                        }
+                    )
+                }
+            }
+            .padding(.horizontal, 40)
+            
+            // API Key 输入区域
+            if selectedProtocolType.requiresAPIKey {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text(NSLocalizedString("onboarding.ai.config.api.key", comment: ""))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        
+                        Spacer()
+                        
+                        // 申请链接按钮（仅阿里云显示）
+                        if selectedProtocolType == .dashScope {
+                            Button(action: {
+                                if let url = URL(string: aliyunAPIKeyURL) {
+                                    NSWorkspace.shared.open(url)
+                                }
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "link")
+                                        .font(.caption)
+                                    Text(NSLocalizedString("onboarding.ai.config.apply.link", comment: ""))
+                                        .font(.caption)
+                                }
+                                .foregroundStyle(.blue)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    
+                    SecureField(
+                        NSLocalizedString("onboarding.ai.config.api.key.placeholder", comment: ""),
+                        text: $apiKey
+                    )
+                    .textFieldStyle(.roundedBorder)
+                    .onChange(of: apiKey) { oldValue, newValue in
+                        // 当API Key输入时，自动保存配置
+                        if !newValue.isEmpty {
+                            saveAIConfiguration()
+                        }
+                        // 通知父视图API Key状态变化
+                        onAPIKeyChanged?(!newValue.isEmpty)
+                    }
+                }
+                .padding(.horizontal, 40)
+            }
+            
+            // 跳过提示
+            Text(NSLocalizedString("onboarding.ai.config.skip.hint", comment: ""))
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(40)
+        .onAppear {
+            // 检查是否已有配置
+            if let defaultProfile = preferences.getDefaultProfile(),
+               !defaultProfile.apiKey.isEmpty {
+                selectedProtocolType = defaultProfile.protocolType
+                apiKey = defaultProfile.apiKey
+                hasConfigured = true
+                onAPIKeyChanged?(true)
+            } else {
+                // 如果没有配置，检查当前选择的服务是否需要API Key
+                // 如果选择的是Ollama（不需要API Key），也认为已配置
+                if !selectedProtocolType.requiresAPIKey {
+                    onAPIKeyChanged?(true)
+                } else {
+                    onAPIKeyChanged?(!apiKey.isEmpty)
+                }
+            }
+        }
+        .onChange(of: selectedProtocolType) { oldValue, newValue in
+            // 当切换服务类型时，如果新服务不需要API Key，自动保存配置并通知父视图已配置
+            if !newValue.requiresAPIKey {
+                // 自动保存Ollama配置
+                saveAIConfigurationForOllama()
+                onAPIKeyChanged?(true)
+            } else if !apiKey.isEmpty {
+                onAPIKeyChanged?(true)
+            } else {
+                onAPIKeyChanged?(false)
+            }
+        }
+    }
+    
+    private func saveAIConfigurationForOllama() {
+        // 为Ollama保存配置（不需要API Key）
+        let ollamaType = AIProtocolType.ollama
+        let existingProfile = preferences.aiServiceProfiles.first { profile in
+            profile.protocolType == ollamaType
+        }
+        
+        let profile: AIServiceProfile
+        if let existing = existingProfile {
+            profile = AIServiceProfile(
+                id: existing.id,
+                name: existing.name,
+                protocolType: ollamaType,
+                endpoint: ollamaType.defaultEndpoint ?? "",
+                apiKey: "",
+                defaultModel: ollamaType.recommendedModels.first ?? "",
+                timeout: 5.0,
+                isDefault: true,
+                createdAt: existing.createdAt,
+                updatedAt: Date()
+            )
+        } else {
+            profile = AIServiceProfile(
+                name: ollamaType.displayName,
+                protocolType: ollamaType,
+                endpoint: ollamaType.defaultEndpoint ?? "",
+                apiKey: "",
+                defaultModel: ollamaType.recommendedModels.first ?? "",
+                timeout: 5.0,
+                isDefault: true
+            )
+        }
+        
+        preferences.saveProfile(profile)
+        preferences.setDefaultProfile(profile)
+        preferences.enableAIOptimization = true
+        hasConfigured = true
+    }
+    
+    private func saveAIConfiguration() {
+        guard !apiKey.isEmpty else { return }
+        
+        // 查找是否已存在相同协议的profile
+        let existingProfile = preferences.aiServiceProfiles.first { profile in
+            profile.protocolType == selectedProtocolType
+        }
+        
+        let profile: AIServiceProfile
+        if let existing = existingProfile {
+            // 更新现有profile
+            profile = AIServiceProfile(
+                id: existing.id,
+                name: existing.name,
+                protocolType: selectedProtocolType,
+                endpoint: selectedProtocolType.defaultEndpoint ?? "",
+                apiKey: apiKey,
+                defaultModel: selectedProtocolType.recommendedModels.first ?? "",
+                timeout: selectedProtocolType == .ollama ? 5.0 : 30.0,
+                isDefault: true, // 设为默认
+                createdAt: existing.createdAt,
+                updatedAt: Date()
+            )
+        } else {
+            // 创建新profile
+            profile = AIServiceProfile(
+                name: selectedProtocolType.displayName,
+                protocolType: selectedProtocolType,
+                endpoint: selectedProtocolType.defaultEndpoint ?? "",
+                apiKey: apiKey,
+                defaultModel: selectedProtocolType.recommendedModels.first ?? "",
+                timeout: selectedProtocolType == .ollama ? 5.0 : 30.0,
+                isDefault: true
+            )
+        }
+        
+        // 保存profile
+        preferences.saveProfile(profile)
+        
+        // 设置为默认profile
+        preferences.setDefaultProfile(profile)
+        
+        // 自动启用AI优化
+        preferences.enableAIOptimization = true
+        
+        hasConfigured = true
+    }
+}
+
+// MARK: - 服务选项按钮
+struct ServiceOptionButton: View {
+    let protocolType: AIProtocolType
+    let isSelected: Bool
+    let isRecommended: Bool
+    let onSelect: () -> Void
+    
+    var body: some View {
+        Button(action: onSelect) {
+            HStack {
+                Text(protocolType.displayName)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+                
+                if isRecommended {
+                    Text(NSLocalizedString("onboarding.ai.config.recommended", comment: ""))
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background {
+                            Capsule()
+                                .fill(Color.orange.opacity(0.2))
+                        }
+                        .foregroundStyle(.orange)
+                }
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.tint)
+                }
+            }
+            .padding()
+            .background {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(isSelected ? Color.accentColor.opacity(0.1) : Color.gray.opacity(0.1))
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - 步骤5: 使用引导
 struct UsageGuideStep: View {
     @ObservedObject private var preferences = UserPreferences.shared
     

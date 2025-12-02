@@ -6,7 +6,7 @@
 */
 
 // 一般
-"app.name" = "音速入力";
+"app.name" = "智響（ちきょう / Chikyō）";
 "ok" = "OK";
 "cancel" = "キャンセル";
 "save" = "保存";
@@ -81,7 +81,7 @@
 "minute" = "分";
 
 // オンボーディング
-"onboarding.welcome" = "妙打へようこそ";
+"onboarding.welcome" = "智響（ちきょう / Chikyō）へようこそ";
 "onboarding.set.shortcut.title" = "ショートカットを設定";
 "onboarding.set.shortcut.description" = "音声入力を開始するグローバルショートカットを設定してください";
 "onboarding.select.language.title" = "デフォルト言語を選択";
@@ -95,6 +95,7 @@
 "onboarding.start.download" = "ダウンロードを開始";
 "onboarding.previous" = "前へ";
 "onboarding.next" = "次へ";
+"onboarding.skip" = "スキップ";
 "onboarding.complete" = "完了";
 "onboarding.model.ready" = "モデルファイル準備完了";
 "onboarding.usage.guide.title" = "使用開始";
@@ -106,6 +107,15 @@
 "onboarding.usage.guide.japanese" = "日本語のテキストフィールドでショートカットキーを押して話すと、システムが自動的に日本語を認識してテキストを挿入します。";
 "onboarding.usage.guide.korean" = "韓国語のテキストフィールドでショートカットキーを押して話すと、システムが自動的に韓国語を認識してテキストを挿入します。";
 "onboarding.usage.guide.auto" = "任意のテキストフィールドでショートカットキーを押して話すと、システムが自動的に言語を検出してテキストを挿入します。";
+"onboarding.ai.config.title" = "AI最適化の設定";
+"onboarding.ai.config.description" = "AIサービスを設定して、音声入力をよりスマートに";
+"onboarding.ai.config.recommended" = "おすすめ";
+"onboarding.ai.config.select.service" = "AIサービスを選択";
+"onboarding.ai.config.api.key" = "API Key";
+"onboarding.ai.config.api.key.placeholder" = "API Keyを入力してください";
+"onboarding.ai.config.apply.link" = "API Keyを申請";
+"onboarding.ai.config.skip.hint" = "スキップ可能、後で設定で設定できます";
+"onboarding.ai.config.benefit" = "AI最適化により、自動的にフィラー語を削除し、句読点を追加し、誤字を修正して、音声入力をより正確にします";
 
 // ショートカットキャプチャウィンドウ
 "shortcut.capture.title" = "ショートカットを設定";
@@ -149,7 +159,7 @@
 "model.download.url.placeholder" = "モデルダウンロードURLを入力してください";
 
 // ウェルカムページ
-"welcome.title" = "妙打へようこそ";
+"welcome.title" = "智響（ちきょう / Chikyō）へようこそ";
 "welcome.subtitle" = "スマート音声入力";
 "welcome.feature.global.shortcut" = "グローバルショートカット";
 "welcome.feature.global.shortcut.desc" = "ショートカットを設定して、どのアプリケーションのテキストフィールドでもショートカットを押して話してテキストを入力";
@@ -164,7 +174,7 @@
 
 // 権限関連
 "microphone.permission.required" = "マイク権限が必要です";
-"microphone.permission.description" = "音声入力機能にはマイクへのアクセスが必要です。\n\n次の手順に従ってください：\n1. \"システム設定\"を開く\n2. \"プライバシーとセキュリティ\" > \"マイク\"に移動\n3. 妙打を見つけてチェック\n4. アプリを再起動";
+"microphone.permission.description" = "音声入力機能にはマイクへのアクセスが必要です。\n\n次の手順に従ってください：\n1. \"システム設定\"を開く\n2. \"プライバシーとセキュリティ\" > \"マイク\"に移動\n3. 智響（ちきょう / Chikyō）を見つけてチェック\n4. アプリを再起動";
 "open.system.settings" = "システム設定を開く";
 "later" = "後で";
 "microphone.in.use" = "マイク使用中";
@@ -211,13 +221,13 @@
 "permission.test.trigger" = "権限リクエストをトリガー";
 "permission.test.description" = "システム権限ダイアログをトリガーするためにマイクへのアクセスを試みます。\n\n権限ダイアログが表示されたら、「許可」をクリックしてください。";
 "permission.request.title" = "マイク権限をリクエスト";
-"permission.request.description" = "システムが権限リクエストダイアログを表示します。\n\n妙打がマイクにアクセスできるように「許可」をクリックしてください。";
+"permission.request.description" = "システムが権限リクエストダイアログを表示します。\n\n智響（ちきょう / Chikyō）がマイクにアクセスできるように「許可」をクリックしてください。";
 "permission.granted.title" = "✅ マイク権限が付与されました";
 "permission.granted.description" = "マイク権限の付与に成功しました！\n\nこれで音声入力機能を使用できます。";
 "permission.already.granted.title" = "✅ マイク権限が付与されました";
 "permission.already.granted.description" = "すでにマイク権限が付与されています。\n\n音声入力機能を直接使用できます。";
 "permission.denied.title" = "⚠️ マイク権限が拒否されました";
-"permission.denied.description" = "音声入力機能にはマイク権限が必要です。\n\n次の手順で手動で権限を付与してください：\n1. \"システム設定\"を開く\n2. \"プライバシーとセキュリティ\" > \"マイク\"に移動\n3. 妙打を見つけてチェック";
+"permission.denied.description" = "音声入力機能にはマイク権限が必要です。\n\n次の手順で手動で権限を付与してください：\n1. \"システム設定\"を開く\n2. \"プライバシーとセキュリティ\" > \"マイク\"に移動\n3. 智響（ちきょう / Chikyō）を見つけてチェック";
 "continue" = "続ける";
 "great" = "素晴らしい";
 
@@ -231,3 +241,15 @@
 "ai.models.list.found" = "%d個の利用可能なモデルが見つかりました：\n\n• %@\n\nモデル名を上記の\"モデル名\"フィールドにコピーできます。";
 "ai.test.success.title" = "✅ テスト成功";
 "ai.test.success.description" = "AI最適化機能が正常に動作しています！\n\n元のテキスト：\n%@\n\n最適化後：\n%@\n\n所要時間：%@ 秒";
+
+// について
+"about" = "について";
+"about.title" = "%@ について";
+"about.developer" = "開発者";
+"about.developer.name" = "黄滚";
+"about.developer.name.en" = "rocky.x";
+"about.website" = "個人ホームページ";
+"about.website.url" = "83d.me";
+"about.version" = "バージョン";
+"about.copyright" = "著作権";
+"show.app" = "%@ を表示";

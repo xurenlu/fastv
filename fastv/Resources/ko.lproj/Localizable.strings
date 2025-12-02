@@ -95,6 +95,7 @@
 "onboarding.start.download" = "다운로드 시작";
 "onboarding.previous" = "이전";
 "onboarding.next" = "다음";
+"onboarding.skip" = "건너뛰기";
 "onboarding.complete" = "완료";
 "onboarding.model.ready" = "모델 파일 준비 완료";
 "onboarding.usage.guide.title" = "시작하기";
@@ -106,6 +107,15 @@
 "onboarding.usage.guide.japanese" = "일본어 입력 필드에서 단축키를 눌러 말하면 시스템이 자동으로 일본어를 인식하고 텍스트를 삽입합니다.";
 "onboarding.usage.guide.korean" = "한국어 입력 필드에서 단축키를 눌러 말하면 시스템이 자동으로 한국어를 인식하고 텍스트를 삽입합니다.";
 "onboarding.usage.guide.auto" = "모든 입력 필드에서 단축키를 눌러 말하면 시스템이 자동으로 언어를 감지하고 텍스트를 삽입합니다.";
+"onboarding.ai.config.title" = "AI 최적화 설정";
+"onboarding.ai.config.description" = "AI 서비스를 설정하여 음성 입력을 더 스마트하게";
+"onboarding.ai.config.recommended" = "추천";
+"onboarding.ai.config.select.service" = "AI 서비스 선택";
+"onboarding.ai.config.api.key" = "API Key";
+"onboarding.ai.config.api.key.placeholder" = "API Key를 입력하세요";
+"onboarding.ai.config.apply.link" = "API Key 신청";
+"onboarding.ai.config.skip.hint" = "건너뛸 수 있으며, 나중에 설정에서 구성할 수 있습니다";
+"onboarding.ai.config.benefit" = "AI 최적화는 자동으로 필러 단어를 제거하고, 구두점을 추가하고, 오타를 수정하여 음성 입력을 더 정확하게 만듭니다";
 
 // 단축키 캡처 창
 "shortcut.capture.title" = "단축키 설정";

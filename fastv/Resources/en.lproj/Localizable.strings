@@ -6,7 +6,7 @@
 */
 
 // General
-"app.name" = "typecho";
+"app.name" = "Type Echo";
 "ok" = "OK";
 "cancel" = "Cancel";
 "save" = "Save";
@@ -81,7 +81,7 @@
 "minute" = "min";
 
 // Onboarding
-"onboarding.welcome" = "Welcome to typecho";
+"onboarding.welcome" = "Welcome to Type Echo";
 "onboarding.set.shortcut.title" = "Set Shortcut";
 "onboarding.set.shortcut.description" = "Please set a global shortcut to start voice input";
 "onboarding.select.language.title" = "Select Default Language";
@@ -95,6 +95,7 @@
 "onboarding.start.download" = "Start Download";
 "onboarding.previous" = "Previous";
 "onboarding.next" = "Next";
+"onboarding.skip" = "Skip";
 "onboarding.complete" = "Complete";
 "onboarding.model.ready" = "Model File Ready";
 "onboarding.usage.guide.title" = "Get Started";
@@ -106,6 +107,15 @@
 "onboarding.usage.guide.japanese" = "Press the shortcut key in a Japanese text field to speak, and the system will automatically recognize Japanese and insert text.";
 "onboarding.usage.guide.korean" = "Press the shortcut key in a Korean text field to speak, and the system will automatically recognize Korean and insert text.";
 "onboarding.usage.guide.auto" = "Press the shortcut key in any text field to speak, and the system will automatically detect the language and insert text.";
+"onboarding.ai.config.title" = "Configure AI Optimization";
+"onboarding.ai.config.description" = "Configure AI service to make voice input smarter";
+"onboarding.ai.config.recommended" = "Recommended";
+"onboarding.ai.config.select.service" = "Select AI Service";
+"onboarding.ai.config.api.key" = "API Key";
+"onboarding.ai.config.api.key.placeholder" = "Enter API Key";
+"onboarding.ai.config.apply.link" = "Apply for API Key";
+"onboarding.ai.config.skip.hint" = "Can be skipped, configure later in Settings";
+"onboarding.ai.config.benefit" = "AI optimization can automatically remove filler words, add punctuation, and correct typos to make voice input more accurate";
 
 // Shortcut Capture Window
 "shortcut.capture.title" = "Set Shortcut";
@@ -149,7 +159,7 @@
 "model.download.url.placeholder" = "Enter model download URL";
 
 // Welcome Page
-"welcome.title" = "Welcome to typecho";
+"welcome.title" = "Welcome to Type Echo";
 "welcome.subtitle" = "Smart Voice Input";
 "welcome.feature.global.shortcut" = "Global Shortcut";
 "welcome.feature.global.shortcut.desc" = "Set shortcuts to press in any app's text field to speak and input text";
@@ -164,7 +174,7 @@
 
 // Permissions
 "microphone.permission.required" = "Microphone Permission Required";
-"microphone.permission.description" = "Voice input requires microphone access.\n\nPlease follow these steps:\n1. Open \"System Settings\"\n2. Go to \"Privacy & Security\" > \"Microphone\"\n3. Find typecho and check it\n4. Restart the app";
+"microphone.permission.description" = "Voice input requires microphone access.\n\nPlease follow these steps:\n1. Open \"System Settings\"\n2. Go to \"Privacy & Security\" > \"Microphone\"\n3. Find Type Echo and check it\n4. Restart the app";
 "open.system.settings" = "Open System Settings";
 "later" = "Later";
 "microphone.in.use" = "Microphone In Use";
@@ -211,13 +221,13 @@
 "permission.test.trigger" = "Trigger Permission Request";
 "permission.test.description" = "Will attempt to access microphone to trigger system permission dialog.\n\nIf permission dialog appears, please click \"Allow\".";
 "permission.request.title" = "Request Microphone Permission";
-"permission.request.description" = "System will show permission request dialog.\n\nPlease click \"Allow\" to authorize typecho to access microphone.";
+"permission.request.description" = "System will show permission request dialog.\n\nPlease click \"Allow\" to authorize Type Echo to access microphone.";
 "permission.granted.title" = "✅ Microphone Permission Granted";
 "permission.granted.description" = "You have successfully granted microphone permission!\n\nYou can now use voice input feature.";
 "permission.already.granted.title" = "✅ Microphone Permission Granted";
 "permission.already.granted.description" = "You have already granted microphone permission.\n\nYou can use voice input feature directly.";
 "permission.denied.title" = "⚠️ Microphone Permission Denied";
-"permission.denied.description" = "Voice input requires microphone permission.\n\nPlease follow these steps to manually authorize:\n1. Open \"System Settings\"\n2. Go to \"Privacy & Security\" > \"Microphone\"\n3. Find typecho and check it";
+"permission.denied.description" = "Voice input requires microphone permission.\n\nPlease follow these steps to manually authorize:\n1. Open \"System Settings\"\n2. Go to \"Privacy & Security\" > \"Microphone\"\n3. Find Type Echo and check it";
 "continue" = "Continue";
 "great" = "Great";
 
@@ -287,3 +297,15 @@
 "todo.quadrant.not.important.not.urgent" = "Not Important & Not Urgent";
 "todo.quadrant.not.important.not.urgent.desc" = "Eliminate";
 "todo.quadrant.empty" = "No tasks";
+
+// About
+"about" = "About";
+"about.title" = "About %@";
+"about.developer" = "Developer";
+"about.developer.name" = "Huang Gun";
+"about.developer.name.en" = "rocky.x";
+"about.website" = "Website";
+"about.website.url" = "83d.me";
+"about.version" = "Version";
+"about.copyright" = "Copyright";
+"show.app" = "Show %@";

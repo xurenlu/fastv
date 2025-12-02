@@ -95,6 +95,7 @@
 "onboarding.start.download" = "開始下載";
 "onboarding.previous" = "上一步";
 "onboarding.next" = "下一步";
+"onboarding.skip" = "跳過";
 "onboarding.complete" = "完成";
 "onboarding.model.ready" = "模型檔案已就緒";
 "onboarding.usage.guide.title" = "開始使用";
@@ -106,6 +107,15 @@
 "onboarding.usage.guide.japanese" = "請在日文輸入框中按快捷鍵說話，系統會自動識別日文並插入文字。";
 "onboarding.usage.guide.korean" = "請在韓文輸入框中按快捷鍵說話，系統會自動識別韓文並插入文字。";
 "onboarding.usage.guide.auto" = "可以在任何輸入框中按快捷鍵說話，系統會自動檢測語言並插入文字。";
+"onboarding.ai.config.title" = "配置AI智能優化";
+"onboarding.ai.config.description" = "配置AI服務，讓語音輸入更智能";
+"onboarding.ai.config.recommended" = "推薦";
+"onboarding.ai.config.select.service" = "選擇AI服務";
+"onboarding.ai.config.api.key" = "API Key";
+"onboarding.ai.config.api.key.placeholder" = "請輸入API Key";
+"onboarding.ai.config.apply.link" = "申請API Key";
+"onboarding.ai.config.skip.hint" = "可跳過，稍後可在設定中配置";
+"onboarding.ai.config.benefit" = "AI優化可以自動去除口頭禪、添加標點符號、修正錯別字，讓語音輸入更準確";
 
 // 快捷鍵設定視窗
 "shortcut.capture.title" = "設定快捷鍵";

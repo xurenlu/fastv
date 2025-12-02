@@ -468,5 +468,119 @@ class EmailAIService {
         
         return Array(suggestions)
     }
+    
+    // MARK: - HTML Layout Optimization
+    
+    /// AI智能优化邮件HTML排版
+    /// - Parameters:
+    ///   - htmlBody: 原始HTML正文
+    ///   - textBody: 纯文本正文（作为备用）
+    ///   - existingStyles: 已应用的CSS样式信息
+    /// - Returns: 优化后的HTML正文
+    func optimizeHTMLLayout(htmlBody: String, textBody: String?, existingStyles: String? = nil) async throws -> String {
+        // 检查输入是否有效
+        let trimmedHTML = htmlBody.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedHTML.isEmpty else {
+            throw NSError(domain: "EmailAIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "邮件正文为空"])
+        }
+        
+        let config = await MainActor.run {
+            preferences.getConfig(for: .aiChat)
+        }
+        
+        // 从HTML中提取纯文本内容
+        let textContent = htmlBody.strippingHTML()
+        
+        let styleInfo = existingStyles ?? """
+        软件内置浏览器会自动添加以下CSS样式：
+        - 使用 -apple-system, PingFang SC 等系统字体
+        - 基础字号 16px，行高 1.6
+        - 主要文字颜色 #1d1d1f
+        - 链接颜色 #007AFF
+        - 标题使用 600 字重
+        - 图片圆角 8px
+        - 代码块背景色 #f5f5f7
+        - 表格边框颜色 #e5e5e5
+        """
+        
+        let prompt = """
+        请优化以下邮件HTML的排版布局，使其更加美观易读。要求：
+
+        1. **保持内容完整**：不要改变原文意思、不要删除任何信息
+        2. **优化HTML结构**：
+           - 使用语义化标签（如 <h1>-<h6>、<p>、<ul>、<ol>、<blockquote> 等）
+           - 合理分段，每个段落用 <p> 标签包裹
+           - 列表内容用 <ul> 或 <ol> 标签
+           - 重要信息可用 <strong> 或 <em> 强调
+        3. **移除冗余**：
+           - 删除多余的 <table> 布局标签（改用语义化标签）
+           - 移除内联样式（style属性），因为软件会自动应用美观的CSS
+           - 删除 &nbsp; 等HTML实体（用正常空格或段落间距）
+        4. **格式美化**：
+           - 长段落合理断句
+           - 引用内容用 <blockquote>
+           - 代码用 <code> 或 <pre><code>
+           - 链接保留 <a> 标签
+        5. **考虑现有样式**：
+        \(styleInfo)
+
+        原始HTML：
+        \(trimmedHTML)
+        
+        纯文本内容（供参考）：
+        \(textContent)
+        
+        请直接返回优化后的HTML代码，只需要 <body> 标签内的内容，不要包含 <!DOCTYPE>、<html>、<head> 等标签。
+        不要添加任何解释说明，直接返回HTML代码。
+        """
+        
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+        
+        let prefs = await MainActor.run {
+            preferences
+        }
+        
+        let result = try await chatAIService.sendMessage(
+            messages: messages,
+            profile: config.profile,
+            model: config.model,
+            timeout: config.timeout,
+            preferences: prefs
+        )
+        
+        // 清理返回结果
+        var optimizedHTML = result.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // 移除可能的代码块标记
+        if optimizedHTML.hasPrefix("```html") {
+            optimizedHTML = optimizedHTML.replacingOccurrences(of: "```html", with: "")
+            optimizedHTML = optimizedHTML.replacingOccurrences(of: "```", with: "")
+            optimizedHTML = optimizedHTML.trimmingCharacters(in: .whitespacesAndNewlines)
+        } else if optimizedHTML.hasPrefix("```") {
+            optimizedHTML = optimizedHTML.replacingOccurrences(of: "```", with: "")
+            optimizedHTML = optimizedHTML.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
+        // 移除可能的 <!DOCTYPE>、<html>、<head>、<body> 标签
+        let patterns = [
+            "<!DOCTYPE[^>]*>",
+            "<html[^>]*>",
+            "</html>",
+            "<head[^>]*>.*?</head>",
+            "<body[^>]*>",
+            "</body>"
+        ]
+        
+        for pattern in patterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive, .dotMatchesLineSeparators]) {
+                let range = NSRange(optimizedHTML.startIndex..., in: optimizedHTML)
+                optimizedHTML = regex.stringByReplacingMatches(in: optimizedHTML, options: [], range: range, withTemplate: "")
+            }
+        }
+        
+        return optimizedHTML.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 }
 

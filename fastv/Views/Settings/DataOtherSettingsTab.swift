@@ -11,6 +11,7 @@ import SwiftUI
 /// 包含：历史记录管理、权限测试、支持与推荐
 struct DataOtherSettingsTab: View {
     @ObservedObject var preferences = UserPreferences.shared
+    @State private var showAbout = false
     
     var body: some View {
         Form {
@@ -21,6 +22,26 @@ struct DataOtherSettingsTab: View {
                 Text("历史记录")
             } footer: {
                 Text("管理语音输入历史记录")
+            }
+            
+            // 关于
+            Section {
+                Button(action: {
+                    showAbout = true
+                }) {
+                    HStack {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundStyle(.blue)
+                        Text(NSLocalizedString("about", comment: ""))
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+            } header: {
+                Text(NSLocalizedString("about", comment: ""))
             }
             
             // 支持与推荐
@@ -89,6 +110,9 @@ struct DataOtherSettingsTab: View {
             }
         }
         .formStyle(.grouped)
+        .sheet(isPresented: $showAbout) {
+            AboutView()
+        }
     }
 }
 

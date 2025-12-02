@@ -32,6 +32,44 @@ struct ChatInputView: View {
                 }
             }
             
+            // 待发送的图片预览
+            if !viewModel.pendingAttachments.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(viewModel.pendingAttachments) { attachment in
+                            if attachment.type == .image,
+                               let base64Data = attachment.base64Data,
+                               let data = Data(base64Encoded: base64Data),
+                               let nsImage = NSImage(data: data) {
+                                ZStack(alignment: .topTrailing) {
+                                    Image(nsImage: nsImage)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 60, height: 60)
+                                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                    
+                                    Button(action: {
+                                        viewModel.removePendingAttachment(attachment)
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.caption)
+                                            .foregroundStyle(.white)
+                                            .background {
+                                                Circle()
+                                                    .fill(Color.black.opacity(0.5))
+                                            }
+                                    }
+                                    .buttonStyle(.plain)
+                                    .offset(x: 4, y: -4)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                }
+                .frame(height: 68)
+            }
+            
             // 输入区域
             HStack(spacing: 8) {
                 // 文本输入框 - 使用 TextEditor 提供更大的输入区域
@@ -55,19 +93,19 @@ struct ChatInputView: View {
                 }
                 .focused($isInputFocused)
                 
-                // 文件上传按钮
+                // 文件上传按钮（仅支持图片的模型可用）
                 Button(action: {
                     viewModel.selectAndUploadFile()
                 }) {
                     Image(systemName: "paperclip")
                         .font(.title3)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(viewModel.supportsAttachment() ? .secondary : .tertiary)
                 }
                 .buttonStyle(.plain)
-                .help("上传文件")
-                .disabled(viewModel.isSending)
+                .help(viewModel.supportsAttachment() ? "上传图片" : "当前模型不支持附件")
+                .disabled(viewModel.isSending || !viewModel.supportsAttachment())
                 
-                // 语音录制按钮
+                // 语音录制按钮（目前都不支持）
                 Button(action: {
                     if viewModel.isRecording {
                         Task {
@@ -79,11 +117,11 @@ struct ChatInputView: View {
                 }) {
                     Image(systemName: viewModel.isRecording ? "stop.circle.fill" : "mic.circle.fill")
                         .font(.title3)
-                        .foregroundStyle(viewModel.isRecording ? .red : .blue)
+                        .foregroundStyle(viewModel.isRecording ? .red : (viewModel.supportsVoice() ? .blue : .secondary))
                 }
                 .buttonStyle(.plain)
-                .help(viewModel.isRecording ? "停止录音" : "语音输入")
-                .disabled(viewModel.isSending)
+                .help(viewModel.supportsVoice() ? (viewModel.isRecording ? "停止录音" : "语音输入") : "语音功能暂未支持")
+                .disabled(viewModel.isSending || !viewModel.supportsVoice())
                 
                 // 发送按钮
                 Button(action: {
@@ -101,7 +139,7 @@ struct ChatInputView: View {
                     }
                 }
                 .buttonStyle(.plain)
-                .disabled(viewModel.isSending || viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(viewModel.isSending || (viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && viewModel.pendingAttachments.isEmpty))
                 .help("发送")
             }
         }

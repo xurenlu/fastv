@@ -139,58 +139,6 @@ struct AIModelSettingsTab: View {
                 Toggle(NSLocalizedString("ai.optimization.enable", comment: ""), isOn: $preferences.enableAIOptimization)
                 
                 if preferences.enableAIOptimization {
-                    // 快捷键使用说明
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "info.circle.fill")
-                                .font(.caption)
-                                .foregroundStyle(.blue)
-                            
-                            Text(NSLocalizedString("ai.shortcut.usage.hint", comment: ""))
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                        }
-                        
-                        // 显示两套快捷键组合
-                        VStack(alignment: .leading, spacing: 6) {
-                            // 普通语音输入
-                            HStack(spacing: 8) {
-                                Text(NSLocalizedString("ai.shortcut.normal", comment: ""))
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(.secondary)
-                                
-                                Spacer()
-                                
-                                ShortcutDisplayView(
-                                    keyCode: preferences.voiceInputShortcutKeyCode,
-                                    modifiers: preferences.voiceInputShortcutModifiers
-                                )
-                            }
-                            
-                            // AI 优化语音输入
-                            HStack(spacing: 8) {
-                                Text(NSLocalizedString("ai.shortcut.with.ai", comment: ""))
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(.secondary)
-                                
-                                Spacer()
-                                
-                                ShortcutDisplayView(
-                                    keyCode: preferences.voiceInputShortcutKeyCode,
-                                    modifiers: preferences.voiceInputShortcutModifiers,
-                                    showCtrl: true
-                                )
-                            }
-                        }
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
-                        .background {
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(Color.secondary.opacity(0.05))
-                        }
-                    }
-                    .padding(.bottom, 8)
-                    
                     // 系统提示词设置
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {

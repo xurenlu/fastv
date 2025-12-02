@@ -56,6 +56,13 @@ class EmailViewModel: ObservableObject {
     @Published var isPolishingCompose = false // 正在美化新邮件
     @Published var isPolishingReply = false // 正在美化回复
     
+    // AI HTML排版优化相关状态
+    @Published var optimizingMessageIds: Set<UUID> = [] // 正在优化的邮件ID集合
+    @Published var optimizedHTMLCache: [UUID: String] = [:] // 优化后的HTML缓存
+    
+    // 后台优化任务管理
+    private var optimizationTasks: [UUID: Task<Void, Never>] = [:] // 优化任务字典
+    
     // 搜索防抖任务
     private var searchTask: Task<Void, Never>?
     
@@ -2183,6 +2190,123 @@ class EmailViewModel: ObservableObject {
                 print("❌ [EmailViewModel] 发送通知失败: \(error)")
             }
         }
+    }
+    
+    // MARK: - AI HTML Layout Optimization
+    
+    /// AI智能优化邮件HTML排版（异步，不阻塞UI）
+    /// - Parameter message: 要优化的邮件
+    func optimizeHTMLLayout(for message: EmailMessage) {
+        // 检查是否有HTML内容
+        guard let htmlBody = message.htmlBody, !htmlBody.isEmpty else {
+            errorMessage = "此邮件没有HTML内容可优化"
+            return
+        }
+        
+        // 检查是否已经优化过
+        if optimizedHTMLCache[message.id] != nil {
+            // 已经优化过，切换回原始版本（立即执行，不影响性能）
+            optimizedHTMLCache.removeValue(forKey: message.id)
+            print("🔄 [EmailViewModel] 恢复原始排版，邮件ID: \(message.id)")
+            return
+        }
+        
+        // 检查是否已经有优化任务在运行
+        if optimizingMessageIds.contains(message.id) {
+            print("⚠️ [EmailViewModel] 邮件正在优化中，跳过重复请求，邮件ID: \(message.id)")
+            return
+        }
+        
+        let messageId = message.id
+        let textBody = message.textBody
+        
+        // 标记为正在优化
+        optimizingMessageIds.insert(messageId)
+        errorMessage = nil
+        
+        print("🚀 [EmailViewModel] 开始AI排版优化（后台任务），邮件ID: \(messageId)")
+        
+        // 创建后台任务，不阻塞UI
+        let task = Task.detached(priority: .userInitiated) { [weak self] in
+            do {
+                // 在后台线程执行AI优化（耗时操作）
+                let optimizedHTML = try await self?.emailAIService.optimizeHTMLLayout(
+                    htmlBody: htmlBody,
+                    textBody: textBody,
+                    existingStyles: nil
+                )
+                
+                // 回到主线程更新UI状态
+                await MainActor.run { [weak self] in
+                    guard let self = self else { return }
+                    
+                    // 保存优化后的HTML到缓存
+                    if let optimizedHTML = optimizedHTML {
+                        self.optimizedHTMLCache[messageId] = optimizedHTML
+                        print("✅ [EmailViewModel] AI排版优化成功，邮件ID: \(messageId)")
+                        print("📊 [EmailViewModel] 原始长度: \(htmlBody.count), 优化后长度: \(optimizedHTML.count)")
+                    }
+                    
+                    // 移除优化中标记
+                    self.optimizingMessageIds.remove(messageId)
+                    
+                    // 清理任务引用
+                    self.optimizationTasks.removeValue(forKey: messageId)
+                }
+            } catch {
+                // 回到主线程处理错误
+                await MainActor.run { [weak self] in
+                    guard let self = self else { return }
+                    
+                    // 只在当前邮件还是选中状态时才显示错误
+                    if self.selectedMessageId == messageId {
+                        self.errorMessage = "AI排版优化失败: \(error.localizedDescription)"
+                    }
+                    print("❌ [EmailViewModel] AI排版优化失败，邮件ID: \(messageId), 错误: \(error)")
+                    
+                    // 移除优化中标记
+                    self.optimizingMessageIds.remove(messageId)
+                    
+                    // 清理任务引用
+                    self.optimizationTasks.removeValue(forKey: messageId)
+                }
+            }
+        }
+        
+        // 保存任务引用，以便需要时可以取消
+        optimizationTasks[messageId] = task
+    }
+    
+    /// 取消正在进行的优化任务
+    /// - Parameter messageId: 邮件ID
+    func cancelOptimization(for messageId: UUID) {
+        if let task = optimizationTasks[messageId] {
+            task.cancel()
+            optimizationTasks.removeValue(forKey: messageId)
+            optimizingMessageIds.remove(messageId)
+            print("🛑 [EmailViewModel] 取消AI排版优化，邮件ID: \(messageId)")
+        }
+    }
+    
+    /// 获取优化后的HTML（如果有）
+    /// - Parameter message: 邮件
+    /// - Returns: 优化后的HTML，如果没有优化过则返回nil
+    func getOptimizedHTML(for message: EmailMessage) -> String? {
+        return optimizedHTMLCache[message.id]
+    }
+    
+    /// 检查邮件是否已优化排版
+    /// - Parameter message: 邮件
+    /// - Returns: 是否已优化
+    func isLayoutOptimized(for message: EmailMessage) -> Bool {
+        return optimizedHTMLCache[message.id] != nil
+    }
+    
+    /// 检查邮件是否正在优化中
+    /// - Parameter message: 邮件
+    /// - Returns: 是否正在优化
+    func isOptimizing(for message: EmailMessage) -> Bool {
+        return optimizingMessageIds.contains(message.id)
     }
     
 }

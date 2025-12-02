@@ -34,7 +34,7 @@ struct AppVersionManager {
     static var appName: String {
         guard let name = Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String ??
                          Bundle.main.infoDictionary?["CFBundleName"] as? String else {
-            return "妙打"
+            return NSLocalizedString("app.name", comment: "")
         }
         return name
     }

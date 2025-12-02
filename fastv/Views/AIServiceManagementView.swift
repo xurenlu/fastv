@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 /// AI 服务管理视图
 struct AIServiceManagementView: View {
@@ -518,6 +519,26 @@ struct AIProfileEditView: View {
                     if protocolType.requiresAPIKey {
                         SecureField("API Key", text: $apiKey, prompt: Text("输入您的 API Key"))
                             .textFieldStyle(.roundedBorder)
+                        
+                        // 申请链接按钮（仅阿里云显示）
+                        if protocolType == .dashScope {
+                            Button(action: {
+                                let aliyunAPIKeyURL = "https://bailian.console.aliyun.com/?accounttraceid=ecf52b9459854c13be278b89515acd5ekwwf&tab=model#/api-key"
+                                if let url = URL(string: aliyunAPIKeyURL) {
+                                    NSWorkspace.shared.open(url)
+                                }
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "link")
+                                        .font(.caption)
+                                    Text("申请API Key")
+                                        .font(.caption)
+                                }
+                                .foregroundStyle(.blue)
+                            }
+                            .buttonStyle(.plain)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
                     
                     TextField("默认模型", text: $defaultModel, prompt: Text("选择或输入模型名称"))

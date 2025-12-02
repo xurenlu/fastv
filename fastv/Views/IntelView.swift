@@ -344,11 +344,15 @@ struct IntelView: View {
             
             Divider()
             
+            // 可调整高度的输入区域分隔条
+            ResizableInputDivider(height: $viewModel.inputFieldHeight)
+            
             // 输入区域
             HStack(spacing: 12) {
                 TextField("输入消息或指令...", text: $viewModel.chatInput, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
-                    .lineLimit(1...3)
+                    .lineLimit(2...)  // 至少两行，允许更多行
+                    .frame(height: viewModel.inputFieldHeight)
                     .focused($isChatInputFocused)
                     .onSubmit {
                         viewModel.sendChat()
@@ -403,6 +407,54 @@ struct ResizableDivider: View {
                                 isDragging = true
                             }
                             
+                            let newHeight = height - value.translation.height
+                            let clampedHeight = max(minHeight, min(maxHeight, newHeight))
+                            height = clampedHeight
+                        }
+                        .onEnded { _ in
+                            isDragging = false
+                        }
+                )
+        }
+        .background {
+            if isDragging {
+                Color.accentColor.opacity(0.1)
+            }
+        }
+    }
+}
+
+// MARK: - Resizable Input Divider
+
+struct ResizableInputDivider: View {
+    @Binding var height: CGFloat
+    @State private var isDragging = false
+    private let minHeight: CGFloat = 40  // 最小高度（单行）
+    private let maxHeight: CGFloat = 200  // 最大高度
+    
+    var body: some View {
+        ZStack {
+            Divider()
+            
+            Rectangle()
+                .fill(Color.clear)
+                .frame(height: 8)
+                .contentShape(Rectangle())
+                .onHover { hovering in
+                    if hovering {
+                        NSCursor.resizeUpDown.push()
+                    } else {
+                        NSCursor.pop()
+                    }
+                }
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            if !isDragging {
+                                isDragging = true
+                            }
+                            
+                            // 向上拖拽增加高度，向下拖拽减少高度
                             let newHeight = height - value.translation.height
                             let clampedHeight = max(minHeight, min(maxHeight, newHeight))
                             height = clampedHeight

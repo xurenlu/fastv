@@ -114,6 +114,7 @@ class EmailDatabase {
                     updated_at REAL NOT NULL,
                     is_body_loaded INTEGER NOT NULL DEFAULT 0,
                     body_cached_at REAL,
+                    is_draft INTEGER NOT NULL DEFAULT 0,
                     FOREIGN KEY(account_id) REFERENCES email_accounts(id) ON DELETE CASCADE,
                     FOREIGN KEY(folder_id) REFERENCES email_folders(id) ON DELETE SET NULL
                 )
@@ -182,6 +183,11 @@ class EmailDatabase {
         // 添加 has_been_replied 字段（是否已回复）
         if !columnNames.contains("has_been_replied") {
             try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN has_been_replied INTEGER NOT NULL DEFAULT 0")
+        }
+        
+        // 添加 is_draft 字段（是否为草稿）
+        if !columnNames.contains("is_draft") {
+            try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN is_draft INTEGER NOT NULL DEFAULT 0")
         }
     }
     

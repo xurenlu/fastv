@@ -20,6 +20,7 @@ class AIChatViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var selectedModel: String = ""
     @Published var availableModels: [String] = []
+    @Published var pendingAttachments: [ChatAttachment] = []  // 待发送的附件列表
     
     private let chatManager = ChatManager.shared
     private let chatService = ChatAIService.shared
@@ -76,64 +77,49 @@ class AIChatViewModel: ObservableObject {
     
     /// 加载可用模型列表
     private func loadAvailableModels() {
-        let preferences = UserPreferences.shared
-        var models: [String] = []
-        
-        // 从设置中获取模型
-        if !preferences.aiModel.isEmpty {
-            models.append(preferences.aiModel)
-        }
-        
-        // 添加常用模型列表（只包含聊天类模型）
+        // 只保留指定的模型列表
         let defaultModels = [
-            "qwen-turbo",                    // 文本模型
-            "qwen-plus",                     // 文本模型（增强版）
-            "qwen-max",                      // 文本模型（最强版）
-            "qwen-max-longcontext",          // 长文本模型
-            "qwen2.5",                       // Qwen2.5 模型
-            "qwen2.5-7b-instruct",           // Qwen2.5 7B 指令模型
-            "qwen2.5-14b-instruct",          // Qwen2.5 14B 指令模型
-            "qwen2.5-32b-instruct",          // Qwen2.5 32B 指令模型
-            "qwen2.5-72b-instruct",          // Qwen2.5 72B 指令模型
-            "qwen3",                         // Qwen3 模型（支持 thinking）
-            "qwen3-7b-instruct",             // Qwen3 7B 指令模型（支持 thinking）
-            "qwen3-14b-instruct",            // Qwen3 14B 指令模型（支持 thinking）
-            "qwen3-32b-instruct",            // Qwen3 32B 指令模型（支持 thinking）
-            "qwen3-vl",                      // Qwen3 视觉理解模型（支持 thinking）
-            "qwen3-vl-plus",                 // Qwen3 视觉理解模型增强版（支持 thinking）
-            "qwen-vl-plus",                  // 视觉理解模型
-            "qwen-vl-max",                   // 视觉理解模型（最强版）
-            "qwen2-audio-instruct"           // 音频理解模型
+            "qwen-flash",      // 文本模型（快速版）
+            "qwen-max",        // 文本模型（最强版）
+            "qwen-vl-plus",   // 视觉理解模型（增强版）
+            "qwen-vl-max"     // 视觉理解模型（最强版）
         ]
         
-        // 添加默认模型（如果还没有）
-        for model in defaultModels {
-            if !models.contains(model) {
-                models.append(model)
-            }
-        }
-        
-        // 如果没有配置，添加默认模型
-        if models.isEmpty {
-            models.append("qwen-turbo")  // 阿里云通义默认模型
-        }
-        
-        availableModels = models
+        availableModels = defaultModels
         selectedModel = getDefaultModel()
     }
     
     /// 获取默认模型
     private func getDefaultModel() -> String {
         let preferences = UserPreferences.shared
-        if !preferences.aiModel.isEmpty {
+        if !preferences.aiModel.isEmpty && availableModels.contains(preferences.aiModel) {
             return preferences.aiModel
         }
-        return "qwen-turbo"
+        return "qwen-flash"
+    }
+    
+    /// 判断模型是否支持图片
+    func supportsImage() -> Bool {
+        return selectedModel == "qwen-vl-plus" || selectedModel == "qwen-vl-max"
+    }
+    
+    /// 判断模型是否支持附件
+    func supportsAttachment() -> Bool {
+        return supportsImage()  // 目前只有支持图片的模型支持附件
+    }
+    
+    /// 判断模型是否支持语音
+    func supportsVoice() -> Bool {
+        return false  // 目前都不支持语音，留待将来
     }
     
     /// 切换模型
     func changeModel(_ model: String) {
         selectedModel = model
+        // 如果切换到不支持附件的模型，清空待发送的附件
+        if !supportsAttachment() {
+            pendingAttachments.removeAll()
+        }
         if var session = currentSession {
             session.model = model
             chatManager.updateSession(session)
@@ -145,7 +131,9 @@ class AIChatViewModel: ObservableObject {
     /// 发送文本消息
     func sendTextMessage(_ text: String? = nil) async {
         let messageText = text ?? inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !messageText.isEmpty else {
+        
+        // 如果没有文本且没有待发送的附件，提示用户
+        guard !messageText.isEmpty || !pendingAttachments.isEmpty else {
             errorMessage = "请输入消息内容"
             return
         }
@@ -157,11 +145,13 @@ class AIChatViewModel: ObservableObject {
                 errorMessage = "无法创建会话"
                 return
             }
-            await sendMessage(text: messageText, sessionId: newSessionId)
+            await sendMessage(text: messageText.isEmpty ? " " : messageText, sessionId: newSessionId, attachments: pendingAttachments)
+            pendingAttachments.removeAll()  // 清空待发送的附件
             return
         }
         
-        await sendMessage(text: messageText, sessionId: sessionId)
+        await sendMessage(text: messageText.isEmpty ? " " : messageText, sessionId: sessionId, attachments: pendingAttachments)
+        pendingAttachments.removeAll()  // 清空待发送的附件
     }
     
     /// 发送消息（内部方法）
@@ -180,7 +170,7 @@ class AIChatViewModel: ObservableObject {
         )
         chatManager.addMessage(userMessage)
         
-        // 清空输入框
+        // 清空输入框（附件已在 sendTextMessage 中清空）
         inputText = ""
         
         // 获取历史消息
@@ -268,6 +258,10 @@ class AIChatViewModel: ObservableObject {
     /// 开始语音录制
     func startVoiceRecording() {
         guard !isRecording else { return }
+        guard supportsVoice() else {
+            errorMessage = "当前模型不支持语音功能"
+            return
+        }
         
         do {
             try voiceService.startRecording()
@@ -338,30 +332,37 @@ class AIChatViewModel: ObservableObject {
     
     /// 选择并上传文件
     func selectAndUploadFile() {
+        // 检查模型是否支持附件
+        guard supportsAttachment() else {
+            errorMessage = "当前模型不支持附件"
+            return
+        }
+        
         let panel = NSOpenPanel()
+        // 只允许图片类型
         panel.allowedContentTypes = [
-            .image, .jpeg, .png, .gif, .webP,
-            .audio, .mp3, .mpeg4Audio, .wav,
-            .movie, .mpeg4Movie, .quickTimeMovie, .avi
+            .image, .jpeg, .png, .gif, .webP
         ]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
-        panel.title = "选择文件"
+        panel.title = "选择图片"
         
         if panel.runModal() == .OK, let url = panel.url {
             Task {
-                await uploadFile(url: url)
+                await addImageAttachment(url: url)
             }
         }
     }
     
-    /// 上传文件
-    private func uploadFile(url: URL) async {
-        guard let sessionId = currentSessionId ?? {
+    /// 添加图片附件（不立即发送）
+    private func addImageAttachment(url: URL) async {
+        // 确保有会话
+        if currentSessionId == nil {
             createNewSession()
-            return currentSessionId
-        }() else {
+        }
+        
+        guard currentSessionId != nil else {
             errorMessage = "无法创建会话"
             return
         }
@@ -373,86 +374,42 @@ class AIChatViewModel: ObservableObject {
         }
         
         // 判断文件类型
-        let contentType: ChatMessageContentType
         let mimeType: String
         let ext = url.pathExtension.lowercased()
         
-        // 图片类型
+        // 只支持图片类型
         if ext == "jpg" || ext == "jpeg" {
-            contentType = .image
             mimeType = "image/jpeg"
         } else if ext == "png" {
-            contentType = .image
             mimeType = "image/png"
         } else if ext == "gif" {
-            contentType = .image
             mimeType = "image/gif"
         } else if ext == "webp" {
-            contentType = .image
             mimeType = "image/webp"
-        }
-        // 音频类型
-        else if ext == "mp3" {
-            contentType = .audio
-            mimeType = "audio/mpeg"
-        } else if ext == "wav" {
-            contentType = .audio
-            mimeType = "audio/wav"
-        } else if ext == "m4a" {
-            contentType = .audio
-            mimeType = "audio/m4a"
-        }
-        // 视频类型
-        else if ext == "mp4" || ext == "m4v" {
-            contentType = .video
-            mimeType = "video/mp4"
-        } else if ext == "mov" {
-            contentType = .video
-            mimeType = "video/quicktime"
-        } else if ext == "avi" {
-            contentType = .video
-            mimeType = "video/x-msvideo"
-        } else if ext == "mkv" {
-            contentType = .video
-            mimeType = "video/x-matroska"
-        } else if ext == "webm" {
-            contentType = .video
-            mimeType = "video/webm"
         } else {
-            errorMessage = "不支持的文件类型"
+            errorMessage = "不支持的文件类型，仅支持图片"
             return
         }
         
         // Base64编码
         let base64Data = fileData.base64EncodedString()
         
-        // 创建附件
+        // 创建附件并添加到待发送列表
         let attachment = ChatAttachment(
-            type: contentType,
+            type: .image,
             base64Data: base64Data,
             fileName: url.lastPathComponent,
             mimeType: mimeType,
             fileSize: Int64(fileData.count)
         )
         
-        // 发送消息（如果用户有输入文本，一起发送）
-        let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let defaultText: String
-        switch contentType {
-        case .image:
-            defaultText = "[图片]"
-        case .audio:
-            defaultText = "[音频]"
-        case .video:
-            defaultText = "[视频]"
-        default:
-            defaultText = "[文件]"
-        }
-        await sendMessage(
-            text: text.isEmpty ? defaultText : text,
-            sessionId: sessionId,
-            attachments: [attachment]
-        )
+        pendingAttachments.append(attachment)
+        errorMessage = nil  // 清除错误信息
+    }
+    
+    /// 删除待发送的附件
+    func removePendingAttachment(_ attachment: ChatAttachment) {
+        pendingAttachments.removeAll { $0.id == attachment.id }
     }
     
     // MARK: - Message Management

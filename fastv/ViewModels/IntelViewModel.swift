@@ -47,6 +47,7 @@ class IntelViewModel: ObservableObject {
     @Published var selectedTab: IntelTab = .today
     @Published var historySearchText: String = ""
     @Published var chatSectionHeight: CGFloat = 200
+    @Published var inputFieldHeight: CGFloat = 60  // 默认两行高度（约60像素）
     
     private let store = IntelStore.shared
     private let aiService = IntelAIService.shared
