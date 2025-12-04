@@ -1277,10 +1277,11 @@ class EmailService {
         }
         
         // 如果所有格式都失败，尝试使用系统解析器（作为最后手段）
-        let detector = NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue)
-        let matches = detector.matches(in: cleaned, options: [], range: NSRange(location: 0, length: cleaned.utf16.count))
-        if let match = matches.first, let date = match.date {
-            return date
+        if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue) {
+            let matches = detector.matches(in: cleaned, options: [], range: NSRange(location: 0, length: cleaned.utf16.count))
+            if let match = matches.first, let date = match.date {
+                return date
+            }
         }
         
         return nil

@@ -212,10 +212,42 @@ enum EmailContentDecoder {
         var hasRemote = false
         
         for segment in segments {
-            let parts = segment.components(separatedBy: "\n\n")
-            guard parts.count >= 2 else { continue }
-            let headerString = parts.first ?? ""
-            let bodyString = parts.dropFirst().joined(separator: "\n\n")
+            // 查找第一个空行来分离头部和正文
+            let lines = segment.components(separatedBy: "\n")
+            var headerLines: [String] = []
+            var bodyLines: [String] = []
+            var foundEmptyLine = false
+            
+            for line in lines {
+                if !foundEmptyLine && (line.trimmingCharacters(in: .whitespaces).isEmpty || (!line.hasPrefix(" ") && !line.hasPrefix("\t") && line.contains(":"))) {
+                    if line.trimmingCharacters(in: .whitespaces).isEmpty {
+                        foundEmptyLine = true
+                        continue
+                    }
+                    headerLines.append(line)
+                } else {
+                    if foundEmptyLine || headerLines.isEmpty {
+                        foundEmptyLine = true
+                        bodyLines.append(line)
+                    } else {
+                        headerLines.append(line)
+                    }
+                }
+            }
+            
+            // 如果没有找到空行，尝试用 "\n\n" 分割
+            if headerLines.isEmpty && bodyLines.isEmpty {
+                let parts = segment.components(separatedBy: "\n\n")
+                if parts.count >= 2 {
+                    headerLines = parts.first?.components(separatedBy: "\n") ?? []
+                    bodyLines = parts.dropFirst().joined(separator: "\n\n").components(separatedBy: "\n")
+                } else {
+                    continue
+                }
+            }
+            
+            let headerString = headerLines.joined(separator: "\n")
+            let bodyString = bodyLines.joined(separator: "\n")
             let partHeaders = parseHeaders(headerString)
             let partContentType = partHeaders["content-type"]?.lowercased() ?? "text/plain"
             let charset = extractCharset(from: partHeaders["content-type"])
@@ -305,7 +337,11 @@ enum EmailContentDecoder {
     
     nonisolated private static func decodeBody(_ body: String, encoding: String?, charset: String) -> String {
         let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalized = trimmed.replacingOccurrences(of: "\n", with: "")
+        // 对于 base64，需要移除所有空白字符（包括换行、空格、制表符）
+        let normalized = trimmed.replacingOccurrences(of: "\r", with: "")
+            .replacingOccurrences(of: "\n", with: "")
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "\t", with: "")
         
         if let encoding {
             switch encoding {
@@ -320,7 +356,7 @@ enum EmailContentDecoder {
                     }
                 }
                 // 如果指定编码失败，尝试其他编码（但优先使用指定的）
-                let fallbackCharsets = ["utf-8", "gbk", "gb2312", "gb18030", charset]
+                let fallbackCharsets = ["utf-8", "gbk", "gb2312", "gb18030", "big5", charset]
                 for testCharset in fallbackCharsets {
                     if let decoded = decodeBase64(normalized, charset: testCharset), !decoded.isEmpty {
                         let validationSize = min(512, decoded.count)
@@ -329,6 +365,10 @@ enum EmailContentDecoder {
                             return decoded
                         }
                     }
+                }
+                // 如果所有编码验证都失败，但解码成功，仍然返回解码结果（可能是特殊格式）
+                if let decoded = decodeBase64(normalized, charset: "utf-8"), !decoded.isEmpty {
+                    return decoded
                 }
                 break
             case "quoted-printable":
@@ -339,8 +379,8 @@ enum EmailContentDecoder {
         }
         
         // 自动检测：如果内容看起来像 base64 编码，尝试解码
-        // 只检查前 1024 字符来判断（性能优化）
-        let checkSize = min(1024, trimmed.count)
+        // 只检查前 2048 字符来判断（性能优化，增加检测范围）
+        let checkSize = min(2048, trimmed.count)
         let checkText = String(trimmed.prefix(checkSize))
         
         if isLikelyBase64Fast(checkText) {
@@ -355,6 +395,10 @@ enum EmailContentDecoder {
                         return decoded
                     }
                 }
+            }
+            // 如果验证失败但解码成功，仍然返回解码结果（可能是特殊格式）
+            if let decoded = decodeBase64(normalized, charset: "utf-8"), !decoded.isEmpty {
+                return decoded
             }
         }
         

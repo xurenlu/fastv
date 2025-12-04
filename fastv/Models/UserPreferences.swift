@@ -451,12 +451,12 @@ class UserPreferences: ObservableObject {
             transcriptLanguage = .auto
         }
         
-        // 波形窗口位置设置，默认为右上角
+        // 波形窗口位置设置，默认为正中间下方
         if let positionString = defaults.string(forKey: Keys.waveformWindowPosition),
            let position = WaveformWindowPosition(rawValue: positionString) {
             waveformWindowPosition = position
         } else {
-            waveformWindowPosition = .topRight
+            waveformWindowPosition = .bottomCenter
         }
         
         // 波形窗口样式设置，默认为紧凑
@@ -467,12 +467,12 @@ class UserPreferences: ObservableObject {
             waveformWindowStyle = .compact
         }
         
-        // 波形窗口颜色风格设置，默认为蓝色
+        // 波形窗口颜色风格设置，默认为深灰+蓝色
         if let colorStyleString = defaults.string(forKey: Keys.waveformWindowColorStyle),
            let colorStyle = WaveformWindowColorStyle(rawValue: colorStyleString) {
             waveformWindowColorStyle = colorStyle
         } else {
-            waveformWindowColorStyle = .blue
+            waveformWindowColorStyle = .darkGrayBlue
         }
         
         // AI 优化设置，默认不启用

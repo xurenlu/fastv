@@ -10,6 +10,7 @@ import Combine
 import SwiftUI
 import AppKit
 import UserNotifications
+import UniformTypeIdentifiers
 
 /// 回复草稿模型
 struct ReplyDraft {
@@ -81,6 +82,7 @@ class EmailViewModel: ObservableObject {
     private let notificationService = EmailNotificationService.shared
     private let preferences = UserPreferences.shared
     private let imageDisplayPreferences = EmailImageDisplayPreferences.shared
+    private let threadService = EmailThreadService.shared
     private var cancellables = Set<AnyCancellable>()
     
     // 防抖机制：避免短时间内多次排序
@@ -90,6 +92,16 @@ class EmailViewModel: ObservableObject {
     @Published var accounts: [EmailAccount] = []
     @Published var folders: [EmailFolder] = []
     @Published var messages: [EmailMessage] = []
+    
+    // 线程视图相关
+    @Published var viewMode: ViewMode = .list
+    @Published var threads: [EmailThread] = []
+    @Published var selectedThreadId: UUID?
+    
+    enum ViewMode {
+        case list  // 列表视图
+        case thread // 线程视图
+    }
     
     // 分页加载状态
     @Published var isLoadingMore = false
@@ -777,6 +789,20 @@ class EmailViewModel: ObservableObject {
                     }
                 }
                 
+                // 建立线程关系（后台执行）
+                Task.detached(priority: .background) { [weak self] in
+                    guard let self else { return }
+                    for message in fetched {
+                        // 尝试建立线程关系
+                        if let threadId = try? await threadService.buildThreadRelationship(for: message) {
+                            // 更新消息的threadId
+                            var updated = message
+                            updated.threadId = threadId.uuidString
+                            try? await emailStore.updateMessage(updated)
+                        }
+                    }
+                }
+                
                 Task.detached(priority: .background) { [weak self] in
                     guard let self else { return }
                     for message in fetched {
@@ -1063,6 +1089,27 @@ class EmailViewModel: ObservableObject {
     }
     
     /// 选择邮件
+    /// 选择线程
+    func selectThread(_ threadId: UUID) {
+        selectedThreadId = threadId
+        selectedMessageId = nil
+    }
+    
+    /// 加载线程列表
+    func loadThreads() async {
+        guard let accountId = selectedAccountId else {
+            threads = []
+            return
+        }
+        
+        do {
+            threads = try await threadService.getThreads(for: accountId)
+        } catch {
+            print("❌ [EmailViewModel] 加载线程失败: \(error)")
+            errorMessage = "加载线程失败: \(error.localizedDescription)"
+        }
+    }
+    
     func selectMessage(_ message: EmailMessage) {
         selectedMessageId = message.id
         
@@ -2504,6 +2551,79 @@ class EmailViewModel: ObservableObject {
     /// - Returns: 是否正在优化
     func isOptimizing(for message: EmailMessage) -> Bool {
         return optimizingMessageIds.contains(message.id)
+    }
+    
+    /// 保存邮件为 .eml 文件
+    func saveMessageAsEML(message: EmailMessage) async {
+        guard let account = currentAccount else {
+            errorMessage = "未选择账号"
+            return
+        }
+        
+        guard let folderId = message.folderId,
+              let folder = folder(for: folderId) else {
+            errorMessage = "无法获取邮件所在文件夹"
+            return
+        }
+        
+        do {
+            // 尝试获取原始邮件数据
+            let rawData = try await emailService.fetchRawMessage(
+                account: account,
+                folder: folder,
+                message: message
+            )
+            
+            // 使用文件保存对话框
+            let savePanel = NSSavePanel()
+            savePanel.allowedContentTypes = [.init(filenameExtension: "eml")!]
+            savePanel.nameFieldStringValue = sanitizeFilename(message.subject.isEmpty ? "邮件" : message.subject) + ".eml"
+            savePanel.title = "保存邮件"
+            savePanel.prompt = "保存"
+            
+            if savePanel.runModal() == .OK, let url = savePanel.url {
+                try rawData.write(to: url)
+                print("✅ [EmailViewModel] 邮件已保存为 .eml 文件: \(url.path)")
+            }
+        } catch {
+            print("❌ [EmailViewModel] 保存邮件失败: \(error)")
+            errorMessage = "保存失败: \(error.localizedDescription)"
+            
+            // 如果获取原始数据失败，尝试手动构建 .eml 文件
+            await saveMessageAsEMLManual(message: message)
+        }
+    }
+    
+    /// 手动构建 .eml 文件（当无法获取原始数据时使用）
+    private func saveMessageAsEMLManual(message: EmailMessage) async {
+        let emlContent = EmailEMLBuilder.buildEML(from: message)
+        
+        guard let emlData = emlContent.data(using: .utf8) else {
+            errorMessage = "无法构建 .eml 文件内容"
+            return
+        }
+        
+        let savePanel = NSSavePanel()
+        savePanel.allowedContentTypes = [.init(filenameExtension: "eml")!]
+        savePanel.nameFieldStringValue = sanitizeFilename(message.subject.isEmpty ? "邮件" : message.subject) + ".eml"
+        savePanel.title = "保存邮件"
+        savePanel.prompt = "保存"
+        
+        if savePanel.runModal() == .OK, let url = savePanel.url {
+            do {
+                try emlData.write(to: url)
+                print("✅ [EmailViewModel] 邮件已保存为 .eml 文件（手动构建）: \(url.path)")
+            } catch {
+                errorMessage = "保存失败: \(error.localizedDescription)"
+            }
+        }
+    }
+    
+    /// 清理文件名，移除不允许的字符
+    private func sanitizeFilename(_ filename: String) -> String {
+        let invalidChars = CharacterSet(charactersIn: "/\\?%*|\"<>")
+        return filename.components(separatedBy: invalidChars).joined(separator: "_")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
 }

@@ -54,6 +54,16 @@ struct EmailSettingsTab: View {
                 Text("读回执")
             }
             
+            // 签名设置
+            Section {
+                NavigationLink(destination: EmailSignatureView()) {
+                    Label("管理签名", systemImage: "signature")
+                }
+                .help("创建和管理邮件签名")
+            } header: {
+                Text("签名")
+            }
+            
             // AI功能设置
             Section {
                 Toggle("智能标签", isOn: $preferences.emailAISmartTaggingEnabled)

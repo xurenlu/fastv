@@ -138,12 +138,66 @@ class EmailDatabase {
                 )
             """)
             
+            // 创建签名表
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS email_signatures (
+                    id TEXT PRIMARY KEY,
+                    account_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    is_html INTEGER NOT NULL DEFAULT 0,
+                    is_default INTEGER NOT NULL DEFAULT 0,
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL,
+                    FOREIGN KEY(account_id) REFERENCES email_accounts(id) ON DELETE CASCADE
+                )
+            """)
+            
+            // 创建线程表
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS email_threads (
+                    id TEXT PRIMARY KEY,
+                    account_id TEXT NOT NULL,
+                    subject TEXT,
+                    message_id TEXT,
+                    root_message_id TEXT,
+                    participant_emails TEXT,
+                    message_count INTEGER NOT NULL DEFAULT 0,
+                    unread_count INTEGER NOT NULL DEFAULT 0,
+                    last_message_date REAL NOT NULL,
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL,
+                    FOREIGN KEY(account_id) REFERENCES email_accounts(id) ON DELETE CASCADE
+                )
+            """)
+            
+            // 创建规则表
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS email_rules (
+                    id TEXT PRIMARY KEY,
+                    account_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    conditions TEXT NOT NULL,
+                    actions TEXT NOT NULL,
+                    is_enabled INTEGER NOT NULL DEFAULT 1,
+                    lua_code TEXT,
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL,
+                    FOREIGN KEY(account_id) REFERENCES email_accounts(id) ON DELETE CASCADE
+                )
+            """)
+            
             // 创建索引
             try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_messages_account_folder ON email_messages(account_id, folder_id)")
             try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_messages_date ON email_messages(date DESC)")
             try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_messages_thread ON email_messages(thread_id)")
             try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_messages_uid ON email_messages(account_id, folder_id, uid)")
             try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_folders_account ON email_folders(account_id)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_signatures_account ON email_signatures(account_id)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_threads_account ON email_threads(account_id)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_threads_message_id ON email_threads(message_id)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_threads_root_message_id ON email_threads(root_message_id)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_rules_account ON email_rules(account_id)")
         }
     }
     

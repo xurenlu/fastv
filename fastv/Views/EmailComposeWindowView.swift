@@ -115,6 +115,9 @@ struct EmailComposeWindowView: View {
     @State private var selectedRange: NSRange? = nil
     @State private var draftId: UUID
     @State private var autoSaveTask: Task<Void, Never>?
+    @State private var selectedSignatureId: UUID?
+    @State private var signatures: [EmailSignature] = []
+    @State private var showSignatureManager = false
     
     enum ComposeField {
         case to, cc, bcc, subject, body
@@ -207,6 +210,9 @@ struct EmailComposeWindowView: View {
                             attachmentsListView
                         }
                         
+                        // 签名选择器
+                        signatureSelectorView
+                        
                         // 正文编辑区
                         SelectableTextEditor(text: $bodyText) { selectedText, selectedRange in
                             self.selectedText = selectedText
@@ -260,6 +266,11 @@ struct EmailComposeWindowView: View {
                     }) {
                         Label("附件", systemImage: "paperclip")
                     }
+                }
+                
+                // 签名选择器
+                ToolbarItem(placement: .automatic) {
+                    signatureMenuView
                 }
                 
                 // AI 美化按钮组
@@ -320,7 +331,11 @@ struct EmailComposeWindowView: View {
             // 加载草稿（如果有）
             Task {
                 await loadDraft()
+                await loadSignatures()
             }
+        }
+        .sheet(isPresented: $showSignatureManager) {
+            EmailSignatureView()
         }
         .onChange(of: toText) { _, _ in
             autoSaveDraft()
@@ -683,6 +698,25 @@ struct EmailComposeWindowView: View {
             return
         }
         
+        // 应用签名（如果选择了签名且正文中还没有签名）
+        var finalBody = bodyText
+        var finalHtmlBody = htmlBodyText
+        
+        if let signatureId = selectedSignatureId,
+           let signature = signatures.first(where: { $0.id == signatureId }) {
+            // 检查正文是否已经包含签名（简单检查）
+            let signatureService = EmailSignatureService.shared
+            let renderedSignature = signatureService.renderSignature(signature, for: account)
+            let signaturePreview = String(renderedSignature.prefix(50))
+            
+            // 如果正文末尾不包含签名预览，则添加签名
+            if !finalBody.contains(signaturePreview) {
+                let result = signatureService.insertSignature(signature, into: finalBody, htmlBody: finalHtmlBody, for: account)
+                finalBody = result.body
+                finalHtmlBody = result.htmlBody
+            }
+        }
+        
         do {
             switch composeType {
             case .new:
@@ -692,8 +726,8 @@ struct EmailComposeWindowView: View {
                     cc: ccContacts,
                     bcc: bccContacts,
                     subject: subjectText,
-                    body: bodyText,
-                    htmlBody: htmlBodyText
+                    body: finalBody,
+                    htmlBody: finalHtmlBody
                 )
                 
             case .reply(let originalMessage):
@@ -704,8 +738,8 @@ struct EmailComposeWindowView: View {
                     cc: ccContacts,
                     bcc: bccContacts,
                     subject: subjectText,
-                    body: bodyText,
-                    htmlBody: htmlBodyText,
+                    body: finalBody,
+                    htmlBody: finalHtmlBody,
                     replyType: .reply
                 )
                 
@@ -720,8 +754,8 @@ struct EmailComposeWindowView: View {
                     cc: ccContacts,
                     bcc: bccContacts,
                     subject: subjectText,
-                    body: bodyText,
-                    htmlBody: htmlBodyText,
+                    body: finalBody,
+                    htmlBody: finalHtmlBody,
                     replyType: .replyAll
                 )
                 
@@ -736,8 +770,8 @@ struct EmailComposeWindowView: View {
                     cc: ccContacts,
                     bcc: bccContacts,
                     subject: subjectText,
-                    body: bodyText,
-                    htmlBody: htmlBodyText,
+                    body: finalBody,
+                    htmlBody: finalHtmlBody,
                     replyType: .forward
                 )
             }
@@ -853,6 +887,111 @@ struct EmailComposeWindowView: View {
         htmlBodyText = draft.htmlBody
         
         print("✅ [EmailComposeWindow] 草稿已加载: \(draft.subject)")
+    }
+    
+    // MARK: - Signature Management
+    
+    /// 签名选择器视图
+    private var signatureSelectorView: some View {
+        HStack {
+            Text("签名:")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            
+            Picker("选择签名", selection: $selectedSignatureId) {
+                Text("无").tag(nil as UUID?)
+                ForEach(signatures) { signature in
+                    Text(signature.name).tag(signature.id as UUID?)
+                }
+            }
+            .pickerStyle(.menu)
+            .frame(maxWidth: 200)
+            
+            Button(action: {
+                showSignatureManager = true
+            }) {
+                Text("管理签名")
+                    .font(.caption)
+            }
+            .buttonStyle(.plain)
+            
+            Spacer()
+        }
+        .padding(.vertical, 4)
+    }
+    
+    /// 签名菜单视图（工具栏）
+    private var signatureMenuView: some View {
+        Menu {
+            if signatures.isEmpty {
+                Text("没有签名")
+                    .disabled(true)
+            } else {
+                Button(action: {
+                    selectedSignatureId = nil
+                    removeSignatureFromBody()
+                }) {
+                    Label("无签名", systemImage: selectedSignatureId == nil ? "checkmark" : "")
+                }
+                
+                ForEach(signatures) { signature in
+                    Button(action: {
+                        selectedSignatureId = signature.id
+                        insertSignature(signature)
+                    }) {
+                        Label(signature.name, systemImage: selectedSignatureId == signature.id ? "checkmark" : "")
+                    }
+                }
+            }
+            
+            Divider()
+            
+            Button(action: {
+                showSignatureManager = true
+            }) {
+                Label("管理签名", systemImage: "gearshape")
+            }
+        } label: {
+            Label("签名", systemImage: "signature")
+        }
+    }
+    
+    /// 加载签名列表
+    private func loadSignatures() async {
+        guard let accountId = viewModel.currentAccount?.id else { return }
+        
+        do {
+            signatures = try await EmailSignatureService.shared.getSignatures(for: accountId)
+            
+            // 自动选择默认签名
+            if let defaultSignature = signatures.first(where: { $0.isDefault }) {
+                selectedSignatureId = defaultSignature.id
+                // 如果正文为空，自动插入签名
+                if bodyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    insertSignature(defaultSignature)
+                }
+            }
+        } catch {
+            print("❌ [EmailComposeWindow] 加载签名失败: \(error)")
+        }
+    }
+    
+    /// 插入签名到正文
+    private func insertSignature(_ signature: EmailSignature) {
+        guard let account = viewModel.currentAccount else { return }
+        
+        let signatureService = EmailSignatureService.shared
+        let result = signatureService.insertSignature(signature, into: bodyText, htmlBody: htmlBodyText, for: account)
+        
+        bodyText = result.body
+        htmlBodyText = result.htmlBody
+    }
+    
+    /// 从正文移除签名
+    private func removeSignatureFromBody() {
+        // 简单实现：如果正文末尾包含签名内容，移除它
+        // 更完善的实现需要保存原始正文和签名内容
+        // 这里先简化处理
     }
     
     /// 删除草稿

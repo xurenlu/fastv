@@ -73,7 +73,7 @@ struct ContentView: View {
                 }
                 .listStyle(.sidebar)
                 .navigationTitle("功能")
-                .frame(minWidth: 200, idealWidth: 220)
+                .frame(minWidth: 200, idealWidth: 220, maxWidth: 250)
             } detail: {
                 // 右侧内容区域
                 Group {
