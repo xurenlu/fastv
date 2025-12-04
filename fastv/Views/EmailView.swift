@@ -31,11 +31,9 @@ struct EmailView: View {
             if let message = viewModel.selectedMessage {
                 messageDetailView(message: message)
                     .frame(minWidth: 400, idealWidth: 600, maxWidth: 800)
-                    .layoutPriority(1)
             } else {
                 emptyDetailView
                     .frame(minWidth: 400, idealWidth: 600, maxWidth: 800)
-                    .layoutPriority(1)
             }
         }
         .navigationTitle("邮箱")
@@ -320,68 +318,68 @@ struct EmailView: View {
                     emptyMessageListView
                 } else {
                     ScrollViewReader { proxy in
+                        // 在 List 外部计算 displayedMessages，避免布局时重新计算
+                        let displayedMessages = viewModel.searchText.isEmpty ? viewModel.messages : viewModel.searchResults
+                        
                         let messageBinding = Binding<UUID?>(
                             get: { viewModel.selectedMessageId },
                             set: { newId in
-                                // 延迟设置，避免在视图更新期间触发状态变更
-                                DispatchQueue.main.async {
-                                    if let id = newId,
-                                       let message = viewModel.messages.first(where: { $0.id == id }) {
-                                        viewModel.selectMessage(message)
-                                    } else {
-                                        viewModel.selectedMessageId = nil
-                                    }
+                                // 直接同步更新，SwiftUI 会自动处理状态更新
+                                if let id = newId,
+                                   let message = viewModel.messages.first(where: { $0.id == id }) {
+                                    viewModel.selectMessage(message)
+                                } else {
+                                    viewModel.selectedMessageId = nil
                                 }
                             }
                         )
                         
                         List(selection: messageBinding) {
-                            let displayedMessages = viewModel.searchText.isEmpty ? viewModel.messages : viewModel.searchResults
-                            ForEach(Array(displayedMessages.enumerated()), id: \.element.id) { index, message in
+                            // 直接使用 displayedMessages，避免创建新数组破坏 ForEach 的稳定标识
+                            ForEach(displayedMessages, id: \.id) { message in
                                 MessageRow(message: message, showAttachments: viewModel.showAttachments)
                                     .tag(message.id)
                             }
                             
                             // 底部加载区域：加载触发器 / 加载指示器 / 没有更多提示
-                            Group {
-                                if viewModel.isLoadingMore {
-                                    // 加载中：显示加载指示器
-                                    HStack {
-                                        Spacer()
-                                        ProgressView()
-                                            .scaleEffect(0.8)
-                                        Text("加载更多...")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                        Spacer()
-                                    }
-                                    .padding()
-                                } else if viewModel.hasMoreMessages {
-                                    // 未加载：显示触发器（滚动到底部时自动加载）
-                                    Color.clear
-                                        .frame(height: 1)
-                                        .onAppear {
-                                            // 使用 Task 避免阻塞 UI
-                                            Task { @MainActor in
-                                                // 稍微延迟，避免快速滚动时频繁触发
-                                                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2秒防抖
-                                                // 再次检查状态，避免重复加载
-                                                if viewModel.hasMoreMessages && !viewModel.isLoadingMore {
-                                                    viewModel.loadMoreMessages()
-                                                }
+                            // 移除 Group，直接在 List 中使用条件视图
+                            if viewModel.isLoadingMore {
+                                // 加载中：显示加载指示器
+                                HStack {
+                                    Spacer()
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                    Text("加载更多...")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                }
+                                .padding()
+                            } else if viewModel.hasMoreMessages {
+                                // 未加载：显示触发器（滚动到底部时自动加载）
+                                Color.clear
+                                    .frame(height: 1)
+                                    .onAppear {
+                                        // 使用 Task 避免阻塞 UI
+                                        Task { @MainActor in
+                                            // 稍微延迟，避免快速滚动时频繁触发
+                                            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2秒防抖
+                                            // 再次检查状态，避免重复加载
+                                            if viewModel.hasMoreMessages && !viewModel.isLoadingMore {
+                                                viewModel.loadMoreMessages()
                                             }
                                         }
-                                } else {
-                                    // 已经没有更多邮件：显示提示文案
-                                    HStack {
-                                        Spacer()
-                                        Text("已经没有更多邮件")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                        Spacer()
                                     }
-                                    .padding(.vertical, 8)
+                            } else {
+                                // 已经没有更多邮件：显示提示文案
+                                HStack {
+                                    Spacer()
+                                    Text("已经没有更多邮件")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
                                 }
+                                .padding(.vertical, 8)
                             }
                         }
                         .listStyle(.plain)
