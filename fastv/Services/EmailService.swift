@@ -545,6 +545,53 @@ class EmailService {
         return content
     }
     
+    /// 获取完整原始邮件数据（包括所有邮件头）
+    /// 
+    /// 重要：每次获取都会创建独立的 IMAP session，操作完成后自动断开。
+    nonisolated func fetchRawMessage(
+        account: EmailAccount,
+        folder: EmailFolder,
+        message: EmailMessage
+    ) async throws -> Data {
+        guard let uid = message.uid else {
+            print("❌ [EmailService] fetchRawMessage: 邮件 UID 不存在")
+            throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
+        }
+        
+        print("📧 [EmailService] fetchRawMessage: 开始获取原始邮件, folder=\(folder.name), uid=\(uid)")
+        
+        // 创建独立的 IMAP session
+        let imap = try await createIMAPSession(account: account)
+        
+        // 确保操作完成后断开连接
+        defer {
+            print("🔌 [EmailService] 断开 IMAP 连接 (fetchRawMessage)")
+            imap.disconnect()
+        }
+        
+        let rawData = try await Task.detached(priority: .userInitiated) { [imap] in
+            do {
+                try imap.selectFolder(folder.name)
+                print("📧 [EmailService] fetchRawMessage: 文件夹选择成功")
+            } catch {
+                print("❌ [EmailService] fetchRawMessage: 选择文件夹失败: \(error)")
+                throw EmailServiceError.connectionFailed("选择文件夹失败: \(error.localizedDescription)")
+            }
+            
+            // fetchMessageBodyWithUID 使用 MAILIMAP_MSG_ATT_RFC822，返回完整原始邮件
+            let data = try imap.fetchMessageBody(withUID: uid)
+            print("📧 [EmailService] fetchRawMessage: 获取到原始邮件数据 \(data.count) 字节")
+            return data
+        }.value
+        
+        if rawData.isEmpty {
+            print("❌ [EmailService] fetchRawMessage: 原始邮件数据为空")
+            throw EmailServiceError.parseError("未获取到原始邮件数据")
+        }
+        
+        return rawData
+    }
+    
     /// 搜索邮件（通过 IMAP 服务器搜索）
     /// 
     /// 重要：每次搜索都会创建独立的 IMAP session，操作完成后自动断开。
@@ -1098,8 +1145,15 @@ class EmailService {
         // 解析收件人
         let to = parseEmailAddresses(toString)
         
-        // 解析日期
-        let date = parseEmailDate(dateString) ?? Date()
+        // 解析日期（邮件发送时间）
+        // 重要：如果解析失败，使用一个很早的日期（1970-01-01）而不是当前时间
+        // 这样可以避免将同步时间误认为是邮件发送时间
+        let date = parseEmailDate(dateString) ?? Date(timeIntervalSince1970: 0)
+        
+        // 解析接收时间（如果有 Received 头）
+        // 注意：Received 头可能有多行，取最后一个（最接近服务器的）
+        let receivedDateString = (headers["received"] as? String) ?? ""
+        let receivedDate = parseReceivedDate(receivedDateString) ?? date
         
         // 检测是否为no-reply地址
         let isNoReply = isNoReplyAddress(from.email)
@@ -1107,20 +1161,45 @@ class EmailService {
         // 生成预览文本（使用主题作为初始预览）
         let preview = subject.isEmpty ? "" : subject
         
+        // 计算线程ID（基于主题规范化，去除Re:/Fw:等前缀）
+        let normalizedSubject = normalizeSubjectForThreading(subject)
+        let threadId = messageId ?? normalizedSubject
+        
         return EmailMessage(
             id: UUID(),
             accountId: accountId,
             folderId: folderId,
             uid: uid,
             messageId: messageId,
+            threadId: threadId,
             subject: subject,
             from: from,
             to: to,
             preview: preview,
-            date: date,
+            date: date,  // 使用邮件发送时间
+            receivedDate: receivedDate,  // 设置接收时间
             isNoReply: isNoReply,
             isBodyLoaded: false
         )
+    }
+    
+    /// 规范化主题用于线程分组（去除Re:/Fw:等前缀）
+    nonisolated private func normalizeSubjectForThreading(_ subject: String) -> String {
+        var normalized = subject.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // 去除常见的回复/转发前缀（支持中英文）
+        let prefixes = ["Re:", "RE:", "re:", "Fwd:", "FWD:", "fwd:", "Fw:", "FW:", "fw:", 
+                       "回复:", "转发:", "Re：", "RE：", "Fwd：", "FWD：", "Fw：", "FW："]
+        
+        for prefix in prefixes {
+            if normalized.hasPrefix(prefix) {
+                normalized = String(normalized.dropFirst(prefix.count))
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                break
+            }
+        }
+        
+        return normalized.lowercased()
     }
     
     /// 解析邮件地址列表（逗号分隔）
@@ -1132,38 +1211,98 @@ class EmailService {
     }
     
     /// 解析邮件日期
+    /// 使用 RFC 2822 标准格式和多种常见格式解析邮件日期
     nonisolated private func parseEmailDate(_ dateString: String) -> Date? {
         guard !dateString.isEmpty else { return nil }
         
-        // 使用多种日期格式解析
+        // 清理日期字符串（移除可能的注释和多余空格）
+        var cleaned = dateString.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 移除括号中的注释，如 "Mon, 1 Jan 2024 12:00:00 +0800 (CST)"
+        if let commentRange = cleaned.range(of: " (", options: .backwards) {
+            cleaned = String(cleaned[..<commentRange.lowerBound])
+        }
+        
+        // 使用多种日期格式解析（按 RFC 2822 标准）
         let formatters: [DateFormatter] = [
+            // RFC 2822 标准格式：Mon, 1 Jan 2024 12:00:00 +0800
             {
                 let f = DateFormatter()
                 f.dateFormat = "EEE, d MMM yyyy HH:mm:ss Z"
                 f.locale = Locale(identifier: "en_US_POSIX")
+                f.timeZone = TimeZone(secondsFromGMT: 0)
                 return f
             }(),
+            // 不带星期：1 Jan 2024 12:00:00 +0800
             {
                 let f = DateFormatter()
                 f.dateFormat = "d MMM yyyy HH:mm:ss Z"
                 f.locale = Locale(identifier: "en_US_POSIX")
+                f.timeZone = TimeZone(secondsFromGMT: 0)
                 return f
             }(),
+            // 带时区名称：Mon, 1 Jan 2024 12:00:00 CST
             {
                 let f = DateFormatter()
                 f.dateFormat = "EEE, d MMM yyyy HH:mm:ss zzz"
+                f.locale = Locale(identifier: "en_US_POSIX")
+                return f
+            }(),
+            // ISO 8601 格式：2024-01-01T12:00:00+08:00
+            {
+                let f = DateFormatter()
+                f.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+                f.locale = Locale(identifier: "en_US_POSIX")
+                return f
+            }(),
+            // 另一种 ISO 格式：2024-01-01T12:00:00+0800
+            {
+                let f = DateFormatter()
+                f.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZZZZZ"
+                f.locale = Locale(identifier: "en_US_POSIX")
+                return f
+            }(),
+            // 简单格式：1 Jan 2024 12:00:00
+            {
+                let f = DateFormatter()
+                f.dateFormat = "d MMM yyyy HH:mm:ss"
                 f.locale = Locale(identifier: "en_US_POSIX")
                 return f
             }()
         ]
         
         for formatter in formatters {
-            if let date = formatter.date(from: dateString) {
+            if let date = formatter.date(from: cleaned) {
                 return date
             }
         }
         
+        // 如果所有格式都失败，尝试使用系统解析器（作为最后手段）
+        let detector = NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue)
+        let matches = detector.matches(in: cleaned, options: [], range: NSRange(location: 0, length: cleaned.utf16.count))
+        if let match = matches.first, let date = match.date {
+            return date
+        }
+        
         return nil
+    }
+    
+    /// 解析 Received 头中的日期（取最后一个 Received 头，即最接近服务器的）
+    nonisolated private func parseReceivedDate(_ receivedString: String) -> Date? {
+        guard !receivedString.isEmpty else { return nil }
+        
+        // Received 头可能有多行，用换行符分割，取最后一个
+        let lines = receivedString.components(separatedBy: "\n")
+        let lastLine = lines.last?.trimmingCharacters(in: .whitespacesAndNewlines) ?? receivedString
+        
+        // Received 头格式通常是：from ... by ... with ...; Mon, 1 Jan 2024 12:00:00 +0800
+        // 提取分号后的日期部分
+        if let semicolonRange = lastLine.range(of: ";", options: .backwards) {
+            let datePart = String(lastLine[semicolonRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            return parseEmailDate(datePart)
+        }
+        
+        // 如果没有分号，尝试解析整个字符串
+        return parseEmailDate(lastLine)
     }
     
     /// 检测是否为no-reply地址
