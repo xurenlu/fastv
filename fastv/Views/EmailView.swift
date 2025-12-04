@@ -15,6 +15,7 @@ struct EmailView: View {
     @State private var showAccountManagement = false
     @State private var showComposeWindow = false
     @State private var composeWindowType: EmailComposeWindowView.ComposeType?
+    @State private var showMessageHeaders = false
     
     var body: some View {
         HSplitView {
@@ -26,14 +27,14 @@ struct EmailView: View {
             messageListView
                 .frame(minWidth: 300, idealWidth: 350)
             
-            // 右侧：邮件详情（正文列）- 占据最大宽度
+            // 右侧：邮件详情（正文列）- 限制最大宽度，避免影响主菜单
             if let message = viewModel.selectedMessage {
                 messageDetailView(message: message)
-                    .frame(minWidth: 400, idealWidth: 800)
+                    .frame(minWidth: 400, idealWidth: 600, maxWidth: 800)
                     .layoutPriority(1)
             } else {
                 emptyDetailView
-                    .frame(minWidth: 400, idealWidth: 800)
+                    .frame(minWidth: 400, idealWidth: 600, maxWidth: 800)
                     .layoutPriority(1)
             }
         }
@@ -69,6 +70,15 @@ struct EmailView: View {
                 }
                 .disabled(viewModel.isLoading)
             }
+            
+            // 视图模式切换
+            ToolbarItem(placement: .automatic) {
+                Picker("视图模式", selection: $viewModel.viewMode) {
+                    Label("列表", systemImage: "list.bullet").tag(EmailViewModel.ViewMode.list)
+                    Label("线程", systemImage: "bubble.left.and.bubble.right").tag(EmailViewModel.ViewMode.thread)
+                }
+                .pickerStyle(.segmented)
+            }
         }
         .sheet(isPresented: $showAccountManagement) {
             EmailAccountManagementView()
@@ -76,6 +86,11 @@ struct EmailView: View {
         .sheet(isPresented: $showComposeWindow) {
             if let composeType = composeWindowType {
                 EmailComposeWindowView(viewModel: viewModel, composeType: composeType)
+            }
+        }
+        .sheet(isPresented: $showMessageHeaders) {
+            if let message = viewModel.selectedMessage {
+                MessageHeadersView(message: message, viewModel: viewModel)
             }
         }
         .onAppear {
@@ -267,79 +282,110 @@ struct EmailView: View {
             
             Divider()
             
-            // 邮件列表
-            if viewModel.isLoading && viewModel.messages.isEmpty {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if viewModel.messages.isEmpty && !viewModel.isLoading {
-                emptyMessageListView
-            } else {
-                ScrollViewReader { proxy in
-                    let messageBinding = Binding<UUID?>(
-                        get: { viewModel.selectedMessageId },
+            // 根据视图模式显示列表或线程
+            if viewModel.viewMode == .thread {
+                // 线程视图
+                if viewModel.isLoading && viewModel.threads.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if viewModel.threads.isEmpty && !viewModel.isLoading {
+                    emptyMessageListView
+                } else {
+                    let threadBinding = Binding<UUID?>(
+                        get: { viewModel.selectedThreadId },
                         set: { newId in
-                            // 延迟设置，避免在视图更新期间触发状态变更
-                            DispatchQueue.main.async {
-                                if let id = newId,
-                                   let message = viewModel.messages.first(where: { $0.id == id }) {
-                                    viewModel.selectMessage(message)
-                                } else {
-                                    viewModel.selectedMessageId = nil
-                                }
+                            if let id = newId {
+                                viewModel.selectThread(id)
                             }
                         }
                     )
                     
-                    List(selection: messageBinding) {
-                        let displayedMessages = viewModel.searchText.isEmpty ? viewModel.messages : viewModel.searchResults
-                        ForEach(Array(displayedMessages.enumerated()), id: \.element.id) { index, message in
-                            MessageRow(message: message, showAttachments: viewModel.showAttachments)
-                                .tag(message.id)
-                        }
-                        
-                        // 底部加载区域：加载触发器 / 加载指示器 / 没有更多提示
-                        Group {
-                            if viewModel.isLoadingMore {
-                                // 加载中：显示加载指示器
-                                HStack {
-                                    Spacer()
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                    Text("加载更多...")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    Spacer()
-                                }
-                                .padding()
-                            } else if viewModel.hasMoreMessages {
-                                // 未加载：显示触发器（滚动到底部时自动加载）
-                                Color.clear
-                                    .frame(height: 1)
-                                    .onAppear {
-                                        // 使用 Task 避免阻塞 UI
-                                        Task { @MainActor in
-                                            // 稍微延迟，避免快速滚动时频繁触发
-                                            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2秒防抖
-                                            // 再次检查状态，避免重复加载
-                                            if viewModel.hasMoreMessages && !viewModel.isLoadingMore {
-                                                viewModel.loadMoreMessages()
-                                            }
-                                        }
-                                    }
-                            } else {
-                                // 已经没有更多邮件：显示提示文案
-                                HStack {
-                                    Spacer()
-                                    Text("已经没有更多邮件")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    Spacer()
-                                }
-                                .padding(.vertical, 8)
-                            }
+                    List(selection: threadBinding) {
+                        ForEach(viewModel.threads) { thread in
+                            ThreadRow(thread: thread, viewModel: viewModel)
+                                .tag(thread.id)
                         }
                     }
-                    .listStyle(.plain)
+                    .listStyle(.sidebar)
+                    .task {
+                        await viewModel.loadThreads()
+                    }
+                }
+            } else {
+                // 列表视图
+                if viewModel.isLoading && viewModel.messages.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if viewModel.messages.isEmpty && !viewModel.isLoading {
+                    emptyMessageListView
+                } else {
+                    ScrollViewReader { proxy in
+                        let messageBinding = Binding<UUID?>(
+                            get: { viewModel.selectedMessageId },
+                            set: { newId in
+                                // 延迟设置，避免在视图更新期间触发状态变更
+                                DispatchQueue.main.async {
+                                    if let id = newId,
+                                       let message = viewModel.messages.first(where: { $0.id == id }) {
+                                        viewModel.selectMessage(message)
+                                    } else {
+                                        viewModel.selectedMessageId = nil
+                                    }
+                                }
+                            }
+                        )
+                        
+                        List(selection: messageBinding) {
+                            let displayedMessages = viewModel.searchText.isEmpty ? viewModel.messages : viewModel.searchResults
+                            ForEach(Array(displayedMessages.enumerated()), id: \.element.id) { index, message in
+                                MessageRow(message: message, showAttachments: viewModel.showAttachments)
+                                    .tag(message.id)
+                            }
+                            
+                            // 底部加载区域：加载触发器 / 加载指示器 / 没有更多提示
+                            Group {
+                                if viewModel.isLoadingMore {
+                                    // 加载中：显示加载指示器
+                                    HStack {
+                                        Spacer()
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                        Text("加载更多...")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        Spacer()
+                                    }
+                                    .padding()
+                                } else if viewModel.hasMoreMessages {
+                                    // 未加载：显示触发器（滚动到底部时自动加载）
+                                    Color.clear
+                                        .frame(height: 1)
+                                        .onAppear {
+                                            // 使用 Task 避免阻塞 UI
+                                            Task { @MainActor in
+                                                // 稍微延迟，避免快速滚动时频繁触发
+                                                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2秒防抖
+                                                // 再次检查状态，避免重复加载
+                                                if viewModel.hasMoreMessages && !viewModel.isLoadingMore {
+                                                    viewModel.loadMoreMessages()
+                                                }
+                                            }
+                                        }
+                                } else {
+                                    // 已经没有更多邮件：显示提示文案
+                                    HStack {
+                                        Spacer()
+                                        Text("已经没有更多邮件")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        Spacer()
+                                    }
+                                    .padding(.vertical, 8)
+                                }
+                            }
+                        }
+                        .listStyle(.plain)
+                    }
                 }
             }
         }
@@ -443,9 +489,13 @@ struct EmailView: View {
                         if let htmlBody = message.htmlBody, !htmlBody.isEmpty {
                             // 优先使用AI优化后的HTML，如果没有则使用原始HTML
                             let displayHTML = viewModel.getOptimizedHTML(for: message) ?? htmlBody
-                            EmailBodyWebView(htmlBody: displayHTML, textBody: message.textBody, showImages: viewModel.showImages)
+                            // 只在必要时尝试解码 base64（性能优化：快速检查是否已包含中文字符）
+                            let decodedHTML = EmailContentDecoder.tryDecodeBase64TextIfNeeded(displayHTML)
+                            EmailBodyWebView(htmlBody: decodedHTML, textBody: message.textBody, showImages: viewModel.showImages)
                         } else if let textBody = message.textBody, !textBody.isEmpty {
-                            Text(textBody)
+                            // 只在必要时尝试解码 base64（性能优化）
+                            let decodedText = EmailContentDecoder.tryDecodeBase64TextIfNeeded(textBody)
+                            Text(decodedText)
                                 .font(.system(size: 16))
                                 .lineSpacing(6)
                                 .foregroundStyle(Color(red: 29/255, green: 29/255, blue: 31/255))
@@ -453,7 +503,9 @@ struct EmailView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(20)
                         } else {
-                            Text(message.preview)
+                            // 预览文本也可能需要解码（性能优化）
+                            let decodedPreview = EmailContentDecoder.tryDecodeBase64TextIfNeeded(message.preview)
+                            Text(decodedPreview)
                                 .font(.system(size: 16))
                                 .foregroundStyle(Color.secondary)
                                 .textSelection(.enabled)
@@ -574,6 +626,37 @@ struct EmailView: View {
                 
                 Spacer()
                 
+                // 中间操作按钮组 - 邮件头查看和保存
+                HStack(spacing: 4) {
+                    // 邮件头查看按钮
+                    Button(action: {
+                        showMessageHeaders = true
+                    }) {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(.secondary)
+                            .frame(width: 32, height: 32)
+                    }
+                    .buttonStyle(.plain)
+                    .help("查看邮件头信息")
+                    
+                    // 保存为 .eml 文件按钮
+                    Button(action: {
+                        if let message = viewModel.selectedMessage {
+                            Task {
+                                await viewModel.saveMessageAsEML(message: message)
+                            }
+                        }
+                    }) {
+                        Image(systemName: "square.and.arrow.down")
+                            .foregroundStyle(.secondary)
+                            .frame(width: 32, height: 32)
+                    }
+                    .buttonStyle(.plain)
+                    .help("保存为 .eml 文件")
+                }
+                
+                Spacer()
+                
                 // 右侧操作按钮组 - 使用图标按钮，更紧凑
                 HStack(spacing: 4) {
                     // AI智能排版按钮 - 只对HTML邮件显示
@@ -661,66 +744,6 @@ struct EmailView: View {
         RemoteResourcesBannerView(message: message, viewModel: viewModel)
     }
     
-    // MARK: - Remote Resources Banner View
-    private struct RemoteResourcesBannerView: View {
-    let message: EmailMessage
-    @ObservedObject var viewModel: EmailViewModel
-    @State private var rememberChoice = false
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                Image(systemName: "photo.fill")
-                    .foregroundStyle(.blue)
-                    .font(.title3)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("此邮件包含外部图片")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.primary)
-                    
-                    Text("为了保护您的隐私，图片默认不显示")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                
-                Spacer()
-                
-                Button(action: {
-                    viewModel.updateImageDisplayPreference(
-                        for: message,
-                        show: true,
-                        remember: rememberChoice
-                    )
-                }) {
-                    Text("显示图片")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                }
-                .buttonStyle(.borderedProminent)
-            }
-            
-            Toggle(isOn: $rememberChoice) {
-                Text("记住此选择（按发件人邮箱和域名）")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .toggleStyle(.checkbox)
-        }
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(NSColor.controlBackgroundColor))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Color.blue.opacity(0.2), lineWidth: 1)
-                }
-        }
-        .padding(.bottom, 8)
-    }
-    }
-    
     private func attachmentsView(attachments: [EmailAttachment]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("附件 (\(attachments.count))")
@@ -785,6 +808,67 @@ struct EmailView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Remote Resources Banner View
+
+private struct RemoteResourcesBannerView: View {
+    let message: EmailMessage
+    @ObservedObject var viewModel: EmailViewModel
+    @State private var rememberChoice = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: "photo.fill")
+                    .foregroundStyle(.blue)
+                    .font(.title3)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("此邮件包含外部图片")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+                    
+                    Text("为了保护您的隐私，图片默认不显示")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                Button(action: {
+                    viewModel.updateImageDisplayPreference(
+                        for: message,
+                        show: true,
+                        remember: rememberChoice
+                    )
+                }) {
+                    Text("显示图片")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            
+            Toggle(isOn: $rememberChoice) {
+                Text("记住此选择（按发件人邮箱和域名）")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .toggleStyle(.checkbox)
+        }
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(NSColor.controlBackgroundColor))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                }
+        }
+        .padding(.bottom, 8)
     }
 }
 
@@ -1178,6 +1262,193 @@ private extension String {
         }
         
         return processedHTML
+    }
+}
+
+// MARK: - Message Headers View
+
+struct MessageHeadersView: View {
+    let message: EmailMessage
+    @ObservedObject var viewModel: EmailViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var rawHeaders: String = ""
+    @State private var isLoading = true
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                if isLoading {
+                    ProgressView("正在加载邮件头信息...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            // 基本信息
+                            SectionView(title: "基本信息") {
+                                InfoRow(label: "Message-ID", value: message.messageId ?? "无")
+                                InfoRow(label: "UID", value: message.uid.map { "\($0)" } ?? "无")
+                                InfoRow(label: "Thread-ID", value: message.threadId ?? "无")
+                            }
+                            
+                            // 发件人和收件人
+                            SectionView(title: "发件人和收件人") {
+                                InfoRow(label: "From", value: message.from.displayName)
+                                if !message.to.isEmpty {
+                                    InfoRow(label: "To", value: message.to.map { $0.displayName }.joined(separator: ", "))
+                                }
+                                if !message.cc.isEmpty {
+                                    InfoRow(label: "Cc", value: message.cc.map { $0.displayName }.joined(separator: ", "))
+                                }
+                                if !message.bcc.isEmpty {
+                                    InfoRow(label: "Bcc", value: message.bcc.map { $0.displayName }.joined(separator: ", "))
+                                }
+                                if !message.replyTo.isEmpty {
+                                    InfoRow(label: "Reply-To", value: message.replyTo.map { $0.displayName }.joined(separator: ", "))
+                                }
+                            }
+                            
+                            // 邮件信息
+                            SectionView(title: "邮件信息") {
+                                InfoRow(label: "Subject", value: message.subject)
+                                InfoRow(label: "Date", value: formatFullDate(message.date))
+                                if let receivedDate = message.receivedDate {
+                                    InfoRow(label: "Received", value: formatFullDate(receivedDate))
+                                }
+                            }
+                            
+                            // 状态信息
+                            SectionView(title: "状态信息") {
+                                InfoRow(label: "已读", value: message.isRead ? "是" : "否")
+                                InfoRow(label: "星标", value: message.isStarred ? "是" : "否")
+                                InfoRow(label: "重要", value: message.isImportant ? "是" : "否")
+                                InfoRow(label: "垃圾邮件", value: message.isSpam ? "是" : "否")
+                                InfoRow(label: "已回复", value: message.hasBeenReplied ? "是" : "否")
+                            }
+                            
+                            // 原始邮件头
+                            if !rawHeaders.isEmpty {
+                                SectionView(title: "原始邮件头") {
+                                    Text(rawHeaders)
+                                        .font(.system(.body, design: .monospaced))
+                                        .textSelection(.enabled)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(12)
+                                        .background(Color(NSColor.controlBackgroundColor))
+                                        .cornerRadius(8)
+                                }
+                            }
+                        }
+                        .padding()
+                    }
+                }
+            }
+            .navigationTitle("邮件头信息")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") {
+                        dismiss()
+                    }
+                }
+            }
+            .frame(minWidth: 600, minHeight: 500)
+        }
+        .task {
+            await loadHeaders()
+        }
+    }
+    
+    private func loadHeaders() async {
+        isLoading = true
+        defer { isLoading = false }
+        
+        guard let account = viewModel.currentAccount,
+              let folderId = message.folderId else {
+            return
+        }
+        
+        // 从 folders 中查找文件夹
+        let folder = viewModel.folders.first(where: { $0.id == folderId })
+        guard let folder = folder else {
+            rawHeaders = "无法找到邮件所在文件夹"
+            return
+        }
+        
+        do {
+            let rawData = try await EmailService.shared.fetchRawMessage(
+                account: account,
+                folder: folder,
+                message: message
+            )
+            
+            // 解析邮件头（邮件头通常在第一个空行之前）
+            if let rawString = String(data: rawData, encoding: .utf8) ??
+                              String(data: rawData, encoding: .isoLatin1) {
+                let components = rawString.components(separatedBy: "\n\n")
+                if let headers = components.first {
+                    rawHeaders = headers
+                } else {
+                    rawHeaders = rawString
+                }
+            } else {
+                rawHeaders = "无法解析原始邮件头（编码问题）"
+            }
+        } catch {
+            rawHeaders = "加载失败: \(error.localizedDescription)"
+        }
+    }
+    
+    private func formatFullDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .full
+        formatter.timeStyle = .full
+        formatter.locale = Locale(identifier: "zh_CN")
+        return formatter.string(from: date)
+    }
+}
+
+struct SectionView<Content: View>: View {
+    let title: String
+    let content: Content
+    
+    init(title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(.primary)
+            
+            VStack(alignment: .leading, spacing: 6) {
+                content
+            }
+            .padding(12)
+            .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+            .cornerRadius(8)
+        }
+    }
+}
+
+struct InfoRow: View {
+    let label: String
+    let value: String
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(label + ":")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .frame(width: 100, alignment: .trailing)
+            
+            Text(value)
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 }
 

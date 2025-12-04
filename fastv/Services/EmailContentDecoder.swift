@@ -65,6 +65,98 @@ enum EmailContentDecoder {
         return decoded
     }
     
+    /// 尝试自动解码可能是 base64 编码的文本（用于显示时的备用解码）
+    /// 性能优化：只在必要时解码（快速检查是否已包含中文字符或明显不是 base64）
+    nonisolated static func tryDecodeBase64TextIfNeeded(_ text: String) -> String {
+        // 快速检查：如果文本很短，不需要解码
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 20 else { return text }
+        
+        // 快速检查：如果包含中文字符，很可能已经解码过了，直接返回
+        let quickCheckSize = min(100, trimmed.count)
+        let quickCheck = String(trimmed.prefix(quickCheckSize))
+        if quickCheck.unicodeScalars.contains(where: { (0x4E00...0x9FFF).contains($0.value) }) {
+            return text
+        }
+        
+        // 快速检查：如果包含明显的非 base64 字符（如常见标点），很可能不是 base64
+        // 使用 Unicode 标量值来避免字符串中的引号问题
+        let commonPunctuationChars: [Unicode.Scalar] = [
+            "\u{FF0C}", // ，
+            "\u{3002}", // 。
+            "\u{FF01}", // ！
+            "\u{FF1F}", // ？
+            "\u{FF1B}", // ；
+            "\u{FF1A}", // ：
+            "\u{3001}", // 、
+            "\u{201C}", // "
+            "\u{201D}", // "
+            "\u{2018}", // '
+            "\u{2019}", // '
+            "\u{FF08}", // （
+            "\u{FF09}", // ）
+            "\u{3010}", // 【
+            "\u{3011}", // 】
+            "\u{300A}", // 《
+            "\u{300B}"  // 》
+        ]
+        let commonPunctuation = CharacterSet(commonPunctuationChars)
+        if quickCheck.unicodeScalars.contains(where: { commonPunctuation.contains($0) }) {
+            return text
+        }
+        
+        // 如果快速检查通过，才进行完整的 base64 检测和解码
+        return tryDecodeBase64Text(text)
+    }
+    
+    /// 尝试自动解码可能是 base64 编码的文本（用于显示时的备用解码）
+    /// 性能优化：只检查前 1024 个字符来判断是否是 base64，避免处理大文本
+    nonisolated static func tryDecodeBase64Text(_ text: String) -> String {
+        // 快速检查：如果文本很短或已经包含中文字符，很可能不是 base64
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 20 else { return text }
+        
+        // 快速检查：如果包含中文字符，很可能已经解码过了
+        let sampleSize = min(200, trimmed.count)
+        let sample = String(trimmed.prefix(sampleSize))
+        if sample.unicodeScalars.contains(where: { (0x4E00...0x9FFF).contains($0.value) }) {
+            return text
+        }
+        
+        // 只检查前 1024 个字符来判断是否是 base64（性能优化）
+        let checkSize = min(1024, trimmed.count)
+        let checkText = String(trimmed.prefix(checkSize))
+        
+        // 先尝试快速检测是否是 base64
+        if isLikelyBase64Fast(checkText) {
+            let normalized = trimmed.replacingOccurrences(of: "\n", with: "")
+                .replacingOccurrences(of: "\r", with: "")
+                .replacingOccurrences(of: " ", with: "")
+            
+            // 只解码前 2048 个字符来测试编码（性能优化）
+            let decodeSampleSize = min(2048, normalized.count)
+            let decodeSample = String(normalized.prefix(decodeSampleSize))
+            
+            // 尝试多种字符编码，优先尝试 GBK（因为很多中文邮件使用 GBK）
+            let charsets = ["gbk", "gb2312", "gb18030", "utf-8", "big5", "iso-8859-1"]
+            for charset in charsets {
+                if let decodedSample = decodeBase64(decodeSample, charset: charset), !decodedSample.isEmpty {
+                    // 只验证前 512 个字符（性能优化）
+                    let validationSize = min(512, decodedSample.count)
+                    let validationText = String(decodedSample.prefix(validationSize))
+                    if isValidDecodedTextFast(validationText) {
+                        // 验证通过，解码完整文本
+                        if let decoded = decodeBase64(normalized, charset: charset), !decoded.isEmpty {
+                            return decoded
+                        }
+                    }
+                }
+            }
+        }
+        
+        return text
+    }
+    
     /// 解析 MIME 邮件正文，返回纯文本与 HTML
     nonisolated static func parseBody(data: Data) -> EmailBodyContent {
         guard var raw = String(data: data, encoding: .utf8) ??
@@ -218,7 +310,27 @@ enum EmailContentDecoder {
         if let encoding {
             switch encoding {
             case "base64":
-                return decodeBase64(normalized, charset: charset) ?? trimmed
+                // 优先使用邮件头中指定的编码
+                if let decoded = decodeBase64(normalized, charset: charset) {
+                    // 快速验证解码结果（只检查前 512 字符）
+                    let validationSize = min(512, decoded.count)
+                    let validationText = String(decoded.prefix(validationSize))
+                    if isValidDecodedTextFast(validationText) {
+                        return decoded
+                    }
+                }
+                // 如果指定编码失败，尝试其他编码（但优先使用指定的）
+                let fallbackCharsets = ["utf-8", "gbk", "gb2312", "gb18030", charset]
+                for testCharset in fallbackCharsets {
+                    if let decoded = decodeBase64(normalized, charset: testCharset), !decoded.isEmpty {
+                        let validationSize = min(512, decoded.count)
+                        let validationText = String(decoded.prefix(validationSize))
+                        if isValidDecodedTextFast(validationText) {
+                            return decoded
+                        }
+                    }
+                }
+                break
             case "quoted-printable":
                 return decodeQuotedPrintable(trimmed, charset: charset) ?? trimmed
             default:
@@ -226,21 +338,300 @@ enum EmailContentDecoder {
             }
         }
         
-        // 默认按照 charset 解析
-        let encoding = stringEncoding(for: charset)
-        if let data = trimmed.data(using: .isoLatin1),
-           let decoded = String(data: data, encoding: encoding) {
-            return decoded
+        // 自动检测：如果内容看起来像 base64 编码，尝试解码
+        // 只检查前 1024 字符来判断（性能优化）
+        let checkSize = min(1024, trimmed.count)
+        let checkText = String(trimmed.prefix(checkSize))
+        
+        if isLikelyBase64Fast(checkText) {
+            // 尝试多种字符编码，优先使用邮件头中指定的编码
+            let charsets = [charset, "utf-8", "gbk", "gb2312", "gb18030", "big5", "iso-8859-1"]
+            for testCharset in charsets {
+                if let decoded = decodeBase64(normalized, charset: testCharset), !decoded.isEmpty {
+                    // 只验证前 512 字符（性能优化）
+                    let validationSize = min(512, decoded.count)
+                    let validationText = String(decoded.prefix(validationSize))
+                    if isValidDecodedTextFast(validationText) {
+                        return decoded
+                    }
+                }
+            }
         }
+        
+        // 尝试多种字符编码自动检测（用于解决乱码问题）
+        // 性能优化：只检查前 2048 字节来测试编码
+        let testSize = min(2048, trimmed.count)
+        let testText = String(trimmed.prefix(testSize))
+        let testCharsets = [charset, "utf-8", "gbk", "gb2312", "gb18030", "big5", "iso-8859-1", "windows-1252"]
+        var bestResult: (text: String, score: Double)? = nil
+        
+        for testCharset in testCharsets {
+            let stringEncoding = stringEncoding(for: testCharset)
+            // 先尝试将字符串作为 ISO-8859-1 字节序列，然后用目标编码解析
+            if let data = testText.data(using: .isoLatin1),
+               let decoded = String(data: data, encoding: stringEncoding),
+               !decoded.isEmpty {
+                // 只计算前 512 字符的分数（性能优化）
+                let scoreSize = min(512, decoded.count)
+                let scoreText = String(decoded.prefix(scoreSize))
+                let score = calculateDecodingScore(scoreText)
+                if let currentBest = bestResult {
+                    if score > currentBest.score {
+                        // 如果这个编码更好，解码完整文本
+                        if let fullData = trimmed.data(using: .isoLatin1),
+                           let fullDecoded = String(data: fullData, encoding: stringEncoding) {
+                            bestResult = (fullDecoded, score)
+                        }
+                    }
+                } else {
+                    // 解码完整文本
+                    if let fullData = trimmed.data(using: .isoLatin1),
+                       let fullDecoded = String(data: fullData, encoding: stringEncoding) {
+                        bestResult = (fullDecoded, score)
+                    }
+                }
+            }
+        }
+        
+        // 如果找到了合理的解码结果，返回它
+        if let best = bestResult, best.score > 0.3 {
+            return best.text
+        }
+        
+        // 如果所有编码都失败，返回原始文本
         return trimmed
+    }
+    
+    /// 计算解码结果的合理性分数（0.0 - 1.0）
+    /// 性能优化：只检查前 N 个字符来计算分数
+    nonisolated private static func calculateDecodingScore(_ text: String) -> Double {
+        guard !text.isEmpty else { return 0.0 }
+        
+        // 只检查前 512 个字符来计算分数（性能优化）
+        let checkSize = min(512, text.count)
+        let checkText = String(text.prefix(checkSize))
+        
+        var printableCount = 0
+        var chineseCharCount = 0
+        var asciiCount = 0
+        var controlCharCount = 0
+        
+        let printableChars = CharacterSet.alphanumerics
+            .union(.punctuationCharacters)
+            .union(.symbols)
+            .union(.whitespacesAndNewlines)
+        
+        for scalar in checkText.unicodeScalars {
+            if printableChars.contains(scalar) {
+                printableCount += 1
+                
+                // 检测中文字符（CJK统一汉字）
+                if (0x4E00...0x9FFF).contains(scalar.value) ||
+                   (0x3400...0x4DBF).contains(scalar.value) ||
+                   (0x20000...0x2A6DF).contains(scalar.value) {
+                    chineseCharCount += 1
+                }
+                
+                // 检测 ASCII 字符
+                if scalar.value < 128 {
+                    asciiCount += 1
+                }
+            } else if CharacterSet.controlCharacters.contains(scalar) {
+                controlCharCount += 1
+            }
+        }
+        
+        let total = checkText.unicodeScalars.count
+        guard total > 0 else { return 0.0 }
+        
+        let printableRatio = Double(printableCount) / Double(total)
+        let chineseRatio = Double(chineseCharCount) / Double(total)
+        let controlRatio = Double(controlCharCount) / Double(total)
+        
+        // 基础分数：可打印字符占比
+        var score = printableRatio
+        
+        // 如果有中文字符，增加分数（说明可能是中文编码）
+        if chineseCharCount > 0 {
+            score += chineseRatio * 0.3
+        }
+        
+        // 控制字符过多会降低分数
+        if controlRatio > 0.1 {
+            score *= (1.0 - controlRatio)
+        }
+        
+        // 如果全是 ASCII 但文本很长，可能是编码错误，稍微降低分数
+        if asciiCount == printableCount && total > 100 && chineseCharCount == 0 {
+            score *= 0.8
+        }
+        
+        return min(score, 1.0)
     }
     
     nonisolated private static func decodeBase64(_ value: String, charset: String) -> String? {
         let sanitized = value.replacingOccurrences(of: "\r", with: "")
             .replacingOccurrences(of: "\n", with: "")
-        guard let data = Data(base64Encoded: sanitized) else { return nil }
+            .replacingOccurrences(of: " ", with: "")
+        guard let data = Data(base64Encoded: sanitized, options: .ignoreUnknownCharacters) else { return nil }
         let encoding = stringEncoding(for: charset)
         return String(data: data, encoding: encoding)
+    }
+    
+    /// 检测字符串是否可能是 base64 编码（完整检查）
+    nonisolated private static func isLikelyBase64(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 20 else { return false }
+        
+        // Base64 字符集：A-Z, a-z, 0-9, +, /, = (填充)
+        let base64Chars = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=")
+        let whitespace = CharacterSet.whitespacesAndNewlines
+        
+        // 移除空白字符后检查
+        let cleaned = trimmed.components(separatedBy: whitespace).joined()
+        guard cleaned.count >= 20 else { return false }
+        
+        // 检查是否主要由 base64 字符组成（至少 75%）
+        let base64Only = cleaned.unicodeScalars.filter { base64Chars.contains($0) }
+        let ratio = Double(base64Only.count) / Double(max(cleaned.unicodeScalars.count, 1))
+        
+        return ratio >= 0.75 && cleaned.count >= 20
+    }
+    
+    /// 快速检测字符串是否可能是 base64 编码（只检查前 N 个字符，性能优化）
+    nonisolated private static func isLikelyBase64Fast(_ text: String) -> Bool {
+        guard text.count >= 20 else { return false }
+        
+        // Base64 字符集
+        let base64Chars = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=")
+        let whitespace = CharacterSet.whitespacesAndNewlines
+        
+        // 只检查前 512 个字符（性能优化）
+        let checkSize = min(512, text.count)
+        let checkText = String(text.prefix(checkSize))
+        
+        // 移除空白字符后检查
+        let cleaned = checkText.components(separatedBy: whitespace).joined()
+        guard cleaned.count >= 20 else { return false }
+        
+        // 检查是否主要由 base64 字符组成（至少 75%）
+        var base64Count = 0
+        var totalCount = 0
+        for scalar in cleaned.unicodeScalars {
+            totalCount += 1
+            if base64Chars.contains(scalar) {
+                base64Count += 1
+            }
+        }
+        
+        guard totalCount > 0 else { return false }
+        let ratio = Double(base64Count) / Double(totalCount)
+        return ratio >= 0.75 && cleaned.count >= 20
+    }
+    
+    /// 验证解码后的文本是否合理（包含可打印字符，不是乱码）
+    nonisolated private static func isValidDecodedText(_ text: String) -> Bool {
+        guard !text.isEmpty else { return false }
+        
+        // 检查是否包含足够的可打印字符（至少 40%，降低阈值以支持更多情况）
+        let printableChars = CharacterSet.alphanumerics
+            .union(.punctuationCharacters)
+            .union(.symbols)
+            .union(.whitespacesAndNewlines)
+        let whitespaceChars = CharacterSet.whitespacesAndNewlines
+        var printableCount = 0
+        var chineseCharCount = 0
+        var controlCharCount = 0
+        
+        for scalar in text.unicodeScalars {
+            if printableChars.contains(scalar) || whitespaceChars.contains(scalar) {
+                printableCount += 1
+                // 检测中文字符（CJK统一汉字）
+                if (0x4E00...0x9FFF).contains(scalar.value) ||
+                   (0x3400...0x4DBF).contains(scalar.value) ||
+                   (0x20000...0x2A6DF).contains(scalar.value) {
+                    chineseCharCount += 1
+                }
+            } else if CharacterSet.controlCharacters.contains(scalar) && scalar != "\n" && scalar != "\r" && scalar != "\t" {
+                controlCharCount += 1
+            }
+        }
+        
+        let total = text.unicodeScalars.count
+        let printableRatio = Double(printableCount) / Double(max(total, 1))
+        let controlRatio = Double(controlCharCount) / Double(max(total, 1))
+        
+        // 如果可打印字符占比超过 40%，且控制字符占比不超过 20%，认为是有效文本
+        if printableRatio >= 0.4 && controlRatio <= 0.2 {
+            return true
+        }
+        
+        // 如果包含中文字符，即使可打印字符比例稍低也认为是有效的（中文邮件常见）
+        if chineseCharCount > 0 && printableRatio >= 0.3 && controlRatio <= 0.25 {
+            return true
+        }
+        
+        // 如果文本很短但全是可打印字符，也认为是有效的
+        if text.count <= 100 && printableCount == total {
+            return true
+        }
+        
+        return false
+    }
+    
+    /// 快速验证解码后的文本是否合理（只检查前 N 个字符，性能优化）
+    nonisolated private static func isValidDecodedTextFast(_ text: String) -> Bool {
+        guard !text.isEmpty else { return false }
+        
+        // 只检查前 512 个字符（性能优化）
+        let checkSize = min(512, text.count)
+        let checkText = String(text.prefix(checkSize))
+        
+        let printableChars = CharacterSet.alphanumerics
+            .union(.punctuationCharacters)
+            .union(.symbols)
+            .union(.whitespacesAndNewlines)
+        let whitespaceChars = CharacterSet.whitespacesAndNewlines
+        var printableCount = 0
+        var chineseCharCount = 0
+        var controlCharCount = 0
+        
+        for scalar in checkText.unicodeScalars {
+            if printableChars.contains(scalar) || whitespaceChars.contains(scalar) {
+                printableCount += 1
+                // 检测中文字符（CJK统一汉字）
+                if (0x4E00...0x9FFF).contains(scalar.value) ||
+                   (0x3400...0x4DBF).contains(scalar.value) ||
+                   (0x20000...0x2A6DF).contains(scalar.value) {
+                    chineseCharCount += 1
+                }
+            } else if CharacterSet.controlCharacters.contains(scalar) && scalar != "\n" && scalar != "\r" && scalar != "\t" {
+                controlCharCount += 1
+            }
+        }
+        
+        let total = checkText.unicodeScalars.count
+        guard total > 0 else { return false }
+        
+        let printableRatio = Double(printableCount) / Double(total)
+        let controlRatio = Double(controlCharCount) / Double(total)
+        
+        // 如果可打印字符占比超过 40%，且控制字符占比不超过 20%，认为是有效文本
+        if printableRatio >= 0.4 && controlRatio <= 0.2 {
+            return true
+        }
+        
+        // 如果包含中文字符，即使可打印字符比例稍低也认为是有效的（中文邮件常见）
+        if chineseCharCount > 0 && printableRatio >= 0.3 && controlRatio <= 0.25 {
+            return true
+        }
+        
+        // 如果文本很短但全是可打印字符，也认为是有效的
+        if checkText.count <= 100 && printableCount == total {
+            return true
+        }
+        
+        return false
     }
     
     nonisolated private static func decodeQuotedPrintable(_ value: String, charset: String) -> String? {
