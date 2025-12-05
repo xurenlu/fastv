@@ -471,140 +471,8 @@ struct AIProfileEditView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    TextField("服务名称", text: $name)
-                        .textFieldStyle(.roundedBorder)
-                    
-                    Picker("协议类型", selection: $protocolType) {
-                        ForEach(AIProtocolType.allCases, id: \.self) { type in
-                            Text(type.displayName).tag(type)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .onChange(of: protocolType) { oldValue, newValue in
-                        // 当协议类型改变时，更新 endpoint 和 model
-                        if endpoint.isEmpty || endpoint == oldValue.defaultEndpoint {
-                            endpoint = newValue.defaultEndpoint ?? ""
-                        }
-                        if defaultModel.isEmpty || !newValue.recommendedModels.contains(defaultModel) {
-                            defaultModel = newValue.recommendedModels.first ?? ""
-                        }
-                    }
-                } header: {
-                    Text("基本信息")
-                        .font(.headline)
-                        .padding(.top, 8)
-                } footer: {
-                    Text("为这个服务配置起一个易于识别的名称")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                
-                Section {
-                    if protocolType.endpointEditable {
-                        TextField("API Endpoint", text: $endpoint, prompt: Text("https://api.example.com/v1"))
-                            .textFieldStyle(.roundedBorder)
-                    } else {
-                        HStack {
-                            Text("API Endpoint")
-                                .foregroundStyle(.primary)
-                            Spacer()
-                            Text(endpoint.isEmpty ? (protocolType.defaultEndpoint ?? "") : endpoint)
-                                .foregroundStyle(.secondary)
-                                .font(.caption)
-                                .textSelection(.enabled)
-                        }
-                    }
-                    
-                    if protocolType.requiresAPIKey {
-                        SecureField("API Key", text: $apiKey, prompt: Text("输入您的 API Key"))
-                            .textFieldStyle(.roundedBorder)
-                        
-                        // 申请链接按钮（仅阿里云显示）
-                        if protocolType == .dashScope {
-                            Button(action: {
-                                let aliyunAPIKeyURL = "https://bailian.console.aliyun.com/?accounttraceid=ecf52b9459854c13be278b89515acd5ekwwf&tab=model#/api-key"
-                                if let url = URL(string: aliyunAPIKeyURL) {
-                                    NSWorkspace.shared.open(url)
-                                }
-                            }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "link")
-                                        .font(.caption)
-                                    Text("申请API Key")
-                                        .font(.caption)
-                                }
-                                .foregroundStyle(.blue)
-                            }
-                            .buttonStyle(.plain)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-                    
-                    TextField("默认模型", text: $defaultModel, prompt: Text("选择或输入模型名称"))
-                        .textFieldStyle(.roundedBorder)
-                    
-                    // 推荐模型快捷选择
-                    if !protocolType.recommendedModels.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("推荐模型")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(protocolType.recommendedModels, id: \.self) { model in
-                                        Button(action: {
-                                            defaultModel = model
-                                        }) {
-                                            Text(model)
-                                                .font(.caption)
-                                                .padding(.horizontal, 12)
-                                                .padding(.vertical, 6)
-                                                .background(
-                                                    Capsule()
-                                                        .fill(defaultModel == model ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.1))
-                                                )
-                                                .foregroundStyle(defaultModel == model ? Color.accentColor : .primary)
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                                .padding(.vertical, 2)
-                            }
-                        }
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("超时时间")
-                                .foregroundStyle(.primary)
-                            Spacer()
-                            Text("\(String(format: "%.1f", timeout)) 秒")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
-                        }
-                        Slider(value: $timeout, in: 2.0...60.0, step: 0.5)
-                    }
-                } header: {
-                    Text("连接配置")
-                        .font(.headline)
-                        .padding(.top, 8)
-                } footer: {
-                    if protocolType == .someIM {
-                        Text("Some.IM 使用固定的 API Endpoint，只需填写 API Key。")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else if protocolType == .gemini {
-                        Text("Gemini 默认使用官方 Endpoint，可以自定义修改。")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("配置 API 连接参数，确保服务可以正常访问。")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                basicInfoSection
+                connectionConfigSection
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
@@ -616,35 +484,7 @@ struct AIProfileEditView: View {
                         .keyboardShortcut(.cancelAction)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") {
-                        let effectiveEndpoint = protocolType.endpointEditable ? endpoint : (protocolType.defaultEndpoint ?? "")
-                        let profileId = profile?.id ?? UUID()
-                        
-                        print("🔍 [AIProfileEditView] 保存按钮点击")
-                        print("  - 是编辑模式: \(profile != nil)")
-                        print("  - Profile ID: \(profileId)")
-                        print("  - 原始 Profile ID: \(profile?.id.uuidString ?? "无")")
-                        
-                        let newProfile = AIServiceProfile(
-                            id: profileId,
-                            name: name.isEmpty ? protocolType.displayName : name,
-                            protocolType: protocolType,
-                            endpoint: effectiveEndpoint,
-                            apiKey: apiKey,
-                            defaultModel: defaultModel,
-                            timeout: timeout,
-                            isDefault: profile?.isDefault ?? false,
-                            createdAt: profile?.createdAt ?? Date(),
-                            updatedAt: Date()
-                        )
-                        
-                        print("  - 新 Profile ID: \(newProfile.id)")
-                        print("  - Profile Name: \(newProfile.name)")
-                        
-                        onSave(newProfile)
-                    }
-                    .disabled(name.isEmpty || (protocolType.requiresAPIKey && apiKey.isEmpty))
-                    .keyboardShortcut(.defaultAction)
+                    saveButton
                 }
             }
         }
@@ -658,6 +498,225 @@ struct AIProfileEditView: View {
                 defaultModel = protocolType.recommendedModels.first ?? ""
             }
         }
+    }
+    
+    // MARK: - 基本信息 Section
+    @ViewBuilder
+    private var basicInfoSection: some View {
+        Section {
+            TextField("服务名称", text: $name)
+                .textFieldStyle(.roundedBorder)
+            
+            Picker("协议类型", selection: $protocolType) {
+                ForEach(AIProtocolType.allCases, id: \.self) { type in
+                    Text(type.displayName).tag(type)
+                }
+            }
+            .pickerStyle(.menu)
+            .onChange(of: protocolType) { oldValue, newValue in
+                // 当协议类型改变时，更新 endpoint 和 model
+                if endpoint.isEmpty || endpoint == oldValue.defaultEndpoint {
+                    endpoint = newValue.defaultEndpoint ?? ""
+                }
+                if defaultModel.isEmpty || !newValue.recommendedModels.contains(defaultModel) {
+                    defaultModel = newValue.recommendedModels.first ?? ""
+                }
+            }
+        } header: {
+            Text("基本信息")
+                .font(.headline)
+                .padding(.top, 8)
+        } footer: {
+            Text("为这个服务配置起一个易于识别的名称")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+    
+    // MARK: - 连接配置 Section
+    @ViewBuilder
+    private var connectionConfigSection: some View {
+        Section {
+            endpointField
+            apiKeyField
+            modelField
+            recommendedModelsView
+            timeoutSlider
+        } header: {
+            Text("连接配置")
+                .font(.headline)
+                .padding(.top, 8)
+        } footer: {
+            connectionFooterText
+        }
+    }
+    
+    // MARK: - Endpoint 字段
+    @ViewBuilder
+    private var endpointField: some View {
+        if protocolType.endpointEditable {
+            TextField("API Endpoint", text: $endpoint, prompt: Text("https://api.example.com/v1"))
+                .textFieldStyle(.roundedBorder)
+        } else {
+            HStack {
+                Text("API Endpoint")
+                    .foregroundStyle(.primary)
+                Spacer()
+                let displayEndpoint = endpoint.isEmpty ? (protocolType.defaultEndpoint ?? "") : endpoint
+                Text(displayEndpoint)
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+                    .textSelection(.enabled)
+            }
+        }
+    }
+    
+    // MARK: - API Key 字段
+    @ViewBuilder
+    private var apiKeyField: some View {
+        if protocolType.requiresAPIKey {
+            SecureField("API Key", text: $apiKey, prompt: Text("输入您的 API Key"))
+                .textFieldStyle(.roundedBorder)
+            
+            // 申请链接按钮（仅阿里云显示）
+            if protocolType == .dashScope {
+                Button(action: openAliyunAPIKeyPage) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "link")
+                            .font(.caption)
+                        Text("申请API Key")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(.blue)
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+    
+    private func openAliyunAPIKeyPage() {
+        let aliyunAPIKeyURL = "https://bailian.console.aliyun.com/?accounttraceid=ecf52b9459854c13be278b89515acd5ekwwf&tab=model#/api-key"
+        if let url = URL(string: aliyunAPIKeyURL) {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    
+    // MARK: - 模型字段
+    @ViewBuilder
+    private var modelField: some View {
+        TextField("默认模型", text: $defaultModel, prompt: Text("选择或输入模型名称"))
+            .textFieldStyle(.roundedBorder)
+    }
+    
+    // MARK: - 推荐模型选择
+    @ViewBuilder
+    private var recommendedModelsView: some View {
+        if !protocolType.recommendedModels.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("推荐模型")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(protocolType.recommendedModels, id: \.self) { model in
+                            modelButton(for: model)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func modelButton(for model: String) -> some View {
+        let isSelected = defaultModel == model
+        Button(action: {
+            defaultModel = model
+        }) {
+            Text(model)
+                .font(.caption)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(isSelected ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.1))
+                )
+                .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+        }
+        .buttonStyle(.plain)
+    }
+    
+    // MARK: - 超时时间滑块
+    @ViewBuilder
+    private var timeoutSlider: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("超时时间")
+                    .foregroundStyle(.primary)
+                Spacer()
+                Text(String(format: "%.1f 秒", timeout))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+            Slider(value: $timeout, in: 2.0...60.0, step: 0.5)
+        }
+    }
+    
+    // MARK: - Footer 文本
+    @ViewBuilder
+    private var connectionFooterText: some View {
+        if protocolType == .someIM {
+            Text("Some.IM 使用固定的 API Endpoint，只需填写 API Key。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else if protocolType == .gemini {
+            Text("Gemini 默认使用官方 Endpoint，可以自定义修改。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else {
+            Text("配置 API 连接参数，确保服务可以正常访问。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+    
+    // MARK: - 保存按钮
+    @ViewBuilder
+    private var saveButton: some View {
+        Button("保存", action: saveProfile)
+            .disabled(name.isEmpty || (protocolType.requiresAPIKey && apiKey.isEmpty))
+            .keyboardShortcut(.defaultAction)
+    }
+    
+    private func saveProfile() {
+        let effectiveEndpoint = protocolType.endpointEditable ? endpoint : (protocolType.defaultEndpoint ?? "")
+        let profileId = profile?.id ?? UUID()
+        
+        print("🔍 [AIProfileEditView] 保存按钮点击")
+        print("  - 是编辑模式: \(profile != nil)")
+        print("  - Profile ID: \(profileId)")
+        print("  - 原始 Profile ID: \(profile?.id.uuidString ?? "无")")
+        
+        let newProfile = AIServiceProfile(
+            id: profileId,
+            name: name.isEmpty ? protocolType.displayName : name,
+            protocolType: protocolType,
+            endpoint: effectiveEndpoint,
+            apiKey: apiKey,
+            defaultModel: defaultModel,
+            timeout: timeout,
+            isDefault: profile?.isDefault ?? false,
+            createdAt: profile?.createdAt ?? Date(),
+            updatedAt: Date()
+        )
+        
+        print("  - 新 Profile ID: \(newProfile.id)")
+        print("  - Profile Name: \(newProfile.name)")
+        
+        onSave(newProfile)
     }
 }
 

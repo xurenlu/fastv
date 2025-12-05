@@ -755,7 +755,7 @@ struct ServiceOptionButton: View {
                     // 图标
                     Image(systemName: protocolType.iconName)
                         .font(.system(size: 24))
-                        .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                        .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
                     
                     // 选中标记
                     if isSelected {
@@ -765,7 +765,7 @@ struct ServiceOptionButton: View {
                                 Spacer()
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 16))
-                                    .foregroundStyle(Color.accentColor)
+                                    .foregroundStyle(.tint)
                                     .background {
                                         Circle()
                                             .fill(Color.white)

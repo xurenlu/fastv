@@ -125,7 +125,8 @@ struct EmailView: View {
                     }
                 }
                 .pickerStyle(.menu)
-                .padding()
+                .padding(.horizontal, 12)
+                .padding(.vertical, 12)
             } else {
                 // 没有账号时的提示
                 VStack(spacing: 8) {
@@ -160,7 +161,7 @@ struct EmailView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 .padding()
             }
         }
@@ -170,127 +171,167 @@ struct EmailView: View {
     private var folderListContent: some View {
         let allFolders = viewModel.folders.filter { !$0.isGarbled }
         
-        // 根据是否显示空文件夹来过滤
-        let visibleFolders = viewModel.showEmptyFolders ? allFolders : allFolders.filter { folder in
+        // 分离非空和空文件夹
+        let nonEmptyFolders = allFolders.filter { folder in
             let messageCount = EmailStore.shared.getMessageCount(for: folder.id)
             return messageCount > 0
         }
         
-        // 计算空文件夹数量
-        let emptyFoldersCount = allFolders.filter { folder in
+        let emptyFolders = allFolders.filter { folder in
             let messageCount = EmailStore.shared.getMessageCount(for: folder.id)
             return messageCount == 0
-        }.count
+        }
         
-        if visibleFolders.isEmpty && emptyFoldersCount == 0 {
-                    // 文件夹列表为空时的提示
-                    VStack(spacing: 8) {
-                        if viewModel.isLoadingFolders {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                            Text("正在加载文件夹...")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            Image(systemName: "folder.badge.questionmark")
-                                .font(.title2)
-                                .foregroundStyle(.secondary)
-                            Text("没有文件夹")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Button("刷新") {
-                                if let account = viewModel.currentAccount {
-                                    Task {
-                                        await viewModel.loadFolders(account: account)
-                                    }
-                                }
+        if nonEmptyFolders.isEmpty && emptyFolders.isEmpty {
+            // 文件夹列表为空时的提示
+            VStack(spacing: 8) {
+                if viewModel.isLoadingFolders {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("正在加载文件夹...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Image(systemName: "folder.badge.questionmark")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                    Text("没有文件夹")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Button("刷新") {
+                        if let account = viewModel.currentAccount {
+                            Task {
+                                await viewModel.loadFolders(account: account)
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
                         }
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding()
-                } else {
-                    let folderBinding = Binding<UUID?>(
-                        get: { viewModel.selectedFolderId },
-                        set: { folderId in
-                            // 立即执行，不需要延迟（ViewModel已经优化为零卡顿）
-                            if let folderId = folderId,
-                               let folder = visibleFolders.first(where: { $0.id == folderId }) {
-                                viewModel.selectFolder(folder)
-                            } else {
-                                viewModel.showAllMessages()
-                            }
-                        }
-                    )
-                    
-                    List(selection: folderBinding) {
-                        // 写邮件按钮
-                        Button(action: {
-                            viewModel.initComposeDraft()
-                            composeWindowType = .new
-                            showComposeWindow = true
-                        }) {
-                            HStack {
-                                Image(systemName: "square.and.pencil")
-                                    .foregroundStyle(.blue)
-                                    .font(.system(size: 16, weight: .medium))
-                                Text("写邮件")
-                                    .foregroundStyle(.primary)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 4)
-                        }
-                        .buttonStyle(.plain)
-                        .contentShape(Rectangle())
-                        
-                        Button(action: {
-                            // 显式调用 showAllMessages，确保点击总是有响应
-                            viewModel.showAllMessages()
-                        }) {
-                            HStack {
-                                Image(systemName: "tray.full")
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 20)
-                                Text("所有邮件")
-                                Spacer()
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .contentShape(Rectangle())
-                        .tag(nil as UUID?)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding()
+        } else {
+            let folderBinding = Binding<UUID?>(
+                get: { viewModel.selectedFolderId },
+                set: { folderId in
+                    // 立即执行，不需要延迟（ViewModel已经优化为零卡顿）
+                    if let folderId = folderId,
+                       let folder = allFolders.first(where: { $0.id == folderId }) {
+                        viewModel.selectFolder(folder)
+                    } else {
+                        viewModel.showAllMessages()
+                    }
+                }
+            )
+            
+            List(selection: folderBinding) {
+                // 写邮件按钮
+                Button(action: {
+                    viewModel.initComposeDraft()
+                    composeWindowType = .new
+                    showComposeWindow = true
+                }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "square.and.pencil")
+                            .foregroundStyle(.blue)
+                            .font(.system(size: 16, weight: .medium))
+                            .imageScale(.medium)
+                            .frame(width: 20)
+                        Text("写邮件")
+                            .font(.system(size: 14, weight: .medium, design: .default))
+                            .foregroundStyle(.primary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                
+                Divider()
+                    .padding(.vertical, 4)
+                
+                // "所有邮件" 选项 - 默认选中
+                HStack(spacing: 12) {
+                    Image(systemName: viewModel.selectedFolderId == nil ? "tray.fill" : "tray")
+                        .font(.system(size: 14, weight: viewModel.selectedFolderId == nil ? .semibold : .medium))
+                        .imageScale(.medium)
+                        .foregroundStyle(viewModel.selectedFolderId == nil ? Color.accentColor : Color.secondary)
+                        .frame(width: 20)
+                    Text("所有邮件")
+                        .font(.system(size: 14, weight: viewModel.selectedFolderId == nil ? .semibold : .regular, design: .default))
                         .foregroundStyle(viewModel.selectedFolderId == nil ? .primary : .secondary)
-                        
-                        // 显示/隐藏空文件夹按钮
-                        if emptyFoldersCount > 0 {
-                            Button(action: {
-                                withAnimation {
-                                    viewModel.showEmptyFolders.toggle()
-                                }
-                            }) {
-                                HStack {
-                                    Image(systemName: viewModel.showEmptyFolders ? "chevron.down" : "chevron.right")
-                                        .foregroundStyle(.secondary)
-                                        .font(.caption)
-                                        .frame(width: 20)
-                                    Text("空文件夹 (\(emptyFoldersCount))")
-                                        .foregroundStyle(.secondary)
-                                    Spacer()
-                                }
-                                .padding(.vertical, 4)
-                            }
-                            .buttonStyle(.plain)
-                            .contentShape(Rectangle())
-                        }
-                        
-                        ForEach(visibleFolders) { folder in
+                    Spacer()
+                    // 显示总邮件数
+                    if !viewModel.messages.isEmpty {
+                        Text("\(viewModel.messages.count)")
+                            .font(.caption)
+                            .foregroundStyle(viewModel.selectedFolderId == nil ? .secondary : .tertiary)
+                    }
+                }
+                .padding(.vertical, 4)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    viewModel.showAllMessages()
+                }
+                .tag(nil as UUID?)
+                .listRowBackground(
+                    viewModel.selectedFolderId == nil ? 
+                        Color.accentColor.opacity(0.15) : Color.clear
+                )
+                
+                // 非空文件夹列表
+                if !nonEmptyFolders.isEmpty {
+                    Section(header: 
+                        Text("文件夹")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .textCase(nil)
+                            .padding(.top, 8)
+                    ) {
+                        ForEach(nonEmptyFolders) { folder in
                             FolderRow(folder: folder, viewModel: viewModel)
                                 .tag(folder.id)
                         }
                     }
-                    .listStyle(.sidebar)
                 }
+                
+                // 空文件夹折叠区域
+                if !emptyFolders.isEmpty {
+                    Section(header: 
+                        Text("")
+                            .font(.caption)
+                            .padding(.top, 4)
+                    ) {
+                        DisclosureGroup(
+                            isExpanded: $viewModel.showEmptyFolders
+                        ) {
+                            ForEach(emptyFolders) { folder in
+                                FolderRow(folder: folder, viewModel: viewModel, isEmpty: true)
+                                    .tag(folder.id)
+                                    .padding(.leading, 8)
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "folder")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 20)
+                                Text("空文件夹")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                                Text("(\(emptyFolders.count))")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                        .accentColor(.secondary)
+                    }
+                }
+            }
+            .listStyle(.sidebar)
+        }
     }
     
     // MARK: - Message List
@@ -860,6 +901,7 @@ private struct RemoteResourcesBannerView: View {
 struct FolderRow: View {
     let folder: EmailFolder
     let viewModel: EmailViewModel
+    var isEmpty: Bool = false
     @State private var isHovered = false
     
     // 获取实际的邮件数量
@@ -867,18 +909,22 @@ struct FolderRow: View {
         EmailStore.shared.getMessageCount(for: folder.id)
     }
     
-    // 判断是否为空文件夹
-    private var isEmpty: Bool {
-        actualMessageCount == 0
+    // 判断是否选中
+    private var isSelected: Bool {
+        viewModel.selectedFolderId == folder.id
     }
     
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
             Image(systemName: folder.type.icon)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
+                .imageScale(.medium)
+                .foregroundStyle(isEmpty ? Color.secondary.opacity(0.5) : (isSelected ? Color.accentColor : Color.secondary))
                 .frame(width: 20)
             
             Text(folder.displayTitle)
+                .font(.system(size: 14, weight: isSelected ? .semibold : .regular, design: .default))
+                .foregroundStyle(isEmpty ? .tertiary : (isSelected ? .primary : .primary))
             
             Spacer()
             
@@ -888,7 +934,7 @@ struct FolderRow: View {
                 if actualMessageCount > 0 {
                     Text("\(actualMessageCount)")
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(isSelected ? .secondary : .tertiary)
                 }
                 
                 // 未读数量（如果有未读邮件）
@@ -920,6 +966,11 @@ struct FolderRow: View {
                 }
             }
         }
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .listRowBackground(
+            isSelected ? Color.accentColor.opacity(0.15) : Color.clear
+        )
         .onHover { hovering in
             isHovered = hovering
         }
