@@ -38,7 +38,7 @@ struct VideoInfoService {
             var channelCount: Int? = nil
             
             if let formatDescription = formatDescriptions.first {
-                let audioFormatDescription = formatDescription as! CMAudioFormatDescription
+                let audioFormatDescription = formatDescription as CMAudioFormatDescription
                 if let audioStreamBasicDescription = CMAudioFormatDescriptionGetStreamBasicDescription(audioFormatDescription) {
                     sampleRate = Double(audioStreamBasicDescription.pointee.mSampleRate)
                     channelCount = Int(audioStreamBasicDescription.pointee.mChannelsPerFrame)

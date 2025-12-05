@@ -309,14 +309,34 @@ struct IntelView: View {
                                     .foregroundStyle(.secondary)
                                 FlowLayout(spacing: 8) {
                                     ForEach(entry.sources, id: \.self) { source in
-                                        Label(source, systemImage: "tag.fill")
-                                            .font(.caption)
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 4)
-                                            .background {
-                                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                                    .fill(Color.accentColor.opacity(0.2))
+                                        if let url = URL(string: source), (source.hasPrefix("http://") || source.hasPrefix("https://")) {
+                                            // 可点击的URL
+                                            Button(action: {
+                                                NSWorkspace.shared.open(url)
+                                            }) {
+                                                Label(source, systemImage: "link")
+                                                    .font(.caption)
+                                                    .padding(.horizontal, 8)
+                                                    .padding(.vertical, 4)
+                                                    .background {
+                                                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                                            .fill(Color.accentColor.opacity(0.2))
+                                                    }
                                             }
+                                            .buttonStyle(.plain)
+                                            .foregroundStyle(.blue)
+                                            .help("点击打开链接")
+                                        } else {
+                                            // 媒体名称
+                                            Label(source, systemImage: "newspaper.fill")
+                                                .font(.caption)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background {
+                                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                                        .fill(Color.accentColor.opacity(0.2))
+                                                }
+                                        }
                                     }
                                 }
                             }
@@ -534,14 +554,23 @@ struct HistoryIntelCard: View {
             if !entry.sources.isEmpty {
                 FlowLayout(spacing: 6) {
                     ForEach(entry.sources.prefix(3), id: \.self) { source in
-                        Text(source)
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background {
-                                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                    .fill(Color.accentColor.opacity(0.2))
+                        HStack(spacing: 3) {
+                            if source.hasPrefix("http://") || source.hasPrefix("https://") {
+                                Image(systemName: "link")
+                                    .font(.caption2)
+                            } else {
+                                Image(systemName: "newspaper.fill")
+                                    .font(.caption2)
                             }
+                            Text(source.hasPrefix("http") ? "链接" : source)
+                                .font(.caption2)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background {
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .fill(Color.accentColor.opacity(0.2))
+                        }
                     }
                     if entry.sources.count > 3 {
                         Text("+\(entry.sources.count - 3)")
@@ -582,14 +611,23 @@ struct IntelListRow: View {
             if !entry.sources.isEmpty {
                 HStack(spacing: 4) {
                     ForEach(entry.sources.prefix(2), id: \.self) { source in
-                        Text(source)
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background {
-                                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                    .fill(Color.accentColor.opacity(0.2))
+                        HStack(spacing: 3) {
+                            if source.hasPrefix("http://") || source.hasPrefix("https://") {
+                                Image(systemName: "link")
+                                    .font(.caption2)
+                            } else {
+                                Image(systemName: "newspaper.fill")
+                                    .font(.caption2)
                             }
+                            Text(source.hasPrefix("http") ? "链接" : source)
+                                .font(.caption2)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background {
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .fill(Color.accentColor.opacity(0.2))
+                        }
                     }
                     if entry.sources.count > 2 {
                         Text("+\(entry.sources.count - 2)")

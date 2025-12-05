@@ -1,0 +1,19 @@
+# 说话人分离服务依赖
+
+# Web 框架
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# 说话人分离核心库
+pyannote.audio>=3.1.0
+
+# PyTorch（pyannote.audio 依赖）
+# 注意：PyTorch 2.6+ 有 weights_only 兼容性问题
+# 建议使用 2.5.x：pip install 'torch<2.6' 'torchaudio<2.6'
+# 如果使用 2.6+，代码已包含自动兼容性修复
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# 其他依赖
+python-multipart>=0.0.6
+

@@ -111,9 +111,6 @@ class LiveTranscriptionViewModel: ObservableObject {
             }
             
             print("✅ [LiveTranscriptionViewModel] 开始转录(已启用防睡眠)")
-        } catch {
-            errorMessage = error.localizedDescription
-            print("❌ [LiveTranscriptionViewModel] 开始转录失败: \(error)")
         }
     }
     

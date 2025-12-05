@@ -115,7 +115,7 @@ class MeetingRecordViewModel: ObservableObject {
     
     /// 处理会议检测提示 - 开始记录
     func handleMeetingDetectionStart(captureSystemAudio: Bool) {
-        guard let meeting = detectedMeeting else { return }
+        guard detectedMeeting != nil else { return }
         
         shouldCaptureSystemAudio = captureSystemAudio
         

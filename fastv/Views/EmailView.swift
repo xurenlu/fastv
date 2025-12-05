@@ -32,7 +32,7 @@ struct EmailView: View {
                 messageDetailView(message: message)
                     .frame(minWidth: 300, idealWidth: 400, maxWidth: 550)
             } else {
-                emptyDetailView
+                EmailHomeView(viewModel: viewModel)
                     .frame(minWidth: 300, idealWidth: 400, maxWidth: 550)
             }
         }
@@ -149,9 +149,40 @@ struct EmailView: View {
             
             // 文件夹列表
             if viewModel.selectedAccountId != nil {
-                let visibleFolders = viewModel.folders.filter { !$0.isGarbled }
-                
-                if visibleFolders.isEmpty {
+                folderListContent
+            } else {
+                // 没有选择账号时的提示
+                VStack(spacing: 8) {
+                    Image(systemName: "person.crop.circle")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                    Text("请选择邮箱账号")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding()
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var folderListContent: some View {
+        let allFolders = viewModel.folders.filter { !$0.isGarbled }
+        
+        // 根据是否显示空文件夹来过滤
+        let visibleFolders = viewModel.showEmptyFolders ? allFolders : allFolders.filter { folder in
+            let messageCount = EmailStore.shared.getMessageCount(for: folder.id)
+            return messageCount > 0
+        }
+        
+        // 计算空文件夹数量
+        let emptyFoldersCount = allFolders.filter { folder in
+            let messageCount = EmailStore.shared.getMessageCount(for: folder.id)
+            return messageCount == 0
+        }.count
+        
+        if visibleFolders.isEmpty && emptyFoldersCount == 0 {
                     // 文件夹列表为空时的提示
                     VStack(spacing: 8) {
                         if viewModel.isLoadingFolders {
@@ -195,64 +226,71 @@ struct EmailView: View {
                     )
                     
                     List(selection: folderBinding) {
-                        Section {
-                            // 写邮件按钮
+                        // 写邮件按钮
+                        Button(action: {
+                            viewModel.initComposeDraft()
+                            composeWindowType = .new
+                            showComposeWindow = true
+                        }) {
+                            HStack {
+                                Image(systemName: "square.and.pencil")
+                                    .foregroundStyle(.blue)
+                                    .font(.system(size: 16, weight: .medium))
+                                Text("写邮件")
+                                    .foregroundStyle(.primary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
+                        .contentShape(Rectangle())
+                        
+                        Button(action: {
+                            // 显式调用 showAllMessages，确保点击总是有响应
+                            viewModel.showAllMessages()
+                        }) {
+                            HStack {
+                                Image(systemName: "tray.full")
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 20)
+                                Text("所有邮件")
+                                Spacer()
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .contentShape(Rectangle())
+                        .tag(nil as UUID?)
+                        .foregroundStyle(viewModel.selectedFolderId == nil ? .primary : .secondary)
+                        
+                        // 显示/隐藏空文件夹按钮
+                        if emptyFoldersCount > 0 {
                             Button(action: {
-                                viewModel.initComposeDraft()
-                                composeWindowType = .new
-                                showComposeWindow = true
+                                withAnimation {
+                                    viewModel.showEmptyFolders.toggle()
+                                }
                             }) {
                                 HStack {
-                                    Image(systemName: "square.and.pencil")
-                                        .foregroundStyle(.blue)
-                                        .font(.system(size: 16, weight: .medium))
-                                    Text("写邮件")
-                                        .foregroundStyle(.primary)
+                                    Image(systemName: viewModel.showEmptyFolders ? "chevron.down" : "chevron.right")
+                                        .foregroundStyle(.secondary)
+                                        .font(.caption)
+                                        .frame(width: 20)
+                                    Text("空文件夹 (\(emptyFoldersCount))")
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.vertical, 4)
                             }
                             .buttonStyle(.plain)
                             .contentShape(Rectangle())
-                            
-                            Button(action: {
-                                // 显式调用 showAllMessages，确保点击总是有响应
-                                viewModel.showAllMessages()
-                            }) {
-                                HStack {
-                                    Image(systemName: "tray.full")
-                                        .foregroundStyle(.secondary)
-                                        .frame(width: 20)
-                                    Text("所有邮件")
-                                    Spacer()
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .contentShape(Rectangle())
-                            .tag(nil as UUID?)
-                            .foregroundStyle(viewModel.selectedFolderId == nil ? .primary : .secondary)
                         }
+                        
                         ForEach(visibleFolders) { folder in
-                            FolderRow(folder: folder)
+                            FolderRow(folder: folder, viewModel: viewModel)
                                 .tag(folder.id)
                         }
                     }
                     .listStyle(.sidebar)
                 }
-            } else {
-                // 没有选择账号时的提示
-                VStack(spacing: 8) {
-                    Image(systemName: "person.crop.circle")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                    Text("请选择邮箱账号")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding()
-            }
-        }
     }
     
     // MARK: - Message List
@@ -278,7 +316,7 @@ struct EmailView: View {
             } else if viewModel.messages.isEmpty && !viewModel.isLoading {
                 emptyMessageListView
             } else {
-                ScrollViewReader { proxy in
+                ScrollViewReader { _ in
                     // 在 List 外部计算 displayedMessages，避免布局时重新计算
                     let displayedMessages = viewModel.searchText.isEmpty ? viewModel.messages : viewModel.searchResults
                     
@@ -371,7 +409,7 @@ struct EmailView: View {
     // MARK: - Message Detail
     
     private func messageDetailView(message: EmailMessage) -> some View {
-        ScrollViewReader { proxy in
+        ScrollViewReader { _ in
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     // 邮件头部（带操作按钮）
@@ -618,7 +656,7 @@ struct EmailView: View {
                 // 右侧操作按钮组 - 使用图标按钮，更紧凑
                 HStack(spacing: 4) {
                     // AI智能排版按钮 - 只对HTML邮件显示
-                    if message.htmlBody != nil && !message.htmlBody!.isEmpty {
+                    if let htmlBody = message.htmlBody, !htmlBody.isEmpty {
                         Button(action: {
                             // 同步调用，不阻塞UI（内部使用Task.detached）
                             viewModel.optimizeHTMLLayout(for: message)
@@ -754,19 +792,6 @@ struct EmailView: View {
             return "doc.fill"
         }
     }
-    
-    private var emptyDetailView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "doc.text")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-            
-            Text("选择一封邮件查看详情")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
 }
 
 // MARK: - Remote Resources Banner View
@@ -834,6 +859,18 @@ private struct RemoteResourcesBannerView: View {
 
 struct FolderRow: View {
     let folder: EmailFolder
+    let viewModel: EmailViewModel
+    @State private var isHovered = false
+    
+    // 获取实际的邮件数量
+    private var actualMessageCount: Int {
+        EmailStore.shared.getMessageCount(for: folder.id)
+    }
+    
+    // 判断是否为空文件夹
+    private var isEmpty: Bool {
+        actualMessageCount == 0
+    }
     
     var body: some View {
         HStack {
@@ -845,15 +882,46 @@ struct FolderRow: View {
             
             Spacer()
             
-            if folder.unreadCount > 0 {
-                Text("\(folder.unreadCount)")
-                    .font(.caption)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.accentColor)
-                    .foregroundStyle(.white)
-                    .clipShape(Capsule())
+            // 显示邮件数量和未读数量
+            HStack(spacing: 6) {
+                // 总邮件数（如果有邮件）
+                if actualMessageCount > 0 {
+                    Text("\(actualMessageCount)")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                
+                // 未读数量（如果有未读邮件）
+                if folder.unreadCount > 0 {
+                    Text("\(folder.unreadCount)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.accentColor)
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
+                }
+                
+                // 删除按钮（仅对空文件夹显示，且仅在悬停时显示）
+                if isEmpty && isHovered {
+                    Button(action: {
+                        Task {
+                            await viewModel.deleteFolder(folder)
+                        }
+                    }) {
+                        Image(systemName: "trash")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .frame(width: 20, height: 20)
+                    }
+                    .buttonStyle(.plain)
+                    .help("删除空文件夹")
+                }
             }
+        }
+        .onHover { hovering in
+            isHovered = hovering
         }
     }
 }
@@ -970,7 +1038,7 @@ private struct DateFormatterCache {
 }
 
 /// 智能格式化邮件日期（使用缓存的格式化器）
-private func formatMessageDate(_ date: Date) -> String {
+func formatMessageDate(_ date: Date) -> String {
     let calendar = Calendar.current
     let now = Date()
     
@@ -1231,6 +1299,7 @@ struct MessageHeadersView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var rawHeaders: String = ""
     @State private var isLoading = true
+    @State private var rawMessageData: Data?
     
     var body: some View {
         NavigationStack {
@@ -1286,13 +1355,43 @@ struct MessageHeadersView: View {
                             // 原始邮件头
                             if !rawHeaders.isEmpty {
                                 SectionView(title: "原始邮件头") {
-                                    Text(rawHeaders)
-                                        .font(.system(.body, design: .monospaced))
-                                        .textSelection(.enabled)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(12)
-                                        .background(Color(NSColor.controlBackgroundColor))
-                                        .cornerRadius(8)
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text(rawHeaders)
+                                            .font(.system(.body, design: .monospaced))
+                                            .textSelection(.enabled)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(12)
+                                            .background(Color(NSColor.controlBackgroundColor))
+                                            .cornerRadius(8)
+                                        
+                                        // 操作按钮
+                                        HStack(spacing: 12) {
+                                            Button(action: {
+                                                copyHeaders()
+                                            }) {
+                                                Label("复制邮件头", systemImage: "doc.on.doc")
+                                            }
+                                            .buttonStyle(.bordered)
+                                            
+                                            Button(action: {
+                                                Task {
+                                                    await saveAsEML()
+                                                }
+                                            }) {
+                                                Label("保存为 .eml", systemImage: "square.and.arrow.down")
+                                            }
+                                            .buttonStyle(.bordered)
+                                            
+                                            if rawMessageData != nil {
+                                                Button(action: {
+                                                    copyFullMessage()
+                                                }) {
+                                                    Label("复制完整邮件", systemImage: "doc.on.clipboard")
+                                                }
+                                                .buttonStyle(.bordered)
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1302,6 +1401,28 @@ struct MessageHeadersView: View {
             }
             .navigationTitle("邮件头信息")
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    if !rawHeaders.isEmpty {
+                        Button(action: {
+                            copyHeaders()
+                        }) {
+                            Label("复制", systemImage: "doc.on.doc")
+                        }
+                    }
+                }
+                
+                ToolbarItem(placement: .primaryAction) {
+                    if rawMessageData != nil {
+                        Button(action: {
+                            Task {
+                                await saveAsEML()
+                            }
+                        }) {
+                            Label("保存", systemImage: "square.and.arrow.down")
+                        }
+                    }
+                }
+                
                 ToolbarItem(placement: .confirmationAction) {
                     Button("完成") {
                         dismiss()
@@ -1338,6 +1459,9 @@ struct MessageHeadersView: View {
                 message: message
             )
             
+            // 保存原始数据用于保存为 .eml
+            rawMessageData = rawData
+            
             // 解析邮件头（邮件头通常在第一个空行之前）
             if let rawString = String(data: rawData, encoding: .utf8) ??
                               String(data: rawData, encoding: .isoLatin1) {
@@ -1353,6 +1477,53 @@ struct MessageHeadersView: View {
         } catch {
             rawHeaders = "加载失败: \(error.localizedDescription)"
         }
+    }
+    
+    private func copyHeaders() {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(rawHeaders, forType: .string)
+    }
+    
+    private func copyFullMessage() {
+        guard let rawData = rawMessageData,
+              let rawString = String(data: rawData, encoding: .utf8) ??
+                              String(data: rawData, encoding: .isoLatin1) else {
+            return
+        }
+        
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(rawString, forType: .string)
+    }
+    
+    private func saveAsEML() async {
+        guard let rawData = rawMessageData else {
+            // 如果没有原始数据，尝试使用 ViewModel 的方法
+            await viewModel.saveMessageAsEML(message: message)
+            return
+        }
+        
+        let savePanel = NSSavePanel()
+        savePanel.allowedContentTypes = [.init(filenameExtension: "eml")!]
+        savePanel.nameFieldStringValue = sanitizeFilename(message.subject.isEmpty ? "邮件" : message.subject) + ".eml"
+        savePanel.title = "保存邮件"
+        savePanel.prompt = "保存"
+        
+        if savePanel.runModal() == .OK, let url = savePanel.url {
+            do {
+                try rawData.write(to: url)
+                print("✅ [MessageHeadersView] 邮件已保存为 .eml 文件: \(url.path)")
+            } catch {
+                print("❌ [MessageHeadersView] 保存失败: \(error)")
+            }
+        }
+    }
+    
+    private func sanitizeFilename(_ filename: String) -> String {
+        let invalidChars = CharacterSet(charactersIn: "/\\?%*|\"<>")
+        return filename.components(separatedBy: invalidChars).joined(separator: "_")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     private func formatFullDate(_ date: Date) -> String {

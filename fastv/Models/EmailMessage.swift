@@ -8,7 +8,7 @@
 import Foundation
 
 /// 邮件消息模型
-struct EmailMessage: Identifiable, Codable {
+struct EmailMessage: Identifiable, Codable, Equatable {
     let id: UUID
     let accountId: UUID
     let folderId: UUID?
@@ -140,7 +140,7 @@ struct EmailMessage: Identifiable, Codable {
 }
 
 /// 邮件优先级（AI识别）
-enum EmailPriority: String, Codable {
+enum EmailPriority: String, Codable, Equatable {
     case low = "low"
     case normal = "normal"
     case high = "high"
@@ -192,7 +192,7 @@ struct EmailContact: Codable, Hashable {
 }
 
 /// 邮件附件
-struct EmailAttachment: Identifiable, Codable {
+struct EmailAttachment: Identifiable, Codable, Equatable {
     let id: UUID
     var filename: String
     var mimeType: String

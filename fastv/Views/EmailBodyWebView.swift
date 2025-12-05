@@ -100,7 +100,9 @@ struct EmailBodyWebViewRepresentable: NSViewRepresentable {
         let html = htmlBody
         let showImg = showImages
         Task.detached(priority: .userInitiated) {
-            let styledHTML = Self.injectEmailStylesStatic(into: html, showImages: showImg)
+            let styledHTML = await MainActor.run {
+                Self.injectEmailStylesStatic(into: html, showImages: showImg)
+            }
             await MainActor.run {
                 webView.loadHTMLString(styledHTML, baseURL: nil)
             }
@@ -276,6 +278,23 @@ struct EmailBodyWebViewRepresentable: NSViewRepresentable {
             color: #636366;
             font-style: normal;
             border-radius: 0 6px 6px 0;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            max-width: 100%;
+            width: 100%;
+        }
+        
+        /* 确保 blockquote 内的所有元素都能正常换行 */
+        blockquote * {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            max-width: 100%;
         }
         
         /* 图片优化 */

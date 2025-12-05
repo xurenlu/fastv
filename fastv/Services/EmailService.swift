@@ -309,7 +309,6 @@ class EmailService {
             // 解析每个邮件的头信息并转换为 EmailMessage（分批处理）
             var emailMessages: [EmailMessage] = []
             var processedCount = 0
-            let maxCount = limit ?? Int.max
             
             // 限制初始加载数量,避免阻塞UI
             let uidCount = messageUIDs.count
@@ -627,7 +626,11 @@ class EmailService {
             do {
                 print("🔍 [EmailService] 开始搜索邮件，查询: \(query), 文件夹: \(folder.name)")
                 let result = try imap.searchMessages(withQuery: query, limit: UInt(limit))
-                messageUIDs = result as? [NSDictionary] ?? []
+                if let dictArray = result as? [NSDictionary] {
+                    messageUIDs = dictArray
+                } else {
+                    messageUIDs = []
+                }
                 print("✅ [EmailService] 搜索完成，找到 \(messageUIDs.count) 封邮件")
             } catch {
                 throw EmailServiceError.parseError("搜索失败: \(error.localizedDescription)")
@@ -756,13 +759,13 @@ class EmailService {
     /// 
     /// 重要：每次删除操作都会创建独立的 IMAP session，操作完成后自动断开。
     nonisolated func deleteMessage(account: EmailAccount, message: EmailMessage) async throws {
-        guard let uid = message.uid else {
+        guard message.uid != nil else {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
         
         // 获取邮件所在的文件夹
         guard let folderId = message.folderId,
-              let folder = try await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
+              let folder = await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
             throw EmailServiceError.invalidConfiguration("找不到邮件所在文件夹")
         }
         
@@ -791,12 +794,12 @@ class EmailService {
     /// 
     /// 重要：每次切换操作都会创建独立的 IMAP session，操作完成后自动断开。
     nonisolated func toggleStar(account: EmailAccount, message: EmailMessage) async throws {
-        guard let uid = message.uid else {
+        guard message.uid != nil else {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
         
         guard let folderId = message.folderId,
-              let folder = try await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
+              let folder = await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
             throw EmailServiceError.invalidConfiguration("找不到邮件所在文件夹")
         }
         
@@ -823,12 +826,12 @@ class EmailService {
     
     /// 标记为垃圾邮件
     nonisolated func markAsSpam(account: EmailAccount, message: EmailMessage) async throws {
-        guard let uid = message.uid else {
+        guard message.uid != nil else {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
         
         // 查找垃圾邮件文件夹
-        let folders = try await EmailStore.shared.getFolders(for: account.id)
+        let folders = await EmailStore.shared.getFolders(for: account.id)
         guard let spamFolder = folders.first(where: { $0.type == .spam }) else {
             throw EmailServiceError.invalidConfiguration("找不到垃圾邮件文件夹")
         }
@@ -838,12 +841,12 @@ class EmailService {
     
     /// 取消垃圾邮件标记
     nonisolated func unmarkSpam(account: EmailAccount, message: EmailMessage) async throws {
-        guard let uid = message.uid else {
+        guard message.uid != nil else {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
         
         // 移动到收件箱
-        let folders = try await EmailStore.shared.getFolders(for: account.id)
+        let folders = await EmailStore.shared.getFolders(for: account.id)
         guard let inboxFolder = folders.first(where: { $0.type == .inbox }) else {
             throw EmailServiceError.invalidConfiguration("找不到收件箱")
         }
@@ -899,12 +902,12 @@ class EmailService {
     /// 
     /// 重要：每次移动操作都会创建独立的 IMAP session，操作完成后自动断开。
     nonisolated func moveMessage(account: EmailAccount, message: EmailMessage, to folder: EmailFolder) async throws {
-        guard let uid = message.uid else {
+        guard message.uid != nil else {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
         
         guard let folderId = message.folderId,
-              let sourceFolder = try await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
+              let sourceFolder = await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
             throw EmailServiceError.invalidConfiguration("找不到源文件夹")
         }
         

@@ -43,6 +43,12 @@ struct EmailSignature: Identifiable, Codable {
 enum SignatureVariable: String, CaseIterable {
     case name = "{{name}}"
     case email = "{{email}}"
+    case company = "{{company}}"
+    case phone = "{{phone}}"
+    case title = "{{title}}"
+    case position = "{{position}}"
+    case website = "{{website}}"
+    case address = "{{address}}"
     case date = "{{date}}"
     case time = "{{time}}"
     case dateTime = "{{datetime}}"
@@ -53,6 +59,18 @@ enum SignatureVariable: String, CaseIterable {
             return "姓名"
         case .email:
             return "邮箱地址"
+        case .company:
+            return "公司名称"
+        case .phone:
+            return "电话号码"
+        case .title:
+            return "职位/头衔"
+        case .position:
+            return "职位（同title）"
+        case .website:
+            return "网站地址"
+        case .address:
+            return "公司地址"
         case .date:
             return "日期"
         case .time:
@@ -68,6 +86,18 @@ enum SignatureVariable: String, CaseIterable {
             return "发件人显示名称"
         case .email:
             return "发件人邮箱地址"
+        case .company:
+            return "公司或组织名称"
+        case .phone:
+            return "联系电话号码"
+        case .title:
+            return "职位或头衔（如：产品经理、CEO等）"
+        case .position:
+            return "职位（与title相同）"
+        case .website:
+            return "公司或个人网站地址"
+        case .address:
+            return "公司或办公地址"
         case .date:
             return "当前日期（YYYY-MM-DD）"
         case .time:

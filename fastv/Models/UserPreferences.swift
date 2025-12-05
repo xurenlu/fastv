@@ -65,6 +65,7 @@ class UserPreferences: ObservableObject {
         static let enableSpeakerDiarization = "enableSpeakerDiarization"
         static let diarizationMinSpeakers = "diarizationMinSpeakers"
         static let diarizationMaxSpeakers = "diarizationMaxSpeakers"
+        static let diarizationServiceURL = "diarizationServiceURL"
         static let autoStartDiarizationService = "autoStartDiarizationService"
         // AI 聊天参数相关
         static let chatTopP = "chatTopP"
@@ -259,6 +260,10 @@ class UserPreferences: ObservableObject {
     
     @Published var diarizationMaxSpeakers: Int? {
         willSet { defaults.set(newValue ?? 0, forKey: Keys.diarizationMaxSpeakers) }
+    }
+    
+    @Published var diarizationServiceURL: String {
+        willSet { defaults.set(newValue, forKey: Keys.diarizationServiceURL) }
     }
     
     @Published var autoStartDiarizationService: Bool {
@@ -555,6 +560,7 @@ class UserPreferences: ObservableObject {
         diarizationMinSpeakers = minSpeakers > 0 ? minSpeakers : nil
         let maxSpeakers = defaults.object(forKey: Keys.diarizationMaxSpeakers) as? Int ?? 0
         diarizationMaxSpeakers = maxSpeakers > 0 ? maxSpeakers : nil
+        diarizationServiceURL = defaults.string(forKey: Keys.diarizationServiceURL) ?? "http://127.0.0.1:50001"
         autoStartDiarizationService = defaults.object(forKey: Keys.autoStartDiarizationService) as? Bool ?? false
         
         // AI 聊天参数设置

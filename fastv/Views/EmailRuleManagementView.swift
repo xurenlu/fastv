@@ -101,7 +101,7 @@ struct EmailRuleManagementView: View {
             .onAppear {
                 loadRuleFiles()
             }
-            .onChange(of: selectedFile) { newValue in
+            .onChange(of: selectedFile) { _, newValue in
                 if let file = newValue {
                     loadRuleFile(file)
                 }

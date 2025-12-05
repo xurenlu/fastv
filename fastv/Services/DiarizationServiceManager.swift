@@ -20,6 +20,10 @@ enum DiarizationServiceStatus {
 
 /// 说话人分离服务管理器
 /// 负责自动启动、监控和管理 Python 服务
+/// 
+/// @deprecated 此功能已废弃。说话人分离服务现在需要用户自行部署，Mac app 通过配置的服务地址调用。
+/// 请使用独立部署的 Python 服务，并通过 UserPreferences.diarizationServiceURL 配置服务地址。
+@available(*, deprecated, message: "说话人分离服务现在需要用户自行部署，请使用独立部署的 Python 服务")
 @MainActor
 class DiarizationServiceManager: ObservableObject {
     static let shared = DiarizationServiceManager()
@@ -280,7 +284,6 @@ class DiarizationServiceManager: ObservableObject {
         // 等待进程结束（最多等待 5 秒）
         // 使用异步方式等待，避免阻塞线程
         let timeout: TimeInterval = 5.0
-        let startTime = Date()
         
         // 使用 RunLoop 而不是 Thread.sleep，避免阻塞
         let runLoop = RunLoop.current

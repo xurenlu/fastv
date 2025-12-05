@@ -38,12 +38,13 @@ struct DiarizationResponse: Codable {
 class SpeakerDiarizationService {
     static let shared = SpeakerDiarizationService()
     
-    private let apiEndpoint: String
-    private let serviceManager = DiarizationServiceManager.shared
+    private var apiEndpoint: String {
+        UserPreferences.shared.diarizationServiceURL
+    }
+    private let preferences = UserPreferences.shared
     
     private init() {
-        // 默认使用本地服务
-        self.apiEndpoint = "http://127.0.0.1:50001"
+        // 服务地址从 UserPreferences 读取
     }
     
     /// 对音频文件进行说话人分离
@@ -58,13 +59,19 @@ class SpeakerDiarizationService {
         maxSpeakers: Int? = nil
     ) async throws -> [SpeakerSegment] {
         print("🎤 [SpeakerDiarization] 开始说话人分离: \(audioURL.lastPathComponent)")
+        print("🎤 [SpeakerDiarization] 服务地址: \(apiEndpoint)")
         
-        // 确保服务正在运行
-        try await serviceManager.ensureServiceRunning()
+        // 验证服务地址格式
+        guard let serviceURL = URL(string: apiEndpoint) else {
+            throw DiarizationError.invalidEndpoint
+        }
         
         // 准备 multipart/form-data 请求
         let boundary = UUID().uuidString
-        var request = URLRequest(url: URL(string: "\(apiEndpoint)/api/v1/diarization")!)
+        guard let requestURL = URL(string: "\(apiEndpoint)/api/v1/diarization") else {
+            throw DiarizationError.invalidEndpoint
+        }
+        var request = URLRequest(url: requestURL)
         request.httpMethod = "POST"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 300 // 5 分钟超时（说话人分离可能需要较长时间）
@@ -129,10 +136,12 @@ class SpeakerDiarizationService {
     
     /// 测试服务连接
     func testConnection() async throws -> Bool {
-        print("🎤 [SpeakerDiarization] 测试服务连接...")
+        print("🎤 [SpeakerDiarization] 测试服务连接: \(apiEndpoint)")
         
-        // 确保服务正在运行
-        try await serviceManager.ensureServiceRunning()
+        // 验证服务地址格式
+        guard let serviceURL = URL(string: apiEndpoint) else {
+            throw DiarizationError.invalidEndpoint
+        }
         
         guard let url = URL(string: "\(apiEndpoint)/health") else {
             throw DiarizationError.invalidEndpoint

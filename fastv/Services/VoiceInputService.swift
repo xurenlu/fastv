@@ -220,12 +220,11 @@ class VoiceInputService: ObservableObject {
         // 提取需要的参数值，避免在后台任务中访问实例属性
         let sampleRate = recordingSampleRate
         let channels = recordingChannels
-        let onConverted = await self.onConvertedAudioData
+        let onConverted = self.onConvertedAudioData
         
         // 如果启用了实时保存回调，分批转换并实时保存
         if onConverted != nil {
             // 分批处理音频数据，每批约2秒的数据（16kHz * 2秒 * 4字节 = 128KB）
-            let batchSize = 128 * 1024  // 每批约128KB
             var allConvertedData = Data()
             
             for i in stride(from: 0, to: buffers.count, by: max(1, buffers.count / 10)) {
@@ -247,7 +246,7 @@ class VoiceInputService: ObservableObject {
                         allConvertedData.append(converted.pcmData)
                         
                         // 实时调用回调
-                        if let callback = await self.onConvertedAudioData {
+                        if let callback = self.onConvertedAudioData {
                             await MainActor.run {
                                 callback(converted.pcmData)
                             }

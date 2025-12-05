@@ -721,7 +721,6 @@ struct CopyButtonView: NSViewRepresentable {
     
     func updateNSView(_ nsView: NSButton, context: Context) {
         // 只在必要时更新，避免触发约束循环
-        let oldText = context.coordinator.text
         let oldShowSuccess = context.coordinator.showSuccess?.wrappedValue ?? false
         
         context.coordinator.text = text

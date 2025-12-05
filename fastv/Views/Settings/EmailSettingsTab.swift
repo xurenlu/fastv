@@ -10,6 +10,7 @@ import SwiftUI
 /// 邮箱设置标签页
 struct EmailSettingsTab: View {
     @ObservedObject var preferences = UserPreferences.shared
+    @State private var showSignatureManager = false
     
     var body: some View {
         Form {
@@ -56,9 +57,20 @@ struct EmailSettingsTab: View {
             
             // 签名设置
             Section {
-                NavigationLink(destination: EmailSignatureView()) {
-                    Label("管理签名", systemImage: "signature")
+                Button(action: {
+                    showSignatureManager = true
+                }) {
+                    HStack {
+                        Image(systemName: "signature")
+                            .foregroundStyle(.blue)
+                        Text("管理签名")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                .buttonStyle(.plain)
                 .help("创建和管理邮件签名")
             } header: {
                 Text("签名")
@@ -79,6 +91,9 @@ struct EmailSettingsTab: View {
             }
         }
         .formStyle(.grouped)
+        .sheet(isPresented: $showSignatureManager) {
+            EmailSignatureView()
+        }
     }
 }
 

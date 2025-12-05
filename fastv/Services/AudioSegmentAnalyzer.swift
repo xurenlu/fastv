@@ -75,7 +75,7 @@ struct AudioSegmentAnalyzer {
             try? FileManager.default.removeItem(at: tempAudioURL)
         }
         
-        try await AudioExtractor.extractAudio(
+        _ = try await AudioExtractor.extractAudio(
             from: videoURL,
             to: tempAudioURL,
             format: .wav

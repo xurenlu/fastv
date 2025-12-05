@@ -67,6 +67,13 @@ class EmailSignatureService {
         updated.updatedAt = Date()
         
         try await database.asyncWrite { db in
+            // 验证外键：检查 account_id 是否存在
+            let accountIdString = updated.accountId.uuidString
+            let accountExists = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM email_accounts WHERE id = ?", arguments: [accountIdString]) ?? 0
+            if accountExists == 0 {
+                throw NSError(domain: "EmailSignatureService", code: 1, userInfo: [NSLocalizedDescriptionKey: "账号不存在，无法保存签名。请先添加邮箱账号。"])
+            }
+            
             try self.saveSignatureToDB(updated, db: db)
             
             // 如果设为默认，取消其他默认签名
@@ -115,10 +122,11 @@ class EmailSignatureService {
     func renderSignature(_ signature: EmailSignature, for account: EmailAccount) -> String {
         var content = signature.content
         
-        // 替换变量
+        // 替换基本变量（从账号信息中获取）
         content = content.replacingOccurrences(of: SignatureVariable.name.rawValue, with: account.displayName)
         content = content.replacingOccurrences(of: SignatureVariable.email.rawValue, with: account.emailAddress)
         
+        // 日期时间变量
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         content = content.replacingOccurrences(of: SignatureVariable.date.rawValue, with: dateFormatter.string(from: Date()))
@@ -129,7 +137,49 @@ class EmailSignatureService {
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm"
         content = content.replacingOccurrences(of: SignatureVariable.dateTime.rawValue, with: dateFormatter.string(from: Date()))
         
+        // 清理未填写的变量
+        // 移除包含未替换变量的整行（避免显示 {{xxx}} 占位符）
+        content = cleanupUnfilledVariables(content)
+        
         return content
+    }
+    
+    /// 清理未填写的变量
+    /// 移除包含占位符的行，避免在邮件中显示 {{xxx}}
+    private func cleanupUnfilledVariables(_ content: String) -> String {
+        var cleaned = content
+        
+        // 定义需要清理的变量
+        let variablesToClean = [
+            SignatureVariable.company.rawValue,
+            SignatureVariable.phone.rawValue,
+            SignatureVariable.title.rawValue,
+            SignatureVariable.position.rawValue,
+            SignatureVariable.website.rawValue,
+            SignatureVariable.address.rawValue
+        ]
+        
+        // 对于 HTML 内容，移除包含占位符的整个 <tr> 或 <div> 行
+        for variable in variablesToClean {
+            if cleaned.contains(variable) {
+                // 尝试移除包含该变量的 <tr>...</tr> 标签
+                let trPattern = "<tr[^>]*>.*?\(NSRegularExpression.escapedPattern(for: variable)).*?</tr>"
+                cleaned = cleaned.replacingOccurrences(of: trPattern, with: "", options: .regularExpression)
+                
+                // 尝试移除包含该变量的 <td>...</td> 标签
+                let tdPattern = "<td[^>]*>.*?\(NSRegularExpression.escapedPattern(for: variable)).*?</td>"
+                cleaned = cleaned.replacingOccurrences(of: tdPattern, with: "", options: .regularExpression)
+                
+                // 尝试移除包含该变量的 <div>...</div> 标签
+                let divPattern = "<div[^>]*>.*?\(NSRegularExpression.escapedPattern(for: variable)).*?</div>"
+                cleaned = cleaned.replacingOccurrences(of: divPattern, with: "", options: .regularExpression)
+                
+                // 兜底：直接移除剩余的占位符
+                cleaned = cleaned.replacingOccurrences(of: variable, with: "")
+            }
+        }
+        
+        return cleaned
     }
     
     /// 将签名插入到邮件正文

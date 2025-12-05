@@ -45,7 +45,7 @@ class SystemAudioCaptureService: ObservableObject {
         // 方法 1：尝试创建 AVAudioEngine 并检查输入节点
         let engine = AVAudioEngine()
         let inputNode = engine.inputNode
-        let inputFormat = inputNode.inputFormat(forBus: 0)
+        _ = inputNode.inputFormat(forBus: 0)
         
         // 方法 2：通过系统命令检查（更可靠）
         // 在后台队列执行阻塞操作，避免阻塞主线程

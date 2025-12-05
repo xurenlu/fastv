@@ -205,6 +205,32 @@ class EmailStore: ObservableObject {
         await loadFolders()
     }
     
+    /// 删除文件夹
+    func deleteFolder(_ folder: EmailFolder) async throws {
+        // 检查文件夹是否为空
+        let messageCount = getMessageCount(for: folder.id)
+        guard messageCount == 0 else {
+            throw NSError(domain: "EmailStore", code: 1, userInfo: [NSLocalizedDescriptionKey: "无法删除非空文件夹"])
+        }
+        
+        // 删除数据库中的文件夹记录
+        try await database.write { db in
+            try db.execute(sql: "DELETE FROM email_folders WHERE id = ?", arguments: [folder.id.uuidString])
+        }
+        
+        // 删除内存中的文件夹
+        if var accountFolders = folders[folder.accountId] {
+            accountFolders.removeAll { $0.id == folder.id }
+            folders[folder.accountId] = accountFolders
+        }
+        
+        // 删除该文件夹的所有邮件
+        messages.removeValue(forKey: folder.id)
+        
+        await loadFolders()
+        notifyChange()
+    }
+    
     /// 获取账号的文件夹列表
     func getFolders(for accountId: UUID) -> [EmailFolder] {
         return folders[accountId] ?? []

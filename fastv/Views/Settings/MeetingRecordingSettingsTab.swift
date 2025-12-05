@@ -11,9 +11,17 @@ import SwiftUI
 /// 包含：会议记录相关设置、自动录音、静音检测等
 struct MeetingRecordingSettingsTab: View {
     @ObservedObject var preferences = UserPreferences.shared
-    @StateObject private var serviceManager = DiarizationServiceManager.shared
-    @State private var isStartingService = false
+    @State private var serviceURL: String = ""
+    @State private var isTestingConnection = false
+    @State private var connectionStatus: ConnectionStatus = .unknown
     @State private var errorMessage: String?
+    
+    enum ConnectionStatus {
+        case unknown
+        case connecting
+        case connected
+        case failed(String)
+    }
     
     var body: some View {
         Form {
@@ -81,73 +89,47 @@ struct MeetingRecordingSettingsTab: View {
                         .font(.headline)
                     
                     if preferences.enableSpeakerDiarization {
-                        // 服务管理
+                        // 服务地址配置
                         VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Text("服务状态")
-                                    .font(.subheadline)
+                            Text("服务地址配置")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            HStack(spacing: 8) {
+                                TextField("http://127.0.0.1:50001", text: $serviceURL)
+                                    .textFieldStyle(.roundedBorder)
+                                    .onChange(of: serviceURL) { _, newValue in
+                                        preferences.diarizationServiceURL = newValue
+                                        connectionStatus = .unknown
+                                        errorMessage = nil
+                                    }
+                                
+                                Button(action: {
+                                    testConnection()
+                                }) {
+                                    if isTestingConnection {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                    } else {
+                                        Label("测试", systemImage: "network")
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(isTestingConnection || serviceURL.isEmpty)
+                            }
+                            
+                            // 连接状态
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(connectionStatusColor)
+                                    .frame(width: 8, height: 8)
+                                
+                                Text(connectionStatusText)
+                                    .font(.caption)
                                     .foregroundStyle(.secondary)
                                 
                                 Spacer()
-                                
-                                // 状态指示器
-                                HStack(spacing: 6) {
-                                    Circle()
-                                        .fill(statusColor)
-                                        .frame(width: 8, height: 8)
-                                    
-                                    Text(statusText)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
                             }
-                            
-                            // 模型状态
-                            if case .running = serviceManager.status {
-                                HStack {
-                                    Text("模型状态")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                    
-                                    Spacer()
-                                    
-                                    HStack(spacing: 6) {
-                                        Image(systemName: serviceManager.isModelLoaded ? "checkmark.circle.fill" : "arrow.down.circle")
-                                            .foregroundStyle(serviceManager.isModelLoaded ? .green : .orange)
-                                            .font(.caption)
-                                        
-                                        Text(serviceManager.isModelLoaded ? "已加载" : "下载中...")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                            
-                            // 控制按钮
-                            HStack(spacing: 8) {
-                                if case .running = serviceManager.status {
-                                    Button(action: {
-                                        serviceManager.stopServiceManually()
-                                    }) {
-                                        Label("停止服务", systemImage: "stop.circle")
-                                    }
-                                    .buttonStyle(.bordered)
-                                } else {
-                                    Button(action: {
-                                        startService()
-                                    }) {
-                                        Label(isStartingService ? "启动中..." : "启动服务", systemImage: "play.circle")
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .disabled(isStartingService)
-                                }
-                                
-                                Spacer()
-                            }
-                            
-                            // 自动启动选项
-                            Toggle("应用启动时自动启动服务", isOn: $preferences.autoStartDiarizationService)
-                                .font(.subheadline)
                             
                             // 错误信息
                             if let error = errorMessage {
@@ -155,12 +137,20 @@ struct MeetingRecordingSettingsTab: View {
                                     .font(.caption)
                                     .foregroundStyle(.red)
                             }
+                            
+                            // 提示信息
+                            Text("请确保说话人分离服务已启动并可通过上述地址访问。服务部署说明请查看 SpeakerDiarization/README.md")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                         .padding(.vertical, 8)
                         .padding(.horizontal, 12)
                         .background {
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
                                 .fill(Color.secondary.opacity(0.05))
+                        }
+                        .onAppear {
+                            serviceURL = preferences.diarizationServiceURL
                         }
                         
                         Divider()
@@ -280,45 +270,59 @@ struct MeetingRecordingSettingsTab: View {
     
     // MARK: - Computed Properties
     
-    private var statusColor: Color {
-        switch serviceManager.status {
-        case .stopped:
+    private var connectionStatusColor: Color {
+        switch connectionStatus {
+        case .unknown:
             return .gray
-        case .starting:
+        case .connecting:
             return .orange
-        case .running:
+        case .connected:
             return .green
-        case .error:
+        case .failed:
             return .red
         }
     }
     
-    private var statusText: String {
-        switch serviceManager.status {
-        case .stopped:
-            return "已停止"
-        case .starting:
-            return "启动中"
-        case .running:
-            return "运行中"
-        case .error(let message):
-            return "错误: \(message)"
+    private var connectionStatusText: String {
+        switch connectionStatus {
+        case .unknown:
+            return "未测试"
+        case .connecting:
+            return "测试中..."
+        case .connected:
+            return "连接成功"
+        case .failed(let message):
+            return "连接失败: \(message)"
         }
     }
     
     // MARK: - Methods
     
-    private func startService() {
-        isStartingService = true
+    private func testConnection() {
+        isTestingConnection = true
+        connectionStatus = .connecting
         errorMessage = nil
         
         Task {
             do {
-                try await serviceManager.startServiceManually()
-                isStartingService = false
+                let isConnected = try await SpeakerDiarizationService.shared.testConnection()
+                await MainActor.run {
+                    isTestingConnection = false
+                    if isConnected {
+                        connectionStatus = .connected
+                        errorMessage = nil
+                    } else {
+                        connectionStatus = .failed("服务未就绪")
+                        errorMessage = "服务正在运行但模型可能未加载"
+                    }
+                }
             } catch {
-                isStartingService = false
-                errorMessage = error.localizedDescription
+                await MainActor.run {
+                    isTestingConnection = false
+                    let errorMsg = error.localizedDescription
+                    connectionStatus = .failed(errorMsg)
+                    errorMessage = errorMsg
+                }
             }
         }
     }

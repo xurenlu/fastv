@@ -82,7 +82,6 @@ struct SceneChangeDetector {
         var changePoints: [SceneChangePoint] = []
         var previousHistogram: [Float]?
         var sampleIndex = 0
-        var skippedFrames = 0  // 记录跳过的帧数
         var failedFrames = 0   // 记录失败的帧数
         
         // 使用CoreImage进行图像处理

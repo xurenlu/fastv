@@ -121,7 +121,7 @@ class EmailRuleAIService: ObservableObject {
     func validateRule(_ code: String) async -> (isValid: Bool, error: String?) {
         do {
             // 尝试加载规则代码
-            try await ruleEngine.testRule(code, with: EmailMessage(
+            _ = try await ruleEngine.testRule(code, with: EmailMessage(
                 accountId: UUID(),
                 subject: "Test",
                 from: EmailContact(email: "test@example.com"),

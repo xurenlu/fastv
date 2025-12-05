@@ -216,7 +216,7 @@ struct AISceneAnalyzer {
             // 分析当前帧 - 添加错误处理，避免AI分析失败导致整个分析停止
             var description: String?
             do {
-                if let prevImage = previousImage, let prevDesc = previousDescription {
+                if let prevImage = previousImage, previousDescription != nil {
                     // 比较两张图片
                     description = try await OllamaService.shared.compareImages(
                         image1: prevImage,

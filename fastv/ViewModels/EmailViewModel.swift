@@ -93,6 +93,9 @@ class EmailViewModel: ObservableObject {
     @Published var folders: [EmailFolder] = []
     @Published var messages: [EmailMessage] = []
     
+    // 空文件夹显示控制
+    @Published var showEmptyFolders = false // 默认隐藏空文件夹
+    
     // 线程视图相关
     @Published var viewMode: ViewMode = .list
     @Published var threads: [EmailThread] = []
@@ -664,6 +667,31 @@ class EmailViewModel: ObservableObject {
         }
     }
     
+    /// 删除文件夹（仅限空文件夹）
+    func deleteFolder(_ folder: EmailFolder) async {
+        // 检查文件夹是否为空
+        let messageCount = emailStore.getMessageCount(for: folder.id)
+        guard messageCount == 0 else {
+            errorMessage = "无法删除非空文件夹"
+            return
+        }
+        
+        do {
+            try await emailStore.deleteFolder(folder)
+            
+            // 如果删除的是当前选中的文件夹，清除选择
+            if selectedFolderId == folder.id {
+                selectedFolderId = nil
+                await updateMessagesFromStore()
+            }
+            
+            print("✅ [EmailViewModel] 文件夹已删除: \(folder.name)")
+        } catch {
+            errorMessage = "删除文件夹失败: \(error.localizedDescription)"
+            print("❌ [EmailViewModel] 删除文件夹失败: \(error)")
+        }
+    }
+    
     /// 异步加载邮件列表（增量加载，实时更新）
     func loadMessagesAsync(
         loadMore: Bool = false,
@@ -759,8 +787,8 @@ class EmailViewModel: ObservableObject {
                 if loadMore {
                     // 加载更多模式：检查返回的邮件是否比已加载的最早邮件更早
                     let existing = emailStore.messages[folderId] ?? []
-                    if let earliestExisting = existing.min(by: { $0.date < $1.date }),
-                       let earliestFetched = fetched.min(by: { $0.date < $1.date }) {
+                    if existing.min(by: { $0.date < $1.date }) != nil,
+                       fetched.min(by: { $0.date < $1.date }) != nil {
                         // 如果返回的邮件中有比已加载邮件更早的，说明可能还有更多
                         // 如果返回的邮件都比已加载的邮件新，说明可能已经到顶了
                         // 但为了保险起见，如果返回数量 >= loadLimit，仍然认为可能还有更多
@@ -873,7 +901,7 @@ class EmailViewModel: ObservableObject {
     /// 后台加载所有文件夹的更多邮件（用于应用空闲时预加载）
     func loadMoreMessagesForAllFoldersInBackground() {
         guard let accountId = selectedAccountId,
-              let account = currentAccount else { return }
+              currentAccount != nil else { return }
         
         Task.detached(priority: .background) { [weak self] in
             guard let self = self else { return }
@@ -899,15 +927,11 @@ class EmailViewModel: ObservableObject {
                 print("📥 [EmailViewModel] 后台加载文件夹 \(folder.name) 的更多邮件...")
                 
                 // 从服务器加载更多邮件（不更新UI）
-                do {
-                    await self.loadMessagesAsync(
-                        loadMore: true,
-                        folderIdOverride: folder.id,
-                        affectsCurrentList: false
-                    )
-                } catch {
-                    print("❌ [EmailViewModel] 后台加载文件夹 \(folder.name) 失败: \(error)")
-                }
+                await self.loadMessagesAsync(
+                    loadMore: true,
+                    folderIdOverride: folder.id,
+                    affectsCurrentList: false
+                )
                 
                 // 稍微延迟，避免对服务器造成太大压力
                 try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
@@ -926,7 +950,6 @@ class EmailViewModel: ObservableObject {
         }
         
         var totalLoaded = 0
-        var hasMoreInAnyFolder = false
         
         // 从所有文件夹加载更多邮件
         for folder in foldersForAccount {
@@ -952,13 +975,6 @@ class EmailViewModel: ObservableObject {
             let loaded = afterCount - beforeCount
             
             totalLoaded += loaded
-            
-            // 如果加载了500封邮件（新的 limit），可能还有更多
-            // 但即使加载了少于500封，也可能还有更多（因为数据库可能还有更早的邮件）
-            // 所以只要加载了邮件，就认为可能还有更多
-            if loaded >= 500 {
-                hasMoreInAnyFolder = true
-            }
         }
         
         // 计算 hasMoreMessages 状态
@@ -1010,7 +1026,6 @@ class EmailViewModel: ObservableObject {
         let startTime = Date()
         
         // 1. 立即更新选择状态（极快，<1ms）
-        let oldFolderId = selectedFolderId
         selectedFolderId = folder.id
         selectedMessageId = nil
         currentPage = 0
@@ -1310,7 +1325,9 @@ class EmailViewModel: ObservableObject {
             if content.textBody == nil, let htmlBody = content.htmlBody, !htmlBody.isEmpty {
                 Task.detached(priority: .background) { [weak self] in
                     guard let self = self else { return }
-                    let plainText = htmlBody.strippingHTML()
+                    let plainText = await MainActor.run {
+                        htmlBody.strippingHTML()
+                    }
                     await MainActor.run {
                         // 更新 textBody（用于搜索）
                         if var msg = self.messages.first(where: { $0.id == updated.id }) {
@@ -1541,11 +1558,11 @@ class EmailViewModel: ObservableObject {
             guard !Task.isCancelled else { return }
             
             // 按日期排序（最新的在前）
-            localResults.sort { $0.date > $1.date }
+            let sortedResults = localResults.sorted { $0.date > $1.date }
             
             // 更新结果到主线程
             await MainActor.run {
-                self.searchResults = localResults
+                self.searchResults = sortedResults
             }
         }
     }
@@ -1932,8 +1949,6 @@ class EmailViewModel: ObservableObject {
             
             // 检查选中部分是否包含引用内容
             let (userPart, quotedPart) = splitReplyBody(originalBody)
-            let userPartEndIndex = originalBody.index(originalBody.startIndex, offsetBy: userPart.count, limitedBy: originalBody.endIndex) ?? originalBody.endIndex
-            let userPartEndRange = NSRange(userPartEndIndex..<originalBody.endIndex, in: originalBody)
             
             // 如果选中范围与引用部分重叠，不允许美化
             if !quotedPart.isEmpty && selectedRange.location + selectedRange.length > userPart.count {

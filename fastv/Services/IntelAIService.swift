@@ -67,8 +67,8 @@ class IntelAIService {
 【你的任务】
 根据当前日期，生成5-10条当天可能发生的重要事件情报。每条情报应包含：
 1. 概要（summary）：精简描述，20-50字
-2. 正文（body）：完整描述，100-300字
-3. 来源（sources）：情报来源标签数组，如["新闻"、"财经"、"政策"、"市场"]等
+2. 正文（body）：**必须提供**完整详细描述，150-400字，包含事件背景、具体细节、影响分析等
+3. 来源（sources）：**必须提供**具体的信息来源数组，格式为["媒体名称/网站名称"]，例如["Bloomberg", "Reuters", "CNBC", "新华社", "财新网", "华尔街日报", "金融时报"]等。优先提供权威财经媒体名称，如果可能请提供网址
 
 【重点关注领域】
 1. **主要经济大国的重要事件**：
@@ -106,19 +106,26 @@ class IntelAIService {
   "intel_entries": [
     {
       "summary": "情报概要（20-50字）",
-      "body": "完整正文（100-300字）",
-      "sources": ["来源1", "来源2"]
+      "body": "完整正文（150-400字，必须包含事件背景、具体细节和影响分析）",
+      "sources": ["Bloomberg", "Reuters", "https://www.bloomberg.com/news/..."]
     }
   ]
 }
 
+注意：sources 必须是具体的媒体名称或网站URL，例如：
+- "Bloomberg"、"Reuters"、"CNBC"、"Financial Times"
+- "新华社"、"财新网"、"第一财经"、"华尔街日报中文网"
+- 或者提供具体的新闻网址（如果可用）
+
 【重要规则】
 1. 只返回 JSON 对象，不要其他任何内容
 2. 情报应该基于当前日期可能发生的事件，重点关注对财务和投资有影响的事件
-3. 每条情报的来源至少包含一个标签（如"新闻"、"财经"、"政策"、"市场"等）
-4. 优先选择对股票、期货、虚拟货币、外汇等金融市场有直接影响的事件
-5. 如果无法生成有效情报，返回空数组
-6. 确保情报覆盖主要经济大国，不要只关注单一国家
+3. **每条情报必须包含详细的正文（body），至少150字，不能为空或过于简短**
+4. **每条情报必须提供具体的媒体来源名称（sources），如"Bloomberg"、"Reuters"、"新华社"等，不要使用泛泛的标签如"新闻"、"财经"**
+5. 优先选择对股票、期货、虚拟货币、外汇等金融市场有直接影响的事件
+6. 如果无法生成有效情报，返回空数组
+7. 确保情报覆盖主要经济大国，不要只关注单一国家
+8. 正文应包含：事件背景、具体细节、可能的影响分析
 """#
         
         let userPrompt = """
@@ -361,11 +368,13 @@ class IntelAIService {
      "intel_entries": [
        {
          "summary": "情报概要（20-50字）",
-         "body": "完整正文（100-300字）",
-         "sources": ["来源1", "来源2"]
+         "body": "完整正文（150-400字，必须包含事件背景、具体细节和影响分析）",
+         "sources": ["Bloomberg", "Reuters", "新华社", "财新网"]
        }
      ]
    }
+   - **body 字段必须详细，至少150字，包含完整的事件描述和分析**
+   - **sources 字段必须是具体的媒体名称（如"Bloomberg"、"Reuters"、"新华社"）或网址，不能是泛泛的标签**
    - 不要添加任何其他文字说明
    - 不要添加 markdown 代码块标记
    - 直接返回纯 JSON 对象
@@ -390,6 +399,8 @@ class IntelAIService {
 2. JSON 中的 intel_entries 数组将完全替换今天的所有情报
 3. 如果只是讨论或解释，只返回自然语言文本
 4. 返回 JSON 时，确保格式正确，可以被直接解析
+5. **每条情报的 body 必须详细（至少150字），包含事件背景、细节和影响分析**
+6. **每条情报的 sources 必须是具体媒体名称（如"Bloomberg"、"新华社"）或网址，不能用标签**
 """#
         
         let userPrompt = """
@@ -549,7 +560,7 @@ class IntelAIService {
                rawResponse[firstBraceIndex...].contains("\"intel_entries\"") {
                 // 从第一个 { 开始，找到匹配的最后一个 }
                 var braceCount = 0
-                var jsonStart = firstBraceIndex
+                let jsonStart = firstBraceIndex
                 var jsonEnd: String.Index? = nil
                 
                 for index in rawResponse[firstBraceIndex...].indices {
