@@ -354,7 +354,24 @@ class EmailStore: ObservableObject {
     
     /// 获取邮件总数
     func getMessageCount(for folderId: UUID) -> Int {
-        return messages[folderId]?.count ?? 0
+        // 优先从内存缓存获取
+        if let count = messages[folderId]?.count, count > 0 {
+            // 同时更新持久化缓存
+            FolderMessageCountCache.shared.updateCount(for: folderId, count: count)
+            return count
+        }
+        // 如果内存中没有，从持久化缓存获取
+        return FolderMessageCountCache.shared.getCount(for: folderId)
+    }
+    
+    /// 获取所有邮件（用于 AI 摘要汇总）
+    func getAllMessages(limit: Int = 100) -> [EmailMessage] {
+        var allMessages: [EmailMessage] = []
+        for (_, folderMessages) in messages {
+            allMessages.append(contentsOf: folderMessages)
+        }
+        // 按日期排序，取最新的
+        return Array(allMessages.sorted { $0.date > $1.date }.prefix(limit))
     }
     
     // MARK: - Draft Management
@@ -963,6 +980,71 @@ class EmailStore: ObservableObject {
         }
         
         return attachments
+    }
+}
+
+// MARK: - 文件夹邮件数量缓存管理器
+
+/// 文件夹邮件数量缓存管理器
+/// 用于在应用启动时快速显示文件夹邮件数量
+class FolderMessageCountCache {
+    static let shared = FolderMessageCountCache()
+    
+    private let cacheKey = "folder_message_count_cache"
+    private let defaults = UserDefaults.standard
+    private var cache: [String: Int] = [:]  // folderId -> count
+    
+    private init() {
+        loadCache()
+    }
+    
+    /// 从 UserDefaults 加载缓存
+    private func loadCache() {
+        if let data = defaults.dictionary(forKey: cacheKey) as? [String: Int] {
+            cache = data
+            print("📦 [FolderMessageCountCache] 已加载 \(cache.count) 个文件夹的邮件数量缓存")
+        }
+    }
+    
+    /// 保存缓存到 UserDefaults
+    private func saveCache() {
+        defaults.set(cache, forKey: cacheKey)
+    }
+    
+    /// 获取文件夹的邮件数量
+    func getCount(for folderId: UUID) -> Int {
+        return cache[folderId.uuidString] ?? 0
+    }
+    
+    /// 更新文件夹的邮件数量
+    func updateCount(for folderId: UUID, count: Int) {
+        let key = folderId.uuidString
+        if cache[key] != count {
+            cache[key] = count
+            saveCache()
+        }
+    }
+    
+    /// 批量更新文件夹的邮件数量
+    func updateCounts(_ counts: [UUID: Int]) {
+        var changed = false
+        for (folderId, count) in counts {
+            let key = folderId.uuidString
+            if cache[key] != count {
+                cache[key] = count
+                changed = true
+            }
+        }
+        if changed {
+            saveCache()
+        }
+    }
+    
+    /// 清除缓存
+    func clearCache() {
+        cache.removeAll()
+        defaults.removeObject(forKey: cacheKey)
+        print("✅ [FolderMessageCountCache] 缓存已清除")
     }
 }
 
