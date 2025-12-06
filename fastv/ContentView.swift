@@ -299,6 +299,11 @@ struct ContentView: View {
                 }
             }
             .frame(minWidth: 720, minHeight: 520)
+            .overlay(alignment: .top) {
+                // 全局 Toast 提示
+                ToastView()
+                    .padding(.top, 60)
+            }
             .onChange(of: microAppManager.runningApps) { oldValue, newValue in
                 // 如果当前选中的 microAPP 被关闭了，切换到已安装页面
                 if case .microApp(let appId) = selectedSidebarItem {

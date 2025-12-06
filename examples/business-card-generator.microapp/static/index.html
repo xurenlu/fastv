@@ -5,12 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>名片生成助手</title>
   <link rel="stylesheet" href="style.css">
+  <!-- html2canvas for converting HTML to image -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
   <div id="app">
     <div class="container">
       <h1>💼 名片生成助手</h1>
-      <p class="subtitle">填写信息，上传 Logo，生成专业名片</p>
+      <p class="subtitle">填写信息，AI 自动生成多种精美名片样式</p>
       
       <div class="main-content">
         <!-- 左侧：信息输入区域 -->
@@ -53,7 +55,7 @@
           </div>
           
           <div class="form-group">
-            <label for="logo-upload">公司 Logo</label>
+            <label for="logo-upload">公司 Logo (可选)</label>
             <div class="logo-upload-area">
               <input type="file" id="logo-upload" accept="image/*" style="display: none;">
               <button type="button" id="logo-btn" class="btn btn-secondary">选择 Logo</button>
@@ -63,64 +65,44 @@
             <img id="logo-preview" style="display: none; max-width: 100px; margin-top: 10px; border-radius: 4px;">
           </div>
           
-          <h3 style="margin-top: 24px; margin-bottom: 16px;">🎨 样式设置</h3>
-          
-          <div class="form-group">
-            <label for="theme-color">主题颜色</label>
-            <input type="color" id="theme-color" value="#667eea">
-          </div>
-          
-          <div class="form-group">
-            <label for="text-color">文字颜色</label>
-            <input type="color" id="text-color" value="#2d3748">
-          </div>
-          
-          <div class="form-group">
-            <label for="layout">布局样式</label>
-            <select id="layout">
-              <option value="vertical">垂直布局</option>
-              <option value="horizontal">水平布局</option>
-              <option value="centered">居中布局</option>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label for="font-size">字体大小</label>
-            <input type="range" id="font-size" min="12" max="20" value="14">
-            <span id="font-size-value">14px</span>
+          <div class="action-buttons" style="margin-top: 24px;">
+            <button id="generate-btn" class="btn btn-primary btn-large" disabled>🎨 AI 生成名片</button>
+            <button id="reset-btn" class="btn btn-secondary">重置</button>
           </div>
         </div>
         
         <!-- 右侧：名片预览区域 -->
         <div class="preview-section">
-          <h2>👁️ 名片预览</h2>
-          <div id="card-preview" class="card-preview">
-            <div id="card-content" class="card-content">
-              <div class="card-placeholder">
-                <p>填写左侧信息后，名片将在这里显示</p>
-              </div>
+          <h2>👁️ AI 生成的名片</h2>
+          
+          <div id="cards-container" class="cards-container">
+            <div class="cards-placeholder">
+              <p>👈 填写左侧信息后，点击「AI 生成名片」</p>
+              <p style="margin-top: 8px; font-size: 14px;">AI 将为您生成 3 种不同风格的名片</p>
             </div>
           </div>
           
-          <div class="preview-actions">
-            <button id="download-btn" class="btn btn-primary" disabled>下载名片</button>
-            <button id="generate-all-btn" class="btn btn-secondary" disabled>生成50种样式</button>
-            <button id="reset-btn" class="btn btn-secondary">重置</button>
+          <div class="preview-actions" id="preview-actions" style="display: none;">
+            <button id="refresh-btn" class="btn btn-secondary">🔄 换一批</button>
+            <p style="text-align: center; margin-top: 12px; font-size: 12px; color: #718096;">
+              💡 点击名片可下载为 PNG 图片
+            </p>
           </div>
-          <p style="text-align: center; margin-top: 12px; font-size: 12px; color: #718096;">
-            💡 提示：生成50种样式时会自动创建随机样式，不依赖上方设置
-          </p>
+          
+          <div id="loading-indicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p>AI 正在设计名片...</p>
+          </div>
         </div>
       </div>
       
       <!-- 版本号显示 -->
       <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0; color: #718096; font-size: 12px;">
-        <p>版本 v2.1.0</p>
-        <p style="margin-top: 4px;">✨ 新增：批量生成50种随机样式 | 标准名片尺寸(90x50mm) | 重新生成功能</p>
+        <p>版本 v3.1.0</p>
+        <p style="margin-top: 4px;">✨ AI 智能生成不同风格名片 | 点击下载 | 换一批功能</p>
       </div>
     </div>
   </div>
   <script src="app.js"></script>
 </body>
 </html>
-

@@ -9,6 +9,103 @@ import Foundation
 import WebKit
 import AppKit
 import UniformTypeIdentifiers
+import SwiftUI
+import Combine
+
+/// 全局 Toast 管理器
+@MainActor
+class ToastManager: ObservableObject {
+    static let shared = ToastManager()
+    
+    @Published var isShowing = false
+    @Published var message = ""
+    @Published var toastType: ToastType = .info
+    
+    enum ToastType {
+        case info
+        case success
+        case warning
+        case error
+        
+        var icon: String {
+            switch self {
+            case .info: return "info.circle.fill"
+            case .success: return "checkmark.circle.fill"
+            case .warning: return "exclamationmark.triangle.fill"
+            case .error: return "xmark.circle.fill"
+            }
+        }
+        
+        var color: Color {
+            switch self {
+            case .info: return .blue
+            case .success: return .green
+            case .warning: return .orange
+            case .error: return .red
+            }
+        }
+    }
+    
+    private var hideTask: Task<Void, Never>?
+    
+    func show(_ message: String, type: ToastType = .info, duration: TimeInterval = 3.0) {
+        // 取消之前的隐藏任务
+        hideTask?.cancel()
+        
+        self.message = message
+        self.toastType = type
+        
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            isShowing = true
+        }
+        
+        // 设置自动隐藏
+        hideTask = Task {
+            try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+            if !Task.isCancelled {
+                await MainActor.run {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        self.isShowing = false
+                    }
+                }
+            }
+        }
+    }
+    
+    func hide() {
+        hideTask?.cancel()
+        withAnimation(.easeOut(duration: 0.3)) {
+            isShowing = false
+        }
+    }
+}
+
+/// Toast 视图组件
+struct ToastView: View {
+    @ObservedObject var manager = ToastManager.shared
+    
+    var body: some View {
+        if manager.isShowing {
+            HStack(spacing: 12) {
+                Image(systemName: manager.toastType.icon)
+                    .font(.system(size: 20))
+                    .foregroundStyle(manager.toastType.color)
+                
+                Text(manager.message)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+}
 
 /// Micro-App JS Bridge
 @MainActor
@@ -53,8 +150,13 @@ class MicroAppBridge: NSObject, WKScriptMessageHandler {
                     return this._call('vision', options);
                 },
                 
-                showToast: function(message) {
-                    return this._call('showToast', { message: message });
+                showToast: function(message, options) {
+                    var params = { message: message };
+                    if (options && typeof options === 'object') {
+                        if (options.type) params.type = options.type;
+                        if (options.duration) params.duration = options.duration;
+                    }
+                    return this._call('showToast', params);
                 },
                 
                 uploadFile: function(file) {
@@ -305,14 +407,20 @@ class MicroAppBridge: NSObject, WKScriptMessageHandler {
             throw NSError(domain: "MicroAppBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "缺少 message 参数"])
         }
         
-        // 在主线程显示 Toast（简化实现，使用 Alert）
-        DispatchQueue.main.async {
-            let alert = NSAlert()
-            alert.messageText = message
-            alert.alertStyle = .informational
-            alert.addButton(withTitle: "确定")
-            alert.runModal()
+        // 解析 Toast 类型
+        let typeString = params["type"] as? String ?? "info"
+        let duration = params["duration"] as? Double ?? 3.0
+        
+        let toastType: ToastManager.ToastType
+        switch typeString.lowercased() {
+        case "success": toastType = .success
+        case "warning": toastType = .warning
+        case "error": toastType = .error
+        default: toastType = .info
         }
+        
+        // 使用非阻塞的 Toast 提示
+        ToastManager.shared.show(message, type: toastType, duration: duration)
         
         return true
     }

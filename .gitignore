@@ -60,3 +60,4 @@ fastv/Resources/Models/**/*.onnx
 
 # MicroAPP zip 包文件（不提交打包文件）
 *.microapp.zip
+examples/*.png

@@ -7,15 +7,15 @@ let cardData = {
   email: '',
   address: '',
   website: '',
-  logoUrl: null,
-  themeColor: '#667eea',
-  textColor: '#2d3748',
-  layout: 'vertical',
-  fontSize: 14
+  logoUrl: null
 };
 
 // localStorage 键名
 const STORAGE_KEY = 'businessCardData';
+
+// 标准名片尺寸：90mm x 54mm (国际标准)
+const CARD_WIDTH = 450;  // 显示宽度
+const CARD_HEIGHT = 270; // 显示高度 (90:54 = 5:3 比例)
 
 // 检查 row1 bridge 是否可用
 if (!window.row1) {
@@ -28,7 +28,6 @@ function loadFromStorage() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const savedData = JSON.parse(saved);
-      // 恢复数据到 cardData
       Object.assign(cardData, savedData);
       
       // 恢复表单值
@@ -39,11 +38,6 @@ function loadFromStorage() {
       document.getElementById('email').value = cardData.email || '';
       document.getElementById('address').value = cardData.address || '';
       document.getElementById('website').value = cardData.website || '';
-      document.getElementById('theme-color').value = cardData.themeColor || '#667eea';
-      document.getElementById('text-color').value = cardData.textColor || '#2d3748';
-      document.getElementById('layout').value = cardData.layout || 'vertical';
-      document.getElementById('font-size').value = cardData.fontSize || 14;
-      document.getElementById('font-size-value').textContent = (cardData.fontSize || 14) + 'px';
       
       // 恢复 Logo 预览
       if (cardData.logoUrl) {
@@ -53,7 +47,7 @@ function loadFromStorage() {
         document.getElementById('logo-name').textContent = '已上传';
       }
       
-      updateCardPreview();
+      updateGenerateButton();
     }
   } catch (error) {
     console.error('加载存储数据失败:', error);
@@ -69,776 +63,319 @@ function saveToStorage() {
   }
 }
 
-// 上传图片（使用 row1 平台提供的上传 API）
+// 更新生成按钮状态
+function updateGenerateButton() {
+  const hasData = cardData.name || cardData.company;
+  document.getElementById('generate-btn').disabled = !hasData;
+}
+
+// 上传图片
 async function uploadImage(file) {
   try {
-    // 使用 row1 平台提供的上传 API
-    const imageUrl = await window.row1.uploadFile(file);
-    console.log('Logo 上传成功，URL:', imageUrl);
-    return imageUrl;
+    if (window.row1 && window.row1.uploadFile) {
+      const imageUrl = await window.row1.uploadFile(file);
+      console.log('Logo 上传成功，URL:', imageUrl);
+      return imageUrl;
+    } else {
+      // 降级：使用 base64
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
   } catch (error) {
     console.error('上传错误:', error);
     throw error;
   }
 }
 
-// 标准名片尺寸：90mm x 50mm (1.8:1 比例)，300dpi
-const CARD_WIDTH = 1063;  // 90mm at 300dpi
-const CARD_HEIGHT = 591;  // 50mm at 300dpi
+// 名片风格列表
+const CARD_STYLES = [
+  { name: '简约商务', colors: '深蓝色和白色', layout: '左对齐，信息分层清晰' },
+  { name: '创意设计', colors: '渐变紫色到粉色', layout: '大胆的几何图形装饰' },
+  { name: '科技未来', colors: '深色背景配霓虹蓝', layout: '科技感线条和光效' },
+  { name: '优雅经典', colors: '金色和黑色', layout: '对称布局，衬线字体风格' },
+  { name: '活力时尚', colors: '明亮的橙色和黄色', layout: '动感斜线分割' },
+  { name: '自然清新', colors: '绿色和米白色', layout: '圆润的边角和自然元素' },
+  { name: '极简主义', colors: '纯白背景黑色文字', layout: '大量留白，极简排版' },
+  { name: '复古怀旧', colors: '棕色和米色', layout: '复古纹理和经典字体' },
+  { name: '高端奢华', colors: '黑金配色', layout: '精致边框和装饰线' },
+  { name: '清新文艺', colors: '淡蓝色和白色', layout: '手写风格元素' },
+  { name: '热情活力', colors: '红色和橙色渐变', layout: '动感曲线' },
+  { name: '冷静专业', colors: '灰色和蓝色', layout: '网格化布局' },
+  { name: '梦幻浪漫', colors: '粉紫渐变', layout: '柔和的光晕效果' },
+  { name: '工业风格', colors: '深灰和橙色点缀', layout: '硬朗的直线条' },
+  { name: '东方韵味', colors: '朱红和金色', layout: '中式装饰纹样' }
+];
 
-// 生成50种随机样式配置（不依赖用户设置）
-function generateRandomStyles(count = 50) {
-  const colors = [
-    '#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140',
-    '#30cfd0', '#a8edea', '#ff9a9e', '#fecfef', '#e74c3c', '#3498db',
-    '#2ecc71', '#9b59b6', '#e67e22', '#16a085', '#c0392b', '#2c3e50',
-    '#34495e', '#1a1a1a', '#f39c12', '#8e44ad', '#27ae60', '#2980b9'
-  ];
+// 构建 AI 提示词（带指定风格）
+function buildPrompt(styleIndex) {
+  const style = CARD_STYLES[styleIndex % CARD_STYLES.length];
   
-  const textColors = ['#2d3748', '#ffffff', '#1a202c', '#4a5568', '#718096'];
-  const layouts = ['vertical', 'horizontal', 'centered'];
-  const borderStyles = ['top', 'bottom', 'left', 'right', 'full', 'none'];
-  const fontSizes = [12, 13, 14, 15, 16, 17, 18];
-  
-  const styles = [];
-  for (let i = 0; i < count; i++) {
-    const themeColor = colors[Math.floor(Math.random() * colors.length)];
-    const textColor = textColors[Math.floor(Math.random() * textColors.length)];
-    const layout = layouts[Math.floor(Math.random() * layouts.length)];
-    const borderStyle = borderStyles[Math.floor(Math.random() * borderStyles.length)];
-    const fontSize = fontSizes[Math.floor(Math.random() * fontSizes.length)];
-    const useGradient = Math.random() > 0.6;
-    const useDark = Math.random() > 0.7;
-    
-    styles.push({
-      themeColor,
-      textColor,
-      layout,
-      borderStyle,
-      fontSize,
-      gradient: useGradient,
-      dark: useDark,
-      textAlign: layout === 'centered' ? 'center' : (layout === 'horizontal' ? 'left' : 'left')
-    });
-  }
-  
-  return styles;
-}
-
-// 根据样式配置生成名片 HTML
-function generateCardHTML(style) {
-  const { layout, themeColor, textColor, fontSize, borderStyle, gradient, dark } = style;
-  
-  let html = '';
-  let cardStyle = '';
-  
-  // 设置背景
-  if (gradient) {
-    cardStyle += `background: linear-gradient(135deg, ${themeColor} 0%, ${adjustColor(themeColor, -30)} 100%); `;
-  } else if (dark) {
-    cardStyle += `background: ${themeColor}; `;
-  } else {
-    cardStyle += `background: white; `;
-  }
-  
-  // 设置边框
-  if (borderStyle === 'top') {
-    cardStyle += `border-top: 4px solid ${themeColor}; `;
-  } else if (borderStyle === 'bottom') {
-    cardStyle += `border-bottom: 4px solid ${themeColor}; `;
-  } else if (borderStyle === 'left') {
-    cardStyle += `border-left: 4px solid ${themeColor}; `;
-  } else if (borderStyle === 'full') {
-    cardStyle += `border: 2px solid ${themeColor}; `;
-  }
-  
-  if (layout === 'horizontal') {
-    html = `
-      <div class="left-section">
-        ${cardData.logoUrl ? `<div class="logo-container"><img src="${cardData.logoUrl}" alt="Logo"></div>` : ''}
-        <div class="company" style="color: ${themeColor};">${cardData.company || ''}</div>
-      </div>
-      <div class="right-section">
-        <div class="name" style="color: ${textColor}; font-size: ${fontSize + 6}px;">${cardData.name || ''}</div>
-        ${cardData.position ? `<div class="position" style="color: ${textColor}; font-size: ${fontSize}px;">${cardData.position}</div>` : ''}
-        <div class="contact-info">
-          ${cardData.phone ? `<div class="contact-item" style="color: ${textColor}; font-size: ${fontSize}px;">📞 ${cardData.phone}</div>` : ''}
-          ${cardData.email ? `<div class="contact-item" style="color: ${textColor}; font-size: ${fontSize}px;">✉️ ${cardData.email}</div>` : ''}
-          ${cardData.address ? `<div class="contact-item" style="color: ${textColor}; font-size: ${fontSize}px;">📍 ${cardData.address}</div>` : ''}
-          ${cardData.website ? `<div class="contact-item" style="color: ${textColor}; font-size: ${fontSize}px;">🌐 ${cardData.website}</div>` : ''}
-        </div>
-      </div>
-    `;
-  } else if (layout === 'centered') {
-    html = `
-      ${cardData.logoUrl ? `<div class="logo-container"><img src="${cardData.logoUrl}" alt="Logo"></div>` : ''}
-      <div class="name" style="color: ${textColor}; font-size: ${fontSize + 6}px;">${cardData.name || ''}</div>
-      ${cardData.position ? `<div class="position" style="color: ${textColor}; font-size: ${fontSize}px;">${cardData.position}</div>` : ''}
-      <div class="company" style="color: ${themeColor}; font-size: ${fontSize + 2}px;">${cardData.company || ''}</div>
-      <div class="contact-info">
-        ${cardData.phone ? `<div class="contact-item" style="color: ${textColor}; font-size: ${fontSize}px;">📞 ${cardData.phone}</div>` : ''}
-        ${cardData.email ? `<div class="contact-item" style="color: ${textColor}; font-size: ${fontSize}px;">✉️ ${cardData.email}</div>` : ''}
-        ${cardData.address ? `<div class="contact-item" style="color: ${textColor}; font-size: ${fontSize}px;">📍 ${cardData.address}</div>` : ''}
-        ${cardData.website ? `<div class="contact-item" style="color: ${textColor}; font-size: ${fontSize}px;">🌐 ${cardData.website}</div>` : ''}
-      </div>
-    `;
-  } else {
-    // vertical (默认)
-    html = `
-      ${cardData.logoUrl ? `<div class="logo-container"><img src="${cardData.logoUrl}" alt="Logo"></div>` : ''}
-      <div class="name" style="color: ${textColor}; font-size: ${fontSize + 6}px;">${cardData.name || ''}</div>
-      ${cardData.position ? `<div class="position" style="color: ${textColor}; font-size: ${fontSize}px;">${cardData.position}</div>` : ''}
-      <div class="company" style="color: ${themeColor}; font-size: ${fontSize + 2}px;">${cardData.company || ''}</div>
-      <div class="contact-info">
-        ${cardData.phone ? `<div class="contact-item" style="color: ${textColor}; font-size: ${fontSize}px;">📞 ${cardData.phone}</div>` : ''}
-        ${cardData.email ? `<div class="contact-item" style="color: ${textColor}; font-size: ${fontSize}px;">✉️ ${cardData.email}</div>` : ''}
-        ${cardData.address ? `<div class="contact-item" style="color: ${textColor}; font-size: ${fontSize}px;">📍 ${cardData.address}</div>` : ''}
-        ${cardData.website ? `<div class="contact-item" style="color: ${textColor}; font-size: ${fontSize}px;">🌐 ${cardData.website}</div>` : ''}
-      </div>
-    `;
-  }
-  
-  return { html, cardStyle };
-}
-
-// 调整颜色亮度
-function adjustColor(color, amount) {
-  const usePound = color[0] === '#';
-  const col = usePound ? color.slice(1) : color;
-  const num = parseInt(col, 16);
-  let r = (num >> 16) + amount;
-  let g = (num >> 8 & 0x00FF) + amount;
-  let b = (num & 0x0000FF) + amount;
-  r = r > 255 ? 255 : r < 0 ? 0 : r;
-  g = g > 255 ? 255 : g < 0 ? 0 : g;
-  b = b > 255 ? 255 : b < 0 ? 0 : b;
-  return (usePound ? '#' : '') + (r << 16 | g << 8 | b).toString(16).padStart(6, '0');
-}
-
-// 更新名片预览
-function updateCardPreview() {
-  const cardContent = document.getElementById('card-content');
-  const hasData = cardData.name || cardData.company;
-  
-  if (!hasData) {
-    cardContent.innerHTML = '<div class="card-placeholder"><p>填写左侧信息后，名片将在这里显示</p></div>';
-    document.getElementById('download-btn').disabled = true;
-    document.getElementById('generate-all-btn').disabled = true;
-    return;
-  }
-  
-  document.getElementById('download-btn').disabled = false;
-  document.getElementById('generate-all-btn').disabled = false;
-  
-  // 使用当前样式生成预览
-  const style = {
-    layout: cardData.layout,
-    themeColor: cardData.themeColor,
-    textColor: cardData.textColor,
-    fontSize: cardData.fontSize,
-    borderStyle: 'top'
+  const info = {
+    name: cardData.name || '张三',
+    position: cardData.position || '',
+    company: cardData.company || '某某公司',
+    phone: cardData.phone || '',
+    email: cardData.email || '',
+    address: cardData.address || '',
+    website: cardData.website || '',
+    hasLogo: !!cardData.logoUrl
   };
   
-  const { html, cardStyle } = generateCardHTML(style);
-  
-  cardContent.className = `card-content layout-${cardData.layout}`;
-  cardContent.style.cssText = cardStyle;
-  cardContent.innerHTML = html;
-  
-  // 保存到 localStorage
-  saveToStorage();
+  return `设计一张【${style.name}】风格的名片 HTML。
+
+用户信息：
+- 姓名：${info.name}
+- 职位：${info.position || '(无)'}
+- 公司：${info.company}
+- 电话：${info.phone || '(无)'}
+- 邮箱：${info.email || '(无)'}
+- 地址：${info.address || '(无)'}
+- 网站：${info.website || '(无)'}
+${info.hasLogo ? '- Logo：用户已上传（请预留 logo 位置，使用 class="user-logo" 的 img 标签）' : ''}
+
+风格要求：
+- 风格：${style.name}
+- 配色：${style.colors}
+- 布局特点：${style.layout}
+
+技术要求：
+1. 输出完整的名片 HTML 片段（不需要 html/head/body 标签）
+2. 尺寸固定：width: 450px; height: 270px（标准名片比例）
+3. 使用内联样式 (style="...")
+4. 字体：-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif
+5. 只输出 HTML 代码，不要解释
+6. 确保文字不溢出
+
+直接输出 HTML：`;
 }
 
-// 将 Canvas 转换为 base64
-function canvasToBase64(canvas) {
-  return canvas.toDataURL('image/png').split(',')[1];
-}
-
-// 生成单个名片图片（使用标准名片尺寸）
-async function generateCardImage(style, index) {
-  return new Promise((resolve, reject) => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    // 标准名片尺寸：90mm x 50mm (1.8:1)，300dpi
-    canvas.width = CARD_WIDTH;
-    canvas.height = CARD_HEIGHT;
-    
-    const { themeColor, textColor, fontSize, borderStyle, gradient, dark, layout, textAlign } = style;
-    const width = CARD_WIDTH;
-    const height = CARD_HEIGHT;
-    
-    // 填充背景
-    if (gradient) {
-      const gradientObj = ctx.createLinearGradient(0, 0, width, height);
-      gradientObj.addColorStop(0, themeColor);
-      gradientObj.addColorStop(1, adjustColor(themeColor, -30));
-      ctx.fillStyle = gradientObj;
-    } else if (dark) {
-      ctx.fillStyle = themeColor;
-    } else {
-      ctx.fillStyle = '#ffffff';
-    }
-    ctx.fillRect(0, 0, width, height);
-    
-    // 绘制边框
-    if (borderStyle === 'top') {
-      ctx.fillStyle = themeColor;
-      ctx.fillRect(0, 0, width, 20);
-    } else if (borderStyle === 'bottom') {
-      ctx.fillStyle = themeColor;
-      ctx.fillRect(0, height - 20, width, 20);
-    } else if (borderStyle === 'left') {
-      ctx.fillStyle = themeColor;
-      ctx.fillRect(0, 0, 20, height);
-    } else if (borderStyle === 'right') {
-      ctx.fillStyle = themeColor;
-      ctx.fillRect(width - 20, 0, 20, height);
-    } else if (borderStyle === 'full') {
-      ctx.strokeStyle = themeColor;
-      ctx.lineWidth = 4;
-      ctx.strokeRect(2, 2, width - 4, height - 4);
-    }
-    
-    // 根据布局设置对齐方式
-    if (layout === 'horizontal') {
-      // 水平布局：左侧 Logo/公司，右侧个人信息
-      drawHorizontalLayout(ctx, width, height, style, () => {
-        const base64 = canvasToBase64(canvas);
-        resolve({ base64, index, style });
-      });
-    } else if (layout === 'centered') {
-      // 居中布局
-      drawCenteredLayout(ctx, width, height, style, () => {
-        const base64 = canvasToBase64(canvas);
-        resolve({ base64, index, style });
-      });
-    } else {
-      // 垂直布局（默认）
-      drawVerticalLayout(ctx, width, height, style, () => {
-        const base64 = canvasToBase64(canvas);
-        resolve({ base64, index, style });
-      });
-    }
-  });
-}
-
-// 垂直布局绘制
-function drawVerticalLayout(ctx, width, height, style, resolve) {
-  const { themeColor, textColor, fontSize } = style;
-  let y = 60;
-  
-  // Logo
-  if (cardData.logoUrl) {
-    const logoImg = new Image();
-    logoImg.crossOrigin = 'anonymous';
-    logoImg.onload = () => {
-      const logoHeight = 100;
-      const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
-      ctx.drawImage(logoImg, (width - logoWidth) / 2, y, logoWidth, logoHeight);
-      y += logoHeight + 30;
-      drawVerticalText(ctx, width, height, y, style);
-      resolve();
-    };
-    logoImg.onerror = () => {
-      drawVerticalText(ctx, width, height, y, style);
-      resolve();
-    };
-    logoImg.src = cardData.logoUrl;
-  } else {
-    drawVerticalText(ctx, width, height, y, style);
-    resolve();
-  }
-}
-
-function drawVerticalText(ctx, width, height, startY, style) {
-  const { themeColor, textColor, fontSize } = style;
-  let y = startY;
-  
-  ctx.textAlign = 'center';
-  
-  if (cardData.name) {
-    ctx.font = `bold ${Math.max(24, (fontSize + 6) * 1.5)}px Arial`;
-    ctx.fillStyle = textColor;
-    ctx.fillText(cardData.name, width / 2, y);
-    y += 45;
+// 调用 AI 生成名片 HTML（带风格索引）
+async function generateCardHTML(styleIndex) {
+  if (!window.row1 || !window.row1.chat) {
+    throw new Error('AI 服务不可用');
   }
   
-  if (cardData.position) {
-    ctx.font = `${Math.max(14, fontSize * 1.2)}px Arial`;
-    ctx.fillStyle = textColor;
-    ctx.fillText(cardData.position, width / 2, y);
-    y += 35;
-  }
+  const prompt = buildPrompt(styleIndex);
   
-  if (cardData.company) {
-    ctx.font = `bold ${Math.max(18, (fontSize + 2) * 1.3)}px Arial`;
-    ctx.fillStyle = themeColor;
-    ctx.fillText(cardData.company, width / 2, y);
-    y += 50;
-  }
-  
-  ctx.font = `${Math.max(12, fontSize * 1.1)}px Arial`;
-  ctx.fillStyle = textColor;
-  
-  if (cardData.phone) {
-    ctx.fillText(`📞 ${cardData.phone}`, width / 2, y);
-    y += 35;
-  }
-  if (cardData.email) {
-    ctx.fillText(`✉️ ${cardData.email}`, width / 2, y);
-    y += 35;
-  }
-  if (cardData.address) {
-    ctx.fillText(`📍 ${cardData.address}`, width / 2, y);
-    y += 35;
-  }
-  if (cardData.website) {
-    ctx.fillText(`🌐 ${cardData.website}`, width / 2, y);
-  }
-}
-
-// 水平布局绘制
-function drawHorizontalLayout(ctx, width, height, style, resolve) {
-  const { themeColor, textColor, fontSize } = style;
-  const leftWidth = width * 0.4;
-  const rightWidth = width * 0.6;
-  const padding = 30;
-  
-  // 左侧：Logo 和公司
-  let leftY = padding + 20;
-  
-  const drawComplete = () => {
-    // 左侧内容
-    ctx.save();
-    ctx.textAlign = 'center';
-    if (cardData.logoUrl) {
-      const logoImg = new Image();
-      logoImg.crossOrigin = 'anonymous';
-      logoImg.onload = () => {
-        const logoHeight = 80;
-        const logoWidth = Math.min(leftWidth - 40, (logoImg.width / logoImg.height) * logoHeight);
-        ctx.drawImage(logoImg, padding + (leftWidth - logoWidth) / 2, leftY, logoWidth, logoHeight);
-        leftY += logoHeight + 20;
-        drawHorizontalLeft(ctx, leftWidth, leftY, padding, style);
-        drawHorizontalRight(ctx, rightWidth, padding, style);
-        ctx.restore();
-        resolve();
-      };
-      logoImg.onerror = () => {
-        drawHorizontalLeft(ctx, leftWidth, leftY, padding, style);
-        drawHorizontalRight(ctx, rightWidth, padding, style);
-        ctx.restore();
-        resolve();
-      };
-      logoImg.src = cardData.logoUrl;
-    } else {
-      drawHorizontalLeft(ctx, leftWidth, leftY, padding, style);
-      drawHorizontalRight(ctx, rightWidth, padding, style);
-      ctx.restore();
-      resolve();
-    }
-  };
-  
-  drawComplete();
-}
-
-function drawHorizontalLeft(ctx, leftWidth, startY, padding, style) {
-  const { themeColor, textColor, fontSize } = style;
-  
-  ctx.textAlign = 'center';
-  if (cardData.company) {
-    ctx.font = `bold ${Math.max(18, (fontSize + 2) * 1.3)}px Arial`;
-    ctx.fillStyle = themeColor;
-    ctx.fillText(cardData.company, padding + leftWidth / 2, startY);
-  }
-}
-
-function drawHorizontalRight(ctx, rightWidth, padding, style) {
-  const { themeColor, textColor, fontSize } = style;
-  const leftWidth = CARD_WIDTH * 0.4;
-  const startX = padding + leftWidth + padding;
-  let y = padding + 20;
-  
-  ctx.textAlign = 'left';
-  
-  if (cardData.name) {
-    ctx.font = `bold ${Math.max(22, (fontSize + 6) * 1.4)}px Arial`;
-    ctx.fillStyle = textColor;
-    ctx.fillText(cardData.name, startX, y);
-    y += 40;
-  }
-  
-  if (cardData.position) {
-    ctx.font = `${Math.max(14, fontSize * 1.2)}px Arial`;
-    ctx.fillStyle = textColor;
-    ctx.fillText(cardData.position, startX, y);
-    y += 35;
-  }
-  
-  ctx.font = `${Math.max(12, fontSize * 1.1)}px Arial`;
-  ctx.fillStyle = textColor;
-  
-  if (cardData.phone) {
-    ctx.fillText(`📞 ${cardData.phone}`, startX, y);
-    y += 30;
-  }
-  if (cardData.email) {
-    ctx.fillText(`✉️ ${cardData.email}`, startX, y);
-    y += 30;
-  }
-  if (cardData.address) {
-    ctx.fillText(`📍 ${cardData.address}`, startX, y);
-    y += 30;
-  }
-  if (cardData.website) {
-    ctx.fillText(`🌐 ${cardData.website}`, startX, y);
-  }
-}
-
-// 居中布局绘制
-function drawCenteredLayout(ctx, width, height, style, resolve) {
-  const { themeColor, textColor, fontSize } = style;
-  let y = 50;
-  
-  ctx.textAlign = 'center';
-  
-  if (cardData.logoUrl) {
-    const logoImg = new Image();
-    logoImg.crossOrigin = 'anonymous';
-    logoImg.onload = () => {
-      const logoHeight = 90;
-      const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
-      ctx.drawImage(logoImg, (width - logoWidth) / 2, y, logoWidth, logoHeight);
-      y += logoHeight + 25;
-      drawCenteredText(ctx, width, y, style);
-      resolve();
-    };
-    logoImg.onerror = () => {
-      drawCenteredText(ctx, width, y, style);
-      resolve();
-    };
-    logoImg.src = cardData.logoUrl;
-  } else {
-    drawCenteredText(ctx, width, y, style);
-    resolve();
-  }
-}
-
-function drawCenteredText(ctx, width, startY, style) {
-  const { themeColor, textColor, fontSize } = style;
-  let y = startY;
-  
-  if (cardData.name) {
-    ctx.font = `bold ${Math.max(26, (fontSize + 6) * 1.6)}px Arial`;
-    ctx.fillStyle = textColor;
-    ctx.fillText(cardData.name, width / 2, y);
-    y += 45;
-  }
-  
-  if (cardData.position) {
-    ctx.font = `${Math.max(15, fontSize * 1.3)}px Arial`;
-    ctx.fillStyle = textColor;
-    ctx.fillText(cardData.position, width / 2, y);
-    y += 40;
-  }
-  
-  if (cardData.company) {
-    ctx.font = `bold ${Math.max(20, (fontSize + 2) * 1.4)}px Arial`;
-    ctx.fillStyle = themeColor;
-    ctx.fillText(cardData.company, width / 2, y);
-    y += 50;
-  }
-  
-  ctx.font = `${Math.max(13, fontSize * 1.15)}px Arial`;
-  ctx.fillStyle = textColor;
-  
-  if (cardData.phone) {
-    ctx.fillText(`📞 ${cardData.phone}`, width / 2, y);
-    y += 35;
-  }
-  if (cardData.email) {
-    ctx.fillText(`✉️ ${cardData.email}`, width / 2, y);
-    y += 35;
-  }
-  if (cardData.address) {
-    ctx.fillText(`📍 ${cardData.address}`, width / 2, y);
-    y += 35;
-  }
-  if (cardData.website) {
-    ctx.fillText(`🌐 ${cardData.website}`, width / 2, y);
-  }
-}
-
-// 下载单个名片
-async function downloadCard() {
-  const cardContent = document.getElementById('card-content');
-  if (!cardContent || cardContent.querySelector('.card-placeholder')) {
-    alert('请先填写名片信息');
-    return;
-  }
-  
-  try {
-    if (window.row1) {
-      window.row1.showToast('正在生成名片...');
-    }
-    
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    // 标准名片尺寸：90mm x 50mm (1.8:1)，300dpi
-    canvas.width = CARD_WIDTH;
-    canvas.height = CARD_HEIGHT;
-    const width = CARD_WIDTH;
-    const height = CARD_HEIGHT;
-    
-    // 填充白色背景
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
-    
-    // 绘制主题色边框
-    ctx.fillStyle = cardData.themeColor;
-    ctx.fillRect(0, 0, width, 20);
-    
-    // 设置文字样式
-    ctx.fillStyle = cardData.textColor;
-    ctx.font = `bold ${(cardData.fontSize + 6) * 2}px Arial`;
-    
-    let y = 80;
-    
-    // 绘制 Logo（如果有）
-    if (cardData.logoUrl) {
-      const logoImg = new Image();
-      logoImg.crossOrigin = 'anonymous';
-      await new Promise((resolve, reject) => {
-        logoImg.onload = () => {
-          const logoHeight = 120;
-          const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
-          ctx.drawImage(logoImg, (width - logoWidth) / 2, y, logoWidth, logoHeight);
-          y += logoHeight + 40;
-          resolve();
-        };
-        logoImg.onerror = reject;
-        logoImg.src = cardData.logoUrl;
-      });
-    }
-    
-    // 绘制姓名
-    if (cardData.name) {
-      ctx.font = `bold ${(cardData.fontSize + 6) * 2}px Arial`;
-      ctx.fillStyle = cardData.textColor;
-      ctx.textAlign = 'center';
-      ctx.fillText(cardData.name, width / 2, y);
-      y += 50;
-    }
-    
-    // 绘制职位
-    if (cardData.position) {
-      ctx.font = `${cardData.fontSize * 2}px Arial`;
-      ctx.fillText(cardData.position, width / 2, y);
-      y += 40;
-    }
-    
-    // 绘制公司
-    if (cardData.company) {
-      ctx.font = `bold ${(cardData.fontSize + 2) * 2}px Arial`;
-      ctx.fillStyle = cardData.themeColor;
-      ctx.fillText(cardData.company, width / 2, y);
-      y += 60;
-    }
-    
-    // 绘制联系信息
-    ctx.font = `${cardData.fontSize * 2}px Arial`;
-    ctx.fillStyle = cardData.textColor;
-    ctx.textAlign = 'center';
-    
-    if (cardData.phone) {
-      ctx.fillText(`📞 ${cardData.phone}`, width / 2, y);
-      y += 40;
-    }
-    if (cardData.email) {
-      ctx.fillText(`✉️ ${cardData.email}`, width / 2, y);
-      y += 40;
-    }
-    if (cardData.address) {
-      ctx.fillText(`📍 ${cardData.address}`, width / 2, y);
-      y += 40;
-    }
-    if (cardData.website) {
-      ctx.fillText(`🌐 ${cardData.website}`, width / 2, y);
-    }
-    
-    // 转换为 base64 并使用 row1 API 下载
-    const base64 = canvasToBase64(canvas);
-    const fileName = `${cardData.name || 'business-card'}-${Date.now()}.png`;
-    
-    if (window.row1 && window.row1.downloadFile) {
-      const success = await window.row1.downloadFile(base64, fileName, 'image/png');
-      if (success) {
-        if (window.row1.showToast) {
-          window.row1.showToast('名片下载成功！');
-        }
-      } else {
-        alert('下载已取消');
+  const response = await window.row1.chat({
+    messages: [
+      {
+        role: 'system',
+        content: '你是一个专业的名片设计师。根据指定的风格设计独特的名片。只输出 HTML 代码，不要任何解释。'
+      },
+      {
+        role: 'user',
+        content: prompt
       }
+    ]
+  });
+  
+  // 提取 HTML 代码（去除可能的 markdown 代码块标记）
+  let html = response.trim();
+  if (html.startsWith('```html')) {
+    html = html.slice(7);
+  } else if (html.startsWith('```')) {
+    html = html.slice(3);
+  }
+  if (html.endsWith('```')) {
+    html = html.slice(0, -3);
+  }
+  
+  return html.trim();
+}
+
+// 渲染名片到容器
+function renderCard(html, index, styleName = '') {
+  const cardWrapper = document.createElement('div');
+  cardWrapper.className = 'card-wrapper';
+  cardWrapper.setAttribute('data-index', index);
+  
+  // 添加风格标签
+  if (styleName) {
+    const styleLabel = document.createElement('div');
+    styleLabel.className = 'style-label';
+    styleLabel.textContent = styleName;
+    cardWrapper.appendChild(styleLabel);
+  }
+  
+  const cardContainer = document.createElement('div');
+  cardContainer.className = 'generated-card';
+  cardContainer.style.width = CARD_WIDTH + 'px';
+  cardContainer.style.height = CARD_HEIGHT + 'px';
+  cardContainer.style.overflow = 'hidden';
+  cardContainer.style.position = 'relative';
+  cardContainer.innerHTML = html;
+  
+  // 如果有 Logo，替换 logo 占位符
+  if (cardData.logoUrl) {
+    const logoImg = cardContainer.querySelector('.user-logo');
+    if (logoImg) {
+      logoImg.src = cardData.logoUrl;
+      logoImg.style.maxHeight = '50px';
+      logoImg.style.maxWidth = '100px';
+      logoImg.style.objectFit = 'contain';
+    }
+  }
+  
+  // 添加下载按钮
+  const downloadBtn = document.createElement('button');
+  downloadBtn.className = 'card-download-btn';
+  downloadBtn.innerHTML = '📥 下载';
+  downloadBtn.onclick = (e) => {
+    e.stopPropagation();
+    downloadCardAsImage(cardContainer, index);
+  };
+  
+  cardWrapper.appendChild(cardContainer);
+  cardWrapper.appendChild(downloadBtn);
+  
+  // 点击名片也可以下载
+  cardContainer.onclick = () => downloadCardAsImage(cardContainer, index);
+  cardContainer.style.cursor = 'pointer';
+  
+  return cardWrapper;
+}
+
+// 将名片转换为图片并下载
+async function downloadCardAsImage(cardElement, index) {
+  try {
+    // 添加下载中的视觉反馈
+    cardElement.style.opacity = '0.7';
+    
+    // 使用 html2canvas 将 HTML 转换为 canvas
+    const canvas = await html2canvas(cardElement, {
+      scale: 2, // 2倍分辨率，更清晰
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: null,
+      width: CARD_WIDTH,
+      height: CARD_HEIGHT
+    });
+    
+    // 恢复透明度
+    cardElement.style.opacity = '1';
+    
+    // 转换为 base64
+    const base64 = canvas.toDataURL('image/png').split(',')[1];
+    const fileName = `${cardData.name || 'business-card'}-style-${index + 1}.png`;
+    
+    // 使用 row1 API 下载
+    if (window.row1 && window.row1.downloadFile) {
+      await window.row1.downloadFile(base64, fileName, 'image/png');
     } else {
-      // 降级方案：使用传统下载方式
-      canvas.toBlob((blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        if (window.row1 && window.row1.showToast) {
-          window.row1.showToast('名片下载成功！');
-        }
-      }, 'image/png');
+      // 降级方案
+      const link = document.createElement('a');
+      link.download = fileName;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
     }
   } catch (error) {
     console.error('下载失败:', error);
-    alert('下载失败，请重试。错误: ' + error.message);
+    cardElement.style.opacity = '1';
+    alert('下载失败: ' + error.message);
   }
 }
 
-// 当前生成的样式列表（用于重新生成）
-let currentGeneratedStyles = [];
+// 当前使用的风格索引（用于换一批时选择不同风格）
+let currentStyleOffset = 0;
 
-// 批量生成50种样式
-async function generateAllStyles() {
-  const cardContent = document.getElementById('card-content');
-  if (!cardContent || cardContent.querySelector('.card-placeholder')) {
-    alert('请先填写名片信息');
-    return;
+// 更新加载状态文字
+function updateLoadingText(text) {
+  const loadingText = document.querySelector('.loading-indicator p');
+  if (loadingText) {
+    loadingText.textContent = text;
+  }
+}
+
+// 生成多个名片
+async function generateCards(count = 3) {
+  const container = document.getElementById('cards-container');
+  const loading = document.getElementById('loading-indicator');
+  const actions = document.getElementById('preview-actions');
+  
+  // 显示加载状态
+  container.innerHTML = '';
+  loading.style.display = 'flex';
+  actions.style.display = 'none';
+  
+  const cards = [];
+  
+  // 随机选择起始风格索引，确保每次换一批都不同
+  const startIndex = currentStyleOffset;
+  currentStyleOffset = (currentStyleOffset + count) % CARD_STYLES.length;
+  
+  for (let i = 0; i < count; i++) {
+    try {
+      // 更新加载提示（不用弹窗）
+      const styleIndex = (startIndex + i) % CARD_STYLES.length;
+      const styleName = CARD_STYLES[styleIndex].name;
+      updateLoadingText(`正在生成第 ${i + 1}/${count} 个名片（${styleName}风格）...`);
+      
+      const html = await generateCardHTML(styleIndex);
+      const cardElement = renderCard(html, i, styleName);
+      cards.push(cardElement);
+    } catch (error) {
+      console.error(`生成名片 ${i + 1} 失败:`, error);
+      // 创建错误占位
+      const errorCard = document.createElement('div');
+      errorCard.className = 'card-wrapper card-error';
+      errorCard.innerHTML = `
+        <div class="generated-card" style="width: ${CARD_WIDTH}px; height: ${CARD_HEIGHT}px; display: flex; align-items: center; justify-content: center; background: #f8f8f8; border: 2px dashed #ccc; border-radius: 8px;">
+          <p style="color: #999;">生成失败，请重试</p>
+        </div>
+      `;
+      cards.push(errorCard);
+    }
   }
   
-  if (!confirm('将生成50种不同样式的名片，请先选择保存文件夹。')) {
-    return;
-  }
+  // 隐藏加载状态，显示名片
+  loading.style.display = 'none';
+  updateLoadingText('AI 正在设计名片...');
   
-  try {
-    // 选择保存文件夹
-    let folderPath = '';
-    if (window.row1 && window.row1.selectFolder) {
-      folderPath = await window.row1.selectFolder();
-      if (!folderPath) {
-        alert('未选择文件夹，已取消');
-        return;
-      }
-    } else {
-      alert('当前环境不支持文件夹选择，请使用单个下载功能');
-      return;
-    }
-    
-    if (window.row1 && window.row1.showToast) {
-      window.row1.showToast('正在生成50种样式，请稍候...');
-    }
-    
-    // 生成50种随机样式（不依赖用户设置）
-    currentGeneratedStyles = generateRandomStyles(50);
-    
-    // 生成所有样式并保存
-    let successCount = 0;
-    for (let i = 0; i < currentGeneratedStyles.length; i++) {
-      const style = currentGeneratedStyles[i];
-      try {
-        const imageData = await generateCardImage(style, i + 1);
-        const fileName = `${cardData.name || 'business-card'}-style-${String(i + 1).padStart(2, '0')}.png`;
-        
-        if (window.row1 && window.row1.saveFileToFolder) {
-          const success = await window.row1.saveFileToFolder(
-            imageData.base64,
-            fileName,
-            folderPath,
-            'image/png'
-          );
-          if (success) {
-            successCount++;
-          }
-        }
-        
-        // 每生成10个更新一次提示
-        if ((i + 1) % 10 === 0 && window.row1 && window.row1.showToast) {
-          window.row1.showToast(`已生成 ${i + 1}/50 种样式...`);
-        }
-      } catch (error) {
-        console.error(`生成样式 ${i + 1} 失败:`, error);
-      }
-    }
-    
-    if (window.row1 && window.row1.showToast) {
-      window.row1.showToast(`成功生成并保存了 ${successCount} 种名片样式！`);
-    }
-    
-    // 更新按钮文字，显示可以重新生成
-    const btn = document.getElementById('generate-all-btn');
-    if (btn) {
-      btn.textContent = '重新生成50种样式';
-    }
-  } catch (error) {
-    console.error('批量生成失败:', error);
-    alert('批量生成失败: ' + error.message);
-  }
+  cards.forEach(card => container.appendChild(card));
+  actions.style.display = 'block';
 }
 
 // 绑定输入事件
 document.getElementById('name').addEventListener('input', (e) => {
   cardData.name = e.target.value;
-  updateCardPreview();
+  saveToStorage();
+  updateGenerateButton();
 });
 
 document.getElementById('position').addEventListener('input', (e) => {
   cardData.position = e.target.value;
-  updateCardPreview();
+  saveToStorage();
 });
 
 document.getElementById('company').addEventListener('input', (e) => {
   cardData.company = e.target.value;
-  updateCardPreview();
+  saveToStorage();
+  updateGenerateButton();
 });
 
 document.getElementById('phone').addEventListener('input', (e) => {
   cardData.phone = e.target.value;
-  updateCardPreview();
+  saveToStorage();
 });
 
 document.getElementById('email').addEventListener('input', (e) => {
   cardData.email = e.target.value;
-  updateCardPreview();
+  saveToStorage();
 });
 
 document.getElementById('address').addEventListener('input', (e) => {
   cardData.address = e.target.value;
-  updateCardPreview();
+  saveToStorage();
 });
 
 document.getElementById('website').addEventListener('input', (e) => {
   cardData.website = e.target.value;
-  updateCardPreview();
-});
-
-document.getElementById('theme-color').addEventListener('input', (e) => {
-  cardData.themeColor = e.target.value;
-  updateCardPreview();
-});
-
-document.getElementById('text-color').addEventListener('input', (e) => {
-  cardData.textColor = e.target.value;
-  updateCardPreview();
-});
-
-document.getElementById('layout').addEventListener('change', (e) => {
-  cardData.layout = e.target.value;
-  updateCardPreview();
-});
-
-document.getElementById('font-size').addEventListener('input', (e) => {
-  cardData.fontSize = parseInt(e.target.value);
-  document.getElementById('font-size-value').textContent = cardData.fontSize + 'px';
-  updateCardPreview();
+  saveToStorage();
 });
 
 // Logo 上传
@@ -850,7 +387,6 @@ document.getElementById('logo-upload').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   
-  // 显示文件名
   document.getElementById('logo-name').textContent = file.name;
   document.getElementById('remove-logo-btn').style.display = 'block';
   
@@ -863,17 +399,12 @@ document.getElementById('logo-upload').addEventListener('change', async (e) => {
   };
   reader.readAsDataURL(file);
   
-  // 上传到云存储
+  // 上传
   try {
-    if (window.row1 && window.row1.showToast) {
-      window.row1.showToast('正在上传 Logo...');
-    }
     const logoUrl = await uploadImage(file);
     cardData.logoUrl = logoUrl;
-    updateCardPreview();
-    if (window.row1 && window.row1.showToast) {
-      window.row1.showToast('Logo 上传成功！');
-    }
+    saveToStorage();
+    console.log('Logo 上传成功');
   } catch (error) {
     console.error('上传失败:', error);
     alert('Logo 上传失败: ' + error.message);
@@ -887,14 +418,18 @@ document.getElementById('remove-logo-btn').addEventListener('click', () => {
   document.getElementById('logo-name').textContent = '';
   document.getElementById('logo-preview').style.display = 'none';
   document.getElementById('remove-logo-btn').style.display = 'none';
-  updateCardPreview();
+  saveToStorage();
 });
 
-// 下载按钮
-document.getElementById('download-btn').addEventListener('click', downloadCard);
+// 生成按钮
+document.getElementById('generate-btn').addEventListener('click', () => {
+  generateCards(3);
+});
 
-// 批量生成按钮
-document.getElementById('generate-all-btn').addEventListener('click', generateAllStyles);
+// 换一批按钮
+document.getElementById('refresh-btn').addEventListener('click', () => {
+  generateCards(3);
+});
 
 // 重置按钮
 document.getElementById('reset-btn').addEventListener('click', () => {
@@ -907,11 +442,7 @@ document.getElementById('reset-btn').addEventListener('click', () => {
       email: '',
       address: '',
       website: '',
-      logoUrl: null,
-      themeColor: '#667eea',
-      textColor: '#2d3748',
-      layout: 'vertical',
-      fontSize: 14
+      logoUrl: null
     };
     
     // 重置表单
@@ -922,27 +453,25 @@ document.getElementById('reset-btn').addEventListener('click', () => {
     document.getElementById('email').value = '';
     document.getElementById('address').value = '';
     document.getElementById('website').value = '';
-    document.getElementById('theme-color').value = '#667eea';
-    document.getElementById('text-color').value = '#2d3748';
-    document.getElementById('layout').value = 'vertical';
-    document.getElementById('font-size').value = 14;
-    document.getElementById('font-size-value').textContent = '14px';
     document.getElementById('logo-upload').value = '';
     document.getElementById('logo-name').textContent = '';
     document.getElementById('logo-preview').style.display = 'none';
     document.getElementById('remove-logo-btn').style.display = 'none';
     
-    // 清除 localStorage
+    // 清除名片预览
+    document.getElementById('cards-container').innerHTML = `
+      <div class="cards-placeholder">
+        <p>👈 填写左侧信息后，点击「AI 生成名片」</p>
+        <p style="margin-top: 8px; font-size: 14px;">AI 将为您生成 3 种不同风格的名片</p>
+      </div>
+    `;
+    document.getElementById('preview-actions').style.display = 'none';
+    
     localStorage.removeItem(STORAGE_KEY);
-    
-    updateCardPreview();
-    
-    if (window.row1 && window.row1.showToast) {
-      window.row1.showToast('已重置');
-    }
+    updateGenerateButton();
   }
 });
 
-// 初始化：加载存储的数据
+// 初始化
 loadFromStorage();
-updateCardPreview();
+updateGenerateButton();

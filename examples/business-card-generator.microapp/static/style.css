@@ -36,37 +36,37 @@ h1 {
 
 .main-content {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 350px 1fr;
   gap: 40px;
   margin-top: 32px;
 }
 
 .input-section h2,
 .preview-section h2 {
-  font-size: 24px;
+  font-size: 20px;
   color: #2d3748;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .form-group label {
   display: block;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #4a5568;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .form-group input[type="text"],
 .form-group input[type="email"],
 .form-group select {
   width: 100%;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border: 2px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 14px;
   transition: border-color 0.2s;
 }
@@ -78,27 +78,6 @@ h1 {
   border-color: #667eea;
 }
 
-.form-group input[type="color"] {
-  width: 100%;
-  height: 40px;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.form-group input[type="range"] {
-  width: calc(100% - 60px);
-  margin-right: 10px;
-}
-
-#font-size-value {
-  display: inline-block;
-  width: 50px;
-  text-align: right;
-  font-size: 14px;
-  color: #718096;
-}
-
 .logo-upload-area {
   display: flex;
   align-items: center;
@@ -107,8 +86,11 @@ h1 {
 
 .logo-name {
   flex: 1;
-  font-size: 14px;
+  font-size: 13px;
   color: #718096;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .btn-remove {
@@ -123,6 +105,7 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .btn-remove:hover {
@@ -130,124 +113,144 @@ h1 {
 }
 
 .preview-section {
-  position: sticky;
-  top: 20px;
-  height: fit-content;
+  min-height: 500px;
 }
 
-.card-preview {
+/* 名片容器 */
+.cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  min-height: 320px;
+  padding: 20px;
   background: #f7fafc;
   border-radius: 12px;
-  padding: 40px;
-  min-height: 400px;
+}
+
+.cards-placeholder {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  margin-bottom: 24px;
-}
-
-.card-content {
   width: 100%;
-  max-width: 500px;
-  background: white;
-  border-radius: 8px;
-  padding: 30px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s;
-}
-
-.card-placeholder {
-  text-align: center;
+  height: 300px;
   color: #a0aec0;
-  padding: 40px;
-}
-
-.card-content .logo-container {
-  margin-bottom: 20px;
   text-align: center;
 }
 
-.card-content .logo-container img {
-  max-height: 60px;
-  max-width: 200px;
-  object-fit: contain;
-}
-
-.card-content .name {
-  font-size: 24px;
-  font-weight: 700;
-  color: #2d3748;
-  margin-bottom: 8px;
-}
-
-.card-content .position {
+.cards-placeholder p {
   font-size: 16px;
+}
+
+/* 名片卡片 */
+.card-wrapper {
+  position: relative;
+  transition: transform 0.2s;
+  margin-top: 30px;
+  margin-bottom: 50px;
+}
+
+.card-wrapper:hover {
+  transform: translateY(-4px);
+}
+
+.generated-card {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  transition: box-shadow 0.2s;
+}
+
+.generated-card:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+.style-label {
+  position: absolute;
+  top: -28px;
+  left: 0;
+  font-size: 12px;
+  color: #667eea;
+  font-weight: 600;
+  background: #f0f4ff;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.card-download-btn {
+  position: absolute;
+  bottom: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.card-wrapper:hover .card-download-btn {
+  opacity: 1;
+}
+
+.card-download-btn:hover {
+  background: #5568d3;
+}
+
+.card-error .generated-card {
+  border: 2px dashed #ccc;
+}
+
+/* 加载指示器 */
+.loading-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
   color: #718096;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
   margin-bottom: 16px;
 }
 
-.card-content .company {
-  font-size: 18px;
-  font-weight: 600;
-  color: #2d3748;
-  margin-bottom: 20px;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.card-content .contact-info {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #e2e8f0;
-}
-
-.card-content .contact-item {
-  font-size: 14px;
-  color: #4a5568;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-}
-
-.card-content .contact-item:last-child {
-  margin-bottom: 0;
-}
-
-/* 布局样式 */
-.card-content.layout-vertical {
-  text-align: left;
-}
-
-.card-content.layout-horizontal {
-  display: flex;
-  gap: 30px;
-  align-items: flex-start;
-}
-
-.card-content.layout-horizontal .left-section {
-  flex: 1;
-}
-
-.card-content.layout-horizontal .right-section {
-  flex: 1;
-}
-
-.card-content.layout-centered {
-  text-align: center;
-}
-
-.preview-actions {
+/* 按钮样式 */
+.action-buttons {
   display: flex;
   gap: 12px;
-  justify-content: center;
 }
 
 .btn {
-  padding: 12px 24px;
+  padding: 10px 20px;
   border: none;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+}
+
+.btn-large {
+  padding: 14px 28px;
+  font-size: 16px;
+  flex: 1;
 }
 
 .btn-primary {
@@ -262,14 +265,12 @@ h1 {
 }
 
 .btn-secondary {
-  background: #48bb78;
-  color: white;
+  background: #e2e8f0;
+  color: #4a5568;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #38a169;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+  background: #cbd5e0;
 }
 
 .btn:disabled {
@@ -277,14 +278,25 @@ h1 {
   cursor: not-allowed;
 }
 
+.preview-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.preview-actions .btn {
+  min-width: 150px;
+}
+
 /* 响应式设计 */
-@media (max-width: 1200px) {
+@media (max-width: 1000px) {
   .main-content {
     grid-template-columns: 1fr;
   }
   
-  .preview-section {
-    position: static;
+  .cards-container {
+    flex-direction: column;
+    align-items: center;
   }
 }
-
