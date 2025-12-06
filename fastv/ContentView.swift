@@ -9,54 +9,105 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// 侧边栏选项
-enum SidebarItem: String, Identifiable, CaseIterable {
-    case voiceInput = "语音输入"
-    case aiTodo = "AI Todo"
-    case diary = "日记"
-    case expense = "记账"
-    case meetingRecord = "会议记录"
-    case liveTranscription = "直播转录"
-    case videoProcessing = "视频处理"
-    case videoSceneAnalysis = "视频场景分析"
-    case aiChat = "AI Chat"
-    case email = "邮箱"
-    case intel = "情报"
+enum SidebarItem: Identifiable, Hashable {
+    case voiceInput
+    case aiTodo
+    case diary
+    case expense
+    case health
+    case meetingRecord
+    case liveTranscription
+    case videoProcessing
+    case videoSceneAnalysis
+    case aiChat
+    case email
+    case intel
+    case market
+    case installed
+    case microApp(String) // 已安装的 Micro-App ID
     
-    var id: String { rawValue }
+    var id: String {
+        switch self {
+        case .voiceInput: return "语音输入"
+        case .aiTodo: return "AI Todo"
+        case .diary: return "日记"
+        case .expense: return "记账"
+        case .health: return "健康助理"
+        case .meetingRecord: return "会议记录"
+        case .liveTranscription: return "直播转录"
+        case .videoProcessing: return "视频处理"
+        case .videoSceneAnalysis: return "视频场景分析"
+        case .aiChat: return "AI Chat"
+        case .email: return "邮箱"
+        case .intel: return "情报"
+        case .market: return "市场"
+        case .installed: return "已安装"
+        case .microApp(let appId): return "microapp:\(appId)"
+        }
+    }
+    
+    var displayName: String {
+        switch self {
+        case .voiceInput: return "语音输入"
+        case .aiTodo: return "AI Todo"
+        case .diary: return "日记"
+        case .expense: return "记账"
+        case .health: return "健康助理"
+        case .meetingRecord: return "会议记录"
+        case .liveTranscription: return "直播转录"
+        case .videoProcessing: return "视频处理"
+        case .videoSceneAnalysis: return "视频场景分析"
+        case .aiChat: return "AI Chat"
+        case .email: return "邮箱"
+        case .intel: return "情报"
+        case .market: return "市场"
+        case .installed: return "已安装"
+        case .microApp(let appId):
+            if let app = MicroAppManager.shared.installedApps.first(where: { $0.id == appId }) {
+                return app.name
+            }
+            return appId
+        }
+    }
     
     var icon: String {
         switch self {
-        case .voiceInput:
-            return "mic.fill"
-        case .meetingRecord:
-            return "calendar.badge.clock"
-        case .liveTranscription:
-            return "waveform.circle.fill"
-        case .videoProcessing:
-            return "video.fill"
-        case .videoSceneAnalysis:
-            return "waveform.path"
-        case .aiTodo:
-            return "checklist"
-        case .aiChat:
-            return "message.fill"
-        case .email:
-            return "envelope.fill"
-        case .diary:
-            return "book.fill"
-        case .expense:
-            return "dollarsign.circle.fill"
-        case .intel:
-            return "doc.text.magnifyingglass"
+        case .voiceInput: return "mic.fill"
+        case .meetingRecord: return "calendar.badge.clock"
+        case .liveTranscription: return "waveform.circle.fill"
+        case .videoProcessing: return "video.fill"
+        case .videoSceneAnalysis: return "waveform.path"
+        case .aiTodo: return "checklist"
+        case .aiChat: return "message.fill"
+        case .email: return "envelope.fill"
+        case .diary: return "book.fill"
+        case .expense: return "dollarsign.circle.fill"
+        case .intel: return "doc.text.magnifyingglass"
+        case .health: return "heart.fill"
+        case .market: return "storefront.fill"
+        case .installed: return "app.badge"
+        case .microApp: return "app.fill"
         }
+    }
+    
+    static var builtInItems: [SidebarItem] {
+        [.voiceInput, .aiTodo, .diary, .expense, .health, .meetingRecord, .liveTranscription, .videoProcessing, .videoSceneAnalysis, .aiChat, .email, .intel, .market, .installed]
     }
 }
 
 struct ContentView: View {
     @StateObject private var viewModel = VideoProcessorViewModel()
+    @StateObject private var microAppManager = MicroAppManager.shared
     @State private var showSettings = false
     @State private var selectedSidebarItem: SidebarItem = .voiceInput
     @ObservedObject private var preferences = UserPreferences.shared
+    
+    var sidebarItems: [SidebarItem] {
+        var items = SidebarItem.builtInItems
+        // 添加已安装的 Micro-App
+        items.append(contentsOf: microAppManager.installedApps.map { .microApp($0.id) })
+        return items
+    }
     
     var body: some View {
         // 检查是否完成引导流程
@@ -66,7 +117,7 @@ struct ContentView: View {
             NavigationSplitView {
                 // 左侧侧边栏
                 List(selection: $selectedSidebarItem) {
-                    ForEach(SidebarItem.allCases) { item in
+                    ForEach(sidebarItems) { item in
                         SidebarItemRow(item: item, isSelected: selectedSidebarItem == item)
                             .tag(item)
                     }
@@ -196,6 +247,22 @@ struct ContentView: View {
                                     .help(NSLocalizedString("settings", comment: ""))
                                 }
                             }
+                    case .health:
+                        HealthAssistantView()
+                            .toolbar {
+                                ToolbarItem(placement: .automatic) {
+                                    Button(action: { showSettings = true }) {
+                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                                    }
+                                    .help(NSLocalizedString("settings", comment: ""))
+                                }
+                            }
+                    case .market:
+                        MicroAppMarketView()
+                    case .installed:
+                        MicroAppInstalledView()
+                    case .microApp(let appId):
+                        MicroAppHostView(appId: appId)
                     }
                 }
                 .sheet(isPresented: $showSettings) {
@@ -494,7 +561,7 @@ struct SidebarItemRow: View {
                 .symbolEffect(.bounce, value: isSelected)
             
             // 文字
-            Text(item.rawValue)
+            Text(item.displayName)
                 .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
                 .foregroundStyle(isSelected ? .primary : .secondary)
             
