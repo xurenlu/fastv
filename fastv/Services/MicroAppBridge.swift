@@ -75,6 +75,27 @@ class MicroAppBridge: NSObject, WKScriptMessageHandler {
                     });
                 },
                 
+                downloadFile: function(data, fileName, fileType) {
+                    return this._call('downloadFile', {
+                        data: data,
+                        fileName: fileName || 'file',
+                        fileType: fileType || 'application/octet-stream'
+                    });
+                },
+                
+                selectFolder: function() {
+                    return this._call('selectFolder', {});
+                },
+                
+                saveFileToFolder: function(data, fileName, folderPath, fileType) {
+                    return this._call('saveFileToFolder', {
+                        data: data,
+                        fileName: fileName || 'file',
+                        folderPath: folderPath,
+                        fileType: fileType || 'application/octet-stream'
+                    });
+                },
+                
                 _call: function(method, params) {
                     const callbackId = this._callbackId++;
                     return new Promise((resolve, reject) => {
@@ -119,6 +140,12 @@ class MicroAppBridge: NSObject, WKScriptMessageHandler {
                     result = try await handleShowToast(params: params)
                 case "uploadFile":
                     result = try await handleUploadFile(params: params)
+                case "downloadFile":
+                    result = try await handleDownloadFile(params: params)
+                case "selectFolder":
+                    result = try await handleSelectFolder(params: params)
+                case "saveFileToFolder":
+                    result = try await handleSaveFileToFolder(params: params)
                 default:
                     throw NSError(domain: "MicroAppBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "未知方法: \(method)"])
                 }
@@ -336,6 +363,89 @@ class MicroAppBridge: NSObject, WKScriptMessageHandler {
         // 返回 CDN URL
         let imageUrl = "https://cdn.facev.app/\(targetPath)"
         return imageUrl
+    }
+    
+    /// 处理文件下载请求（保存到本地）
+    private func handleDownloadFile(params: [String: Any]) async throws -> Bool {
+        guard let base64Data = params["data"] as? String,
+              let fileName = params["fileName"] as? String else {
+            throw NSError(domain: "MicroAppBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "缺少 data 或 fileName 参数"])
+        }
+        
+        let fileType = params["fileType"] as? String ?? "application/octet-stream"
+        
+        // 解码 base64 数据
+        guard let data = Data(base64Encoded: base64Data) else {
+            throw NSError(domain: "MicroAppBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "无效的 base64 数据"])
+        }
+        
+        // 在主线程显示保存对话框
+        return await MainActor.run {
+            let savePanel = NSSavePanel()
+            savePanel.allowedContentTypes = [UTType(filenameExtension: (fileName as NSString).pathExtension) ?? .png]
+            savePanel.nameFieldStringValue = fileName
+            savePanel.canCreateDirectories = true
+            
+            let response = savePanel.runModal()
+            
+            if response == .OK, let url = savePanel.url {
+                do {
+                    try data.write(to: url)
+                    return true
+                } catch {
+                    print("❌ [MicroAppBridge] 保存文件失败: \(error.localizedDescription)")
+                    return false
+                }
+            }
+            
+            return false
+        }
+    }
+    
+    /// 处理选择文件夹请求
+    private func handleSelectFolder(params: [String: Any]) async throws -> String {
+        return await MainActor.run {
+            let openPanel = NSOpenPanel()
+            openPanel.canChooseFiles = false
+            openPanel.canChooseDirectories = true
+            openPanel.allowsMultipleSelection = false
+            openPanel.canCreateDirectories = true
+            openPanel.message = "选择保存文件夹"
+            
+            let response = openPanel.runModal()
+            
+            if response == .OK, let url = openPanel.url {
+                return url.path
+            }
+            
+            return ""
+        }
+    }
+    
+    /// 处理保存文件到指定文件夹请求
+    private func handleSaveFileToFolder(params: [String: Any]) async throws -> Bool {
+        guard let base64Data = params["data"] as? String,
+              let fileName = params["fileName"] as? String,
+              let folderPath = params["folderPath"] as? String else {
+            throw NSError(domain: "MicroAppBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "缺少 data、fileName 或 folderPath 参数"])
+        }
+        
+        // 解码 base64 数据
+        guard let data = Data(base64Encoded: base64Data) else {
+            throw NSError(domain: "MicroAppBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "无效的 base64 数据"])
+        }
+        
+        // 构建文件路径
+        let folderURL = URL(fileURLWithPath: folderPath)
+        let fileURL = folderURL.appendingPathComponent(fileName)
+        
+        do {
+            try data.write(to: fileURL)
+            return true
+        } catch {
+            print("❌ [MicroAppBridge] 保存文件失败: \(error.localizedDescription)")
+            throw NSError(domain: "MicroAppBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "保存文件失败: \(error.localizedDescription)"])
+        }
     }
     
     /// 转义 JSON 字符串

@@ -13,12 +13,22 @@ struct MicroAppInstalledView: View {
     @State private var searchText = ""
     
     var filteredApps: [InstalledMicroApp] {
+        var apps: [InstalledMicroApp]
+        
         if searchText.isEmpty {
-            return manager.installedApps
+            apps = manager.installedApps
+        } else {
+            apps = manager.installedApps.filter { app in
+                app.name.localizedCaseInsensitiveContains(searchText) ||
+                app.version.localizedCaseInsensitiveContains(searchText)
+            }
         }
-        return manager.installedApps.filter { app in
-            app.name.localizedCaseInsensitiveContains(searchText) ||
-            app.version.localizedCaseInsensitiveContains(searchText)
+        
+        // 按照最后使用时间排序，最近使用的排在最前面
+        return apps.sorted { app1, app2 in
+            let time1 = manager.getLastUsedTime(for: app1.id) ?? app1.installedAt
+            let time2 = manager.getLastUsedTime(for: app2.id) ?? app2.installedAt
+            return time1 > time2 // 降序排列，最新的在前
         }
     }
     

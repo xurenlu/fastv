@@ -17,10 +17,12 @@ class MicroAppManager: ObservableObject {
     @Published var installedApps: [InstalledMicroApp] = []
     @Published var runningApps: Set<String> = []
     @Published var pinnedApps: Set<String> = []
+    @Published var lastUsedApps: [String: Date] = [:]
     
     private let appsDirectory: URL
     private let registryFile: URL
     private let pinnedAppsFile: URL
+    private let lastUsedAppsFile: URL
     
     private init() {
         // 使用 row1 作为应用标识
@@ -28,6 +30,7 @@ class MicroAppManager: ObservableObject {
         appsDirectory = appSupport.appendingPathComponent("row1/MicroApps", isDirectory: true)
         registryFile = appSupport.appendingPathComponent("row1/installed.json")
         pinnedAppsFile = appSupport.appendingPathComponent("row1/pinned.json")
+        lastUsedAppsFile = appSupport.appendingPathComponent("row1/lastUsed.json")
         
         // 确保目录存在
         try? FileManager.default.createDirectory(at: appsDirectory, withIntermediateDirectories: true)
@@ -37,6 +40,9 @@ class MicroAppManager: ObservableObject {
         
         // 加载固定的应用列表
         loadPinnedApps()
+        
+        // 加载最后使用时间
+        loadLastUsedApps()
     }
     
     /// 加载已安装应用列表
@@ -72,6 +78,34 @@ class MicroAppManager: ObservableObject {
         let pinnedIds = Array(pinnedApps)
         guard let data = try? JSONEncoder().encode(pinnedIds) else { return }
         try? data.write(to: pinnedAppsFile)
+    }
+    
+    /// 加载最后使用时间
+    private func loadLastUsedApps() {
+        guard FileManager.default.fileExists(atPath: lastUsedAppsFile.path),
+              let data = try? Data(contentsOf: lastUsedAppsFile) else {
+            lastUsedApps = [:]
+            return
+        }
+        
+        // 使用时间戳格式解码
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .secondsSince1970
+        
+        if let lastUsed = try? decoder.decode([String: Date].self, from: data) {
+            lastUsedApps = lastUsed
+        } else {
+            lastUsedApps = [:]
+        }
+    }
+    
+    /// 保存最后使用时间
+    private func saveLastUsedApps() {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .secondsSince1970
+        
+        guard let data = try? encoder.encode(lastUsedApps) else { return }
+        try? data.write(to: lastUsedAppsFile)
     }
     
     /// 安装应用（从本地 zip 文件）
@@ -225,7 +259,19 @@ class MicroAppManager: ObservableObject {
             return
         }
         runningApps.insert(id)
+        updateLastUsedTime(for: id)
         print("✅ [MicroAppManager] 启动应用: \(id)")
+    }
+    
+    /// 更新应用的最后使用时间
+    func updateLastUsedTime(for id: String) {
+        lastUsedApps[id] = Date()
+        saveLastUsedApps()
+    }
+    
+    /// 获取应用的最后使用时间
+    func getLastUsedTime(for id: String) -> Date? {
+        return lastUsedApps[id]
     }
     
     /// 关闭应用

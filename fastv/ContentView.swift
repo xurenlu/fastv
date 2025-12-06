@@ -130,10 +130,13 @@ struct ContentView: View {
                 .navigationTitle("功能")
                 .frame(minWidth: 200, idealWidth: 220, maxWidth: 250)
                 .onChange(of: selectedSidebarItem) { oldValue, newValue in
-                    // 如果点击的是 microAPP 且未运行，先启动它
+                    // 如果点击的是 microAPP，更新最后使用时间
                     if case .microApp(let appId) = newValue {
                         if !microAppManager.isRunning(id: appId) {
                             microAppManager.launchApp(id: appId)
+                        } else {
+                            // 即使已经运行，点击时也更新最后使用时间
+                            microAppManager.updateLastUsedTime(for: appId)
                         }
                     }
                 }

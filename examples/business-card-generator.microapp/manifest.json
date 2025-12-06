@@ -1,7 +1,7 @@
 {
   "id": "com.example.business-card-generator",
   "name": "名片生成助手",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "entry": "static/index.html",
   "icon": "icon.png",
   "permissions": ["vision", "chat"],
