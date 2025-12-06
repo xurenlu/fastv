@@ -16,25 +16,37 @@ struct EmailView: View {
     @State private var showComposeWindow = false
     @State private var composeWindowType: EmailComposeWindowView.ComposeType?
     @State private var showMessageHeaders = false
-    @State private var showAISummarySheet = false
     
     var body: some View {
         HSplitView {
             // 左侧：文件夹列表
             folderListView
                 .frame(minWidth: 160, idealWidth: 180, maxWidth: 220)
+                .frame(maxHeight: .infinity, alignment: .top)
             
             // 中间：邮件列表
             messageListView
-                .frame(minWidth: 250, idealWidth: 320)
+                .frame(width: 250) // 强制固定宽度，防止自动变宽
+                .frame(maxHeight: .infinity, alignment: .top)
             
             // 右侧：邮件详情（正文列）- 限制最大宽度，避免影响主菜单
             if let message = viewModel.selectedMessage {
                 messageDetailView(message: message)
                     .frame(minWidth: 300, idealWidth: 400, maxWidth: 550)
+                    .frame(maxHeight: .infinity, alignment: .top)
             } else {
-                EmailHomeView(viewModel: viewModel)
-                    .frame(minWidth: 300, idealWidth: 400, maxWidth: 550)
+                // 未选中邮件时的提示
+                VStack(spacing: 16) {
+                    Image(systemName: "envelope.open")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.secondary)
+                    
+                    Text("请在邮件列表中选择一封邮件")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(minWidth: 300, idealWidth: 400, maxWidth: 550)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .navigationTitle("邮箱")
@@ -69,18 +81,6 @@ struct EmailView: View {
                 }
                 .disabled(viewModel.isLoading)
             }
-            
-            ToolbarItem(placement: .automatic) {
-                Button(action: {
-                    showAISummarySheet = true
-                }) {
-                    Label("AI 摘要", systemImage: "sparkles.rectangle.stack")
-                }
-                .help("查看邮件 AI 摘要汇总")
-            }
-        }
-        .sheet(isPresented: $showAISummarySheet) {
-            EmailAISummarySheetView(viewModel: viewModel)
         }
         .sheet(isPresented: $showAccountManagement) {
             EmailAccountManagementView()
@@ -178,6 +178,7 @@ struct EmailView: View {
                 .padding()
             }
         }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
     
     @ViewBuilder
@@ -261,9 +262,6 @@ struct EmailView: View {
                 }
                 .buttonStyle(.plain)
                 
-                Divider()
-                    .padding(.vertical, 4)
-                
                 // "所有邮件" 选项 - 默认选中
                 HStack(spacing: 12) {
                     Image(systemName: viewModel.selectedFolderId == nil ? "tray.fill" : "tray")
@@ -275,11 +273,14 @@ struct EmailView: View {
                         .font(.system(size: 14, weight: viewModel.selectedFolderId == nil ? .semibold : .regular, design: .default))
                         .foregroundStyle(viewModel.selectedFolderId == nil ? .primary : .secondary)
                     Spacer()
-                    // 显示总邮件数
-                    if !viewModel.messages.isEmpty {
-                        Text("\(viewModel.messages.count)")
-                            .font(.caption)
-                            .foregroundStyle(viewModel.selectedFolderId == nil ? .secondary : .tertiary)
+                    // 显示该账号的所有邮件总数（而不是当前显示的邮件数）
+                    if let accountId = viewModel.selectedAccountId {
+                        let totalCount = EmailStore.shared.getTotalMessageCount(for: accountId)
+                        if totalCount > 0 {
+                            Text("\(totalCount)")
+                                .font(.caption)
+                                .foregroundStyle(viewModel.selectedFolderId == nil ? .secondary : .tertiary)
+                        }
                     }
                 }
                 .padding(.vertical, 4)
@@ -343,7 +344,9 @@ struct EmailView: View {
                     }
                 }
             }
-            .listStyle(.sidebar)
+            .listStyle(.inset)  // 使用 inset 样式，避免 sidebar 的暗色半透明背景
+            .scrollContentBackground(.hidden)  // 隐藏默认的滚动内容背景
+            .background(Color(NSColor.controlBackgroundColor))  // 使用系统控件背景色
         }
     }
     
@@ -359,7 +362,6 @@ struct EmailView: View {
                     .textFieldStyle(.plain)
             }
             .padding()
-            .background(Color(NSColor.controlBackgroundColor))
             
             Divider()
             
@@ -439,6 +441,7 @@ struct EmailView: View {
                 }
             }
         }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
     
     private var emptyMessageListView: some View {
@@ -1645,494 +1648,4 @@ struct InfoRow: View {
     }
 }
 
-// MARK: - AI 摘要汇总弹窗视图
-
-/// 邮件 AI 摘要汇总弹窗视图
-struct EmailAISummarySheetView: View {
-    @ObservedObject var viewModel: EmailViewModel
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var summaryData: EmailAISummaryCache.SummaryCacheData?
-    @State private var isLoading = true
-    
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                // 背景渐变
-                backgroundGradient
-                
-                if isLoading {
-                    loadingView
-                } else if let data = summaryData, !data.summaries.isEmpty {
-                    summaryContentView(data: data)
-                } else {
-                    emptyStateView
-                }
-            }
-            .navigationTitle("邮件 AI 摘要")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("关闭") {
-                        dismiss()
-                    }
-                }
-                
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: refreshSummary) {
-                        Label("刷新", systemImage: "arrow.clockwise")
-                    }
-                    .disabled(isLoading)
-                }
-            }
-        }
-        .frame(minWidth: 600, minHeight: 500)
-        .onAppear {
-            loadCachedSummary()
-        }
-    }
-    
-    // MARK: - Background
-    
-    private var backgroundGradient: some View {
-        ZStack {
-            LinearGradient(
-                colors: colorScheme == .dark ? [
-                    Color(red: 0.05, green: 0.05, blue: 0.1),
-                    Color(red: 0.08, green: 0.08, blue: 0.15)
-                ] : [
-                    Color(red: 0.98, green: 0.99, blue: 1.0),
-                    Color(red: 0.95, green: 0.97, blue: 1.0)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [Color.blue.opacity(0.08), Color.clear],
-                        center: .topLeading,
-                        startRadius: 0,
-                        endRadius: 400
-                    )
-                )
-                .frame(width: 800, height: 800)
-                .offset(x: -200, y: -200)
-        }
-    }
-    
-    // MARK: - Loading View
-    
-    private var loadingView: some View {
-        VStack(spacing: 20) {
-            ProgressView()
-                .scaleEffect(1.2)
-            Text("正在加载 AI 摘要...")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-    }
-    
-    // MARK: - Empty State
-    
-    private var emptyStateView: some View {
-        VStack(spacing: 24) {
-            ZStack {
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [Color.blue.opacity(0.1), Color.clear],
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: 80
-                        )
-                    )
-                    .frame(width: 160, height: 160)
-                
-                Image(systemName: "sparkles.rectangle.stack")
-                    .font(.system(size: 64, weight: .light))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.blue.opacity(0.6), .purple.opacity(0.6)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-            
-            VStack(spacing: 12) {
-                Text("暂无 AI 摘要")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                
-                Text("当邮件生成 AI 摘要后，将在这里显示汇总概览")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-    
-    // MARK: - Summary Content
-    
-    private func summaryContentView(data: EmailAISummaryCache.SummaryCacheData) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // 头部信息
-                headerView(data: data)
-                
-                // 摘要列表
-                summaryListView(summaries: data.summaries)
-            }
-            .padding(24)
-        }
-    }
-    
-    private func headerView(data: EmailAISummaryCache.SummaryCacheData) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.blue.opacity(0.2), Color.purple.opacity(0.15)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 56, height: 56)
-                    
-                    Image(systemName: "sparkles.rectangle.stack.fill")
-                        .font(.system(size: 24, weight: .medium))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.blue, .purple],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                }
-                .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(data.isToday ? "今日邮件摘要" : "最近三天邮件摘要")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                    
-                    HStack(spacing: 8) {
-                        Image(systemName: "envelope.fill")
-                            .font(.caption)
-                            .foregroundStyle(.blue)
-                        Text("\(data.summaries.count) 封邮件")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        
-                        Text("·")
-                            .foregroundStyle(.tertiary)
-                        
-                        Image(systemName: "clock")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text("更新于 \(formatTime(data.updatedAt))")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                
-                Spacer()
-            }
-            
-            // 分割线
-            HStack(spacing: 0) {
-                LinearGradient(
-                    colors: [.clear, .blue.opacity(0.3), .purple.opacity(0.3), .clear],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(height: 1)
-            }
-        }
-    }
-    
-    private func summaryListView(summaries: [EmailAISummaryCache.EmailSummaryItem]) -> some View {
-        VStack(spacing: 16) {
-            ForEach(summaries) { item in
-                summaryCard(item: item)
-            }
-        }
-    }
-    
-    private func summaryCard(item: EmailAISummaryCache.EmailSummaryItem) -> some View {
-        Button(action: {
-            // 点击跳转到对应邮件
-            if let message = viewModel.messages.first(where: { $0.id == item.messageId }) {
-                viewModel.selectMessage(message)
-                dismiss()
-            }
-        }) {
-            VStack(alignment: .leading, spacing: 12) {
-                // 发件人和时间
-                HStack {
-                    EmailAvatarView(email: item.fromEmail, size: 36)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(item.fromName)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-                        
-                        Text(item.subject)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    
-                    Spacer()
-                    
-                    Text(formatMessageDate(item.date))
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
-                
-                // 分割线
-                Divider()
-                    .opacity(0.5)
-                
-                // AI 摘要
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 12))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.blue, .purple],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                    
-                    Text(item.summary)
-                        .font(.system(size: 13))
-                        .foregroundStyle(.primary)
-                        .lineSpacing(4)
-                        .multilineTextAlignment(.leading)
-                }
-            }
-            .padding(16)
-            .background {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .background {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: colorScheme == .dark ? [
-                                        Color.white.opacity(0.05),
-                                        Color.white.opacity(0.02)
-                                    ] : [
-                                        Color.white.opacity(0.7),
-                                        Color.white.opacity(0.5)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                    }
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(
-                                LinearGradient(
-                                    colors: [
-                                        Color.blue.opacity(0.15),
-                                        Color.purple.opacity(0.1)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
-                    }
-            }
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 8, x: 0, y: 2)
-        }
-        .buttonStyle(.plain)
-    }
-    
-    // MARK: - Helper Methods
-    
-    private func loadCachedSummary() {
-        isLoading = true
-        
-        Task {
-            // 先尝试从缓存加载
-            if let cached = await EmailAISummaryCache.shared.loadCachedSummary() {
-                await MainActor.run {
-                    summaryData = cached
-                    isLoading = false
-                }
-            } else {
-                // 没有缓存，生成新的
-                await generateAndCacheSummary()
-            }
-        }
-    }
-    
-    private func refreshSummary() {
-        isLoading = true
-        Task {
-            await generateAndCacheSummary()
-        }
-    }
-    
-    private func generateAndCacheSummary() async {
-        let messages = viewModel.messages
-        let data = await EmailAISummaryCache.shared.generateSummary(from: messages)
-        
-        await MainActor.run {
-            summaryData = data
-            isLoading = false
-        }
-    }
-    
-    private func formatTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        return formatter.string(from: date)
-    }
-    
-    private func formatMessageDate(_ date: Date) -> String {
-        let calendar = Calendar.current
-        if calendar.isDateInToday(date) {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "HH:mm"
-            return formatter.string(from: date)
-        } else if calendar.isDateInYesterday(date) {
-            return "昨天"
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MM/dd"
-            return formatter.string(from: date)
-        }
-    }
-}
-
-// MARK: - AI 摘要缓存管理器
-
-/// 邮件 AI 摘要缓存管理器
-@MainActor
-class EmailAISummaryCache {
-    static let shared = EmailAISummaryCache()
-    
-    struct EmailSummaryItem: Identifiable, Codable {
-        let id: UUID
-        let messageId: UUID
-        let fromName: String
-        let fromEmail: String
-        let subject: String
-        let summary: String
-        let date: Date
-    }
-    
-    struct SummaryCacheData: Codable {
-        let summaries: [EmailSummaryItem]
-        let isToday: Bool  // true: 今天的摘要，false: 最近三天的摘要
-        let updatedAt: Date
-    }
-    
-    private let cacheKey = "email_ai_summary_cache"
-    private let defaults = UserDefaults.standard
-    
-    private init() {}
-    
-    /// 从缓存加载摘要数据
-    func loadCachedSummary() async -> SummaryCacheData? {
-        guard let data = defaults.data(forKey: cacheKey) else {
-            return nil
-        }
-        
-        do {
-            let cached = try JSONDecoder().decode(SummaryCacheData.self, from: data)
-            // 检查缓存是否过期（超过1小时自动刷新）
-            if Date().timeIntervalSince(cached.updatedAt) > 3600 {
-                return nil
-            }
-            return cached
-        } catch {
-            print("❌ [EmailAISummaryCache] 解析缓存失败: \(error)")
-            return nil
-        }
-    }
-    
-    /// 生成并缓存摘要数据
-    func generateSummary(from messages: [EmailMessage]) async -> SummaryCacheData {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        // 筛选有 AI 摘要的邮件
-        let messagesWithSummary = messages.filter { $0.aiSummary != nil && !$0.aiSummary!.isEmpty }
-        
-        // 今天的邮件
-        let todayMessages = messagesWithSummary.filter { calendar.isDateInToday($0.date) }
-        
-        // 最近三天的邮件
-        let threeDaysAgo = calendar.date(byAdding: .day, value: -3, to: now) ?? now
-        let recentMessages = messagesWithSummary.filter { $0.date >= threeDaysAgo }
-        
-        // 智能判断：如果今天有足够多的摘要（>=3），就只显示今天的；否则显示最近三天的
-        let isToday = todayMessages.count >= 3
-        let selectedMessages = isToday ? todayMessages : recentMessages
-        
-        // 转换为摘要项
-        let summaryItems = selectedMessages
-            .sorted { $0.date > $1.date }
-            .prefix(30)  // 最多30条
-            .map { message in
-                EmailSummaryItem(
-                    id: UUID(),
-                    messageId: message.id,
-                    fromName: message.from.name ?? message.from.email,
-                    fromEmail: message.from.email,
-                    subject: message.subject,
-                    summary: message.aiSummary ?? "",
-                    date: message.date
-                )
-            }
-        
-        let cacheData = SummaryCacheData(
-            summaries: Array(summaryItems),
-            isToday: isToday,
-            updatedAt: Date()
-        )
-        
-        // 保存到缓存
-        saveSummaryCache(cacheData)
-        
-        return cacheData
-    }
-    
-    /// 保存摘要缓存
-    private func saveSummaryCache(_ data: SummaryCacheData) {
-        do {
-            let encoded = try JSONEncoder().encode(data)
-            defaults.set(encoded, forKey: cacheKey)
-            print("✅ [EmailAISummaryCache] 摘要缓存已保存: \(data.summaries.count) 条")
-        } catch {
-            print("❌ [EmailAISummaryCache] 保存缓存失败: \(error)")
-        }
-    }
-    
-    /// 当有新的 AI 摘要生成时，更新缓存
-    func updateCacheIfNeeded(with message: EmailMessage) async {
-        guard let summary = message.aiSummary, !summary.isEmpty else { return }
-        
-        // 获取当前所有邮件
-        let messages = EmailStore.shared.getAllMessages(limit: 500)
-        _ = await generateSummary(from: messages)
-    }
-    
-    /// 清除缓存
-    func clearCache() {
-        defaults.removeObject(forKey: cacheKey)
-        print("✅ [EmailAISummaryCache] 缓存已清除")
-    }
-}
 
