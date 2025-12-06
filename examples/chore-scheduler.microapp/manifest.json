@@ -1,0 +1,11 @@
+{
+  "id": "com.example.chore-scheduler",
+  "name": "家务分配器",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": [
+    "chat"
+  ],
+  "minPlatformVersion": "1.0"
+}

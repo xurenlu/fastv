@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>英语口语教练</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div class="container">
+      <h1>🗣️ 英语口语教练</h1>
+      <p class="subtitle">输入你想说的内容，获取发音评分、纠错和对话练习建议</p>
+      
+      <div class="input-group">
+        <label for="text-input">输入你想说的英文句子或段落</label>
+        <textarea id="text-input" rows="4" placeholder="例如：I want to improve my English speaking skills."></textarea>
+      </div>
+      
+      <div class="actions">
+        <button id="analyze-btn" class="btn btn-primary">分析发音</button>
+        <button id="practice-btn" class="btn btn-secondary">获取对话练习</button>
+      </div>
+      
+      <div id="result" class="result"></div>
+      
+      <div id="practice-section" style="display:none;">
+        <div id="practice-content" class="content-section"></div>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
+

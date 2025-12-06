@@ -1,4 +1,4 @@
-let currentImage = null;
+let currentImageUrl = null;
 let plantName = null;
 
 // 检查 row1 bridge 是否可用
@@ -7,15 +7,22 @@ if (!window.row1) {
   document.body.innerHTML = '<div style="padding: 40px; text-align: center;"><h2>错误</h2><p>无法连接到 row1 平台</p></div>';
 }
 
-document.getElementById('pick-btn').addEventListener('click', async () => {
-  try {
-    const base64 = await window.row1.pickImage();
-    if (base64 && base64.length > 0) {
-      currentImage = base64;
+// 文件选择和处理
+document.getElementById('pick-btn').addEventListener('click', () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // 显示预览
+    const reader = new FileReader();
+    reader.onload = (e) => {
       const preview = document.getElementById('preview');
       const placeholder = document.getElementById('placeholder');
       
-      preview.src = base64;
+      preview.src = e.target.result;
       preview.style.display = 'block';
       placeholder.style.display = 'none';
       
@@ -25,15 +32,48 @@ document.getElementById('pick-btn').addEventListener('click', async () => {
       document.getElementById('result').textContent = '';
       document.getElementById('care-tips').textContent = '';
       document.getElementById('care-section').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+    
+    // 上传文件到云存储（这里使用示例：imgur.com 作为演示）
+    // 实际应用中，开发者需要实现自己的上传逻辑
+    try {
+      await uploadImage(file);
+    } catch (error) {
+      console.error('上传失败:', error);
+      alert('图片上传失败，请检查网络连接或使用其他上传服务。错误: ' + error.message);
     }
-  } catch (e) {
-    console.error('选择图片失败:', e);
-    alert('选择图片失败: ' + e.message);
-  }
+  };
+  input.click();
 });
 
+// 上传图片（使用 row1 平台提供的上传 API）
+async function uploadImage(file) {
+  const resultDiv = document.getElementById('result');
+  resultDiv.textContent = '正在上传图片...';
+  resultDiv.style.color = '#718096';
+  
+  try {
+    // 使用 row1 平台提供的上传 API
+    const imageUrl = await window.row1.uploadFile(file);
+    currentImageUrl = imageUrl;
+    resultDiv.textContent = '图片上传成功！';
+    resultDiv.style.color = '#48bb78';
+    console.log('图片上传成功，URL:', currentImageUrl);
+    return imageUrl;
+  } catch (error) {
+    console.error('上传错误:', error);
+    resultDiv.textContent = '上传失败: ' + (error.message || error);
+    resultDiv.style.color = '#e53e3e';
+    throw error;
+  }
+}
+
 document.getElementById('recognize-btn').addEventListener('click', async () => {
-  if (!currentImage) return;
+  if (!currentImageUrl) {
+    alert('请先选择并上传图片');
+    return;
+  }
   
   const resultDiv = document.getElementById('result');
   resultDiv.textContent = '识别中...';
@@ -41,7 +81,7 @@ document.getElementById('recognize-btn').addEventListener('click', async () => {
   
   try {
     const result = await window.row1.vision({
-      imageBase64: currentImage,
+      imageUrl: currentImageUrl,
       prompt: '请识别这张图片中的植物，告诉我它的名称和基本特征。请用简洁明了的语言描述。'
     });
     

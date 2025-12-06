@@ -1,0 +1,11 @@
+{
+  "id": "com.example.workout-planner",
+  "name": "运动计划",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": [
+    "chat"
+  ],
+  "minPlatformVersion": "1.0"
+}

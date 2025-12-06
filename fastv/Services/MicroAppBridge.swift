@@ -53,12 +53,26 @@ class MicroAppBridge: NSObject, WKScriptMessageHandler {
                     return this._call('vision', options);
                 },
                 
-                pickImage: function() {
-                    return this._call('pickImage', {});
-                },
-                
                 showToast: function(message) {
                     return this._call('showToast', { message: message });
+                },
+                
+                uploadFile: function(file) {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const base64 = e.target.result.split(',')[1]; // 移除 data:image/png;base64, 前缀
+                            const fileName = file.name || 'file';
+                            const fileType = file.type || 'application/octet-stream';
+                            this._call('uploadFile', {
+                                data: base64,
+                                fileName: fileName,
+                                fileType: fileType
+                            }).then(resolve).catch(reject);
+                        }.bind(this);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
                 },
                 
                 _call: function(method, params) {
@@ -101,10 +115,10 @@ class MicroAppBridge: NSObject, WKScriptMessageHandler {
                     result = try await handleChat(params: params)
                 case "vision":
                     result = try await handleVision(params: params)
-                case "pickImage":
-                    result = try await handlePickImage()
                 case "showToast":
                     result = try await handleShowToast(params: params)
+                case "uploadFile":
+                    result = try await handleUploadFile(params: params)
                 default:
                     throw NSError(domain: "MicroAppBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "未知方法: \(method)"])
                 }
@@ -175,67 +189,88 @@ class MicroAppBridge: NSObject, WKScriptMessageHandler {
     }
     
     /// 处理视觉识别请求
+    /// 注意：应用需要先自行上传图片到云存储，然后提供图片 URL
     private func handleVision(params: [String: Any]) async throws -> String {
         guard let manifest = manifest,
               manifest.hasPermission("vision") else {
             throw MicroAppError.permissionDenied("vision")
         }
         
-        guard let imageBase64 = params["imageBase64"] as? String,
+        guard let imageUrl = params["imageUrl"] as? String,
               let prompt = params["prompt"] as? String else {
-            throw NSError(domain: "MicroAppBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "缺少 imageBase64 或 prompt 参数"])
+            throw NSError(domain: "MicroAppBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "缺少 imageUrl 或 prompt 参数。请先上传图片并获取 URL"])
         }
         
-        // 解析 base64 图片
-        let base64String = imageBase64.replacingOccurrences(of: "data:image/[^;]+;base64,", with: "", options: .regularExpression)
-        guard let imageData = Data(base64Encoded: base64String),
-              let image = NSImage(data: imageData) else {
-            throw NSError(domain: "MicroAppBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "无效的图片数据"])
+        // 验证 URL 格式
+        guard URL(string: imageUrl) != nil else {
+            throw NSError(domain: "MicroAppBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "无效的图片 URL"])
         }
         
         let preferences = UserPreferences.shared
         let config = preferences.getConfig(for: .voiceInputOptimization)
         let profile = config.profile
         
-        // 使用 OllamaService 的图片分析功能
-        let result = try await OllamaService.shared.analyzeImageLegacy(
-            image: image,
-            prompt: prompt,
-            endpoint: profile.effectiveEndpoint,
-            model: profile.defaultModel,
-            apiToken: profile.apiKey.isEmpty ? nil : profile.apiKey,
-            timeout: 60.0
+        // 检查是否是 DashScope 兼容模式
+        let endpoint = profile.effectiveEndpoint.lowercased()
+        let usesDashScopeCompatibleMode = endpoint.contains("compatible-mode") || endpoint.contains("/chat/completions")
+        
+        // 构建消息内容数组
+        var contentArray: [[String: Any]] = []
+        
+        if profile.protocolType == .dashScope && usesDashScopeCompatibleMode {
+            // DashScope 兼容模式：使用 OpenAI 格式（需要 type 字段）
+            contentArray.append([
+                "type": "image_url",
+                "image_url": [
+                    "url": imageUrl
+                ]
+            ])
+            contentArray.append([
+                "type": "text",
+                "text": prompt
+            ])
+        } else if profile.protocolType == .dashScope {
+            // DashScope 原生模式：使用原生格式
+            contentArray.append(["image": imageUrl])
+            contentArray.append(["text": prompt])
+        } else if profile.protocolType == .openAI || profile.protocolType == .azureOpenAI {
+            // OpenAI/Azure OpenAI：使用 OpenAI 格式
+            contentArray.append([
+                "type": "image_url",
+                "image_url": [
+                    "url": imageUrl
+                ]
+            ])
+            contentArray.append([
+                "type": "text",
+                "text": prompt
+            ])
+        } else {
+            // Ollama 等其他协议：需要下载图片后转换为 base64
+            // 这里暂时不支持，建议使用 DashScope/OpenAI
+            throw NSError(domain: "MicroAppBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "当前协议不支持 URL 格式的图片，请使用 DashScope 或 OpenAI 协议"])
+        }
+        
+        // 构建消息
+        let messages: [[String: Any]] = [
+            [
+                "role": "user",
+                "content": contentArray
+            ]
+        ]
+        
+        // 使用 ChatAIService 发送请求
+        let (content, _) = try await ChatAIService.shared.sendMessage(
+            messages: messages,
+            profile: profile,
+            model: nil,
+            timeout: 60.0,
+            preferences: UserPreferences.shared
         )
         
-        return result
+        return content
     }
     
-    /// 处理选择图片请求
-    private func handlePickImage() async throws -> String {
-        guard let manifest = manifest,
-              manifest.hasPermission("file") else {
-            throw MicroAppError.permissionDenied("file")
-        }
-        
-        return await withCheckedContinuation { continuation in
-            let panel = NSOpenPanel()
-            panel.allowedContentTypes = [.image]
-            panel.allowsMultipleSelection = false
-            panel.canChooseDirectories = false
-            panel.canChooseFiles = true
-            
-            panel.begin { response in
-                if response == .OK, let url = panel.url,
-                   let imageData = try? Data(contentsOf: url) {
-                    let base64 = imageData.base64EncodedString()
-                    let mimeType = url.pathExtension.lowercased() == "png" ? "image/png" : "image/jpeg"
-                    continuation.resume(returning: "data:\(mimeType);base64,\(base64)")
-                } else {
-                    continuation.resume(returning: "")
-                }
-            }
-        }
-    }
     
     /// 处理显示 Toast 请求
     private func handleShowToast(params: [String: Any]) async throws -> Bool {
@@ -253,6 +288,54 @@ class MicroAppBridge: NSObject, WKScriptMessageHandler {
         }
         
         return true
+    }
+    
+    /// 处理文件上传请求
+    private func handleUploadFile(params: [String: Any]) async throws -> String {
+        guard let base64Data = params["data"] as? String,
+              let fileName = params["fileName"] as? String else {
+            throw NSError(domain: "MicroAppBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "缺少 data 或 fileName 参数"])
+        }
+        
+        let fileType = params["fileType"] as? String ?? "application/octet-stream"
+        
+        // 解码 base64 数据
+        guard let data = Data(base64Encoded: base64Data) else {
+            throw NSError(domain: "MicroAppBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "无效的 base64 数据"])
+        }
+        
+        // 生成文件路径
+        let prefix = String((0..<5).map { _ in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".randomElement()! })
+        let now = Date()
+        let calendar = Calendar.current
+        let year = calendar.component(.year, from: now)
+        let month = calendar.component(.month, from: now)
+        let timestamp = Int(now.timeIntervalSince1970)
+        let ext = (fileName as NSString).pathExtension.isEmpty ? "png" : (fileName as NSString).pathExtension
+        let targetPath = "upload/\(String(format: "%04d%02d", year, month))/\(timestamp)-\(prefix).\(ext)"
+        
+        // Cloudflare Worker 上传配置
+        let uploadURL = "https://cfworker.xurenlu9959.workers.dev/\(targetPath)"
+        let authKey = "baby9527"
+        
+        // 创建上传请求
+        var request = URLRequest(url: URL(string: uploadURL)!)
+        request.httpMethod = "PUT"
+        request.setValue(authKey, forHTTPHeaderField: "X-Custom-Auth-Key")
+        request.setValue(fileType, forHTTPHeaderField: "Content-Type")
+        request.httpBody = data
+        
+        // 执行上传
+        let (responseData, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw NSError(domain: "MicroAppBridge", code: -1, userInfo: [NSLocalizedDescriptionKey: "上传失败，HTTP \((response as? HTTPURLResponse)?.statusCode ?? -1)"])
+        }
+        
+        // 返回 CDN URL
+        let imageUrl = "https://cdn.facev.app/\(targetPath)"
+        return imageUrl
     }
     
     /// 转义 JSON 字符串

@@ -189,9 +189,18 @@ struct ChatWindowView: View {
                     .padding(.vertical, 12)
                 }
                 .onChange(of: viewModel.currentMessages.count) { oldValue, newValue in
-                    // 新消息时滚动到底部
+                    // 只在真正添加新消息时滚动到底部（数量增加）
+                    if newValue > oldValue, let lastMessage = viewModel.currentMessages.last {
+                        // 使用不带动画的滚动，避免跳动
+                        DispatchQueue.main.async {
+                            proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                        }
+                    }
+                }
+                .onChange(of: viewModel.currentSessionId) { _, _ in
+                    // 切换会话时滚动到底部
                     if let lastMessage = viewModel.currentMessages.last {
-                        withAnimation {
+                        DispatchQueue.main.async {
                             proxy.scrollTo(lastMessage.id, anchor: .bottom)
                         }
                     }

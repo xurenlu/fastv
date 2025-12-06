@@ -1,0 +1,11 @@
+{
+  "id": "com.example.travel-planner",
+  "name": "旅行规划师",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": [
+    "chat"
+  ],
+  "minPlatformVersion": "1.0"
+}

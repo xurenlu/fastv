@@ -242,11 +242,16 @@ struct AIServiceManagementView: View {
                 print("🔍 [测试连接] Headers: \(headers.keys)")
                 
                 // 构建测试请求体
-                // DashScope 需要特殊的 content 格式
+                // DashScope 兼容模式使用 OpenAI 格式，原生模式使用特殊格式
+                let endpoint = profile.effectiveEndpoint.lowercased()
+                let usesDashScopeCompatibleMode = endpoint.contains("compatible-mode") || endpoint.contains("/chat/completions")
+                
                 let testMessages: [[String: Any]]
-                if profile.protocolType == .dashScope {
+                if profile.protocolType == .dashScope && !usesDashScopeCompatibleMode {
+                    // DashScope 原生格式：content 为数组
                     testMessages = [["role": "user", "content": [["text": "test"]]]]
                 } else {
+                    // OpenAI 兼容格式（包括 DashScope 兼容模式）：content 为字符串
                     testMessages = [["role": "user", "content": "test"]]
                 }
                 
@@ -261,6 +266,12 @@ struct AIServiceManagementView: View {
                 request.httpBody = try JSONSerialization.data(withJSONObject: testBody)
                 request.timeoutInterval = 10
                 
+                // 打印请求体用于调试
+                if let bodyData = request.httpBody,
+                   let bodyString = String(data: bodyData, encoding: .utf8) {
+                    print("🔍 [测试连接] 请求体: \(bodyString)")
+                }
+                
                 let (data, response) = try await URLSession.shared.data(for: request)
                 
                 await MainActor.run {
@@ -270,9 +281,32 @@ struct AIServiceManagementView: View {
                             testResult = "✅ 连接成功"
                         } else if httpResponse.statusCode == 400 {
                             // 尝试解析错误信息
-                            if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                               let message = errorJson["message"] as? String {
-                                testResult = "❌ 请求参数错误（400）: \(message)"
+                            if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                                // 打印完整的错误响应用于调试
+                                if let errorData = try? JSONSerialization.data(withJSONObject: errorJson, options: .prettyPrinted),
+                                   let errorString = String(data: errorData, encoding: .utf8) {
+                                    print("🔍 [测试连接] 错误响应: \(errorString)")
+                                }
+                                
+                                // 尝试提取错误消息
+                                var errorMessage = ""
+                                if let message = errorJson["message"] as? String {
+                                    errorMessage = message
+                                } else if let error = errorJson["error"] as? [String: Any],
+                                          let message = error["message"] as? String {
+                                    errorMessage = message
+                                } else if let error = errorJson["error"] as? String {
+                                    errorMessage = error
+                                }
+                                
+                                if !errorMessage.isEmpty {
+                                    testResult = "❌ 请求参数错误（400）: \(errorMessage)"
+                                } else {
+                                    testResult = "❌ 请求参数错误（400）"
+                                }
+                            } else if let errorString = String(data: data, encoding: .utf8) {
+                                print("🔍 [测试连接] 错误响应（文本）: \(errorString)")
+                                testResult = "❌ 请求参数错误（400）: \(errorString)"
                             } else {
                                 testResult = "❌ 请求参数错误（400）"
                             }
@@ -503,40 +537,40 @@ struct AIProfileEditView: View {
     // MARK: - 基本信息 Section
     @ViewBuilder
     private var basicInfoSection: some View {
-        Section {
-            TextField("服务名称", text: $name)
-                .textFieldStyle(.roundedBorder)
-            
-            Picker("协议类型", selection: $protocolType) {
-                ForEach(AIProtocolType.allCases, id: \.self) { type in
-                    Text(type.displayName).tag(type)
-                }
-            }
-            .pickerStyle(.menu)
-            .onChange(of: protocolType) { oldValue, newValue in
-                // 当协议类型改变时，更新 endpoint 和 model
-                if endpoint.isEmpty || endpoint == oldValue.defaultEndpoint {
-                    endpoint = newValue.defaultEndpoint ?? ""
-                }
-                if defaultModel.isEmpty || !newValue.recommendedModels.contains(defaultModel) {
-                    defaultModel = newValue.recommendedModels.first ?? ""
-                }
-            }
-        } header: {
-            Text("基本信息")
-                .font(.headline)
-                .padding(.top, 8)
-        } footer: {
-            Text("为这个服务配置起一个易于识别的名称")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Section {
+                    TextField("服务名称", text: $name)
+                        .textFieldStyle(.roundedBorder)
+                    
+                    Picker("协议类型", selection: $protocolType) {
+                        ForEach(AIProtocolType.allCases, id: \.self) { type in
+                            Text(type.displayName).tag(type)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: protocolType) { oldValue, newValue in
+                        // 当协议类型改变时，更新 endpoint 和 model
+                        if endpoint.isEmpty || endpoint == oldValue.defaultEndpoint {
+                            endpoint = newValue.defaultEndpoint ?? ""
+                        }
+                        if defaultModel.isEmpty || !newValue.recommendedModels.contains(defaultModel) {
+                            defaultModel = newValue.recommendedModels.first ?? ""
+                        }
+                    }
+                } header: {
+                    Text("基本信息")
+                        .font(.headline)
+                        .padding(.top, 8)
+                } footer: {
+                    Text("为这个服务配置起一个易于识别的名称")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
         }
-    }
-    
+                }
+                
     // MARK: - 连接配置 Section
     @ViewBuilder
     private var connectionConfigSection: some View {
-        Section {
+                Section {
             endpointField
             apiKeyField
             modelField
@@ -554,45 +588,45 @@ struct AIProfileEditView: View {
     // MARK: - Endpoint 字段
     @ViewBuilder
     private var endpointField: some View {
-        if protocolType.endpointEditable {
-            TextField("API Endpoint", text: $endpoint, prompt: Text("https://api.example.com/v1"))
-                .textFieldStyle(.roundedBorder)
-        } else {
-            HStack {
-                Text("API Endpoint")
-                    .foregroundStyle(.primary)
-                Spacer()
+                    if protocolType.endpointEditable {
+                        TextField("API Endpoint", text: $endpoint, prompt: Text("https://api.example.com/v1"))
+                            .textFieldStyle(.roundedBorder)
+                    } else {
+                        HStack {
+                            Text("API Endpoint")
+                                .foregroundStyle(.primary)
+                            Spacer()
                 let displayEndpoint = endpoint.isEmpty ? (protocolType.defaultEndpoint ?? "") : endpoint
                 Text(displayEndpoint)
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
-                    .textSelection(.enabled)
+                                .foregroundStyle(.secondary)
+                                .font(.caption)
+                                .textSelection(.enabled)
             }
-        }
-    }
-    
+                        }
+                    }
+                    
     // MARK: - API Key 字段
     @ViewBuilder
     private var apiKeyField: some View {
-        if protocolType.requiresAPIKey {
-            SecureField("API Key", text: $apiKey, prompt: Text("输入您的 API Key"))
-                .textFieldStyle(.roundedBorder)
-            
-            // 申请链接按钮（仅阿里云显示）
-            if protocolType == .dashScope {
+                    if protocolType.requiresAPIKey {
+                        SecureField("API Key", text: $apiKey, prompt: Text("输入您的 API Key"))
+                            .textFieldStyle(.roundedBorder)
+                        
+                        // 申请链接按钮（仅阿里云显示）
+                        if protocolType == .dashScope {
                 Button(action: openAliyunAPIKeyPage) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "link")
-                            .font(.caption)
-                        Text("申请API Key")
-                            .font(.caption)
+                                HStack(spacing: 4) {
+                                    Image(systemName: "link")
+                                        .font(.caption)
+                                    Text("申请API Key")
+                                        .font(.caption)
+                                }
+                                .foregroundStyle(.blue)
+                            }
+                            .buttonStyle(.plain)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
-                    .foregroundStyle(.blue)
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
     }
     
     private func openAliyunAPIKeyPage() {
@@ -605,21 +639,21 @@ struct AIProfileEditView: View {
     // MARK: - 模型字段
     @ViewBuilder
     private var modelField: some View {
-        TextField("默认模型", text: $defaultModel, prompt: Text("选择或输入模型名称"))
-            .textFieldStyle(.roundedBorder)
+                    TextField("默认模型", text: $defaultModel, prompt: Text("选择或输入模型名称"))
+                        .textFieldStyle(.roundedBorder)
     }
-    
+                    
     // MARK: - 推荐模型选择
     @ViewBuilder
     private var recommendedModelsView: some View {
-        if !protocolType.recommendedModels.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("推荐模型")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(protocolType.recommendedModels, id: \.self) { model in
+                    if !protocolType.recommendedModels.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("推荐模型")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(protocolType.recommendedModels, id: \.self) { model in
                             modelButton(for: model)
                         }
                     }
@@ -632,56 +666,56 @@ struct AIProfileEditView: View {
     @ViewBuilder
     private func modelButton(for model: String) -> some View {
         let isSelected = defaultModel == model
-        Button(action: {
-            defaultModel = model
-        }) {
-            Text(model)
-                .font(.caption)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule()
+                                        Button(action: {
+                                            defaultModel = model
+                                        }) {
+                                            Text(model)
+                                                .font(.caption)
+                                                .padding(.horizontal, 12)
+                                                .padding(.vertical, 6)
+                                                .background(
+                                                    Capsule()
                         .fill(isSelected ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.1))
-                )
+                                                )
                 .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
-        }
-        .buttonStyle(.plain)
-    }
-    
+                                        }
+                                        .buttonStyle(.plain)
+                    }
+                    
     // MARK: - 超时时间滑块
     @ViewBuilder
     private var timeoutSlider: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("超时时间")
-                    .foregroundStyle(.primary)
-                Spacer()
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("超时时间")
+                                .foregroundStyle(.primary)
+                            Spacer()
                 Text(String(format: "%.1f 秒", timeout))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-            Slider(value: $timeout, in: 2.0...60.0, step: 0.5)
-        }
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+                        Slider(value: $timeout, in: 2.0...60.0, step: 0.5)
+                    }
     }
     
     // MARK: - Footer 文本
     @ViewBuilder
     private var connectionFooterText: some View {
-        if protocolType == .someIM {
-            Text("Some.IM 使用固定的 API Endpoint，只需填写 API Key。")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        } else if protocolType == .gemini {
-            Text("Gemini 默认使用官方 Endpoint，可以自定义修改。")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        } else {
-            Text("配置 API 连接参数，确保服务可以正常访问。")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-    }
+                    if protocolType == .someIM {
+                        Text("Some.IM 使用固定的 API Endpoint，只需填写 API Key。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else if protocolType == .gemini {
+                        Text("Gemini 默认使用官方 Endpoint，可以自定义修改。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("配置 API 连接参数，确保服务可以正常访问。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
     
     // MARK: - 保存按钮
     @ViewBuilder
@@ -689,34 +723,34 @@ struct AIProfileEditView: View {
         Button("保存", action: saveProfile)
             .disabled(name.isEmpty || (protocolType.requiresAPIKey && apiKey.isEmpty))
             .keyboardShortcut(.defaultAction)
-    }
+                }
     
     private func saveProfile() {
-        let effectiveEndpoint = protocolType.endpointEditable ? endpoint : (protocolType.defaultEndpoint ?? "")
-        let profileId = profile?.id ?? UUID()
-        
-        print("🔍 [AIProfileEditView] 保存按钮点击")
-        print("  - 是编辑模式: \(profile != nil)")
-        print("  - Profile ID: \(profileId)")
-        print("  - 原始 Profile ID: \(profile?.id.uuidString ?? "无")")
-        
-        let newProfile = AIServiceProfile(
-            id: profileId,
-            name: name.isEmpty ? protocolType.displayName : name,
-            protocolType: protocolType,
-            endpoint: effectiveEndpoint,
-            apiKey: apiKey,
-            defaultModel: defaultModel,
-            timeout: timeout,
-            isDefault: profile?.isDefault ?? false,
-            createdAt: profile?.createdAt ?? Date(),
-            updatedAt: Date()
-        )
-        
-        print("  - 新 Profile ID: \(newProfile.id)")
-        print("  - Profile Name: \(newProfile.name)")
-        
-        onSave(newProfile)
+                        let effectiveEndpoint = protocolType.endpointEditable ? endpoint : (protocolType.defaultEndpoint ?? "")
+                        let profileId = profile?.id ?? UUID()
+                        
+                        print("🔍 [AIProfileEditView] 保存按钮点击")
+                        print("  - 是编辑模式: \(profile != nil)")
+                        print("  - Profile ID: \(profileId)")
+                        print("  - 原始 Profile ID: \(profile?.id.uuidString ?? "无")")
+                        
+                        let newProfile = AIServiceProfile(
+                            id: profileId,
+                            name: name.isEmpty ? protocolType.displayName : name,
+                            protocolType: protocolType,
+                            endpoint: effectiveEndpoint,
+                            apiKey: apiKey,
+                            defaultModel: defaultModel,
+                            timeout: timeout,
+                            isDefault: profile?.isDefault ?? false,
+                            createdAt: profile?.createdAt ?? Date(),
+                            updatedAt: Date()
+                        )
+                        
+                        print("  - 新 Profile ID: \(newProfile.id)")
+                        print("  - Profile Name: \(newProfile.name)")
+                        
+                        onSave(newProfile)
     }
 }
 

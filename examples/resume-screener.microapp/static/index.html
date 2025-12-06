@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>简历筛选助手</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div class="container">
+      <h1>📋 简历筛选助手</h1>
+      <p class="subtitle">上传简历，智能提取关键信息并评估匹配度</p>
+      
+      <div class="job-requirements">
+        <label for="job-desc">岗位要求描述：</label>
+        <textarea id="job-desc" placeholder="请输入岗位要求，如：3年以上前端开发经验，熟悉React、Vue框架..."></textarea>
+      </div>
+      
+      <div id="image-container" class="image-container">
+        <img id="preview" src="" alt="预览" style="display:none;">
+        <div id="placeholder" class="placeholder">
+          <div class="placeholder-icon">📄</div>
+          <p>点击下方按钮选择简历图片</p>
+          <p style="font-size: 12px; color: #a0aec0; margin-top: 8px;">支持PDF截图或简历照片</p>
+        </div>
+      </div>
+      
+      <div class="actions">
+        <button id="pick-btn" class="btn btn-primary">选择简历</button>
+        <button id="screen-btn" class="btn btn-secondary" disabled>筛选评估</button>
+      </div>
+      
+      <div id="result" class="result"></div>
+      
+      <div id="evaluation-section" style="display:none;">
+        <div id="evaluation-content" class="evaluation-content"></div>
+        <button id="questions-btn" class="btn btn-primary">生成面试问题</button>
+        <div id="questions-content" class="questions-content"></div>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
+

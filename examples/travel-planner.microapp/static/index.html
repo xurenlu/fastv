@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>旅行规划师</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div class="container">
+      <h1>旅行规划师</h1>
+      <p class="subtitle">输入目的地和需求，生成详细行程</p>
+      
+      <div class="input-group">
+        <label for="text-input">请输入内容</label>
+        <textarea id="text-input" rows="6" placeholder="在此输入..."></textarea>
+      </div>
+      
+      <div class="actions">
+        <button id="process-btn" class="btn btn-primary">开始处理</button>
+      </div>
+      
+      <div id="result" class="result"></div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

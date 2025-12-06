@@ -859,6 +859,20 @@ class UserPreferences: ObservableObject {
             updated.updatedAt = Date()
             aiServiceProfiles[index] = updated
             print("  - 更新后 Profiles 数量: \(aiServiceProfiles.count)")
+        } else if let duplicateIndex = aiServiceProfiles.firstIndex(where: {
+            $0.name == profile.name &&
+            $0.protocolType == profile.protocolType &&
+            $0.endpoint == profile.endpoint
+        }) {
+            // 如果 name + 协议 + endpoint 完全一致，视为更新而不是新增，防止重复条目
+            print("  - 未找到同 ID，但检测到相同配置，将覆盖索引: \(duplicateIndex)")
+            var updated = profile
+            // 保留原有的 ID 和创建时间，避免再生成一个“新”配置
+            updated.id = aiServiceProfiles[duplicateIndex].id
+            updated.createdAt = aiServiceProfiles[duplicateIndex].createdAt
+            updated.updatedAt = Date()
+            aiServiceProfiles[duplicateIndex] = updated
+            print("  - 覆盖后 Profiles 数量: \(aiServiceProfiles.count)")
         } else {
             print("  - 未找到已存在的 Profile，将添加新的")
             aiServiceProfiles.append(profile)

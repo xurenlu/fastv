@@ -15,21 +15,28 @@ class MicroAppManager: ObservableObject {
     static let shared = MicroAppManager()
     
     @Published var installedApps: [InstalledMicroApp] = []
+    @Published var runningApps: Set<String> = []
+    @Published var pinnedApps: Set<String> = []
     
     private let appsDirectory: URL
     private let registryFile: URL
+    private let pinnedAppsFile: URL
     
     private init() {
         // 使用 row1 作为应用标识
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         appsDirectory = appSupport.appendingPathComponent("row1/MicroApps", isDirectory: true)
         registryFile = appSupport.appendingPathComponent("row1/installed.json")
+        pinnedAppsFile = appSupport.appendingPathComponent("row1/pinned.json")
         
         // 确保目录存在
         try? FileManager.default.createDirectory(at: appsDirectory, withIntermediateDirectories: true)
         
         // 加载已安装应用列表
         loadInstalledApps()
+        
+        // 加载固定的应用列表
+        loadPinnedApps()
     }
     
     /// 加载已安装应用列表
@@ -47,6 +54,24 @@ class MicroAppManager: ObservableObject {
     private func saveInstalledApps() {
         guard let data = try? JSONEncoder().encode(installedApps) else { return }
         try? data.write(to: registryFile)
+    }
+    
+    /// 加载固定的应用列表
+    private func loadPinnedApps() {
+        guard FileManager.default.fileExists(atPath: pinnedAppsFile.path),
+              let data = try? Data(contentsOf: pinnedAppsFile),
+              let pinnedIds = try? JSONDecoder().decode([String].self, from: data) else {
+            pinnedApps = []
+            return
+        }
+        pinnedApps = Set(pinnedIds)
+    }
+    
+    /// 保存固定的应用列表
+    private func savePinnedApps() {
+        let pinnedIds = Array(pinnedApps)
+        guard let data = try? JSONEncoder().encode(pinnedIds) else { return }
+        try? data.write(to: pinnedAppsFile)
     }
     
     /// 安装应用（从本地 zip 文件）
@@ -154,7 +179,10 @@ class MicroAppManager: ObservableObject {
         }
         
         installedApps.removeAll { $0.id == id }
+        runningApps.remove(id)
+        pinnedApps.remove(id)
         saveInstalledApps()
+        savePinnedApps()
     }
     
     /// 获取应用 manifest
@@ -188,6 +216,55 @@ class MicroAppManager: ObservableObject {
         }
         
         return entryURL
+    }
+    
+    /// 启动应用（运行）
+    func launchApp(id: String) {
+        guard installedApps.contains(where: { $0.id == id }) else {
+            print("⚠️ [MicroAppManager] 应用不存在: \(id)")
+            return
+        }
+        runningApps.insert(id)
+        print("✅ [MicroAppManager] 启动应用: \(id)")
+    }
+    
+    /// 关闭应用
+    func closeApp(id: String) {
+        runningApps.remove(id)
+        print("🛑 [MicroAppManager] 关闭应用: \(id)")
+    }
+    
+    /// 固定应用到侧边栏
+    func pinApp(id: String) {
+        guard installedApps.contains(where: { $0.id == id }) else {
+            print("⚠️ [MicroAppManager] 应用不存在: \(id)")
+            return
+        }
+        pinnedApps.insert(id)
+        savePinnedApps()
+        print("📌 [MicroAppManager] 固定应用: \(id)")
+    }
+    
+    /// 取消固定应用
+    func unpinApp(id: String) {
+        pinnedApps.remove(id)
+        savePinnedApps()
+        print("📌 [MicroAppManager] 取消固定应用: \(id)")
+    }
+    
+    /// 检查应用是否正在运行
+    func isRunning(id: String) -> Bool {
+        return runningApps.contains(id)
+    }
+    
+    /// 检查应用是否已固定
+    func isPinned(id: String) -> Bool {
+        return pinnedApps.contains(id)
+    }
+    
+    /// 检查应用是否应该在侧边栏显示（运行中或已固定）
+    func shouldShowInSidebar(id: String) -> Bool {
+        return runningApps.contains(id) || pinnedApps.contains(id)
     }
 }
 

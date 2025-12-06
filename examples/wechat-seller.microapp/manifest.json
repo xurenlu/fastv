@@ -1,0 +1,10 @@
+{
+  "id": "com.example.wechat-seller",
+  "name": "微商营销助手",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": ["vision", "chat"],
+  "minPlatformVersion": "1.0"
+}
+

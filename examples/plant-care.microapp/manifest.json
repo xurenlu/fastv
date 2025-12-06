@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "entry": "static/index.html",
   "icon": "icon.png",
-  "permissions": ["vision", "chat", "file"],
+  "permissions": ["vision", "chat"],
   "minPlatformVersion": "1.0"
 }
 

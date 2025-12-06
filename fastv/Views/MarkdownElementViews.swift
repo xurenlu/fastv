@@ -336,59 +336,63 @@ struct TableView: View {
     let isTransparentBackground: Bool
     
     var body: some View {
-        VStack(spacing: 0) {
-            // 表头
-            HStack(spacing: 0) {
-                ForEach(Array(headers.enumerated()), id: \.offset) { index, header in
-                    Text(header)
-                        .font(.headline)
-                        .foregroundColor(isTransparentBackground ? .white : .primary)
-                        .padding(8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(isTransparentBackground ? Color.white.opacity(0.1) : Color.secondary.opacity(0.1))
-                        .textSelection(.enabled)
-                        .contextMenu {
-                            Button("复制") {
-                                let pasteboard = NSPasteboard.general
-                                pasteboard.clearContents()
-                                pasteboard.setString(header, forType: .string)
-                            }
-                            .keyboardShortcut("c", modifiers: .command)
-                        }
-                    
-                    if index < headers.count - 1 {
-                        Divider()
-                    }
-                }
-            }
-            
-            // 数据行
-            ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
+        ScrollView(.horizontal, showsIndicators: true) {
+            VStack(spacing: 0) {
+                // 表头
                 HStack(spacing: 0) {
-                    ForEach(Array(row.enumerated()), id: \.offset) { colIndex, cell in
-                        Text(cell)
-                            .font(.body)
-                            .foregroundColor(isTransparentBackground ? .white.opacity(0.9) : .primary)
+                    ForEach(Array(headers.enumerated()), id: \.offset) { index, header in
+                        Text(header)
+                            .font(.headline)
+                            .foregroundColor(isTransparentBackground ? .white : .primary)
                             .padding(8)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(minWidth: 100, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .background(isTransparentBackground ? Color.white.opacity(0.1) : Color.secondary.opacity(0.1))
                             .textSelection(.enabled)
                             .contextMenu {
                                 Button("复制") {
                                     let pasteboard = NSPasteboard.general
                                     pasteboard.clearContents()
-                                    pasteboard.setString(cell, forType: .string)
+                                    pasteboard.setString(header, forType: .string)
                                 }
                                 .keyboardShortcut("c", modifiers: .command)
                             }
                         
-                        if colIndex < row.count - 1 {
+                        if index < headers.count - 1 {
                             Divider()
                         }
                     }
                 }
                 
-                if rowIndex < rows.count - 1 {
-                    Divider()
+                // 数据行
+                ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
+                    HStack(spacing: 0) {
+                        ForEach(Array(row.enumerated()), id: \.offset) { colIndex, cell in
+                            Text(cell)
+                                .font(.body)
+                                .foregroundColor(isTransparentBackground ? .white.opacity(0.9) : .primary)
+                                .padding(8)
+                                .frame(minWidth: 100, alignment: .leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .textSelection(.enabled)
+                                .contextMenu {
+                                    Button("复制") {
+                                        let pasteboard = NSPasteboard.general
+                                        pasteboard.clearContents()
+                                        pasteboard.setString(cell, forType: .string)
+                                    }
+                                    .keyboardShortcut("c", modifiers: .command)
+                                }
+                            
+                            if colIndex < row.count - 1 {
+                                Divider()
+                            }
+                        }
+                    }
+                    
+                    if rowIndex < rows.count - 1 {
+                        Divider()
+                    }
                 }
             }
         }

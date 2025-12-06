@@ -364,6 +364,17 @@ class EmailStore: ObservableObject {
         return FolderMessageCountCache.shared.getCount(for: folderId)
     }
     
+    /// 获取某个账号的所有邮件总数
+    func getTotalMessageCount(for accountId: UUID) -> Int {
+        // 获取该账号的所有文件夹
+        guard let accountFolders = folders[accountId] else { return 0 }
+        
+        // 累加所有文件夹的邮件数量
+        return accountFolders.reduce(0) { total, folder in
+            total + getMessageCount(for: folder.id)
+        }
+    }
+    
     /// 获取所有邮件（用于 AI 摘要汇总）
     func getAllMessages(limit: Int = 100) -> [EmailMessage] {
         var allMessages: [EmailMessage] = []

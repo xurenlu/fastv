@@ -76,8 +76,13 @@ class WaveformWindowManager: ObservableObject {
         window.contentView = hostingView
         window.backgroundColor = .clear
         window.isOpaque = false
-        window.level = .statusBar  // 改为statusBar级别，比floating更高
-        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]  // 添加fullScreenAuxiliary
+        // 使用 screenSaver 级别 (1000)，确保在全屏应用上方显示
+        // 这是 macOS 中最高的标准窗口层级之一，可以覆盖全屏应用
+        window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.maximumWindow)))
+        // 关键：fullScreenAuxiliary 允许窗口在全屏空间中显示
+        // canJoinAllSpaces 让窗口在所有桌面空间中可见
+        // stationary 防止窗口随空间切换而移动
+        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
         window.ignoresMouseEvents = true
         window.hasShadow = false  // 去掉窗口阴影，避免黑框效果
         window.isReleasedWhenClosed = false  // 重要：防止窗口被自动释放
@@ -248,16 +253,23 @@ class WaveformWindowManager: ObservableObject {
     
     /// 计算窗口位置
     private func calculateWindowFrame() -> NSRect {
-        guard let screen = NSScreen.main else {
+        // 优先获取当前活跃的屏幕（用户正在使用的屏幕）
+        // 在全屏模式下，NSScreen.main 可能不是用户实际使用的屏幕
+        let screen = NSScreen.main ?? NSScreen.screens.first
+        guard let screen = screen else {
             let size = UserPreferences.shared.waveformWindowStyle.size
             return NSRect(x: 0, y: 0, width: size.width, height: size.height)
         }
         
-        let screenFrame = screen.visibleFrame
+        // 在全屏模式下使用 frame 而不是 visibleFrame
+        // visibleFrame 会排除菜单栏和 Dock，但在全屏模式下可能不准确
+        // 使用 frame 确保我们获得完整的屏幕尺寸
+        let screenFrame = screen.frame
         let windowSize = UserPreferences.shared.waveformWindowStyle.size
         let windowWidth: CGFloat = windowSize.width
         let windowHeight: CGFloat = windowSize.height
-        let margin: CGFloat = 20
+        // 在全屏模式下使用更大的边距，避免被全屏应用的边缘遮挡
+        let margin: CGFloat = 40
         
         // 获取用户设置的位置
         let position = UserPreferences.shared.waveformWindowPosition

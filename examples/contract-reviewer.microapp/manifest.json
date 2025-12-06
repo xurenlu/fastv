@@ -1,0 +1,10 @@
+{
+  "id": "com.example.contract-reviewer",
+  "name": "合同审查助手",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": ["vision", "chat"],
+  "minPlatformVersion": "1.0"
+}
+

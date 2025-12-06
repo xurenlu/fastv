@@ -1,0 +1,10 @@
+{
+  "id": "com.example.resume-screener",
+  "name": "简历筛选助手",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": ["vision", "chat"],
+  "minPlatformVersion": "1.0"
+}
+

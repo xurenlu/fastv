@@ -79,6 +79,12 @@ enum EmailContentDecoder {
             return text
         }
         
+        // 快速检查：如果包含 HTML 标签，说明内容已经是正常文本，不需要解码
+        // 这可以避免将已解码的 HTML 内容错误地再次 base64 解码
+        if containsHTMLTags(quickCheck) {
+            return text
+        }
+        
         // 快速检查：如果包含明显的非 base64 字符（如常见标点），很可能不是 base64
         // 使用 Unicode 标量值来避免字符串中的引号问题
         let commonPunctuationChars: [Unicode.Scalar] = [
@@ -109,6 +115,19 @@ enum EmailContentDecoder {
         return tryDecodeBase64Text(text)
     }
     
+    /// 检测文本是否包含 HTML 标签（用于快速判断内容是否已经是正常文本）
+    nonisolated private static func containsHTMLTags(_ text: String) -> Bool {
+        // 检测常见的 HTML 标签模式
+        let lowercased = text.lowercased()
+        let commonTags = ["<!doctype", "<html", "<head", "<body", "<div", "<p>", "<br", "<table", "<span", "<img", "<a ", "</"]
+        for tag in commonTags {
+            if lowercased.contains(tag) {
+                return true
+            }
+        }
+        return false
+    }
+    
     /// 尝试自动解码可能是 base64 编码的文本（用于显示时的备用解码）
     /// 性能优化：只检查前 1024 个字符来判断是否是 base64，避免处理大文本
     nonisolated static func tryDecodeBase64Text(_ text: String) -> String {
@@ -120,6 +139,11 @@ enum EmailContentDecoder {
         let sampleSize = min(200, trimmed.count)
         let sample = String(trimmed.prefix(sampleSize))
         if sample.unicodeScalars.contains(where: { (0x4E00...0x9FFF).contains($0.value) }) {
+            return text
+        }
+        
+        // 快速检查：如果包含 HTML 标签，说明内容已经是正常文本，不需要解码
+        if containsHTMLTags(sample) {
             return text
         }
         
@@ -553,6 +577,15 @@ enum EmailContentDecoder {
         // 只检查前 512 个字符（性能优化）
         let checkSize = min(512, text.count)
         let checkText = String(text.prefix(checkSize))
+        
+        // 快速排除：如果包含 HTML 标签特征字符（<, >, "），很可能不是 base64
+        // 这些字符不在 base64 字符集中，且在 HTML 中非常常见
+        let htmlIndicators: [Character] = ["<", ">"]
+        for indicator in htmlIndicators {
+            if checkText.contains(indicator) {
+                return false
+            }
+        }
         
         // 移除空白字符后检查
         let cleaned = checkText.components(separatedBy: whitespace).joined()

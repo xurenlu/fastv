@@ -21,23 +21,63 @@ class AIChatViewModel: ObservableObject {
     @Published var selectedModel: String = ""
     @Published var availableModels: [String] = []
     @Published var pendingAttachments: [ChatAttachment] = []  // 待发送的附件列表
+    @Published var currentMessages: [ChatMessage] = []  // 当前会话的消息列表
     
     private let chatManager = ChatManager.shared
     private let chatService = ChatAIService.shared
     private let voiceService = VoiceInputService.shared
+    private var cancellables = Set<AnyCancellable>()
     
     var currentSession: ChatSession? {
         guard let sessionId = currentSessionId else { return nil }
         return chatManager.getSession(id: sessionId)
     }
     
-    var currentMessages: [ChatMessage] {
-        guard let sessionId = currentSessionId else { return [] }
-        return chatManager.getMessages(for: sessionId)
-    }
-    
     init() {
         loadAvailableModels()
+        
+        // 监听 ChatManager 的消息变化
+        chatManager.$messages
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] messagesDict in
+                guard let self = self else { return }
+                // 只在当前会话的消息变化时更新
+                if let sessionId = self.currentSessionId {
+                    let newMessages = messagesDict[sessionId] ?? []
+                    // 只在消息列表真正变化时更新（比较数量和ID列表，避免不必要的UI刷新）
+                    if newMessages.count != self.currentMessages.count ||
+                       newMessages.map({ $0.id }) != self.currentMessages.map({ $0.id }) {
+                        self.currentMessages = newMessages
+                    }
+                } else {
+                    self.currentMessages = []
+                }
+            }
+            .store(in: &cancellables)
+        
+        // 监听会话ID的变化
+        $currentSessionId
+            .sink { [weak self] sessionId in
+                guard let self = self else { return }
+                if let sessionId = sessionId {
+                    self.currentMessages = self.chatManager.getMessages(for: sessionId)
+                } else {
+                    self.currentMessages = []
+                }
+            }
+            .store(in: &cancellables)
+        
+        // 初始化消息列表
+        updateCurrentMessages()
+    }
+    
+    /// 更新当前消息列表
+    private func updateCurrentMessages() {
+        guard let sessionId = currentSessionId else {
+            currentMessages = []
+            return
+        }
+        currentMessages = chatManager.getMessages(for: sessionId)
     }
     
     // MARK: - Session Management
@@ -56,6 +96,7 @@ class AIChatViewModel: ObservableObject {
         currentSessionId = session.id
         selectedModel = session.model.isEmpty ? getDefaultModel() : session.model
         errorMessage = nil
+        updateCurrentMessages()
     }
     
     /// 删除会话

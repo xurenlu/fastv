@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+import Combine
 
 /// 侧边栏选项
 enum SidebarItem: Identifiable, Hashable {
@@ -104,8 +105,11 @@ struct ContentView: View {
     
     var sidebarItems: [SidebarItem] {
         var items = SidebarItem.builtInItems
-        // 添加已安装的 Micro-App
-        items.append(contentsOf: microAppManager.installedApps.map { .microApp($0.id) })
+        // 只添加运行中或已固定的 Micro-App
+        let microAppItems: [SidebarItem] = microAppManager.installedApps
+            .filter { microAppManager.shouldShowInSidebar(id: $0.id) }
+            .map { app in SidebarItem.microApp(app.id) }
+        items.append(contentsOf: microAppItems)
         return items
     }
     
@@ -125,6 +129,14 @@ struct ContentView: View {
                 .listStyle(.sidebar)
                 .navigationTitle("功能")
                 .frame(minWidth: 200, idealWidth: 220, maxWidth: 250)
+                .onChange(of: selectedSidebarItem) { oldValue, newValue in
+                    // 如果点击的是 microAPP 且未运行，先启动它
+                    if case .microApp(let appId) = newValue {
+                        if !microAppManager.isRunning(id: appId) {
+                            microAppManager.launchApp(id: appId)
+                        }
+                    }
+                }
             } detail: {
                 // 右侧内容区域
                 Group {
@@ -263,6 +275,7 @@ struct ContentView: View {
                         MicroAppInstalledView()
                     case .microApp(let appId):
                         MicroAppHostView(appId: appId)
+                            .id(appId) // 强制视图重建，修复切换问题
                     }
                 }
                 .sheet(isPresented: $showSettings) {
@@ -283,6 +296,19 @@ struct ContentView: View {
                 }
             }
             .frame(minWidth: 720, minHeight: 520)
+            .onChange(of: microAppManager.runningApps) { oldValue, newValue in
+                // 如果当前选中的 microAPP 被关闭了，切换到已安装页面
+                if case .microApp(let appId) = selectedSidebarItem {
+                    if !newValue.contains(appId) {
+                        selectedSidebarItem = .installed
+                    }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NavigateToMicroApp"))) { notification in
+                if let appId = notification.userInfo?["appId"] as? String {
+                    selectedSidebarItem = .microApp(appId)
+                }
+            }
         }
     }
     
@@ -549,6 +575,7 @@ struct FrameThumbnail: View {
 struct SidebarItemRow: View {
     let item: SidebarItem
     let isSelected: Bool
+    @StateObject private var microAppManager = MicroAppManager.shared
     @State private var isHovered = false
     
     var body: some View {
@@ -556,16 +583,29 @@ struct SidebarItemRow: View {
             // 图标
             Image(systemName: item.icon)
                 .font(.system(size: 16, weight: isSelected ? .semibold : .regular))
-                .foregroundStyle(isSelected ? .primary : .secondary)
+                .foregroundStyle(isSelected ? .primary : (isMicroAppRunning ? .primary : .secondary))
                 .frame(width: 20, alignment: .center)
                 .symbolEffect(.bounce, value: isSelected)
             
             // 文字
             Text(item.displayName)
                 .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
-                .foregroundStyle(isSelected ? .primary : .secondary)
+                .foregroundStyle(isSelected ? .primary : (isMicroAppRunning ? .primary : .secondary))
             
             Spacer()
+            
+            // 关闭按钮（仅对 microAPP 且悬停时显示）
+            if case .microApp(let appId) = item, isHovered {
+                Button(action: {
+                    microAppManager.closeApp(id: appId)
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("关闭")
+            }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
@@ -579,5 +619,43 @@ struct SidebarItemRow: View {
                 isHovered = hovering
             }
         }
+        .contextMenu {
+            if case .microApp(let appId) = item {
+                if microAppManager.isPinned(id: appId) {
+                    Button(action: {
+                        microAppManager.unpinApp(id: appId)
+                    }) {
+                        Label("取消固定", systemImage: "pin.slash")
+                    }
+                } else {
+                    Button(action: {
+                        microAppManager.pinApp(id: appId)
+                    }) {
+                        Label("固定到侧边栏", systemImage: "pin")
+                    }
+                }
+                
+                if microAppManager.isRunning(id: appId) {
+                    Button(action: {
+                        microAppManager.closeApp(id: appId)
+                    }) {
+                        Label("关闭", systemImage: "xmark.circle")
+                    }
+                } else {
+                    Button(action: {
+                        microAppManager.launchApp(id: appId)
+                    }) {
+                        Label("运行", systemImage: "play.circle")
+                    }
+                }
+            }
+        }
+    }
+    
+    private var isMicroAppRunning: Bool {
+        if case .microApp(let appId) = item {
+            return microAppManager.isRunning(id: appId)
+        }
+        return true // 非 microAPP 项始终视为"运行中"
     }
 }

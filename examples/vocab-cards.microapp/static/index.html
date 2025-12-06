@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>单词卡片生成</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div class="container">
+      <h1>📇 单词卡片生成</h1>
+      <p class="subtitle">输入单词，生成包含例句、记忆法和图片的记忆卡片</p>
+      
+      <div class="input-group">
+        <label for="word-input">输入单词（可输入多个，用逗号分隔）</label>
+        <textarea id="word-input" rows="3" placeholder="例如：apple, banana, orange"></textarea>
+      </div>
+      
+      <div class="actions">
+        <button id="generate-btn" class="btn btn-primary">生成记忆卡片</button>
+      </div>
+      
+      <div id="result" class="result"></div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
+
