@@ -102,6 +102,9 @@ class UserPreferences: ObservableObject {
         static let emailProxyHost = "emailProxyHost"
         static let emailProxyPort = "emailProxyPort"
         static let emailProxyType = "emailProxyType" // "http", "socks5"
+        // 邮件加载策略
+        static let emailInitialLoadThreshold = "emailInitialLoadThreshold" // 初始加载阈值
+        static let emailStopAutoSyncAfterThreshold = "emailStopAutoSyncAfterThreshold" // 达到阈值后停止自动同步
     }
     
     // MARK: - Published Properties
@@ -400,6 +403,17 @@ class UserPreferences: ObservableObject {
         willSet { defaults.set(newValue, forKey: Keys.emailProxyType) }
     }
     
+    // 邮件加载策略
+    /// 初始加载阈值：每个文件夹加载多少封邮件后停止自动加载（默认30封）
+    @Published var emailInitialLoadThreshold: Int {
+        willSet { defaults.set(newValue, forKey: Keys.emailInitialLoadThreshold) }
+    }
+    
+    /// 是否在达到阈值后停止自动同步（默认开启）
+    @Published var emailStopAutoSyncAfterThreshold: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.emailStopAutoSyncAfterThreshold) }
+    }
+    
     // MARK: - Initialization
     
     private init() {
@@ -624,6 +638,10 @@ class UserPreferences: ObservableObject {
         emailProxyHost = defaults.string(forKey: Keys.emailProxyHost) ?? "localhost"
         emailProxyPort = defaults.object(forKey: Keys.emailProxyPort) as? Int ?? 7856
         emailProxyType = defaults.string(forKey: Keys.emailProxyType) ?? "socks5"
+        
+        // 邮件加载策略默认值
+        emailInitialLoadThreshold = defaults.object(forKey: Keys.emailInitialLoadThreshold) as? Int ?? 30
+        emailStopAutoSyncAfterThreshold = defaults.object(forKey: Keys.emailStopAutoSyncAfterThreshold) as? Bool ?? true
         
         // 检查模型是否已下载（在所有属性初始化之后）
         isModelDownloaded = defaults.object(forKey: Keys.isModelDownloaded) as? Bool ?? false

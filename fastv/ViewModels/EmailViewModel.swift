@@ -321,6 +321,11 @@ class EmailViewModel: ObservableObject {
     }
     
     /// 后台同步任务：持续加载每个文件夹的更多邮件
+    /// 
+    /// 智能加载策略：
+    /// - 每个文件夹加载到阈值（默认30封）后停止自动加载
+    /// - 用户滚动到底部时触发加载更多
+    /// - 可在设置中调整阈值或关闭此策略
     private func startBackgroundSyncTask() {
         Task.detached(priority: .background) { [weak self] in
             guard let self = self else { return }
@@ -339,11 +344,17 @@ class EmailViewModel: ObservableObject {
                     continue
                 }
                 
+                // 获取用户设置的加载策略
+                let (threshold, stopAfterThreshold) = await MainActor.run {
+                    (self.preferences.emailInitialLoadThreshold,
+                     self.preferences.emailStopAutoSyncAfterThreshold)
+                }
+                
                 let folders = await MainActor.run {
                     self.emailStore.getFolders(for: accountId)
                 }
                 
-                print("🔄 [EmailViewModel] 后台同步：开始检查 \(folders.count) 个文件夹...")
+                print("🔄 [EmailViewModel] 后台同步：开始检查 \(folders.count) 个文件夹（阈值: \(threshold)，达到后停止: \(stopAfterThreshold)）...")
                 
                 // 为每个文件夹加载更多邮件
                 for folder in folders {
@@ -352,14 +363,28 @@ class EmailViewModel: ObservableObject {
                         self.emailStore.messages[folder.id] ?? []
                     }
                     
-                    // 如果内存中邮件少于1000封，尝试从数据库加载更多
-                    if currentMessages.count < 1000 {
-                        print("🔄 [EmailViewModel] 后台同步：文件夹 \(folder.name) 当前有 \(currentMessages.count) 封，尝试加载更多...")
+                    let currentCount = currentMessages.count
+                    
+                    // 智能加载策略：如果启用了阈值停止，且已达到阈值，则跳过自动加载
+                    if stopAfterThreshold && currentCount >= threshold {
+                        print("📊 [EmailViewModel] 后台同步：文件夹 \(folder.name) 已有 \(currentCount) 封邮件，达到阈值 \(threshold)，跳过自动加载")
+                        continue
+                    }
+                    
+                    // 如果内存中邮件少于阈值，尝试从数据库加载更多
+                    if currentCount < threshold {
+                        print("🔄 [EmailViewModel] 后台同步：文件夹 \(folder.name) 当前有 \(currentCount) 封，尝试加载更多...")
                         await self.emailStore.loadMessages(for: folder.id, forceLoadMore: true)
                     }
                     
-                    // 如果内存中邮件少于500封，尝试从服务器同步更多
-                    if currentMessages.count < 500 {
+                    // 再次检查加载后的数量
+                    let afterLoadMessages = await MainActor.run {
+                        self.emailStore.messages[folder.id] ?? []
+                    }
+                    let afterLoadCount = afterLoadMessages.count
+                    
+                    // 如果仍然少于阈值，尝试从服务器同步
+                    if afterLoadCount < threshold {
                         let account = await MainActor.run {
                             self.currentAccount
                         }
@@ -367,7 +392,7 @@ class EmailViewModel: ObservableObject {
                             continue
                         }
                         
-                        print("🔄 [EmailViewModel] 后台同步：文件夹 \(folder.name) 邮件较少，从服务器同步更多...")
+                        print("🔄 [EmailViewModel] 后台同步：文件夹 \(folder.name) 邮件较少（\(afterLoadCount)/\(threshold)），从服务器同步...")
                         
                         // 计算日期范围：从最旧的邮件往前推
                         let existing = await MainActor.run {
@@ -381,12 +406,16 @@ class EmailViewModel: ObservableObject {
                             sinceDate = Calendar.current.date(byAdding: .day, value: -365, to: Date()) ?? Date.distantPast
                         }
                         
+                        // 计算还需要加载多少封
+                        let neededCount = threshold - afterLoadCount
+                        let loadLimit = min(neededCount + 10, 200) // 多加载一点余量，但不超过200
+                        
                         do {
                             let fetched = try await self.emailService.syncMessages(
                                 account: account,
                                 folder: folder,
                                 since: sinceDate,
-                                limit: 200,
+                                limit: loadLimit,
                                 batchSize: 10
                             )
                             

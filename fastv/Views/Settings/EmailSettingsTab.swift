@@ -89,6 +89,37 @@ struct EmailSettingsTab: View {
             } header: {
                 Text("AI功能")
             }
+            
+            // 邮件加载策略
+            Section {
+                Toggle("达到阈值后停止自动加载", isOn: $preferences.emailStopAutoSyncAfterThreshold)
+                    .help("每个文件夹加载到指定数量后停止自动同步，滚动到底部时手动加载更多")
+                
+                if preferences.emailStopAutoSyncAfterThreshold {
+                    HStack {
+                        Text("初始加载数量")
+                        Spacer()
+                        Picker("", selection: $preferences.emailInitialLoadThreshold) {
+                            Text("20 封").tag(20)
+                            Text("30 封").tag(30)
+                            Text("50 封").tag(50)
+                            Text("100 封").tag(100)
+                            Text("200 封").tag(200)
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 100)
+                    }
+                    .help("每个文件夹初始自动加载的邮件数量")
+                    
+                    Text("达到阈值后，滚动到底部可加载更多邮件")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("加载策略")
+            } footer: {
+                Text("启用此选项可减少应用启动时的资源占用，邮件将按需加载")
+            }
         }
         .formStyle(.grouped)
         .sheet(isPresented: $showSignatureManager) {
