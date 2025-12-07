@@ -120,6 +120,7 @@ class MicroAppBridge: NSObject, WKScriptMessageHandler {
         self.manifest = manifest
         super.init()
         setupBridge()
+        injectBaseStyles()
     }
     
     /// 清理 Bridge（应在视图销毁时调用）
@@ -565,6 +566,56 @@ class MicroAppBridge: NSObject, WKScriptMessageHandler {
             .replacingOccurrences(of: "\r", with: "\\r")
             .replacingOccurrences(of: "\t", with: "\\t")
         return "\"\(escaped)\""
+    }
+    
+    /// 注入通用基础样式
+    private func injectBaseStyles() {
+        guard let webView = webView else { return }
+        
+        // 从 Bundle 读取 microapp-base.css
+        guard let cssPath = Bundle.main.path(forResource: "microapp-base", ofType: "css", inDirectory: "WebLibs"),
+              let cssContent = try? String(contentsOfFile: cssPath, encoding: .utf8) else {
+            print("⚠️ [MicroAppBridge] 无法加载 microapp-base.css")
+            return
+        }
+        
+        // 转义 CSS 内容用于 JavaScript
+        let escapedCSS = cssContent
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'", with: "\\'")
+            .replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "\r", with: "")
+        
+        // 注入 CSS 的脚本 - 在文档开始时注入，确保样式优先级最低
+        let injectScript = """
+        (function() {
+            // 等待 DOM 准备好后注入样式
+            function injectStyles() {
+                // 检查是否已经注入过
+                if (document.getElementById('microapp-base-styles')) return;
+                
+                var style = document.createElement('style');
+                style.id = 'microapp-base-styles';
+                style.setAttribute('data-priority', 'base');
+                style.textContent = '\(escapedCSS)';
+                
+                // 插入到 head 的最前面，确保应用自己的样式可以覆盖
+                var head = document.head || document.getElementsByTagName('head')[0];
+                if (head) {
+                    head.insertBefore(style, head.firstChild);
+                }
+            }
+            
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', injectStyles);
+            } else {
+                injectStyles();
+            }
+        })();
+        """
+        
+        let script = WKUserScript(source: injectScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+        webView.configuration.userContentController.addUserScript(script)
     }
     
     deinit {
