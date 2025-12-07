@@ -416,7 +416,6 @@ struct fastvApp: App {
         
         let voiceService = VoiceInputService.shared
         let waveformManager = WaveformWindowManager.shared
-        let textInsertion = TextInsertionService.shared
         let history = VoiceInputHistory.shared
         
         // 立即切换到转文字状态（在停止录音之前），不使用延迟
@@ -506,8 +505,16 @@ struct fastvApp: App {
             
             // 先插入文本（优先保证用户体验）
             if !text.isEmpty {
-                print("📝 [fastvApp] 插入文本到当前输入框...")
-                textInsertion.insertText(text)
+                // 根据设置选择文本插入方式
+                if preferences.useDirectTextInsertion {
+                    // 使用直接键盘输入，不依赖剪贴板，避免插入错误内容
+                    print("📝 [fastvApp] 直接插入文本到当前输入框（不使用剪贴板）...")
+                    DirectTextInsertionService.shared.insertText(text)
+                } else {
+                    // 使用剪贴板 + Cmd+V 方式（旧方式，作为备选）
+                    print("📝 [fastvApp] 通过剪贴板插入文本...")
+                    TextInsertionService.shared.insertText(text)
+                }
                 print("✅ [fastvApp] 文本已插入")
             } else {
                 print("ℹ️ [fastvApp] 识别结果为空，跳过文本插入")

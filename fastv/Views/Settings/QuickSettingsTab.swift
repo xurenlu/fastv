@@ -123,6 +123,19 @@ struct QuickSettingsTab: View {
                         
                         Divider()
                         
+                        // 文本插入方式设置
+                        VStack(alignment: .leading, spacing: 8) {
+                            Toggle("直接键盘输入（推荐）", isOn: $preferences.useDirectTextInsertion)
+                            
+                            Text(preferences.useDirectTextInsertion 
+                                ? "使用键盘事件直接输入文字，不会影响剪贴板内容" 
+                                : "使用剪贴板粘贴方式，可能会覆盖剪贴板内容")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Divider()
+                        
                         // 测试按钮区域
                         VStack(alignment: .leading, spacing: 12) {
                             Text(NSLocalizedString("permission.test", comment: ""))

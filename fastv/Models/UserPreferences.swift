@@ -51,6 +51,8 @@ class UserPreferences: ObservableObject {
         static let aiSystemPrompt = "aiSystemPrompt"
         // 快速纠错相关
         static let enableFastCorrection = "enableFastCorrection"
+        // 文本插入方式
+        static let useDirectTextInsertion = "useDirectTextInsertion"
         // AI错误检测相关
         static let enableAICorrectionDetection = "enableAICorrectionDetection"
         static let correctionDetectionModel = "correctionDetectionModel"
@@ -216,6 +218,11 @@ class UserPreferences: ObservableObject {
     // 快速纠错相关
     @Published var enableFastCorrection: Bool {
         willSet { defaults.set(newValue, forKey: Keys.enableFastCorrection) }
+    }
+    
+    // 文本插入方式（true: 直接键盘输入，false: 剪贴板粘贴）
+    @Published var useDirectTextInsertion: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.useDirectTextInsertion) }
     }
     
     // AI错误检测相关
@@ -537,6 +544,9 @@ class UserPreferences: ObservableObject {
         
         // 快速纠错设置，默认不启用
         enableFastCorrection = defaults.object(forKey: Keys.enableFastCorrection) as? Bool ?? false
+        
+        // 文本插入方式，默认使用直接键盘输入（不使用剪贴板）
+        useDirectTextInsertion = defaults.object(forKey: Keys.useDirectTextInsertion) as? Bool ?? true
         
         // 模型下载设置
         // 默认下载地址
