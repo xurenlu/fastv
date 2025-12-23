@@ -20,6 +20,7 @@ struct SettingsView: View {
         case aiModel = "AI与模型"
         case meeting = "会议与录音"
         case email = "邮箱"
+        case videoTools = "视频处理"
         case data = "数据与其他"
         
         var id: String { rawValue }
@@ -30,6 +31,7 @@ struct SettingsView: View {
             case .aiModel: return "cpu"
             case .meeting: return "waveform"
             case .email: return "envelope.fill"
+            case .videoTools: return "video.fill"
             case .data: return "folder.fill"
             }
         }
@@ -58,6 +60,8 @@ struct SettingsView: View {
                             MeetingRecordingSettingsTab()
                         case .email:
                             EmailSettingsTab()
+                        case .videoTools:
+                            VideoToolsSettingsTab()
                         case .data:
                             DataOtherSettingsTab()
                         }

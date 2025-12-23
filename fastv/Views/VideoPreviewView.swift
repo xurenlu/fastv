@@ -19,6 +19,16 @@ struct VideoPreviewView: View {
     @State private var isLoadingPreview = true
     @State private var isTargeted = false
     @State private var showPlayer = false
+    @State private var videoSize: CGSize?
+    
+    // 计算宽高比
+    private var calculatedAspectRatio: CGFloat? {
+        if let size = videoSize, size.width > 0 && size.height > 0 {
+            return size.width / size.height
+        }
+        // 如果没有视频尺寸，使用默认的 16:9
+        return 16.0 / 9.0
+    }
     
     init(videoURL: URL, onVideoDropped: (([URL]) -> Void)? = nil, seekToTime: Binding<TimeInterval?> = .constant(nil)) {
         self.videoURL = videoURL
@@ -32,14 +42,15 @@ struct VideoPreviewView: View {
                 if showPlayer, let player = player {
                     // 显示视频播放器
                     AVPlayerViewWrapper(player: player)
-                        .frame(maxHeight: 600)
+                        .aspectRatio(calculatedAspectRatio, contentMode: .fit)
+                        .frame(maxWidth: .infinity, maxHeight: 600)
                         .background(Color.black)
                 } else if let previewImage = previewImage {
-                    // 显示预览图片
+                    // 显示预览图片，根据视频尺寸保持宽高比
                     Image(nsImage: previewImage)
                         .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(maxHeight: 600)
+                        .aspectRatio(calculatedAspectRatio, contentMode: .fit)
+                        .frame(maxWidth: .infinity, maxHeight: 600)
                         .background(Color.black)
                 } else if isLoadingPreview {
                     ProgressView()
@@ -50,7 +61,7 @@ struct VideoPreviewView: View {
                 }
                 
                 // 播放按钮覆盖层（仅在显示预览图时显示）
-                if !showPlayer && !isLoadingPreview {
+                if !showPlayer && !isLoadingPreview && previewImage != nil {
                     Button(action: togglePlayback) {
                         ZStack {
                             Circle()
@@ -63,7 +74,8 @@ struct VideoPreviewView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .frame(minHeight: 480, maxHeight: 600)
+            .frame(minHeight: 300, maxHeight: 600)
+            .aspectRatio(calculatedAspectRatio, contentMode: .fit)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -81,6 +93,7 @@ struct VideoPreviewView: View {
             // 当视频 URL 改变时，重新加载预览
             if oldValue != newValue {
                 previewImage = nil
+                videoSize = nil
                 isLoadingPreview = true
                 showPlayer = false
                 player?.pause()
@@ -143,10 +156,16 @@ struct VideoPreviewView: View {
     
     private func loadPreview() {
         Task {
-            // 提取第一帧作为预览
+            // 提取第一帧作为预览，同时获取视频尺寸
             do {
+                // 获取视频尺寸
+                let videoInfo = try await VideoInfoService.getVideoInfo(from: videoURL)
+                
+                // 提取第一帧
                 let image = try await FrameExtractor.extractFirstFrame(from: videoURL)
+                
                 await MainActor.run {
+                    videoSize = videoInfo.resolution
                     previewImage = image
                     isLoadingPreview = false
                 }

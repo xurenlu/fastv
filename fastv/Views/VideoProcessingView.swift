@@ -100,6 +100,15 @@ struct VideoProcessingView: View {
                     }
                     .buttonStyle(.bordered)
                     
+                    if let videoURL = viewModel.videoURL {
+                        NavigationLink {
+                            LogoAnnotationView(videoURL: videoURL)
+                        } label: {
+                            Label("Logo 跟踪", systemImage: "target")
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    
                     Spacer()
                     
                     Button(action: {

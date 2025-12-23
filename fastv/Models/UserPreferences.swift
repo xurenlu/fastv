@@ -105,6 +105,16 @@ class UserPreferences: ObservableObject {
         // 邮件加载策略
         static let emailInitialLoadThreshold = "emailInitialLoadThreshold" // 初始加载阈值
         static let emailStopAutoSyncAfterThreshold = "emailStopAutoSyncAfterThreshold" // 达到阈值后停止自动同步
+        // 视频处理相关设置
+        static let ffmpegPath = "ffmpegPath" // FFmpeg 可执行文件路径
+        static let videoToolsDefaultCodec = "videoToolsDefaultCodec" // 默认视频编码器
+        static let videoToolsDefaultCRF = "videoToolsDefaultCRF" // 默认 CRF 值（压缩质量）
+        static let videoToolsOutputDirectory = "videoToolsOutputDirectory" // 默认输出目录
+        // AI 模型相关
+        static let videoYoloModelPath = "videoYoloModelPath" // YOLOv8 模型路径
+        static let videoFaceModelPath = "videoFaceModelPath" // SCRFD 人脸检测模型路径
+        static let isVideoModelsDownloaded = "isVideoModelsDownloaded" // 视频处理模型是否已下载
+        static let huggingFaceToken = "huggingFaceToken" // Hugging Face Token（用于模型下载认证）
     }
     
     // MARK: - Published Properties
@@ -414,6 +424,40 @@ class UserPreferences: ObservableObject {
         willSet { defaults.set(newValue, forKey: Keys.emailStopAutoSyncAfterThreshold) }
     }
     
+    // 视频处理相关设置
+    @Published var ffmpegPath: String {
+        willSet { defaults.set(newValue, forKey: Keys.ffmpegPath) }
+    }
+    
+    @Published var videoToolsDefaultCodec: String {
+        willSet { defaults.set(newValue, forKey: Keys.videoToolsDefaultCodec) }
+    }
+    
+    @Published var videoToolsDefaultCRF: Int {
+        willSet { defaults.set(newValue, forKey: Keys.videoToolsDefaultCRF) }
+    }
+    
+    @Published var videoToolsOutputDirectory: String {
+        willSet { defaults.set(newValue, forKey: Keys.videoToolsOutputDirectory) }
+    }
+    
+    // AI 模型相关
+    @Published var videoYoloModelPath: String {
+        willSet { defaults.set(newValue, forKey: Keys.videoYoloModelPath) }
+    }
+    
+    @Published var videoFaceModelPath: String {
+        willSet { defaults.set(newValue, forKey: Keys.videoFaceModelPath) }
+    }
+    
+    @Published var isVideoModelsDownloaded: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.isVideoModelsDownloaded) }
+    }
+    
+    @Published var huggingFaceToken: String {
+        willSet { defaults.set(newValue, forKey: Keys.huggingFaceToken) }
+    }
+    
     // MARK: - Initialization
     
     private init() {
@@ -642,6 +686,20 @@ class UserPreferences: ObservableObject {
         // 邮件加载策略默认值
         emailInitialLoadThreshold = defaults.object(forKey: Keys.emailInitialLoadThreshold) as? Int ?? 30
         emailStopAutoSyncAfterThreshold = defaults.object(forKey: Keys.emailStopAutoSyncAfterThreshold) as? Bool ?? true
+        
+        // 视频处理设置默认值
+        ffmpegPath = defaults.string(forKey: Keys.ffmpegPath) ?? "" // 默认为空，自动检测
+        videoToolsDefaultCodec = defaults.string(forKey: Keys.videoToolsDefaultCodec) ?? "libx264" // 默认 H.264
+        videoToolsDefaultCRF = defaults.object(forKey: Keys.videoToolsDefaultCRF) as? Int ?? 23 // 默认 CRF 23（高质量）
+        videoToolsOutputDirectory = defaults.string(forKey: Keys.videoToolsOutputDirectory) ?? "" // 默认为空，使用视频文件同目录
+        
+        // AI 模型路径默认值
+        videoYoloModelPath = defaults.string(forKey: Keys.videoYoloModelPath) ?? ""
+        videoFaceModelPath = defaults.string(forKey: Keys.videoFaceModelPath) ?? ""
+        isVideoModelsDownloaded = defaults.object(forKey: Keys.isVideoModelsDownloaded) as? Bool ?? false
+        
+        // Hugging Face Token 默认值
+        huggingFaceToken = defaults.string(forKey: Keys.huggingFaceToken) ?? ""
         
         // 检查模型是否已下载（在所有属性初始化之后）
         isModelDownloaded = defaults.object(forKey: Keys.isModelDownloaded) as? Bool ?? false

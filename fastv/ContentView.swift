@@ -19,6 +19,7 @@ enum SidebarItem: Identifiable, Hashable {
     case meetingRecord
     case liveTranscription
     case videoProcessing
+    case videoTools
     case videoSceneAnalysis
     case aiChat
     case email
@@ -37,6 +38,7 @@ enum SidebarItem: Identifiable, Hashable {
         case .meetingRecord: return "会议记录"
         case .liveTranscription: return "直播转录"
         case .videoProcessing: return "视频处理"
+        case .videoTools: return "视频工具"
         case .videoSceneAnalysis: return "视频场景分析"
         case .aiChat: return "AI Chat"
         case .email: return "邮箱"
@@ -57,6 +59,7 @@ enum SidebarItem: Identifiable, Hashable {
         case .meetingRecord: return "会议记录"
         case .liveTranscription: return "直播转录"
         case .videoProcessing: return "视频处理"
+        case .videoTools: return "视频工具"
         case .videoSceneAnalysis: return "视频场景分析"
         case .aiChat: return "AI Chat"
         case .email: return "邮箱"
@@ -77,6 +80,7 @@ enum SidebarItem: Identifiable, Hashable {
         case .meetingRecord: return "calendar.badge.clock"
         case .liveTranscription: return "waveform.circle.fill"
         case .videoProcessing: return "video.fill"
+        case .videoTools: return "wand.and.stars"
         case .videoSceneAnalysis: return "waveform.path"
         case .aiTodo: return "checklist"
         case .aiChat: return "message.fill"
@@ -92,7 +96,7 @@ enum SidebarItem: Identifiable, Hashable {
     }
     
     static var builtInItems: [SidebarItem] {
-        [.voiceInput, .aiTodo, .diary, .expense, .health, .meetingRecord, .liveTranscription, .videoProcessing, .videoSceneAnalysis, .aiChat, .email, .intel, .market, .installed]
+        [.voiceInput, .aiTodo, .diary, .expense, .health, .meetingRecord, .liveTranscription, .videoProcessing, .videoTools, .videoSceneAnalysis, .aiChat, .email, .intel, .market, .installed]
     }
 }
 
@@ -185,6 +189,16 @@ struct ContentView: View {
                                     .help("选择视频文件")
                                 }
                                 
+                                ToolbarItem(placement: .automatic) {
+                                    Button(action: { showSettings = true }) {
+                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                                    }
+                                    .help(NSLocalizedString("settings", comment: ""))
+                                }
+                            }
+                    case .videoTools:
+                        VideoToolsMainView()
+                            .toolbar {
                                 ToolbarItem(placement: .automatic) {
                                     Button(action: { showSettings = true }) {
                                         Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")

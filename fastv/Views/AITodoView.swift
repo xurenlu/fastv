@@ -49,33 +49,56 @@ struct AITodoView: View {
     
     @ViewBuilder
     private var contentView: some View {
-        switch viewModel.viewMode {
-        case .list:
-            todoListView
-        case .quadrant:
-            AITodoQuadrantView(viewModel: viewModel)
+        Group {
+            switch viewModel.viewMode {
+            case .list:
+                todoListView
+            case .quadrant:
+                AITodoQuadrantView(viewModel: viewModel)
+            }
         }
+        .transition(.opacity.combined(with: .scale(scale: 0.98)))
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.viewMode)
     }
     
     // MARK: - View Mode Toolbar
     
     private var viewModeToolbar: some View {
         HStack(spacing: 12) {
-            // 视图模式说明
+            // 视图模式说明 - 现代化设计
             HStack(spacing: 6) {
                 Image(systemName: "info.circle.fill")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.blue.opacity(0.8))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            gradient: Gradient(colors: [.blue, .blue.opacity(0.8)]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                 
                 Text(viewModeDescription)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
             .background {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(Color.blue.opacity(0.08))
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.blue.opacity(0.1),
+                                    Color.blue.opacity(0.05)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(Color.blue.opacity(0.2), lineWidth: 1)
+                }
             }
             
             Spacer()
@@ -90,12 +113,15 @@ struct AITodoView: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .frame(width: 220)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: viewModel.viewMode)
             
             Toggle(isOn: Binding(
                 get: { viewModel.showCompletedTodos },
                 set: { newValue in
-                    viewModel.showCompletedTodos = newValue
-                    showCompletedPreference = newValue
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        viewModel.showCompletedTodos = newValue
+                        showCompletedPreference = newValue
+                    }
                 }
             )) {
                 Label("显示已完成", systemImage: viewModel.showCompletedTodos ? "checkmark.circle.fill" : "checkmark.circle")
@@ -107,10 +133,23 @@ struct AITodoView: View {
             .padding(.leading, 12)
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 10)
+        .padding(.vertical, 12)
         .background {
-            Rectangle()
-                .fill(.regularMaterial)
+            ZStack {
+                Rectangle()
+                    .fill(.regularMaterial)
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.primary.opacity(0.02),
+                                Color.clear
+                            ]),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            }
         }
     }
     
@@ -214,31 +253,14 @@ struct AITodoView: View {
     // MARK: - Input Section
     
     private var inputSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // 提示信息
-            HStack(spacing: 8) {
-                Image(systemName: "lightbulb.fill")
-                    .font(.subheadline)
-                    .foregroundStyle(.orange)
-                
-                Text(NSLocalizedString("ai.todo.input.hint", comment: "可以直接输入文字，或使用语音输入"))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color.orange.opacity(0.1))
-            }
-            
-            // 输入框和按钮
-            HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
+            // 输入框和按钮 - 紧凑设计
+            HStack(alignment: .top, spacing: 10) {
+                // 输入框
                 TextField(NSLocalizedString("ai.todo.input.placeholder", comment: "输入待办事项或语音说话..."), text: $viewModel.inputText, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
-                    .lineLimit(3...8)
-                    .frame(minHeight: 60)
+                    .lineLimit(2...4)
+                    .frame(minHeight: 44, maxHeight: 80)
                     .focused($isInputFocused)
                     .onSubmit {
                         Task {
@@ -246,62 +268,111 @@ struct AITodoView: View {
                         }
                     }
                 
-                // 语音录制按钮
-                Button(action: {
-                    if viewModel.isRecording {
-                        Task {
-                            await viewModel.stopVoiceRecording()
+                // 按钮组 - 横向排列
+                HStack(spacing: 8) {
+                    // 语音录制按钮
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            if viewModel.isRecording {
+                                Task {
+                                    await viewModel.stopVoiceRecording()
+                                }
+                            } else {
+                                viewModel.startVoiceRecording()
+                            }
                         }
-                    } else {
-                        viewModel.startVoiceRecording()
+                    }) {
+                        Image(systemName: viewModel.isRecording ? "stop.circle.fill" : "mic.circle.fill")
+                            .font(.system(size: 22, weight: .medium))
+                            .foregroundStyle(
+                                viewModel.isRecording ?
+                                LinearGradient(
+                                    gradient: Gradient(colors: [.red, .red.opacity(0.8)]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ) :
+                                LinearGradient(
+                                    gradient: Gradient(colors: [.blue, .blue.opacity(0.8)]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 36, height: 36)
+                            .shadow(color: (viewModel.isRecording ? Color.red : Color.blue).opacity(0.25), radius: 3, x: 0, y: 1)
                     }
-                }) {
-                    Image(systemName: viewModel.isRecording ? "stop.circle.fill" : "mic.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(viewModel.isRecording ? .red : .blue)
+                    .buttonStyle(.plain)
+                    .help(viewModel.isRecording ? NSLocalizedString("stop.recording", comment: "停止录音") : NSLocalizedString("start.recording", comment: "开始录音"))
+                    .scaleEffect(viewModel.isRecording ? 1.1 : 1.0)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.7).repeatForever(autoreverses: viewModel.isRecording), value: viewModel.isRecording)
+                    
+                    // AI 解析按钮
+                    Button(action: {
+                        Task {
+                            await viewModel.processWithAI()
+                        }
+                    }) {
+                        if viewModel.isProcessingAI {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                                .frame(width: 36, height: 36)
+                        } else {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 22, weight: .medium))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [.blue, .purple]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 36, height: 36)
+                                .shadow(color: Color.blue.opacity(0.25), radius: 3, x: 0, y: 1)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(viewModel.isProcessingAI || viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .help(NSLocalizedString("ai.process", comment: "AI 解析"))
+                    .opacity(viewModel.isProcessingAI || viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1.0)
                 }
-                .buttonStyle(.plain)
-                .help(viewModel.isRecording ? NSLocalizedString("stop.recording", comment: "停止录音") : NSLocalizedString("start.recording", comment: "开始录音"))
-                
-                // AI 解析按钮
-                Button(action: {
-                    Task {
-                        await viewModel.processWithAI()
-                    }
-                }) {
-                    if viewModel.isProcessingAI {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    } else {
-                        Image(systemName: "sparkles")
-                            .font(.title2)
-                            .foregroundStyle(.blue)
-                    }
-                }
-                .buttonStyle(.plain)
-                .disabled(viewModel.isProcessingAI || viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .help(NSLocalizedString("ai.process", comment: "AI 解析"))
             }
             
-            // 同步按钮
-            HStack {
+            // 底部操作栏 - 紧凑设计
+            HStack(spacing: 8) {
+                // 提示信息 - 更紧凑
+                HStack(spacing: 6) {
+                    Image(systemName: "lightbulb.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.orange.opacity(0.8))
+                    
+                    Text(NSLocalizedString("ai.todo.input.hint", comment: "可以直接输入文字，或使用语音输入"))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                // 同步按钮 - 紧凑样式
                 Button(action: {
                     Task {
                         await syncFromReminders()
                     }
                 }) {
-                    HStack {
+                    HStack(spacing: 5) {
                         if isSyncing {
                             ProgressView()
-                                .scaleEffect(0.8)
+                                .scaleEffect(0.75)
                         } else {
                             Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 11, weight: .semibold))
                         }
                         Text(NSLocalizedString("sync.from.reminders", comment: "从提醒事项同步"))
+                            .font(.system(size: 11, weight: .medium))
                     }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.mini)
                 .disabled(isSyncing)
                 .help(NSLocalizedString("sync.from.reminders.help", comment: "从 macOS 提醒事项应用同步待办事项"))
             }
@@ -377,8 +448,15 @@ struct AITodoView: View {
             }
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background(Color(NSColor.controlBackgroundColor))
+        .padding(.vertical, 12)
+        .background {
+            ZStack {
+                Color(NSColor.controlBackgroundColor)
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .opacity(0.3)
+            }
+        }
     }
     
     // MARK: - Empty State
@@ -628,11 +706,12 @@ struct AITodoRow: View {
                 }
         }
         .onHover { hovering in
-            withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
                 isHovered = hovering
             }
         }
-        .scaleEffect(isHovered ? 1.01 : 1.0)
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.spring(response: 0.25, dampingFraction: 0.75), value: isHovered)
     }
     
     private var priorityIcon: String {

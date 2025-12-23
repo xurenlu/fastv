@@ -22,23 +22,32 @@ struct AITodoQuadrantView: View {
                         title: NSLocalizedString("todo.quadrant.important.urgent", comment: "重要且紧急"),
                         subtitle: NSLocalizedString("todo.quadrant.important.urgent.desc", comment: "立即执行"),
                         icon: "exclamationmark.triangle.fill",
-                        color: .red,
-                        backgroundColor: Color(red: 1.0, green: 0.95, blue: 0.96), // 淡粉红色
+                        color: Color(red: 0.95, green: 0.3, blue: 0.3), // 更柔和的红色
+                        backgroundColor: Color(red: 0.99, green: 0.96, blue: 0.97), // 更柔和的淡粉红色
                         todos: viewModel.importantUrgentTodos,
                         viewModel: viewModel,
                         targetPriority: .importantUrgent
                     )
                     .frame(width: geometry.size.width / 2, height: geometry.size.height / 2)
                     
-                    Divider()
+                    // 精致的分隔线
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.clear, Color.secondary.opacity(0.2), Color.clear]),
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 1)
                     
                     // 第二象限：重要但不紧急（左上）
                     QuadrantCell(
                         title: NSLocalizedString("todo.quadrant.important.not.urgent", comment: "重要但不紧急"),
                         subtitle: NSLocalizedString("todo.quadrant.important.not.urgent.desc", comment: "计划安排"),
                         icon: "star.fill",
-                        color: .orange,
-                        backgroundColor: Color(red: 1.0, green: 0.97, blue: 0.94), // 淡桃色
+                        color: Color(red: 1.0, green: 0.65, blue: 0.2), // 更柔和的橙色
+                        backgroundColor: Color(red: 1.0, green: 0.98, blue: 0.96), // 更柔和的淡桃色
                         todos: viewModel.importantNotUrgentTodos,
                         viewModel: viewModel,
                         targetPriority: .importantNotUrgent
@@ -46,7 +55,16 @@ struct AITodoQuadrantView: View {
                     .frame(width: geometry.size.width / 2, height: geometry.size.height / 2)
                 }
                 
-                Divider()
+                // 精致的分隔线
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [Color.clear, Color.secondary.opacity(0.2), Color.clear]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(height: 1)
                 
                 // 底部：不重要的
                 HStack(spacing: 0) {
@@ -55,23 +73,32 @@ struct AITodoQuadrantView: View {
                         title: NSLocalizedString("todo.quadrant.not.important.urgent", comment: "不重要但紧急"),
                         subtitle: NSLocalizedString("todo.quadrant.not.important.urgent.desc", comment: "委托他人"),
                         icon: "clock.fill",
-                        color: .yellow,
-                        backgroundColor: Color(red: 1.0, green: 0.99, blue: 0.96), // 淡米色
+                        color: Color(red: 0.95, green: 0.75, blue: 0.2), // 更柔和的黄色
+                        backgroundColor: Color(red: 1.0, green: 0.99, blue: 0.97), // 更柔和的淡米色
                         todos: viewModel.notImportantUrgentTodos,
                         viewModel: viewModel,
                         targetPriority: .notImportantUrgent
                     )
                     .frame(width: geometry.size.width / 2, height: geometry.size.height / 2)
                     
-                    Divider()
+                    // 精致的分隔线
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.clear, Color.secondary.opacity(0.2), Color.clear]),
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 1)
                     
                     // 第四象限：不重要且不紧急（左下）
                     QuadrantCell(
                         title: NSLocalizedString("todo.quadrant.not.important.not.urgent", comment: "不重要且不紧急"),
                         subtitle: NSLocalizedString("todo.quadrant.not.important.not.urgent.desc", comment: "尽量少做"),
                         icon: "circle.fill",
-                        color: .gray,
-                        backgroundColor: Color(red: 0.97, green: 0.98, blue: 0.99), // 淡蓝灰色
+                        color: Color(red: 0.6, green: 0.6, blue: 0.65), // 更柔和的灰色
+                        backgroundColor: Color(red: 0.98, green: 0.98, blue: 0.99), // 更柔和的淡蓝灰色
                         todos: viewModel.notImportantNotUrgentTodos,
                         viewModel: viewModel,
                         targetPriority: .notImportantNotUrgent
@@ -105,37 +132,63 @@ struct QuadrantCell: View {
         let groups = viewModel.getGroups(for: targetPriority)
         
         VStack(alignment: .leading, spacing: 0) {
-            // 标题区域
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
+            // 标题区域 - 现代化设计
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    // 图标 - 更大更突出
                     Image(systemName: icon)
-                        .font(.system(size: 14))
-                        .foregroundStyle(color)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                gradient: Gradient(colors: [color, color.opacity(0.8)]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .shadow(color: color.opacity(0.3), radius: 2, x: 0, y: 1)
                     
                     Text(title)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(.primary)
                     
                     Spacer()
                     
+                    // 计数徽章 - 更精致
                     Text("\(todos.count)")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(color)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
                         .background {
                             Capsule()
                                 .fill(color.opacity(0.15))
+                                .overlay {
+                                    Capsule()
+                                        .strokeBorder(color.opacity(0.3), lineWidth: 0.5)
+                                }
                         }
+                        .shadow(color: color.opacity(0.1), radius: 2, x: 0, y: 1)
                 }
                 
                 Text(subtitle)
-                    .font(.system(size: 11))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
+                    .padding(.leading, 24) // 与图标对齐
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(color.opacity(0.05))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background {
+                // 渐变背景
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        color.opacity(0.08),
+                        color.opacity(0.03),
+                        Color.clear
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
             .contextMenu {
                 Button(action: {
                     showCreateGroupDialog = true
@@ -158,24 +211,39 @@ struct QuadrantCell: View {
                 }
             }
             
-            Divider()
+            // 精致的分隔线
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color.clear, color.opacity(0.15), Color.clear]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 1)
             
             // 看板式布局
             if groups.isEmpty {
-                VStack(spacing: 8) {
+                VStack(spacing: 12) {
                     Image(systemName: "checkmark.circle")
-                        .font(.system(size: 32))
-                        .foregroundStyle(.secondary.opacity(0.3))
+                        .font(.system(size: 40))
+                        .foregroundStyle(
+                            LinearGradient(
+                                gradient: Gradient(colors: [color.opacity(0.4), color.opacity(0.2)]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                     
                     Text(NSLocalizedString("todo.quadrant.empty", comment: "暂无任务"))
-                        .font(.system(size: 12))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.clear)
             } else {
                 ScrollView(.horizontal, showsIndicators: true) {
-                    HStack(alignment: .top, spacing: 12) {
+                    HStack(alignment: .top, spacing: 10) {
                         ForEach(groups) { group in
                             KanbanColumnView(
                                 group: group,
@@ -183,48 +251,107 @@ struct QuadrantCell: View {
                                 accentColor: color,
                                 targetPriority: targetPriority
                             )
-                            .frame(width: 280)
+                            .frame(width: 240)
                         }
                         
-                        // 添加看板按钮
+                        // 添加看板按钮 - 紧凑美观设计
                         Button(action: {
                             showCreateGroupDialog = true
                         }) {
-                            VStack(spacing: 8) {
-                                Image(systemName: "plus.circle")
-                                    .font(.system(size: 24))
-                                    .foregroundStyle(color)
+                            VStack(spacing: 6) {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 20, weight: .medium))
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [color, color.opacity(0.7)]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
                                 Text("添加看板")
-                                    .font(.system(size: 11))
+                                    .font(.system(size: 10, weight: .medium))
                                     .foregroundStyle(.secondary)
                             }
-                            .frame(width: 280, height: 100)
-                            .background(Color(NSColor.controlBackgroundColor))
-                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .strokeBorder(color.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [5, 3]))
+                            .frame(width: 200, height: 70)
+                            .background {
+                                ZStack {
+                                    Color(NSColor.controlBackgroundColor)
+                                    Rectangle()
+                                        .fill(.ultraThinMaterial)
+                                        .opacity(0.4)
+                                }
                             }
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .strokeBorder(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                color.opacity(0.35),
+                                                color.opacity(0.15)
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        style: StrokeStyle(lineWidth: 1.2, dash: [5, 3])
+                                    )
+                            }
+                            .shadow(color: color.opacity(0.08), radius: 3, x: 0, y: 1)
                         }
                         .buttonStyle(.plain)
+                        .scaleEffect(1.0)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: showCreateGroupDialog)
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 8)
                 }
                 .background(Color.clear)
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: groups.count)
             }
         }
-        .background(backgroundColor)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background {
+            // 毛玻璃效果背景
+            ZStack {
+                // 基础背景色
+                backgroundColor
+                
+                // 毛玻璃材质层
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .opacity(0.3)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            // 精致的边框
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            color.opacity(0.2),
+                            color.opacity(0.05),
+                            Color.clear
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        }
+        .shadow(color: color.opacity(0.1), radius: 8, x: 0, y: 2)
+        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
         .overlay {
             if isDragOver {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(color, lineWidth: 2)
-                    .background(color.opacity(0.1))
-                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(color, lineWidth: 2.5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(color.opacity(0.15))
+                    )
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: isDragOver)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isDragOver)
         .onDrop(of: [UTType.text], isTargeted: $isDragOver) { providers in
             Task {
                 await handleDropAsync(providers: providers)
@@ -605,6 +732,8 @@ struct KanbanColumnView: View {
     @State private var isEditing = false
     @State private var editingName = ""
     @State private var showDeleteAlert = false
+    @State private var isHovered = false
+    @FocusState private var isTextFieldFocused: Bool
     
     var todos: [AITodoItem] {
         viewModel.getTodos(for: group)
@@ -612,24 +741,59 @@ struct KanbanColumnView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // 列标题
-            HStack {
+            // 列标题 - 现代化设计
+            HStack(spacing: 8) {
                 if isEditing && !group.isDefault {
                     TextField("看板名称", text: $editingName)
                         .textFieldStyle(.plain)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
+                        .focused($isTextFieldFocused)
                         .onSubmit {
                             saveEdit()
                         }
+                        .onChange(of: isTextFieldFocused) { oldValue, newValue in
+                            // 当失去焦点时，自动保存
+                            if oldValue && !newValue && isEditing {
+                                // 延迟一下，确保点击事件已经处理完成
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    saveEdit()
+                                }
+                            }
+                        }
+                        .onAppear {
+                            // 自动聚焦
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                isTextFieldFocused = true
+                            }
+                        }
                 } else {
-                    Text(group.name)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.primary)
-                        .onTapGesture(count: 2) {
-                            if !group.isDefault {
+                    HStack(spacing: 4) {
+                        Text(group.name)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.primary)
+                        
+                        // 编辑提示图标（非默认看板且悬停时显示）
+                        if !group.isDefault && isHovered {
+                            Image(systemName: "pencil")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(.secondary.opacity(0.6))
+                                .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture(count: 2) {
+                        if !group.isDefault {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                 startEdit()
                             }
                         }
+                    }
+                    .onHover { hovering in
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isHovered = hovering
+                        }
+                    }
+                    .help(group.isDefault ? "默认看板名称不可修改" : "双击编辑看板名称")
                 }
                 
                 Spacer()
@@ -640,43 +804,85 @@ struct KanbanColumnView: View {
                         showDeleteAlert = true
                     }) {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 11))
+                            .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                     .help("删除看板")
                 }
                 
+                // 计数徽章 - 更精致
                 Text("\(todos.count)")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(accentColor)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
                     .background {
                         Capsule()
                             .fill(accentColor.opacity(0.15))
+                            .overlay {
+                                Capsule()
+                                    .strokeBorder(accentColor.opacity(0.3), lineWidth: 0.5)
+                            }
                     }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(accentColor.opacity(0.05))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background {
+                ZStack {
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            accentColor.opacity(0.08),
+                            accentColor.opacity(0.03),
+                            Color.clear
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    
+                    // 悬停时的背景高亮（非默认看板）
+                    if isHovered && !group.isDefault && !isEditing {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(accentColor.opacity(0.05))
+                            .transition(.opacity)
+                    }
+                }
+            }
             
-            Divider()
+            // 精致的分隔线
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color.clear, accentColor.opacity(0.15), Color.clear]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 1)
             
             // 事项列表
             ScrollView {
                 LazyVStack(spacing: 6) {
                     if todos.isEmpty {
-                        VStack(spacing: 4) {
+                        VStack(spacing: 10) {
                             Image(systemName: "tray")
-                                .font(.system(size: 24))
-                                .foregroundStyle(.secondary.opacity(0.3))
+                                .font(.system(size: 32))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            accentColor.opacity(0.4),
+                                            accentColor.opacity(0.2)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                             Text("暂无事项")
-                                .font(.system(size: 10))
+                                .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(.secondary)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 20)
+                        .padding(.vertical, 24)
                     } else {
                         ForEach(todos) { todo in
                             KanbanTodoCard(
@@ -692,15 +898,55 @@ struct KanbanColumnView: View {
             }
             .frame(maxHeight: .infinity)
         }
-        .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-        .overlay {
-            if isDragOver {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .stroke(accentColor, style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [5, 3]))
-                    .background(accentColor.opacity(0.1))
+        .background {
+            ZStack {
+                Color(NSColor.controlBackgroundColor)
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .opacity(0.4)
             }
         }
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .simultaneousGesture(
+            // 点击看板列背景时，如果正在编辑，自动保存
+            // 使用 simultaneousGesture 避免与拖拽冲突
+            TapGesture()
+                .onEnded { _ in
+                    if isEditing {
+                        saveEdit()
+                    }
+                }
+        )
+        .overlay {
+            // 精致的边框
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            accentColor.opacity(0.2),
+                            accentColor.opacity(0.05),
+                            Color.clear
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        }
+        .shadow(color: accentColor.opacity(0.08), radius: 6, x: 0, y: 2)
+        .shadow(color: .black.opacity(0.04), radius: 2, x: 0, y: 1)
+        .overlay {
+            if isDragOver {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(accentColor, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, dash: [6, 4]))
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(accentColor.opacity(0.12))
+                    )
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+            }
+        }
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isDragOver)
         .onDrop(of: [UTType.text], isTargeted: $isDragOver) { providers in
             Task {
                 await handleDropAsync(providers: providers)
@@ -720,19 +966,30 @@ struct KanbanColumnView: View {
     private func startEdit() {
         editingName = group.name
         isEditing = true
+        // 延迟一下再聚焦，确保视图已经更新
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            isTextFieldFocused = true
+        }
     }
     
     private func saveEdit() {
+        // 如果名称有变化且不为空，则保存
         if !editingName.isEmpty && editingName != group.name {
             var updated = group
-            updated.name = editingName
-            viewModel.updateGroup(updated)
+            updated.name = editingName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !updated.name.isEmpty {
+                viewModel.updateGroup(updated)
+            }
         }
+        // 关闭编辑模式
         isEditing = false
+        isTextFieldFocused = false
+        editingName = ""
     }
     
     private func cancelEdit() {
         isEditing = false
+        isTextFieldFocused = false
         editingName = ""
     }
     
@@ -764,9 +1021,34 @@ struct KanbanColumnView: View {
                     return
                 }
                 
-                if let todo = viewModel.activeTodos.first(where: { $0.id == todoId }) {
-                    viewModel.moveTodo(todo, to: group)
-                    print("✅ [KanbanColumnView] 已将事项移动到分组: \(group.name)")
+                guard let todo = viewModel.activeTodos.first(where: { $0.id == todoId }) else {
+                    print("❌ [KanbanColumnView] 未找到 ID 为 \(todoId) 的事项")
+                    return
+                }
+                
+                print("📥 [KanbanColumnView] 接收到拖拽事项: '\(todo.title)'")
+                print("   当前优先级: \(todo.priority.displayName), 目标优先级: \(group.priority.displayName)")
+                print("   当前分组ID: \(todo.groupId?.uuidString ?? "nil"), 目标分组: \(group.name) (ID: \(group.id.uuidString))")
+                
+                // 如果优先级不同，需要先更新优先级
+                if todo.priority != group.priority {
+                    print("🔄 [KanbanColumnView] 优先级不同，更新优先级: \(todo.priority.displayName) -> \(group.priority.displayName)")
+                    viewModel.updateTodoPriority(todo, priority: group.priority)
+                }
+                
+                // 重新获取最新的 todo（因为优先级可能已更新）
+                guard let updatedTodo = viewModel.activeTodos.first(where: { $0.id == todoId }) else {
+                    print("❌ [KanbanColumnView] 更新优先级后未找到事项")
+                    return
+                }
+                
+                // 移动到目标分组
+                viewModel.moveTodo(updatedTodo, to: group)
+                print("✅ [KanbanColumnView] 已将事项移动到分组: \(group.name)")
+                
+                // 验证移动是否成功
+                if let finalTodo = viewModel.activeTodos.first(where: { $0.id == todoId }) {
+                    print("   ✅ 验证：优先级=\(finalTodo.priority.displayName), 分组ID=\(finalTodo.groupId?.uuidString ?? "nil")")
                 }
             } catch {
                 print("❌ [KanbanColumnView] 拖拽处理失败: \(error)")
@@ -785,54 +1067,135 @@ struct KanbanTodoCard: View {
     @State private var isDragging = false
     @State private var dragResetTask: Task<Void, Never>?
     
+    @State private var isHovered = false
+    
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            // 完成状态复选框
+        HStack(alignment: .top, spacing: 10) {
+            // 完成状态复选框 - 更精致
             Button(action: {
-                viewModel.toggleTodoCompletion(todo)
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    viewModel.toggleTodoCompletion(todo)
+                }
             }) {
                 Image(systemName: todo.status == .completed ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 14))
-                    .foregroundStyle(todo.status == .completed ? .green : .secondary)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(
+                        todo.status == .completed ?
+                        LinearGradient(
+                            gradient: Gradient(colors: [.green, .green.opacity(0.8)]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ) :
+                        LinearGradient(
+                            gradient: Gradient(colors: [.secondary, .secondary.opacity(0.7)]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
             }
             .buttonStyle(.plain)
             .help(todo.status == .completed ? NSLocalizedString("mark.as.pending", comment: "标记为待完成") : NSLocalizedString("mark.as.completed", comment: "标记为已完成"))
             
             // 内容
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 // 标题
                 Text(todo.title)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.primary)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(todo.status == .completed ? .secondary : .primary)
+                    .strikethrough(todo.status == .completed)
                     .lineLimit(2)
                 
                 // 描述
                 if let description = todo.description, !description.isEmpty {
                     Text(description)
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
                 
-                // 截止时间
+                // 截止时间 - 更精致的样式
                 if let dueDate = todo.dueDate {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 5) {
                         Image(systemName: "calendar")
-                            .font(.system(size: 9))
+                            .font(.system(size: 10, weight: .medium))
                         Text(formatDate(dueDate))
-                            .font(.system(size: 10))
+                            .font(.system(size: 11, weight: .medium))
                     }
-                    .foregroundStyle(todo.isOverdue ? .red : .secondary)
+                    .foregroundStyle(todo.isOverdue ? .red : accentColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background {
+                        Capsule()
+                            .fill(
+                                todo.isOverdue ?
+                                Color.red.opacity(0.12) :
+                                accentColor.opacity(0.12)
+                            )
+                            .overlay {
+                                Capsule()
+                                    .strokeBorder(
+                                        todo.isOverdue ?
+                                        Color.red.opacity(0.3) :
+                                        accentColor.opacity(0.3),
+                                        lineWidth: 0.5
+                                    )
+                            }
+                    }
                 }
             }
         }
-        .padding(10)
+        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(NSColor.textBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        .background {
+            ZStack {
+                Color(NSColor.textBackgroundColor)
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .opacity(0.3)
+                
+                // 悬停时的背景渐变
+                if isHovered {
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            accentColor.opacity(0.08),
+                            accentColor.opacity(0.03)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(
+                    isHovered ?
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            accentColor.opacity(0.3),
+                            accentColor.opacity(0.1)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ) :
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color.clear]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: isHovered ? 1.5 : 0
+                )
+        }
+        .shadow(color: isHovered ? accentColor.opacity(0.15) : .black.opacity(0.06), radius: isHovered ? 6 : 3, x: 0, y: isHovered ? 3 : 1)
+        .onHover { hovering in
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                isHovered = hovering
+            }
+        }
+        .scaleEffect(isHovered ? 1.02 : 1.0)
         .onDrag {
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 isDragging = true
             }
             
@@ -840,7 +1203,7 @@ struct KanbanTodoCard: View {
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
                 if !Task.isCancelled {
                     await MainActor.run {
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                             isDragging = false
                         }
                     }
@@ -851,13 +1214,14 @@ struct KanbanTodoCard: View {
         }
         .onDrop(of: [UTType.text], isTargeted: .constant(false)) { _ in
             dragResetTask?.cancel()
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 isDragging = false
             }
             return false
         }
         .opacity(isDragging ? 0.5 : 1.0)
         .scaleEffect(isDragging ? 0.95 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isDragging)
     }
     
     private func formatDate(_ date: Date) -> String {

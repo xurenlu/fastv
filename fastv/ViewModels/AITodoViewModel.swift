@@ -194,7 +194,7 @@ class AITodoViewModel: ObservableObject {
     
     /// 获取指定分组的事项
     func getTodos(for group: AITodoGroup) -> [AITodoItem] {
-        // 首先获取所有匹配优先级和分组ID的事项
+        // 首先获取所有匹配优先级和分组ID的事项（包括已完成的）
         var todos = store.getTodos(for: group)
         
         // 如果分组是默认看板，也包含所有匹配优先级但groupId为nil或groupId不匹配的事项
@@ -203,7 +203,9 @@ class AITodoViewModel: ObservableObject {
             let allGroupsForPriority = store.getGroups(for: group.priority)
             let allGroupIds = Set(allGroupsForPriority.map { $0.id })
             
-            let todosWithoutGroup = visibleActiveTodos.filter { todo in
+            // 使用 activeTodos 而不是 visibleActiveTodos，因为我们需要包含所有状态的事项
+            // 然后在最后统一根据 showCompletedTodos 过滤
+            let todosWithoutGroup = activeTodos.filter { todo in
                 todo.priority == group.priority && (todo.groupId == nil || !allGroupIds.contains(todo.groupId!))
             }
             // 合并并去重
@@ -220,6 +222,9 @@ class AITodoViewModel: ObservableObject {
             }
         }
         
+        // 根据 showCompletedTodos 设置过滤事项
+        // 如果 showCompletedTodos 为 true，显示所有事项（包括已完成的）
+        // 如果 showCompletedTodos 为 false，只显示未完成的事项
         return todos.filter { showCompletedTodos || $0.status != .completed }
     }
     
