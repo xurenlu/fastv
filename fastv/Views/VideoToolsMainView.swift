@@ -23,6 +23,7 @@ struct VideoToolsMainView: View {
         case transform = "裁剪旋转"
         case blur = "模糊马赛克"
         case logoTracking = "Logo跟踪"
+        case cartoon = "视频卡通化"
         
         var id: String { rawValue }
         
@@ -36,6 +37,7 @@ struct VideoToolsMainView: View {
             case .transform: return "crop.rotate"
             case .blur: return "eye.slash.fill"
             case .logoTracking: return "target"
+            case .cartoon: return "wand.and.stars"
             }
         }
         
@@ -49,6 +51,7 @@ struct VideoToolsMainView: View {
             case .transform: return "裁剪、缩放、旋转、翻转"
             case .blur: return "马赛克、高斯模糊、渐变抹除"
             case .logoTracking: return "智能跟踪并替换 Logo"
+            case .cartoon: return "AI 视频风格迁移、动漫化"
             }
         }
     }
@@ -173,6 +176,8 @@ struct VideoToolsMainView: View {
                         }
                     )
                 }
+            case .cartoon:
+                VideoCartoonView(viewModel: viewModel)
             }
         }
     }

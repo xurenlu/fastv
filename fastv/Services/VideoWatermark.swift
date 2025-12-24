@@ -118,6 +118,14 @@ struct VideoWatermark {
     ) async throws {
         // 在后台线程执行，避免阻塞主线程
         try await Task.detached(priority: .userInitiated) {
+            // 开启安全作用域
+            let hasInputAccess = inputURL.startAccessingSecurityScopedResource()
+            let hasWatermarkAccess = watermarkImageURL.startAccessingSecurityScopedResource()
+            defer {
+                if hasInputAccess { inputURL.stopAccessingSecurityScopedResource() }
+                if hasWatermarkAccess { watermarkImageURL.stopAccessingSecurityScopedResource() }
+            }
+            
             // 验证输入文件是否存在
             guard FileManager.default.fileExists(atPath: inputURL.path) else {
                 throw NSError(domain: "VideoWatermark", code: -1, userInfo: [NSLocalizedDescriptionKey: "输入视频文件不存在"])
@@ -143,6 +151,14 @@ struct VideoWatermark {
             // 获取水印图片尺寸（在后台线程加载）
             guard let watermarkImage = NSImage(contentsOf: watermarkImageURL) else {
                 throw NSError(domain: "VideoWatermark", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法加载水印图片"])
+            }
+            
+            // 基本有效性检查，避免生成 0 尺寸导致 ffmpeg 报错
+            guard videoWidth > 0, videoHeight > 0 else {
+                throw NSError(domain: "VideoWatermark", code: -1, userInfo: [NSLocalizedDescriptionKey: "视频尺寸无效"])
+            }
+            guard watermarkImage.size.width > 0, watermarkImage.size.height > 0 else {
+                throw NSError(domain: "VideoWatermark", code: -1, userInfo: [NSLocalizedDescriptionKey: "水印图片尺寸无效"])
             }
         
         // 计算实际使用的水印尺寸
@@ -174,10 +190,13 @@ struct VideoWatermark {
             }
             
             var arguments: [String] = []
-            
+            arguments.append("-y") // 允许覆盖
+            arguments.append("-hide_banner")
+            // 开启 info 日志，让错误时能拿到 stderr 详情
+            arguments.append("-loglevel")
+            arguments.append("info")
             arguments.append("-i")
             arguments.append(inputURL.path)
-            
             arguments.append("-i")
             arguments.append(watermarkImageURL.path)
         
@@ -255,16 +274,38 @@ struct VideoWatermark {
                 progressHandler(0.2, "正在处理视频...")
             }
             
-            try await FFmpegService.execute(
-                arguments: arguments,
-                progressHandler: { progress, status in
-                    // 将 FFmpeg 的进度映射到 20%-100% 范围
-                    let mappedProgress = 0.2 + (progress * 0.8)
-                    Task { @MainActor in
-                        progressHandler(mappedProgress, status)
+            var ffmpegLog = ""
+            // 记录命令行，方便诊断
+            let cmdLine = "ffmpeg " + arguments.joined(separator: " ")
+            ffmpegLog.append(cmdLine + "\n")
+            print("▶️ [VideoWatermark] cmd: \(cmdLine)")
+            do {
+                try await FFmpegService.execute(
+                    arguments: arguments,
+                    progressHandler: { progress, status in
+                        let mappedProgress = 0.2 + (progress * 0.8)
+                        Task { @MainActor in
+                            progressHandler(mappedProgress, status)
+                        }
+                    },
+                    outputHandler: { line in
+                        ffmpegLog.append(line + "\n")
                     }
+                )
+            } catch let error as FFmpegError {
+                switch error {
+                case .executionFailed(let code, let message):
+                    let merged = message.isEmpty ? ffmpegLog : message
+                    print("❌ [VideoWatermark] FFmpeg failed code=\(code)\n\(merged)")
+                    throw FFmpegError.executionFailed(code: code, message: merged)
+                default:
+                    print("❌ [VideoWatermark] FFmpeg error: \(error)")
+                    throw error
                 }
-            )
+            } catch {
+                print("❌ [VideoWatermark] error: \(error)")
+                throw error
+            }
             
             // 验证输出文件是否创建成功
             guard FileManager.default.fileExists(atPath: outputURL.path) else {
@@ -303,6 +344,9 @@ struct VideoWatermark {
     ) async throws {
         // 在后台线程执行，避免阻塞主线程
         try await Task.detached(priority: .userInitiated) {
+            let hasInputAccess = inputURL.startAccessingSecurityScopedResource()
+            defer { if hasInputAccess { inputURL.stopAccessingSecurityScopedResource() } }
+            
             // 验证输入文件是否存在
             guard FileManager.default.fileExists(atPath: inputURL.path) else {
                 throw NSError(domain: "VideoWatermark", code: -1, userInfo: [NSLocalizedDescriptionKey: "输入视频文件不存在"])
@@ -312,78 +356,102 @@ struct VideoWatermark {
                 progressHandler(0.1, "正在处理视频...")
             }
             
+            // 强制要求字体文件
+            guard let fontPath = fontPath, FileManager.default.fileExists(atPath: fontPath) else {
+                throw NSError(domain: "VideoWatermark", code: -1, userInfo: [NSLocalizedDescriptionKey: "字体文件不存在或未指定，请先选择字体文件"])
+            }
+            
             var arguments: [String] = []
-        
-        arguments.append("-i")
-        arguments.append(inputURL.path)
-        
-        // 构建 drawtext 滤镜
-        var drawtextParams: [String] = []
-        
-        // 文字内容（需要转义特殊字符）
-        let escapedText = text.replacingOccurrences(of: ":", with: "\\:")
-            .replacingOccurrences(of: "'", with: "\\'")
-        drawtextParams.append("text='\(escapedText)'")
-        
-        // 位置
-        let posExpr = position.textPosition(margin: margin)
-        drawtextParams.append(posExpr)
-        
-        // 字体大小
-        drawtextParams.append("fontsize=\(fontSize)")
-        
-        // 字体颜色和透明度
-        let alpha = Int(opacity * 255)
-        let colorHex = String(format: "%@%02X", fontColor, alpha)
-        drawtextParams.append("fontcolor=0x\(colorHex)")
-        
-        // 字体文件（如果指定）
-        if let fontPath = fontPath, FileManager.default.fileExists(atPath: fontPath) {
-            drawtextParams.append("fontfile='\(fontPath)'")
-        }
-        
-        // 描边（可选，提高可读性）
-        drawtextParams.append("borderw=2")
-        drawtextParams.append("bordercolor=0x00000080") // 半透明黑色描边
-        
-        // 构建滤镜字符串
-        let drawtextFilter = drawtextParams.joined(separator: ":")
-        
-        arguments.append("-vf")
-        arguments.append(drawtextFilter)
-        
-        // 视频编码
-        arguments.append("-c:v")
-        arguments.append("libx264")
-        
-        // 音频编码（复制）
-        arguments.append("-c:a")
-        arguments.append("copy")
-        
-        // 明确指定输出格式（根据文件扩展名）
-        let outputExtension = outputURL.pathExtension.lowercased()
-        if outputExtension == "mov" {
-            arguments.append("-f")
-            arguments.append("mov")
-        } else {
-            // 默认使用 mp4
-            arguments.append("-f")
-            arguments.append("mp4")
-        }
-        
-        arguments.append("-y")
-        arguments.append(outputURL.path)
-        
-            try await FFmpegService.execute(
-                arguments: arguments,
-                progressHandler: { progress, status in
-                    // 将 FFmpeg 的进度映射到 10%-100% 范围
-                    let mappedProgress = 0.1 + (progress * 0.9)
-                    Task { @MainActor in
-                        progressHandler(mappedProgress, status)
+            arguments.append("-y")
+            arguments.append("-hide_banner")
+            arguments.append("-loglevel")
+            arguments.append("info")
+            
+            arguments.append("-i")
+            arguments.append(inputURL.path)
+            
+            // 构建 drawtext 滤镜
+            // FFmpeg drawtext 滤镜格式：drawtext=text='...':x=...:y=...:fontsize=...:fontcolor=...:fontfile='...'
+            
+            // 转义文字内容中的特殊字符
+            // 需要转义：单引号、冒号、反斜杠
+            let escapedText = text
+                .replacingOccurrences(of: "\\", with: "\\\\")  // 先转义反斜杠
+                .replacingOccurrences(of: "'", with: "\\'")     // 转义单引号
+                .replacingOccurrences(of: ":", with: "\\:")     // 转义冒号
+            
+            // 转义字体文件路径中的特殊字符
+            let escapedFontPath = fontPath
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "'", with: "\\'")
+                .replacingOccurrences(of: ":", with: "\\:")
+            
+            // 位置表达式
+            let posExpr = position.textPosition(margin: margin)
+            
+            // 字体颜色和透明度
+            let alpha = Int(opacity * 255)
+            let colorHex = String(format: "%@%02X", fontColor, alpha)
+            
+            // 构建完整的 drawtext 滤镜字符串
+            // 注意：所有参数值如果包含特殊字符，需要用单引号包裹
+            let drawtextFilter = "drawtext=text='\(escapedText)':\(posExpr):fontsize=\(fontSize):fontcolor=0x\(colorHex):fontfile='\(escapedFontPath)':borderw=2:bordercolor=0x00000080"
+            
+            arguments.append("-vf")
+            arguments.append(drawtextFilter)
+            
+            // 视频编码
+            arguments.append("-c:v")
+            arguments.append("libx264")
+            
+            // 音频编码（复制）
+            arguments.append("-c:a")
+            arguments.append("copy")
+            
+            // 明确指定输出格式（根据文件扩展名）
+            let outputExtension = outputURL.pathExtension.lowercased()
+            if outputExtension == "mov" {
+                arguments.append("-f")
+                arguments.append("mov")
+            } else {
+                arguments.append("-f")
+                arguments.append("mp4")
+            }
+            
+            arguments.append(outputURL.path)
+            
+            var ffmpegLog = ""
+            let cmdLine = "ffmpeg " + arguments.joined(separator: " ")
+            ffmpegLog.append(cmdLine + "\n")
+            print("▶️ [VideoWatermark] cmd: \(cmdLine)")
+            
+            do {
+                try await FFmpegService.execute(
+                    arguments: arguments,
+                    progressHandler: { progress, status in
+                        let mappedProgress = 0.1 + (progress * 0.9)
+                        Task { @MainActor in
+                            progressHandler(mappedProgress, status)
+                        }
+                    },
+                    outputHandler: { line in
+                        ffmpegLog.append(line + "\n")
                     }
+                )
+            } catch let error as FFmpegError {
+                switch error {
+                case .executionFailed(let code, let message):
+                    let merged = message.isEmpty ? ffmpegLog : message
+                    print("❌ [VideoWatermark] FFmpeg failed code=\(code)\n\(merged)")
+                    throw FFmpegError.executionFailed(code: code, message: merged)
+                default:
+                    print("❌ [VideoWatermark] FFmpeg error: \(error)")
+                    throw error
                 }
-            )
+            } catch {
+                print("❌ [VideoWatermark] error: \(error)")
+                throw error
+            }
             
             // 验证输出文件是否创建成功
             guard FileManager.default.fileExists(atPath: outputURL.path) else {
@@ -408,6 +476,9 @@ struct VideoWatermark {
     ) async throws {
         // 在后台线程执行，避免阻塞主线程
         try await Task.detached(priority: .userInitiated) {
+            let hasInputAccess = inputURL.startAccessingSecurityScopedResource()
+            defer { if hasInputAccess { inputURL.stopAccessingSecurityScopedResource() } }
+            
             // 验证输入文件是否存在
             guard FileManager.default.fileExists(atPath: inputURL.path) else {
                 throw NSError(domain: "VideoWatermark", code: -1, userInfo: [NSLocalizedDescriptionKey: "输入视频文件不存在"])
@@ -417,65 +488,79 @@ struct VideoWatermark {
                 progressHandler(0.1, "正在处理视频...")
             }
             
-            // 使用 FFmpeg 的时间戳功能
+            // 强制要求字体文件
+            guard let fontPath = fontPath, FileManager.default.fileExists(atPath: fontPath) else {
+                throw NSError(domain: "VideoWatermark", code: -1, userInfo: [NSLocalizedDescriptionKey: "字体文件不存在或未指定，请先选择字体文件"])
+            }
+            
             var arguments: [String] = []
-        
-        arguments.append("-i")
-        arguments.append(inputURL.path)
-        
-        var drawtextParams: [String] = []
-        
-        // 时间戳格式：%{localtime:%Y-%m-%d %H:%M:%S}
-        drawtextParams.append("text='%{localtime:%Y-%m-%d %H:%M:%S}'")
-        
-        let posExpr = position.textPosition(margin: 20)
-        drawtextParams.append(posExpr)
-        
-        drawtextParams.append("fontsize=\(fontSize)")
-        drawtextParams.append("fontcolor=0x\(fontColor)")
-        
-        if let fontPath = fontPath {
-            drawtextParams.append("fontfile='\(fontPath)'")
-        }
-        
-        drawtextParams.append("borderw=2")
-        drawtextParams.append("bordercolor=0x00000080")
-        
-        let drawtextFilter = drawtextParams.joined(separator: ":")
-        
-        arguments.append("-vf")
-        arguments.append(drawtextFilter)
-        
-        arguments.append("-c:v")
-        arguments.append("libx264")
-        
-        arguments.append("-c:a")
-        arguments.append("copy")
-        
-        // 明确指定输出格式（根据文件扩展名）
-        let outputExtension = outputURL.pathExtension.lowercased()
-        if outputExtension == "mov" {
-            arguments.append("-f")
-            arguments.append("mov")
-        } else {
-            // 默认使用 mp4
-            arguments.append("-f")
-            arguments.append("mp4")
-        }
-        
-        arguments.append("-y")
-        arguments.append(outputURL.path)
-        
-            try await FFmpegService.execute(
-                arguments: arguments,
-                progressHandler: { progress, status in
-                    // 将 FFmpeg 的进度映射到 10%-100% 范围
-                    let mappedProgress = 0.1 + (progress * 0.9)
-                    Task { @MainActor in
-                        progressHandler(mappedProgress, status)
+            arguments.append("-y")
+            arguments.append("-hide_banner")
+            arguments.append("-loglevel")
+            arguments.append("info")
+            arguments.append("-i")
+            arguments.append(inputURL.path)
+            
+            // 转义字体文件路径中的特殊字符
+            let escapedFontPath = fontPath
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "'", with: "\\'")
+                .replacingOccurrences(of: ":", with: "\\:")
+            
+            let posExpr = position.textPosition(margin: 20)
+            
+            // 构建完整的 drawtext 滤镜字符串
+            let drawtextFilter = "drawtext=text='%{localtime:%Y-%m-%d %H:%M:%S}':\(posExpr):fontsize=\(fontSize):fontcolor=0x\(fontColor):fontfile='\(escapedFontPath)':borderw=2:bordercolor=0x00000080"
+            
+            arguments.append("-vf")
+            arguments.append(drawtextFilter)
+            arguments.append("-c:v")
+            arguments.append("libx264")
+            arguments.append("-c:a")
+            arguments.append("copy")
+            
+            let outputExtension = outputURL.pathExtension.lowercased()
+            if outputExtension == "mov" {
+                arguments.append("-f")
+                arguments.append("mov")
+            } else {
+                arguments.append("-f")
+                arguments.append("mp4")
+            }
+            arguments.append(outputURL.path)
+            
+            var ffmpegLog = ""
+            let cmdLine = "ffmpeg " + arguments.joined(separator: " ")
+            ffmpegLog.append(cmdLine + "\n")
+            print("▶️ [VideoWatermark] cmd: \(cmdLine)")
+            
+            do {
+                try await FFmpegService.execute(
+                    arguments: arguments,
+                    progressHandler: { progress, status in
+                        let mappedProgress = 0.1 + (progress * 0.9)
+                        Task { @MainActor in
+                            progressHandler(mappedProgress, status)
+                        }
+                    },
+                    outputHandler: { line in
+                        ffmpegLog.append(line + "\n")
                     }
+                )
+            } catch let error as FFmpegError {
+                switch error {
+                case .executionFailed(let code, let message):
+                    let merged = message.isEmpty ? ffmpegLog : message
+                    print("❌ [VideoWatermark] FFmpeg failed code=\(code)\n\(merged)")
+                    throw FFmpegError.executionFailed(code: code, message: merged)
+                default:
+                    print("❌ [VideoWatermark] FFmpeg error: \(error)")
+                    throw error
                 }
-            )
+            } catch {
+                print("❌ [VideoWatermark] error: \(error)")
+                throw error
+            }
             
             // 验证输出文件是否创建成功
             guard FileManager.default.fileExists(atPath: outputURL.path) else {

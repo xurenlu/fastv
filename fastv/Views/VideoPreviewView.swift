@@ -156,6 +156,14 @@ struct VideoPreviewView: View {
     
     private func loadPreview() {
         Task {
+            // 在沙盒环境下，需要获取安全作用域资源访问权限
+            let hasAccess = videoURL.startAccessingSecurityScopedResource()
+            defer {
+                if hasAccess {
+                    videoURL.stopAccessingSecurityScopedResource()
+                }
+            }
+            
             // 提取第一帧作为预览，同时获取视频尺寸
             do {
                 // 获取视频尺寸
@@ -172,6 +180,7 @@ struct VideoPreviewView: View {
             } catch {
                 await MainActor.run {
                     isLoadingPreview = false
+                    print("❌ [VideoPreviewView] 加载预览失败: \(error.localizedDescription)")
                 }
             }
         }

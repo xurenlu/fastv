@@ -30,6 +30,9 @@ struct VideoWatermarkView: View {
     @State private var customWatermarkPosition: CGPoint? = nil
     @State private var customWatermarkSize: CGSize? = nil
     
+    // 字体文件（用于文字和时间戳水印）
+    @State private var fontFileURL: URL? = nil
+    
     enum WatermarkType {
         case image
         case text
@@ -67,6 +70,28 @@ struct VideoWatermarkView: View {
                             }
                         } else if watermarkType == .text {
                             TextField("输入水印文字", text: $watermarkText)
+                        }
+                        
+                        // 字体文件选择（文字和时间戳模式都需要）
+                        if watermarkType == .text || watermarkType == .timestamp {
+                            HStack {
+                                Text("字体文件")
+                                Spacer()
+                                if let url = fontFileURL {
+                                    Text(url.lastPathComponent)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                    Button("更改") {
+                                        selectFont()
+                                    }
+                                } else {
+                                    Text("未选择")
+                                        .foregroundStyle(.secondary)
+                                    Button("选择字体") {
+                                        selectFont()
+                                    }
+                                }
+                            }
                         }
                         
                         Picker("位置", selection: $position) {
@@ -116,7 +141,7 @@ struct VideoWatermarkView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .disabled(viewModel.videoURL == nil || isProcessing || (watermarkType == .image && watermarkImageURL == nil) || (watermarkType == .text && watermarkText.isEmpty))
+                .disabled(viewModel.videoURL == nil || isProcessing || (watermarkType == .image && watermarkImageURL == nil) || (watermarkType == .text && watermarkText.isEmpty) || ((watermarkType == .text || watermarkType == .timestamp) && fontFileURL == nil))
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal)
@@ -193,6 +218,7 @@ struct VideoWatermarkView: View {
             watermarkText: watermarkText,
             fontSize: fontSize,
             opacity: opacity,
+            fontURL: fontFileURL,
             customPosition: $customWatermarkPosition,
             customSize: $customWatermarkSize,
             position: $position
@@ -285,7 +311,34 @@ struct VideoWatermarkView: View {
         
         // 使用 Task.detached 确保在后台线程执行，不阻塞 UI
         Task.detached(priority: .userInitiated) {
+            // 在沙盒环境下，需要获取安全作用域资源访问权限
+            let hasAccess = videoURL.startAccessingSecurityScopedResource()
+            defer {
+                if hasAccess {
+                    videoURL.stopAccessingSecurityScopedResource()
+                }
+            }
+            
             do {
+                // 首先检查文件是否存在和可访问
+                let fileManager = FileManager.default
+                guard fileManager.fileExists(atPath: videoURL.path) else {
+                    throw NSError(
+                        domain: "VideoWatermarkView",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey: "视频文件不存在: \(videoURL.path)"]
+                    )
+                }
+                
+                // 检查文件是否可读
+                guard fileManager.isReadableFile(atPath: videoURL.path) else {
+                    throw NSError(
+                        domain: "VideoWatermarkView",
+                        code: -2,
+                        userInfo: [NSLocalizedDescriptionKey: "视频文件无法读取（沙盒权限问题）: \(videoURL.path)\n请尝试重新拖入或选择文件"]
+                    )
+                }
+                
                 // 获取视频尺寸
                 let videoInfo = try await VideoInfoService.getVideoInfo(from: videoURL)
                 
@@ -298,10 +351,22 @@ struct VideoWatermarkView: View {
                     previewImage = image
                     isLoadingPreview = false
                 }
+            } catch let error as NSError {
+                await MainActor.run {
+                    isLoadingPreview = false
+                    // 更详细的错误信息，便于定位
+                    var details = "加载预览失败: \(error.localizedDescription)\n文件路径: \(videoURL.path)"
+                    details += "\n错误域: \(error.domain) 代码: \(error.code)"
+                    if let ui = error.userInfo as? [String: Any], !ui.isEmpty {
+                        details += "\nuserInfo: \(ui)"
+                    }
+                    print("❌ [VideoWatermarkView] \(details)")
+                }
             } catch {
                 await MainActor.run {
                     isLoadingPreview = false
-                    print("❌ [VideoWatermarkView] 加载预览失败: \(error.localizedDescription)")
+                    let errorMessage = "加载预览失败: \(error.localizedDescription)\n文件路径: \(videoURL.path)"
+                    print("❌ [VideoWatermarkView] \(errorMessage)")
                 }
             }
         }
@@ -314,6 +379,25 @@ struct VideoWatermarkView: View {
         
         if panel.runModal() == .OK, let url = panel.url {
             watermarkImageURL = url
+        }
+    }
+    
+    private func selectFont() {
+        let panel = NSOpenPanel()
+        // 允许常见的字体文件类型
+        panel.allowedContentTypes = [
+            .font, // 通用字体类型
+            UTType(filenameExtension: "ttf")!,
+            UTType(filenameExtension: "otf")!,
+            UTType(filenameExtension: "ttc")!,
+            UTType(filenameExtension: "dfont")!
+        ]
+        panel.allowsMultipleSelection = false
+        panel.title = "选择字体文件"
+        panel.prompt = "选择"
+        
+        if panel.runModal() == .OK, let url = panel.url {
+            fontFileURL = url
         }
     }
     
@@ -355,12 +439,26 @@ struct VideoWatermarkView: View {
                             }
                         )
                     } else if watermarkType == .text {
+                        // 确保已选择字体文件
+                        guard let fontPath = fontFileURL?.path else {
+                            throw NSError(domain: "VideoWatermarkView", code: -1, userInfo: [NSLocalizedDescriptionKey: "请先选择字体文件"])
+                        }
+                        
+                        // 获取安全作用域访问权限
+                        let hasFontAccess = fontFileURL!.startAccessingSecurityScopedResource()
+                        defer {
+                            if hasFontAccess {
+                                fontFileURL!.stopAccessingSecurityScopedResource()
+                            }
+                        }
+                        
                         try await VideoWatermark.addTextWatermark(
                             inputURL: inputURL,
                             outputURL: outputURL,
                             text: watermarkText,
                             position: position,
                             fontSize: fontSize,
+                            fontPath: fontPath,
                             opacity: opacity,
                             progressHandler: { prog, stat in
                                 Task { @MainActor in
@@ -370,11 +468,25 @@ struct VideoWatermarkView: View {
                             }
                         )
                     } else if watermarkType == .timestamp {
+                        // 确保已选择字体文件
+                        guard let fontPath = fontFileURL?.path else {
+                            throw NSError(domain: "VideoWatermarkView", code: -1, userInfo: [NSLocalizedDescriptionKey: "请先选择字体文件"])
+                        }
+                        
+                        // 获取安全作用域访问权限
+                        let hasFontAccess = fontFileURL!.startAccessingSecurityScopedResource()
+                        defer {
+                            if hasFontAccess {
+                                fontFileURL!.stopAccessingSecurityScopedResource()
+                            }
+                        }
+                        
                         try await VideoWatermark.addTimestampWatermark(
                             inputURL: inputURL,
                             outputURL: outputURL,
                             position: position,
                             fontSize: fontSize,
+                            fontPath: fontPath,
                             progressHandler: { prog, stat in
                                 Task { @MainActor in
                                     progress = prog
@@ -395,7 +507,17 @@ struct VideoWatermarkView: View {
                     await MainActor.run {
                         isProcessing = false
                         status = "添加失败: \(error.localizedDescription)"
-                        print("❌ [VideoWatermarkView] 添加水印失败: \(error)")
+                        // 提供更详细的错误上下文
+                        if let ffErr = error as? FFmpegError {
+                            switch ffErr {
+                            case .executionFailed(let code, let message):
+                                print("❌ [VideoWatermarkView] 添加水印失败: code=\(code) message=\(message)")
+                            default:
+                                print("❌ [VideoWatermarkView] 添加水印失败: \(ffErr)")
+                            }
+                        } else {
+                            print("❌ [VideoWatermarkView] 添加水印失败: \(error)")
+                        }
                     }
                 }
             }

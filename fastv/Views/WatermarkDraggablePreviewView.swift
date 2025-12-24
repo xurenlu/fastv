@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AppKit
+import CoreText
 
 /// 可拖动和调整大小的水印预览视图
 struct WatermarkDraggablePreviewView: View {
@@ -17,6 +18,7 @@ struct WatermarkDraggablePreviewView: View {
     let watermarkText: String
     let fontSize: Int
     let opacity: Double
+    let fontURL: URL?
     
     @Binding var customPosition: CGPoint? // 自定义位置（视频坐标系，nil 表示使用预设位置）
     @Binding var customSize: CGSize? // 自定义大小（视频坐标系，nil 表示使用默认大小）
@@ -60,6 +62,7 @@ struct WatermarkDraggablePreviewView: View {
         watermarkText: String = "",
         fontSize: Int = 24,
         opacity: Double = 1.0,
+        fontURL: URL? = nil,
         customPosition: Binding<CGPoint?> = .constant(nil),
         customSize: Binding<CGSize?> = .constant(nil),
         position: Binding<WatermarkPosition> = .constant(.bottomRight)
@@ -71,6 +74,7 @@ struct WatermarkDraggablePreviewView: View {
         self.watermarkText = watermarkText
         self.fontSize = fontSize
         self.opacity = opacity
+        self.fontURL = fontURL
         self._customPosition = customPosition
         self._customSize = customSize
         self._position = position
@@ -166,7 +170,7 @@ struct WatermarkDraggablePreviewView: View {
                 watermarkContent(rect: watermarkRect)
                 
                 // 拖动和调整大小的控制框
-                if watermarkType == .image || watermarkType == .text {
+                if watermarkType == .image {
                     watermarkControlFrame(
                         rect: watermarkRect,
                         imageRect: imageRect,
@@ -195,7 +199,7 @@ struct WatermarkDraggablePreviewView: View {
             case .text:
                 if !watermarkText.isEmpty {
                     Text(watermarkText)
-                        .font(.system(size: CGFloat(fontSize), weight: .medium))
+                        .font(resolveFont(size: CGFloat(fontSize)))
                         .foregroundStyle(.white)
                         .shadow(color: .black.opacity(0.8), radius: 2, x: 1, y: 1)
                         .padding(6)
@@ -203,12 +207,12 @@ struct WatermarkDraggablePreviewView: View {
                             RoundedRectangle(cornerRadius: 4)
                                 .fill(.black.opacity(0.5))
                         }
-                        .frame(minWidth: rect.width, minHeight: rect.height)
+                        .frame(minWidth: rect.width, minHeight: rect.height, alignment: .leading)
                         .opacity(opacity)
                 }
             case .timestamp:
                 Text(formatTimestamp(currentTimestamp))
-                    .font(.system(size: CGFloat(fontSize), weight: .medium))
+                    .font(resolveFont(size: CGFloat(fontSize)))
                     .foregroundStyle(.white)
                     .shadow(color: .black.opacity(0.8), radius: 2, x: 1, y: 1)
                     .padding(6)
@@ -216,7 +220,7 @@ struct WatermarkDraggablePreviewView: View {
                         RoundedRectangle(cornerRadius: 4)
                             .fill(.black.opacity(0.5))
                     }
-                    .frame(minWidth: rect.width, minHeight: rect.height)
+                    .frame(minWidth: rect.width, minHeight: rect.height, alignment: .leading)
                     .opacity(opacity)
             }
         }
@@ -545,6 +549,23 @@ struct WatermarkDraggablePreviewView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         return formatter.string(from: date)
+    }
+    
+    // 解析字体：优先使用传入字体文件，否则系统默认
+    private func resolveFont(size: CGFloat) -> Font {
+        guard let fontURL = fontURL else {
+            return .system(size: size, weight: .medium)
+        }
+        
+        if let descriptors = CTFontManagerCreateFontDescriptorsFromURL(fontURL as CFURL) as? [CTFontDescriptor],
+           let first = descriptors.first {
+            let ctFont = CTFontCreateWithFontDescriptor(first, size, nil)
+            let name = CTFontCopyPostScriptName(ctFont) as String
+            let nsFont = NSFont(name: name, size: size) ?? NSFont.systemFont(ofSize: size, weight: .medium)
+            return Font(nsFont)
+        }
+        
+        return .system(size: size, weight: .medium)
     }
     
     // 启动时间戳定时器

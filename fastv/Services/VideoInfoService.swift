@@ -11,9 +11,26 @@ import CoreGraphics
 import CoreMedia
 
 struct VideoInfoService {
+    /// 标准化文件 URL，正确处理特殊字符（中文、冒号、加号等）
+    private static func normalizeFileURL(_ url: URL) -> URL {
+        // 保留安全作用域信息，避免用 fileURLWithPath 重新构造
+        guard url.isFileURL else { return url }
+        if let resolved = (url as NSURL).resolvingSymlinksInPath {
+            return resolved
+        }
+        return url
+    }
     /// 获取视频信息
     static func getVideoInfo(from videoURL: URL) async throws -> VideoInfo {
-        let asset = AVAsset(url: videoURL)
+        // 标准化 URL，正确处理特殊字符（中文、冒号、加号等）
+        let normalizedURL = normalizeFileURL(videoURL)
+        
+        // 获取安全作用域访问权限（若有）
+        let hasAccess = normalizedURL.startAccessingSecurityScopedResource()
+        defer { if hasAccess { normalizedURL.stopAccessingSecurityScopedResource() } }
+        
+        // 使用标准化的 URL 创建 AVAsset
+        let asset = AVURLAsset(url: normalizedURL)
         
         // 检查是否有视频轨道
         let videoTracks = try await asset.loadTracks(withMediaType: .video)
@@ -26,8 +43,8 @@ struct VideoInfoService {
         let frameRate = try await videoTrack.load(.nominalFrameRate)
         let duration = try await asset.load(.duration)
         
-        // 获取文件大小
-        let resourceValues = try videoURL.resourceValues(forKeys: [.fileSizeKey])
+        // 获取文件大小（使用标准化后的 URL）
+        let resourceValues = try normalizedURL.resourceValues(forKeys: [.fileSizeKey])
         let fileSize = Int64(resourceValues.fileSize ?? 0)
         
         // 获取音频轨道信息

@@ -189,6 +189,14 @@ struct VideoBlurView: View {
         }
         
         Task {
+            // 在沙盒环境下，需要获取安全作用域资源访问权限
+            let hasAccess = videoURL.startAccessingSecurityScopedResource()
+            defer {
+                if hasAccess {
+                    videoURL.stopAccessingSecurityScopedResource()
+                }
+            }
+            
             do {
                 // 获取视频信息（包含尺寸）
                 let videoInfo = try await VideoInfoService.getVideoInfo(from: videoURL)

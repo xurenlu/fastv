@@ -99,6 +99,144 @@ class ONNXRuntimeWrapper {
         self.session = session
     }
     
+    /// 运行图像推理（通用 4D 张量输入）
+    /// - Parameters:
+    ///   - inputData: 展平的输入数据 (Float32)
+    ///   - inputShape: 输入形状 [N, C, H, W]
+    ///   - outputShape: 期望的输出形状 [N, C, H, W]
+    /// - Returns: 展平的输出数据
+    func runImageInference(inputData: [Float], inputShape: [Int], outputShape: [Int]) throws -> [Float] {
+        guard let api = api else {
+            throw VideoProcessingError.modelLoadFailed("API 未初始化")
+        }
+        
+        guard let session = session else {
+            throw VideoProcessingError.modelLoadFailed("会话未创建，请先加载模型")
+        }
+        
+        // 1. 准备内存信息
+        var memoryInfo: OpaquePointer?
+        var status = api.pointee.CreateCpuMemoryInfo(
+            OrtArenaAllocator,
+            OrtMemTypeDefault,
+            &memoryInfo
+        )
+        
+        if status != nil {
+            let errorMsg = getErrorMessage(from: status, api: api)
+            api.pointee.ReleaseStatus(status)
+            throw VideoProcessingError.transcriptionFailed("无法创建内存信息: \(errorMsg)")
+        }
+        defer { if let info = memoryInfo { api.pointee.ReleaseMemoryInfo(info) } }
+        
+        // 2. 创建输入张量
+        let inputShapeInt64 = inputShape.map { Int64($0) }
+        var inputTensor: OpaquePointer?
+        
+        // 创建可变的数据副本
+        var inputDataCopy = inputData
+        
+        status = inputDataCopy.withUnsafeMutableBytes { bytes -> OpaquePointer? in
+            return api.pointee.CreateTensorWithDataAsOrtValue(
+                memoryInfo,
+                bytes.baseAddress!,
+                inputData.count * MemoryLayout<Float>.size,
+                inputShapeInt64,
+                inputShapeInt64.count,
+                ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT,
+                &inputTensor
+            )
+        }
+        
+        if status != nil {
+            let errorMsg = getErrorMessage(from: status, api: api)
+            api.pointee.ReleaseStatus(status)
+            throw VideoProcessingError.transcriptionFailed("无法创建输入张量: \(errorMsg)")
+        }
+        defer { if let tensor = inputTensor { api.pointee.ReleaseValue(tensor) } }
+        
+        // 3. 准备输入/输出名称
+        // 注意：这里假设模型只有一个输入和一个输出，或者我们使用默认名称
+        // 为了通用性，应该从会话中获取名称，但简化起见，我们尝试使用硬编码或获取索引0
+        
+        // 获取输入名称
+        var inputName: UnsafeMutablePointer<CChar>?
+        var allocator: UnsafeMutablePointer<OrtAllocator>?
+        api.pointee.GetAllocatorWithDefaultOptions(&allocator)
+        
+        status = api.pointee.SessionGetInputName(session, 0, allocator, &inputName)
+        if status != nil {
+            // 如果获取失败，尝试使用常见名称
+            let errorMsg = getErrorMessage(from: status, api: api)
+            print("警告: 无法获取输入名称: \(errorMsg)")
+            api.pointee.ReleaseStatus(status)
+        }
+        
+        // 获取输出名称
+        var outputName: UnsafeMutablePointer<CChar>?
+        status = api.pointee.SessionGetOutputName(session, 0, allocator, &outputName)
+        if status != nil {
+            let errorMsg = getErrorMessage(from: status, api: api)
+            print("警告: 无法获取输出名称: \(errorMsg)")
+            api.pointee.ReleaseStatus(status)
+        }
+        
+        let inputNameStr = inputName != nil ? String(cString: inputName!) : "input_1"
+        let outputNameStr = outputName != nil ? String(cString: outputName!) : "output_1"
+        
+        // 4. 运行推理
+        var outputTensor: OpaquePointer?
+        let inputNames = [inputNameStr]
+        let outputNames = [outputNameStr]
+        
+        // 创建 C 字符串指针数组
+        let inputNameCStrings = inputNames.map { $0.cString(using: .utf8)! }
+        let outputNameCStrings = outputNames.map { $0.cString(using: .utf8)! }
+        
+        // 需要构建指针数组
+        var inputTensors = [inputTensor]
+        
+        // 使用 withExtendedLifetime 确保字符串在整个调用期间有效
+        let runStatus = withExtendedLifetime((inputNameCStrings, outputNameCStrings)) {
+            // 创建指向 C 字符串指针的指针数组
+            var inputNamePtrs: [UnsafePointer<CChar>?] = inputNameCStrings.map { UnsafePointer($0) }
+            var outputNamePtrs: [UnsafePointer<CChar>?] = outputNameCStrings.map { UnsafePointer($0) }
+            
+            return api.pointee.Run(
+                session,
+                nil, // run options
+                &inputNamePtrs,
+                inputTensors.withUnsafeBufferPointer { $0.baseAddress },
+                1, // input count
+                &outputNamePtrs,
+                1, // output count
+                &outputTensor
+            )
+        }
+        
+        if runStatus != nil {
+            let errorMsg = getErrorMessage(from: runStatus, api: api)
+            api.pointee.ReleaseStatus(runStatus)
+            throw VideoProcessingError.transcriptionFailed("推理运行失败: \(errorMsg)")
+        }
+        defer { if let tensor = outputTensor { api.pointee.ReleaseValue(tensor) } }
+        
+        // 5. 获取输出数据
+        var outputDataPtr: UnsafeMutableRawPointer?
+        status = api.pointee.GetTensorMutableData(outputTensor, &outputDataPtr)
+        
+        if status != nil {
+            let errorMsg = getErrorMessage(from: status, api: api)
+            api.pointee.ReleaseStatus(status)
+            throw VideoProcessingError.transcriptionFailed("无法获取输出数据: \(errorMsg)")
+        }
+        
+        // 复制数据到 Swift 数组
+        let count = outputShape.reduce(1, *)
+        let outputBuffer = outputDataPtr!.bindMemory(to: Float.self, capacity: count)
+        return Array(UnsafeBufferPointer(start: outputBuffer, count: count))
+    }
+    
     func runInference(input: [[[Float]]], language: TranscriptLanguage = .auto) throws -> [Int] {
         guard let api = api else {
             throw VideoProcessingError.modelLoadFailed("API 未初始化")
