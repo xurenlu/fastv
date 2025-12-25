@@ -22,6 +22,37 @@ struct LogoAnnotationView: View {
     
     var body: some View {
         VStack(spacing: 0) {
+            // 错误提示横幅
+            if let errorMessage = viewModel.errorMessage, !viewModel.isLoading {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text(errorMessage)
+                        .font(.subheadline)
+                    Spacer()
+                    Button("重试") {
+                        if let url = viewModel.videoURL {
+                            viewModel.loadVideo(url)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    
+                    Button(action: {
+                        viewModel.errorMessage = nil
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(Color.orange.opacity(0.1))
+                
+                Divider()
+            }
+            
             // 视频预览区域
             videoPreviewArea
             
@@ -48,7 +79,7 @@ struct LogoAnnotationView: View {
                 Button("开始跟踪") {
                     startTracking()
                 }
-                .disabled(viewModel.annotations.isEmpty || replacementLogoURL == nil || isTracking)
+                .disabled(viewModel.annotations.isEmpty || replacementLogoURL == nil || isTracking || viewModel.isLoading || viewModel.errorMessage != nil)
             }
         }
         .fileImporter(
@@ -88,13 +119,54 @@ struct LogoAnnotationView: View {
     private var videoPreviewArea: some View {
         GeometryReader { geometry in
             ZStack {
-                if let image = viewModel.currentFrameImage {
+                if viewModel.isLoading {
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("正在加载视频...")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
+                } else if let errorMessage = viewModel.errorMessage {
+                    VStack(spacing: 20) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.orange)
+                        
+                        Text("加载失败")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        
+                        Text(errorMessage)
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                        
+                        Button(action: {
+                            if let url = viewModel.videoURL {
+                                viewModel.loadVideo(url)
+                            }
+                        }) {
+                            Label("重试", systemImage: "arrow.clockwise")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                    }
+                    .padding()
+                } else if let image = viewModel.currentFrameImage {
                     Image(nsImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    ProgressView("加载视频...")
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("准备中...")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 
                 // 标注框
@@ -166,6 +238,7 @@ struct LogoAnnotationView: View {
                 Image(systemName: "backward.frame.fill")
             }
             .buttonStyle(.bordered)
+            .disabled(viewModel.isLoading || viewModel.errorMessage != nil || viewModel.currentFrameImage == nil)
             
             Text("帧 \(viewModel.currentFrameNumber) / \(viewModel.totalFrames)")
                 .font(.system(.body, design: .monospaced))
@@ -175,6 +248,7 @@ struct LogoAnnotationView: View {
                 Image(systemName: "forward.frame.fill")
             }
             .buttonStyle(.bordered)
+            .disabled(viewModel.isLoading || viewModel.errorMessage != nil || viewModel.currentFrameImage == nil)
             
             Divider()
                 .frame(height: 20)
@@ -194,7 +268,7 @@ struct LogoAnnotationView: View {
                 Label("清除选择", systemImage: "xmark.circle")
             }
             .buttonStyle(.bordered)
-            .disabled(!viewModel.isSelectingRegion)
+            .disabled(!viewModel.isSelectingRegion || viewModel.isLoading || viewModel.errorMessage != nil)
         }
         .padding()
     }

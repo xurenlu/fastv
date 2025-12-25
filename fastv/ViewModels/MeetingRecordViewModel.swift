@@ -376,18 +376,13 @@ class MeetingRecordViewModel: ObservableObject {
                 return
             }
             
-            // 快速纠错
+            // 自动纠错（包含内置规则和用户自定义规则）
             processingStage = .correcting
             processingProgress = 0.4
             
-            if preferences.enableFastCorrection {
-                text = TextCorrectionService.shared.correctText(text)
-            }
-            
-            // 常错词修正
             let mistakeManager = CommonMistakeManager.shared
             if mistakeManager.enableAutoCorrection {
-                text = mistakeManager.applyCorrections(to: text)
+                text = TextCorrectionService.shared.correctText(text)
             }
             
             record.correctedText = text

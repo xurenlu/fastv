@@ -49,8 +49,8 @@ class UserPreferences: ObservableObject {
         static let aiAPIToken = "aiAPIToken"
         static let aiTimeout = "aiTimeout"
         static let aiSystemPrompt = "aiSystemPrompt"
-        // 快速纠错相关
-        static let enableFastCorrection = "enableFastCorrection"
+        // CTC 去重相关
+        static let enableCTCDeduplication = "enableCTCDeduplication"
         // 文本插入方式
         static let useDirectTextInsertion = "useDirectTextInsertion"
         // AI错误检测相关
@@ -110,11 +110,23 @@ class UserPreferences: ObservableObject {
         static let videoToolsDefaultCodec = "videoToolsDefaultCodec" // 默认视频编码器
         static let videoToolsDefaultCRF = "videoToolsDefaultCRF" // 默认 CRF 值（压缩质量）
         static let videoToolsOutputDirectory = "videoToolsOutputDirectory" // 默认输出目录
+        // FFmpeg 性能优化相关
+        static let videoToolsFFmpegPreset = "videoToolsFFmpegPreset" // FFmpeg 编码预设（ultrafast/veryfast/fast/medium/slow）
+        static let videoToolsFFmpegThreads = "videoToolsFFmpegThreads" // FFmpeg 线程数（0=自动）
+        static let videoToolsEnableHardwareAccel = "videoToolsEnableHardwareAccel" // 是否启用硬件加速
+        static let videoToolsEnableParallelProcessing = "videoToolsEnableParallelProcessing" // 是否启用分段并行处理
+        static let videoToolsSegmentDuration = "videoToolsSegmentDuration" // 分段时长（秒）
+        static let videoToolsMaxConcurrentTasks = "videoToolsMaxConcurrentTasks" // 最大并发任务数
         // AI 模型相关
         static let videoYoloModelPath = "videoYoloModelPath" // YOLOv8 模型路径
         static let videoFaceModelPath = "videoFaceModelPath" // SCRFD 人脸检测模型路径
         static let isVideoModelsDownloaded = "isVideoModelsDownloaded" // 视频处理模型是否已下载
         static let huggingFaceToken = "huggingFaceToken" // Hugging Face Token（用于模型下载认证）
+        // 水印历史记录相关
+        static let watermarkTextHistory = "watermarkTextHistory" // 文字水印历史记录（最近3个）
+        static let watermarkFontHistory = "watermarkFontHistory" // 字体文件历史记录（最近3个）
+        static let lastWatermarkText = "lastWatermarkText" // 上次使用的文字水印
+        static let lastWatermarkFontURL = "lastWatermarkFontURL" // 上次使用的字体文件路径
     }
     
     // MARK: - Published Properties
@@ -228,9 +240,9 @@ class UserPreferences: ObservableObject {
         willSet { defaults.set(newValue, forKey: Keys.aiSystemPrompt) }
     }
     
-    // 快速纠错相关
-    @Published var enableFastCorrection: Bool {
-        willSet { defaults.set(newValue, forKey: Keys.enableFastCorrection) }
+    // CTC 去重相关（禁用可以保留叠词如"谢谢"、连续数字如"100"）
+    @Published var enableCTCDeduplication: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.enableCTCDeduplication) }
     }
     
     // 文本插入方式（true: 直接键盘输入，false: 剪贴板粘贴）
@@ -441,6 +453,31 @@ class UserPreferences: ObservableObject {
         willSet { defaults.set(newValue, forKey: Keys.videoToolsOutputDirectory) }
     }
     
+    // FFmpeg 性能优化相关
+    @Published var videoToolsFFmpegPreset: String {
+        willSet { defaults.set(newValue, forKey: Keys.videoToolsFFmpegPreset) }
+    }
+    
+    @Published var videoToolsFFmpegThreads: Int {
+        willSet { defaults.set(newValue, forKey: Keys.videoToolsFFmpegThreads) }
+    }
+    
+    @Published var videoToolsEnableHardwareAccel: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.videoToolsEnableHardwareAccel) }
+    }
+    
+    @Published var videoToolsEnableParallelProcessing: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.videoToolsEnableParallelProcessing) }
+    }
+    
+    @Published var videoToolsSegmentDuration: Double {
+        willSet { defaults.set(newValue, forKey: Keys.videoToolsSegmentDuration) }
+    }
+    
+    @Published var videoToolsMaxConcurrentTasks: Int {
+        willSet { defaults.set(newValue, forKey: Keys.videoToolsMaxConcurrentTasks) }
+    }
+    
     // AI 模型相关
     @Published var videoYoloModelPath: String {
         willSet { defaults.set(newValue, forKey: Keys.videoYoloModelPath) }
@@ -600,8 +637,8 @@ class UserPreferences: ObservableObject {
 """
         aiSystemPrompt = defaults.string(forKey: Keys.aiSystemPrompt) ?? defaultSystemPrompt
         
-        // 快速纠错设置，默认不启用
-        enableFastCorrection = defaults.object(forKey: Keys.enableFastCorrection) as? Bool ?? false
+        // CTC 去重设置，默认禁用（保留叠词和连续数字）
+        enableCTCDeduplication = defaults.object(forKey: Keys.enableCTCDeduplication) as? Bool ?? false
         
         // 文本插入方式，默认使用直接键盘输入（不使用剪贴板）
         useDirectTextInsertion = defaults.object(forKey: Keys.useDirectTextInsertion) as? Bool ?? true
@@ -692,6 +729,14 @@ class UserPreferences: ObservableObject {
         videoToolsDefaultCodec = defaults.string(forKey: Keys.videoToolsDefaultCodec) ?? "libx264" // 默认 H.264
         videoToolsDefaultCRF = defaults.object(forKey: Keys.videoToolsDefaultCRF) as? Int ?? 23 // 默认 CRF 23（高质量）
         videoToolsOutputDirectory = defaults.string(forKey: Keys.videoToolsOutputDirectory) ?? "" // 默认为空，使用视频文件同目录
+        
+        // FFmpeg 性能优化设置默认值
+        videoToolsFFmpegPreset = defaults.string(forKey: Keys.videoToolsFFmpegPreset) ?? "fast" // 默认 fast 预设
+        videoToolsFFmpegThreads = defaults.object(forKey: Keys.videoToolsFFmpegThreads) as? Int ?? 0 // 默认 0（自动检测 CPU 核心数）
+        videoToolsEnableHardwareAccel = defaults.object(forKey: Keys.videoToolsEnableHardwareAccel) as? Bool ?? true // 默认启用硬件加速
+        videoToolsEnableParallelProcessing = defaults.object(forKey: Keys.videoToolsEnableParallelProcessing) as? Bool ?? true // 默认启用并行处理
+        videoToolsSegmentDuration = defaults.object(forKey: Keys.videoToolsSegmentDuration) as? Double ?? 30.0 // 默认 30 秒分段
+        videoToolsMaxConcurrentTasks = defaults.object(forKey: Keys.videoToolsMaxConcurrentTasks) as? Int ?? 4 // 默认最多 4 个并发任务
         
         // AI 模型路径默认值
         videoYoloModelPath = defaults.string(forKey: Keys.videoYoloModelPath) ?? ""
@@ -1034,6 +1079,83 @@ class UserPreferences: ObservableObject {
         if let encoded = try? JSONEncoder().encode(aiScenarioBindings) {
             defaults.set(encoded, forKey: Keys.aiScenarioBindings)
         }
+    }
+    
+    // MARK: - Watermark History
+    
+    /// 保存文字水印到历史记录
+    func saveWatermarkText(_ text: String) {
+        guard !text.isEmpty else { return }
+        
+        var history = getWatermarkTextHistory()
+        
+        // 如果已存在，先删除
+        if let index = history.firstIndex(of: text) {
+            history.remove(at: index)
+        }
+        
+        // 插入到开头
+        history.insert(text, at: 0)
+        
+        // 最多保留3个
+        history = Array(history.prefix(3))
+        
+        // 保存到 UserDefaults
+        defaults.set(history, forKey: Keys.watermarkTextHistory)
+        defaults.set(text, forKey: Keys.lastWatermarkText)
+    }
+    
+    /// 保存字体文件到历史记录
+    func saveWatermarkFont(_ url: URL) {
+        let path = url.path
+        var history = getWatermarkFontHistory().map { $0.path }
+        
+        // 如果已存在，先删除
+        if let index = history.firstIndex(of: path) {
+            history.remove(at: index)
+        }
+        
+        // 插入到开头
+        history.insert(path, at: 0)
+        
+        // 最多保留3个
+        history = Array(history.prefix(3))
+        
+        // 保存到 UserDefaults
+        defaults.set(history, forKey: Keys.watermarkFontHistory)
+        defaults.set(path, forKey: Keys.lastWatermarkFontURL)
+    }
+    
+    /// 获取文字水印历史记录
+    func getWatermarkTextHistory() -> [String] {
+        return defaults.stringArray(forKey: Keys.watermarkTextHistory) ?? []
+    }
+    
+    /// 获取字体文件历史记录
+    func getWatermarkFontHistory() -> [URL] {
+        guard let paths = defaults.stringArray(forKey: Keys.watermarkFontHistory) else {
+            return []
+        }
+        
+        // 转换为 URL 并验证文件是否存在
+        return paths.compactMap { path in
+            let url = URL(fileURLWithPath: path)
+            return FileManager.default.fileExists(atPath: path) ? url : nil
+        }
+    }
+    
+    /// 获取上次使用的文字水印
+    func getLastWatermarkText() -> String? {
+        return defaults.string(forKey: Keys.lastWatermarkText)
+    }
+    
+    /// 获取上次使用的字体文件
+    func getLastWatermarkFontURL() -> URL? {
+        guard let path = defaults.string(forKey: Keys.lastWatermarkFontURL),
+              FileManager.default.fileExists(atPath: path) else {
+            return nil
+        }
+        return URL(fileURLWithPath: path)
     }
 }
 

@@ -15,6 +15,10 @@ struct VideoInfo {
     let fileSize: Int64
     let audioTracks: [AudioTrackInfo]
     
+    var hasAudio: Bool {
+        return !audioTracks.isEmpty
+    }
+    
     var durationString: String {
         let hours = Int(duration) / 3600
         let minutes = (Int(duration) % 3600) / 60

@@ -16,6 +16,7 @@ struct VideoFormatConversionView: View {
     @State private var isProcessing = false
     @State private var progress: Double = 0.0
     @State private var status: String = ""
+    @State private var showVideoSelector = false
     
     var body: some View {
         ScrollView {
@@ -74,6 +75,37 @@ struct VideoFormatConversionView: View {
             .padding()
         }
         .navigationTitle("格式转换")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                if viewModel.videoURL != nil {
+                    Button(action: { showVideoSelector = true }) {
+                        Label("更换视频", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                }
+            }
+        }
+        .fileImporter(
+            isPresented: $showVideoSelector,
+            allowedContentTypes: [.movie, .mpeg4Movie, .quickTimeMovie],
+            allowsMultipleSelection: false
+        ) { result in
+            handleVideoSelection(result)
+        }
+    }
+    
+    private func handleVideoSelection(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            if let url = urls.first {
+                viewModel.loadVideo(url)
+                // 格式和编码器保持用户选择，不重置
+                isProcessing = false
+                progress = 0.0
+                status = ""
+            }
+        case .failure(let error):
+            print("选择视频失败: \(error.localizedDescription)")
+        }
     }
     
     private func startConversion() {

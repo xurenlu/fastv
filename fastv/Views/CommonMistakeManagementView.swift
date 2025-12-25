@@ -11,13 +11,7 @@ import SwiftUI
 
 struct CommonMistakeManagementView: View {
     @ObservedObject private var mistakeManager = CommonMistakeManager.shared
-    @State private var searchText = "" {
-        didSet {
-            // 搜索文本改变时清除缓存
-            filteredMistakesCache = []
-            lastCacheUpdate = nil
-        }
-    }
+    @State private var searchText = ""
     @State private var showAddDialog = false
     @State private var showEditDialog = false
     @State private var editingMistake: CommonMistake?
@@ -25,18 +19,20 @@ struct CommonMistakeManagementView: View {
     @State private var newCorrect = ""
     @State private var isAnalyzing = false
     @State private var analysisProgress = ""
-    @State private var sortOption: SortOption = .frequency {
-        didSet {
-            // 排序选项改变时清除缓存
-            filteredMistakesCache = []
-            lastCacheUpdate = nil
-        }
-    }
+    @State private var sortOption: SortOption = .frequency
+    @State private var filterType: FilterType = .all
+    @State private var selectedCategory: CorrectionCategory? = nil
     
     enum SortOption: String, CaseIterable {
         case frequency = "出现次数"
         case confidence = "置信度"
         case alphabetical = "字母顺序"
+    }
+    
+    enum FilterType: String, CaseIterable {
+        case all = "全部"
+        case builtIn = "内置规则"
+        case custom = "自定义"
     }
     
     @State private var filteredMistakesCache: [CommonMistake] = []
@@ -52,6 +48,21 @@ struct CommonMistakeManagementView: View {
         }
         
         var mistakes = mistakeManager.mistakes
+        
+        // 类型过滤
+        switch filterType {
+        case .all:
+            break
+        case .builtIn:
+            mistakes = mistakes.filter { $0.isBuiltIn }
+        case .custom:
+            mistakes = mistakes.filter { !$0.isBuiltIn }
+        }
+        
+        // 类别过滤
+        if let category = selectedCategory {
+            mistakes = mistakes.filter { $0.category == category }
+        }
         
         // 搜索过滤
         if !searchText.isEmpty {
@@ -81,17 +92,29 @@ struct CommonMistakeManagementView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // 统计信息和开关
-            HStack {
+            HStack(spacing: 24) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("常错词总数")
+                    Text("内置规则")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text("\(mistakeManager.totalCount()) 个")
+                    HStack(spacing: 4) {
+                        Text("\(mistakeManager.enabledBuiltInRulesCount())")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                        Text("/ \(mistakeManager.builtInRulesCount())")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("自定义规则")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text("\(mistakeManager.customRulesCount()) 个")
                         .font(.title3)
                         .fontWeight(.semibold)
                 }
-                
-                Spacer()
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("已修正次数")
@@ -104,7 +127,7 @@ struct CommonMistakeManagementView: View {
                 
                 Spacer()
                 
-                Toggle("启用自动修正", isOn: $mistakeManager.enableAutoCorrection)
+                Toggle("启用自动纠错", isOn: $mistakeManager.enableAutoCorrection)
                     .toggleStyle(.switch)
                     .fixedSize()
             }
@@ -143,21 +166,63 @@ struct CommonMistakeManagementView: View {
                 }
             }
             
-            // 搜索和排序
+            // 搜索、筛选和排序
             if !mistakeManager.mistakes.isEmpty {
-                HStack {
-                    TextField("搜索错误词或正确词", text: $searchText)
-                        .textFieldStyle(.roundedBorder)
+                VStack(spacing: 8) {
+                    HStack {
+                        TextField("搜索错误词或正确词", text: $searchText)
+                            .textFieldStyle(.roundedBorder)
+                            .controlSize(.regular)
+                        
+                        Picker("类型", selection: $filterType) {
+                            ForEach(FilterType.allCases, id: \.self) { type in
+                                Text(type.rawValue).tag(type)
+                            }
+                        }
+                        .pickerStyle(.menu)
                         .controlSize(.regular)
+                        .fixedSize()
+                        
+                        Picker("排序", selection: $sortOption) {
+                            ForEach(SortOption.allCases, id: \.self) { option in
+                                Text(option.rawValue).tag(option)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .controlSize(.regular)
+                        .fixedSize()
+                    }
                     
-                    Picker("排序", selection: $sortOption) {
-                        ForEach(SortOption.allCases, id: \.self) { option in
-                            Text(option.rawValue).tag(option)
+                    // 类别筛选（仅在显示内置规则时）
+                    if filterType == .builtIn || filterType == .all {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                Button(action: { selectedCategory = nil }) {
+                                    Text("全部类别")
+                                        .font(.caption)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .background(selectedCategory == nil ? Color.accentColor.opacity(0.2) : Color.clear)
+                                .cornerRadius(6)
+                                
+                                ForEach(CorrectionCategory.allCases, id: \.self) { category in
+                                    Button(action: { selectedCategory = category }) {
+                                        Text(category.displayName)
+                                            .font(.caption)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                    .background(selectedCategory == category ? Color.accentColor.opacity(0.2) : Color.clear)
+                                    .cornerRadius(6)
+                                }
+                            }
                         }
                     }
-                    .pickerStyle(.menu)
-                    .controlSize(.regular)
-                    .fixedSize()
                 }
             }
             
@@ -196,14 +261,21 @@ struct CommonMistakeManagementView: View {
                 ScrollView {
                     LazyVStack(spacing: 8) {
                         ForEach(filteredMistakes) { mistake in
-                            CommonMistakeRow(mistake: mistake) {
-                                editingMistake = mistake
-                                newWrong = mistake.wrong
-                                newCorrect = mistake.correct
-                                showEditDialog = true
-                            } onDelete: {
-                                mistakeManager.remove(mistake)
-                            }
+                            CommonMistakeRow(
+                                mistake: mistake,
+                                onEdit: {
+                                    editingMistake = mistake
+                                    newWrong = mistake.wrong
+                                    newCorrect = mistake.correct
+                                    showEditDialog = true
+                                },
+                                onDelete: {
+                                    mistakeManager.remove(mistake)
+                                },
+                                onToggle: {
+                                    mistakeManager.toggleBuiltInRule(mistake)
+                                }
+                            )
                         }
                     }
                     .padding(.vertical, 4)
@@ -215,6 +287,26 @@ struct CommonMistakeManagementView: View {
         .frame(minWidth: 700, minHeight: 500)
         .onChange(of: mistakeManager.mistakes.count) { _, _ in
             // 常错词列表改变时清除缓存
+            filteredMistakesCache = []
+            lastCacheUpdate = nil
+        }
+        .onChange(of: searchText) { _, _ in
+            // 搜索文本改变时清除缓存
+            filteredMistakesCache = []
+            lastCacheUpdate = nil
+        }
+        .onChange(of: sortOption) { _, _ in
+            // 排序选项改变时清除缓存
+            filteredMistakesCache = []
+            lastCacheUpdate = nil
+        }
+        .onChange(of: filterType) { _, _ in
+            // 筛选类型改变时清除缓存
+            filteredMistakesCache = []
+            lastCacheUpdate = nil
+        }
+        .onChange(of: selectedCategory) { _, _ in
+            // 类别改变时清除缓存
             filteredMistakesCache = []
             lastCacheUpdate = nil
         }
@@ -263,67 +355,109 @@ struct CommonMistakeRow: View {
     let mistake: CommonMistake
     let onEdit: () -> Void
     let onDelete: () -> Void
+    let onToggle: () -> Void
     @State private var isHovered = false
     
     var body: some View {
         HStack(spacing: 12) {
+            // 内置规则标记和启用开关
+            if mistake.isBuiltIn {
+                VStack(spacing: 2) {
+                    Image(systemName: mistake.isEnabled ? "checkmark.circle.fill" : "circle")
+                        .font(.body)
+                        .foregroundStyle(mistake.isEnabled ? .green : .secondary)
+                        .onTapGesture {
+                            onToggle()
+                        }
+                        .help(mistake.isEnabled ? "点击禁用" : "点击启用")
+                    
+                    Text(mistake.category.displayName)
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(width: 50)
+            }
+            
             // 错误词 -> 正确词
             HStack(spacing: 8) {
                 Text(mistake.wrong)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(mistake.isEnabled ? .red : .secondary)
                     .strikethrough()
                     .font(.body)
+                    .opacity(mistake.isEnabled ? 1.0 : 0.5)
                 
                 Image(systemName: "arrow.right")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .opacity(mistake.isEnabled ? 1.0 : 0.5)
                 
-                Text(mistake.correct)
-                    .foregroundStyle(.green)
+                Text(mistake.correct.isEmpty ? "(删除)" : mistake.correct)
+                    .foregroundStyle(mistake.isEnabled ? .green : .secondary)
                     .fontWeight(.medium)
                     .font(.body)
+                    .opacity(mistake.isEnabled ? 1.0 : 0.5)
             }
             
             Spacer()
             
             // 出现次数和置信度
-            HStack(spacing: 12) {
-                Label("\(mistake.frequency)", systemImage: "number")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                
-                Label(String(format: "%.0f%%", mistake.confidence * 100), systemImage: "chart.bar")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            if !mistake.isBuiltIn || mistake.frequency > 0 {
+                HStack(spacing: 12) {
+                    if mistake.frequency > 0 {
+                        Label("\(mistake.frequency)", systemImage: "number")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    if !mistake.isBuiltIn {
+                        Label(String(format: "%.0f%%", mistake.confidence * 100), systemImage: "chart.bar")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
             
             // 操作按钮 - 始终保留空间，hover时显示
             HStack(spacing: 8) {
                 if isHovered {
-                    Button(action: onEdit) {
-                        Image(systemName: "pencil")
-                            .font(.body)
-                            .frame(width: 24, height: 24)
+                    // 内置规则不允许编辑和删除
+                    if !mistake.isBuiltIn {
+                        Button(action: onEdit) {
+                            Image(systemName: "pencil")
+                                .font(.body)
+                                .frame(width: 24, height: 24)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help("编辑")
+                        
+                        Button(action: onDelete) {
+                            Image(systemName: "trash")
+                                .font(.body)
+                                .foregroundStyle(.red)
+                                .frame(width: 24, height: 24)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help("删除")
+                    } else {
+                        // 内置规则显示切换按钮
+                        Button(action: onToggle) {
+                            Image(systemName: mistake.isEnabled ? "eye.slash" : "eye")
+                                .font(.body)
+                                .frame(width: 24, height: 24)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help(mistake.isEnabled ? "禁用" : "启用")
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .help("编辑")
-                    
-                    Button(action: onDelete) {
-                        Image(systemName: "trash")
-                            .font(.body)
-                            .foregroundStyle(.red)
-                            .frame(width: 24, height: 24)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .help("删除")
                 } else {
-                    // 占位空间，保持布局稳定
-                    Spacer()
-                        .frame(width: 60)
+                    // 占位空间，保持布局稳定 - 使用固定宽度避免约束循环
+                    Color.clear
+                        .frame(width: 60, height: 24)
                 }
             }
+            .frame(width: 60) // 固定操作按钮区域的宽度
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)

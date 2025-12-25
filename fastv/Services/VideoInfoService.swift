@@ -20,6 +20,24 @@ struct VideoInfoService {
         }
         return url
     }
+    
+    /// 计算视频的平均码率
+    /// - Parameter videoInfo: 视频信息
+    /// - Returns: 平均码率（bps）
+    static func calculateAverageBitrate(from videoInfo: VideoInfo) -> Int64 {
+        guard videoInfo.duration > 0 else { return 0 }
+        // 码率 = 文件大小 × 8 / 时长
+        return Int64(Double(videoInfo.fileSize * 8) / videoInfo.duration)
+    }
+    
+    /// 计算视频的平均码率（Mbps）
+    /// - Parameter videoInfo: 视频信息
+    /// - Returns: 平均码率（Mbps）
+    static func calculateAverageBitrateMbps(from videoInfo: VideoInfo) -> Double {
+        let bitrate = calculateAverageBitrate(from: videoInfo)
+        return Double(bitrate) / 1_000_000.0
+    }
+    
     /// 获取视频信息
     static func getVideoInfo(from videoURL: URL) async throws -> VideoInfo {
         // 标准化 URL，正确处理特殊字符（中文、冒号、加号等）

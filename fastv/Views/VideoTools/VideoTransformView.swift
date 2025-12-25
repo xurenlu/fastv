@@ -19,6 +19,7 @@ struct VideoTransformView: View {
     @State private var status: String = ""
     @State private var previewImage: NSImage?
     @State private var videoSize: CGSize?
+    @State private var showVideoSelector = false
     
     enum TransformType {
         case crop
@@ -152,6 +153,41 @@ struct VideoTransformView: View {
             if newType == .crop {
                 loadPreviewImage()
             }
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                if viewModel.videoURL != nil {
+                    Button(action: { showVideoSelector = true }) {
+                        Label("更换视频", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                }
+            }
+        }
+        .fileImporter(
+            isPresented: $showVideoSelector,
+            allowedContentTypes: [.movie, .mpeg4Movie, .quickTimeMovie],
+            allowsMultipleSelection: false
+        ) { result in
+            handleVideoSelection(result)
+        }
+    }
+    
+    private func handleVideoSelection(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            if let url = urls.first {
+                viewModel.loadVideo(url)
+                // 重置裁剪区域和预览
+                cropRegion = CropRegion(x: 0, y: 0, width: 100, height: 100)
+                videoRegion = VideoRegion(x: 0, y: 0, width: 100, height: 100)
+                previewImage = nil
+                videoSize = nil
+                isProcessing = false
+                progress = 0.0
+                status = ""
+            }
+        case .failure(let error):
+            print("选择视频失败: \(error.localizedDescription)")
         }
     }
     

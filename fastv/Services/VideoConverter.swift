@@ -91,9 +91,15 @@ struct VideoConverter {
         arguments.append("-crf")
         arguments.append("\(selectedCRF)")
         
-        // 预设（加快编码速度）
+        // 性能优化：使用用户配置的预设
         arguments.append("-preset")
-        arguments.append("medium")
+        arguments.append(preferences.videoToolsFFmpegPreset)
+        
+        // 性能优化：线程数
+        if preferences.videoToolsFFmpegThreads > 0 {
+            arguments.append("-threads")
+            arguments.append("\(preferences.videoToolsFFmpegThreads)")
+        }
         
         // 音频编码（复制或重新编码）
         arguments.append("-c:a")

@@ -16,71 +16,46 @@ struct AIModelSettingsTab: View {
         Form {
             // 文本纠错配置
             Section {
-                Toggle("快速纠错（毫秒级，推荐）", isOn: $preferences.enableFastCorrection)
+                // CTC 去重开关（高级设置）
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle("CTC 去重（仅在出现问题时开启）", isOn: $preferences.enableCTCDeduplication)
+                    
+                    Text(preferences.enableCTCDeduplication 
+                        ? "⚠️ 已启用：将合并连续重复的字符，可能导致\"谢谢\"变成\"谢\"、\"100\"变成\"10\"" 
+                        : "✓ 已禁用：保留所有叠词（如\"谢谢\"）和连续数字（如\"100\"）")
+                        .font(.caption)
+                        .foregroundStyle(preferences.enableCTCDeduplication ? .orange : .secondary)
+                }
                 
-                // 常错词管理入口
+                Divider()
+                
+                // 纠错规则管理入口
                 NavigationLink {
                     CommonMistakeManagementView()
-                        .navigationTitle("常错词管理")
+                        .navigationTitle("纠错规则管理")
                         .frame(minWidth: 700, minHeight: 500)
                 } label: {
                     HStack {
                         Image(systemName: "text.badge.checkmark")
-                        Text("管理常错词")
+                        Text("纠错规则管理")
                         Spacer()
-                        Text("\(CommonMistakeManager.shared.totalCount()) 个")
-                            .foregroundStyle(.secondary)
-                            .font(.caption)
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("\(CommonMistakeManager.shared.totalCount()) 条规则")
+                                .foregroundStyle(.secondary)
+                                .font(.caption)
+                            Text("内置 \(CommonMistakeManager.shared.builtInRulesCount()) + 自定义 \(CommonMistakeManager.shared.customRulesCount())")
+                                .foregroundStyle(.secondary)
+                                .font(.system(size: 10))
+                        }
                     }
                 }
                 
                 // 高频词提取
                 HighFrequencyWordExtractionView()
-                
-                Divider()
-                
-                // AI错误检测配置
-                VStack(alignment: .leading, spacing: 12) {
-                    Toggle("AI错误检测（智能推理）", isOn: $preferences.enableAICorrectionDetection)
-                    
-                    if preferences.enableAICorrectionDetection {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("错误检测模型（推荐使用更强的推理模型）")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            
-                            TextField("例如：deepseek-r1:1.5b", text: Binding(
-                                get: {
-                                    preferences.correctionDetectionModel.isEmpty ? preferences.aiModel : preferences.correctionDetectionModel
-                                },
-                                set: { newValue in
-                                    preferences.correctionDetectionModel = newValue
-                                }
-                            ))
-                            .textFieldStyle(.roundedBorder)
-                            
-                            HStack {
-                                Text("超时时间")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                
-                                Spacer()
-                                
-                                Text("\(String(format: "%.1f", preferences.correctionDetectionTimeout)) 秒")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(.secondary)
-                                    .monospacedDigit()
-                            }
-                            
-                            Slider(value: $preferences.correctionDetectionTimeout, in: 5.0...30.0, step: 0.5)
-                        }
-                        .padding(.leading, 20)
-                    }
-                }
             } header: {
                 Text("文本纠错")
             } footer: {
-                Text("启用后会自动纠正语音识别中的常见错别字，速度极快（毫秒级），无需等待。常错词和高频词会在AI优化时使用，提高纠错准确性。AI错误检测使用更强的推理模型来检测识别错误，需要用户确认后添加到常错词。")
+                Text("纠错规则包含内置规则（重复词、填充词等）和自定义规则。在纠错规则管理界面可以启用/禁用内置规则，或添加个人常错词。纠错速度极快（毫秒级），无需等待。")
             }
             
             // AI 服务管理

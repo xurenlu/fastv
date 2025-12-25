@@ -18,9 +18,7 @@ enum SidebarItem: Identifiable, Hashable {
     case health
     case meetingRecord
     case liveTranscription
-    case videoProcessing
     case videoTools
-    case videoSceneAnalysis
     case aiChat
     case email
     case intel
@@ -37,9 +35,7 @@ enum SidebarItem: Identifiable, Hashable {
         case .health: return "健康助理"
         case .meetingRecord: return "会议记录"
         case .liveTranscription: return "直播转录"
-        case .videoProcessing: return "视频处理"
         case .videoTools: return "视频工具"
-        case .videoSceneAnalysis: return "视频场景分析"
         case .aiChat: return "AI Chat"
         case .email: return "邮箱"
         case .intel: return "情报"
@@ -58,9 +54,7 @@ enum SidebarItem: Identifiable, Hashable {
         case .health: return "健康助理"
         case .meetingRecord: return "会议记录"
         case .liveTranscription: return "直播转录"
-        case .videoProcessing: return "视频处理"
         case .videoTools: return "视频工具"
-        case .videoSceneAnalysis: return "视频场景分析"
         case .aiChat: return "AI Chat"
         case .email: return "邮箱"
         case .intel: return "情报"
@@ -79,9 +73,7 @@ enum SidebarItem: Identifiable, Hashable {
         case .voiceInput: return "mic.fill"
         case .meetingRecord: return "calendar.badge.clock"
         case .liveTranscription: return "waveform.circle.fill"
-        case .videoProcessing: return "video.fill"
-        case .videoTools: return "wand.and.stars"
-        case .videoSceneAnalysis: return "waveform.path"
+        case .videoTools: return "film.stack"
         case .aiTodo: return "checklist"
         case .aiChat: return "message.fill"
         case .email: return "envelope.fill"
@@ -96,7 +88,7 @@ enum SidebarItem: Identifiable, Hashable {
     }
     
     static var builtInItems: [SidebarItem] {
-        [.voiceInput, .aiTodo, .diary, .expense, .health, .meetingRecord, .liveTranscription, .videoProcessing, .videoTools, .videoSceneAnalysis, .aiChat, .email, .intel, .market, .installed]
+        [.voiceInput, .aiTodo, .diary, .expense, .health, .meetingRecord, .liveTranscription, .videoTools, .aiChat, .email, .intel, .market, .installed]
     }
 }
 
@@ -132,8 +124,16 @@ struct ContentView: View {
                 }
                 .listStyle(.sidebar)
                 .navigationTitle("功能")
-                .frame(minWidth: 200, idealWidth: 220, maxWidth: 250)
+                .frame(minWidth: 140, idealWidth: 160, maxWidth: 180)
                 .onChange(of: selectedSidebarItem) { oldValue, newValue in
+                    // 如果点击的是视频工具，打开新窗口并保持当前选中项
+                    if newValue == .videoTools {
+                        VideoToolsWindowManager.shared.show()
+                        // 恢复到之前的选中项
+                        selectedSidebarItem = oldValue
+                        return
+                    }
+                    
                     // 如果点击的是 microAPP，更新最后使用时间
                     if case .microApp(let appId) = newValue {
                         if !microAppManager.isRunning(id: appId) {
@@ -178,44 +178,32 @@ struct ContentView: View {
                                     .help(NSLocalizedString("settings", comment: ""))
                                 }
                             }
-                    case .videoProcessing:
-                        VideoProcessingView(viewModel: viewModel)
-                            .toolbar {
-                                ToolbarItem(placement: .primaryAction) {
-                                    Button(action: selectVideoFiles) {
-                                        Label("选择文件", systemImage: "folder")
-                                    }
-                                    .keyboardShortcut("o", modifiers: [.command])
-                                    .help("选择视频文件")
-                                }
-                                
-                                ToolbarItem(placement: .automatic) {
-                                    Button(action: { showSettings = true }) {
-                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
-                                    }
-                                    .help(NSLocalizedString("settings", comment: ""))
-                                }
-                            }
                     case .videoTools:
-                        VideoToolsMainView()
-                            .toolbar {
-                                ToolbarItem(placement: .automatic) {
-                                    Button(action: { showSettings = true }) {
-                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
-                                    }
-                                    .help(NSLocalizedString("settings", comment: ""))
-                                }
+                        // 视频工具在新窗口中打开，这里显示一个占位视图
+                        ContentUnavailableView {
+                            Label {
+                                Text("视频工具")
+                                    .font(.system(size: 24, weight: .bold))
+                            } icon: {
+                                Image(systemName: "film.stack")
+                                    .font(.system(size: 64))
+                                    .foregroundStyle(.secondary.opacity(0.5))
                             }
-                    case .videoSceneAnalysis:
-                        VideoSceneAnalysisView()
-                            .toolbar {
-                                ToolbarItem(placement: .automatic) {
-                                    Button(action: { showSettings = true }) {
-                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
-                                    }
-                                    .help(NSLocalizedString("settings", comment: ""))
+                        } description: {
+                            VStack(spacing: 16) {
+                                Text("视频工具已在新窗口中打开")
+                                    .font(.title3)
+                                    .foregroundStyle(.secondary)
+                                
+                                Button(action: {
+                                    VideoToolsWindowManager.shared.show()
+                                }) {
+                                    Label("打开视频工具窗口", systemImage: "arrow.up.right.square")
                                 }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.large)
                             }
+                        }
                     case .aiTodo:
                         AITodoView()
                             .toolbar {
@@ -601,20 +589,21 @@ struct SidebarItemRow: View {
     @State private var isHovered = false
     
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             // 图标
             Image(systemName: item.icon)
-                .font(.system(size: 16, weight: isSelected ? .semibold : .regular))
+                .font(.system(size: 15, weight: isSelected ? .semibold : .regular))
                 .foregroundStyle(isSelected ? .primary : (isMicroAppRunning ? .primary : .secondary))
-                .frame(width: 20, alignment: .center)
+                .frame(width: 18, alignment: .center)
                 .symbolEffect(.bounce, value: isSelected)
             
             // 文字
             Text(item.displayName)
-                .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
                 .foregroundStyle(isSelected ? .primary : (isMicroAppRunning ? .primary : .secondary))
+                .lineLimit(1)
             
-            Spacer()
+            Spacer(minLength: 4)
             
             // 关闭按钮（仅对 microAPP 且悬停时显示）
             if case .microApp(let appId) = item, isHovered {
@@ -622,15 +611,15 @@ struct SidebarItemRow: View {
                     microAppManager.closeApp(id: appId)
                 }) {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
+                        .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 .help("关闭")
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 5)
         .background {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(isSelected ? Color.accentColor.opacity(0.15) : (isHovered ? Color.secondary.opacity(0.08) : Color.clear))

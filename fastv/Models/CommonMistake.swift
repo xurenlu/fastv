@@ -7,7 +7,21 @@
 
 import Foundation
 
-/// 常错词
+/// 纠错规则类别
+enum CorrectionCategory: String, Codable, CaseIterable {
+    case repetition = "重复词"
+    case filler = "填充词"
+    case number = "数字"
+    case punctuation = "标点"
+    case time = "时间"
+    case location = "地点"
+    case pronoun = "人称"
+    case other = "其他"
+    
+    var displayName: String { rawValue }
+}
+
+/// 常错词/纠错规则
 struct CommonMistake: Identifiable, Codable {
     let id: UUID
     var wrong: String // 错误词（语音识别结果）
@@ -16,6 +30,9 @@ struct CommonMistake: Identifiable, Codable {
     var confidence: Double // 置信度（0.0-1.0）
     var createdAt: Date // 创建时间
     var lastUpdated: Date // 最后更新时间
+    var isBuiltIn: Bool // 是否为内置规则
+    var isEnabled: Bool // 是否启用（仅对内置规则有效）
+    var category: CorrectionCategory // 规则类别
     
     init(
         wrong: String,
@@ -23,7 +40,10 @@ struct CommonMistake: Identifiable, Codable {
         frequency: Int = 1,
         confidence: Double = 0.5,
         createdAt: Date = Date(),
-        lastUpdated: Date = Date()
+        lastUpdated: Date = Date(),
+        isBuiltIn: Bool = false,
+        isEnabled: Bool = true,
+        category: CorrectionCategory = .other
     ) {
         self.id = UUID()
         self.wrong = wrong
@@ -32,6 +52,9 @@ struct CommonMistake: Identifiable, Codable {
         self.confidence = confidence
         self.createdAt = createdAt
         self.lastUpdated = lastUpdated
+        self.isBuiltIn = isBuiltIn
+        self.isEnabled = isEnabled
+        self.category = category
     }
     
     /// 更新频率和置信度

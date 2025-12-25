@@ -262,6 +262,148 @@ struct VideoToolsSettingsTab: View {
             } footer: {
                 Text("CRF 值越小，质量越高但文件越大。推荐值：18-23（高质量），24-28（中等质量）。")
             }
+            
+            // 性能优化设置
+            Section {
+                VStack(alignment: .leading, spacing: 12) {
+                    // FFmpeg 编码预设
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("编码速度预设")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        
+                        Picker("", selection: $preferences.videoToolsFFmpegPreset) {
+                            Text("极快 (ultrafast)").tag("ultrafast")
+                            Text("非常快 (veryfast)").tag("veryfast")
+                            Text("快速 (fast) - 推荐").tag("fast")
+                            Text("中等 (medium)").tag("medium")
+                            Text("慢速 (slow)").tag("slow")
+                        }
+                        .pickerStyle(.menu)
+                        
+                        Text("速度越快，处理越快但文件可能稍大。推荐使用\"快速\"获得最佳平衡。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Divider()
+                    
+                    // 线程数设置
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("编码线程数")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            Spacer()
+                            
+                            Text(preferences.videoToolsFFmpegThreads == 0 ? "自动" : "\(preferences.videoToolsFFmpegThreads)")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+                        
+                        Slider(value: Binding(
+                            get: { Double(preferences.videoToolsFFmpegThreads) },
+                            set: { preferences.videoToolsFFmpegThreads = Int($0) }
+                        ), in: 0...16, step: 1)
+                        
+                        Text("0 表示自动检测 CPU 核心数。手动设置可以控制 CPU 使用率。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Divider()
+                    
+                    // 硬件加速
+                    Toggle(isOn: $preferences.videoToolsEnableHardwareAccel) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("启用硬件加速")
+                                .font(.subheadline)
+                            Text("使用 VideoToolbox 硬件编码器，可大幅提升速度")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } header: {
+                Text("编码性能优化")
+            } footer: {
+                Text("这些设置影响视频编码速度。硬件加速可提升 2-5 倍速度，但仅支持 H.264/H.265 编码。")
+            }
+            
+            // 并行处理设置
+            Section {
+                VStack(alignment: .leading, spacing: 12) {
+                    // 启用并行处理
+                    Toggle(isOn: $preferences.videoToolsEnableParallelProcessing) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("启用分段并行处理")
+                                .font(.subheadline)
+                            Text("将长视频切分成多段并行处理，可大幅提升速度")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    
+                    if preferences.videoToolsEnableParallelProcessing {
+                        Divider()
+                        
+                        // 分段时长
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("分段时长")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                
+                                Spacer()
+                                
+                                Text("\(Int(preferences.videoToolsSegmentDuration)) 秒")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            }
+                            
+                            Slider(value: $preferences.videoToolsSegmentDuration, in: 10...60, step: 5)
+                            
+                            Text("每段视频的时长。时长越短，并行度越高，但切分和合并开销越大。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Divider()
+                        
+                        // 最大并发任务数
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("最大并发任务数")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                
+                                Spacer()
+                                
+                                Text("\(preferences.videoToolsMaxConcurrentTasks)")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            }
+                            
+                            Slider(value: Binding(
+                                get: { Double(preferences.videoToolsMaxConcurrentTasks) },
+                                set: { preferences.videoToolsMaxConcurrentTasks = Int($0) }
+                            ), in: 2...8, step: 1)
+                            
+                            Text("同时处理的视频片段数量。数值越大速度越快，但占用更多内存和 CPU。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } header: {
+                Text("并行处理优化")
+            } footer: {
+                Text("并行处理适合长视频（超过 1 分钟）。短视频建议关闭以避免额外开销。预期可提升 2-4 倍速度。")
+            }
         }
         .formStyle(.grouped)
         .onAppear {

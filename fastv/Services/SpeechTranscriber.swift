@@ -77,7 +77,7 @@ struct SpeechTranscriber {
     }
     
     /// 从内存录音转文字（用于语音输入）
-    static func transcribe(recording: VoiceRecording, language: TranscriptLanguage = .auto) async throws -> String {
+    static func transcribe(recording: VoiceRecording, language: TranscriptLanguage = .auto, enableCTCDeduplication: Bool? = nil) async throws -> String {
         guard recording.channelCount == 1 else {
             throw VideoProcessingError.transcriptionFailed("仅支持单声道录音")
         }
@@ -85,9 +85,17 @@ struct SpeechTranscriber {
             throw VideoProcessingError.transcriptionFailed("录音采样率需为16kHz")
         }
         
+        // 获取 CTC 去重设置（如果未指定，从用户偏好设置中获取）
+        let ctcDedup: Bool
+        if let enableCTCDeduplication = enableCTCDeduplication {
+            ctcDedup = enableCTCDeduplication
+        } else {
+            ctcDedup = await MainActor.run { UserPreferences.shared.enableCTCDeduplication }
+        }
+        
         let cmvnURL = resolveCMVNURL()
         let features = try await AudioFeatureExtractor.extractMelFeatures(from: recording, cmvnURL: cmvnURL)
-        let transcript = try await performTranscription(features: features, language: language)
+        let transcript = try await performTranscription(features: features, language: language, enableCTCDeduplication: ctcDedup)
         return transcript
     }
     
@@ -95,8 +103,9 @@ struct SpeechTranscriber {
     /// - Parameters:
     ///   - audioURL: 音频文件 URL
     ///   - language: 语言类型，默认为自动检测
+    ///   - enableCTCDeduplication: 是否启用 CTC 去重，nil 则使用用户设置
     /// - Returns: 转录的文本
-    static func transcribe(audioURL: URL, language: TranscriptLanguage = .auto) async throws -> String {
+    static func transcribe(audioURL: URL, language: TranscriptLanguage = .auto, enableCTCDeduplication: Bool? = nil) async throws -> String {
         // 1. 预处理音频：转换为 16kHz 单声道 WAV
         let processedAudioURL = try await preprocessAudio(audioURL: audioURL)
         defer {
@@ -104,12 +113,20 @@ struct SpeechTranscriber {
             try? FileManager.default.removeItem(at: processedAudioURL)
         }
         
+        // 获取 CTC 去重设置（如果未指定，从用户偏好设置中获取）
+        let ctcDedup: Bool
+        if let enableCTCDeduplication = enableCTCDeduplication {
+            ctcDedup = enableCTCDeduplication
+        } else {
+            ctcDedup = await MainActor.run { UserPreferences.shared.enableCTCDeduplication }
+        }
+        
         // 2. 提取音频特征
         let cmvnURL = resolveCMVNURL()
         let features = try await AudioFeatureExtractor.extractMelFeatures(from: processedAudioURL, cmvnURL: cmvnURL)
         
         // 3. 加载模型并推理
-        let transcript = try await performTranscription(features: features, language: language)
+        let transcript = try await performTranscription(features: features, language: language, enableCTCDeduplication: ctcDedup)
         
         return transcript
     }
@@ -262,8 +279,9 @@ struct SpeechTranscriber {
     /// - Parameters:
     ///   - features: 音频特征
     ///   - language: 语言类型
+    ///   - enableCTCDeduplication: 是否启用 CTC 去重
     /// - Returns: 转录的文本
-    private static func performTranscription(features: [[Float]], language: TranscriptLanguage) async throws -> String {
+    private static func performTranscription(features: [[Float]], language: TranscriptLanguage, enableCTCDeduplication: Bool = false) async throws -> String {
         // 检查模型文件是否存在
         guard let tokensPath = tokensPath else {
             throw VideoProcessingError.modelLoadFailed("tokens 文件未找到")
@@ -325,7 +343,7 @@ struct SpeechTranscriber {
         try onnxWrapper.loadModel(from: modelPath.path)
         
         // 运行推理
-        let tokenIDs = try onnxWrapper.runInference(input: inputFeatures, language: language)
+        let tokenIDs = try onnxWrapper.runInference(input: inputFeatures, language: language, enableCTCDeduplication: enableCTCDeduplication)
         
         // 后处理：token 解码和文本规范化
         let text = postprocessTokens(tokenIDs: tokenIDs, tokenMap: tokenMap)
@@ -363,7 +381,7 @@ struct SpeechTranscriber {
         let eosToken = 2  // </s>
         let unkToken = 0  // <unk>
         
-        var filteredTokens = tokenIDs.filter { token in
+        let filteredTokens = tokenIDs.filter { token in
             token != sosToken && token != eosToken && token != unkToken && token >= 0
         }
         
@@ -371,10 +389,10 @@ struct SpeechTranscriber {
         print("过滤后 token IDs: \(filteredTokens.prefix(20))... (共 \(filteredTokens.count) 个)")
         #endif
         
-        // 2. CTC 去重：移除连续重复的 token
-        filteredTokens = removeConsecutiveDuplicates(filteredTokens)
+        // 注意：CTC 去重已在 ONNXRuntimeWrapper 中完成，这里不再重复去重
+        // 如果重复去重会导致叠词（如"谢谢"）被错误地合并为单字
         
-        // 3. Token 到文本转换，同时过滤 SenseVoice 特殊 token
+        // 2. Token 到文本转换，同时过滤 SenseVoice 特殊 token
         var textParts: [String] = []
         var specialTokensFound: [String] = []
         for tokenID in filteredTokens {
@@ -414,18 +432,7 @@ struct SpeechTranscriber {
         return text
     }
     
-    /// 移除连续重复的 token（CTC 去重）
-    private static func removeConsecutiveDuplicates(_ tokens: [Int]) -> [Int] {
-        guard !tokens.isEmpty else { return [] }
-        
-        var result: [Int] = [tokens[0]]
-        for i in 1..<tokens.count {
-            if tokens[i] != tokens[i - 1] {
-                result.append(tokens[i])
-            }
-        }
-        
-        return result
-    }
+    // 注意：CTC 去重函数已移至 ONNXRuntimeWrapper 中统一处理
+    // 这里不再进行第二次去重，以避免叠词（如"谢谢"）和连续数字（如"100"）被错误合并
 }
 

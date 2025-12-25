@@ -19,6 +19,14 @@ struct VideoCompressionView: View {
     @State private var progress: Double = 0.0
     @State private var status: String = ""
     
+    // 智能向导相关状态
+    @State private var useSmartWizard = false
+    @State private var targetFileSize: Double = 500
+    @State private var fileSizeUnit: FileSizeUnit = .mb
+    @State private var recommendation: CompressionRecommendation?
+    @State private var videoInfo: VideoInfo?
+    @State private var showVideoSelector = false
+    
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -36,6 +44,108 @@ struct VideoCompressionView: View {
                 
                 Form {
                     Section {
+                        Toggle("使用智能向导", isOn: $useSmartWizard)
+                            .onChange(of: useSmartWizard) { newValue in
+                                if newValue {
+                                    loadVideoInfoAndCalculate()
+                                }
+                            }
+                    } header: {
+                        Text("压缩模式")
+                    } footer: {
+                        Text("智能向导可根据目标文件大小自动推荐最佳参数")
+                    }
+                    
+                    if useSmartWizard {
+                        Section {
+                            HStack {
+                                TextField("目标文件大小", value: $targetFileSize, format: .number)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(width: 100)
+                                    .onChange(of: targetFileSize) { _ in
+                                        calculateRecommendation()
+                                    }
+                                
+                                Picker("", selection: $fileSizeUnit) {
+                                    ForEach(FileSizeUnit.allCases, id: \.self) { unit in
+                                        Text(unit.rawValue).tag(unit)
+                                    }
+                                }
+                                .pickerStyle(.segmented)
+                                .frame(width: 100)
+                                .onChange(of: fileSizeUnit) { _ in
+                                    calculateRecommendation()
+                                }
+                            }
+                        } header: {
+                            Text("目标文件大小")
+                        }
+                        
+                        if let rec = recommendation {
+                            Section {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    HStack {
+                                        Text("推荐分辨率")
+                                        Spacer()
+                                        Text(rec.recommendedResolution.displayName)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    
+                                    HStack {
+                                        Text("推荐帧率")
+                                        Spacer()
+                                        if let fps = rec.recommendedFrameRate {
+                                            Text("\(fps) fps")
+                                                .foregroundStyle(.secondary)
+                                        } else {
+                                            Text("保持原帧率")
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    
+                                    HStack {
+                                        Text("推荐码率")
+                                        Spacer()
+                                        Text(rec.bitrateString)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    
+                                    Divider()
+                                    
+                                    HStack {
+                                        Text("预估压缩比")
+                                        Spacer()
+                                        Text(rec.compressionRatioString)
+                                            .foregroundStyle(.blue)
+                                    }
+                                    
+                                    HStack {
+                                        Text("画质评级")
+                                        Spacer()
+                                        HStack(spacing: 4) {
+                                            Text(rec.qualityRating.stars)
+                                                .foregroundStyle(.orange)
+                                            Text("(\(rec.qualityRating.rawValue))")
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                }
+                            } header: {
+                                Text("📊 智能推荐参数")
+                            }
+                            
+                            // 应用推荐参数按钮
+                            Section {
+                                Button(action: {
+                                    applyRecommendation(rec)
+                                }) {
+                                    Label("应用推荐参数", systemImage: "checkmark.circle")
+                                }
+                            }
+                        }
+                    }
+                    
+                    Section {
                         Picker("目标分辨率", selection: $selectedResolution) {
                             ForEach(VideoResolution.allCases, id: \.self) { resolution in
                                 Text(resolution.displayName).tag(resolution)
@@ -52,7 +162,7 @@ struct VideoCompressionView: View {
                                 .foregroundStyle(.secondary)
                         }
                     } header: {
-                        Text("分辨率与帧率")
+                        Text(useSmartWizard ? "⚙️ 手动调整（可选）" : "分辨率与帧率")
                     }
                     
                     Section {
@@ -113,6 +223,42 @@ struct VideoCompressionView: View {
             .padding()
         }
         .navigationTitle("压缩调整")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                if viewModel.videoURL != nil {
+                    Button(action: { showVideoSelector = true }) {
+                        Label("更换视频", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                }
+            }
+        }
+        .fileImporter(
+            isPresented: $showVideoSelector,
+            allowedContentTypes: [.movie, .mpeg4Movie, .quickTimeMovie],
+            allowsMultipleSelection: false
+        ) { result in
+            handleVideoSelection(result)
+        }
+    }
+    
+    private func handleVideoSelection(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            if let url = urls.first {
+                viewModel.loadVideo(url)
+                // 压缩参数保持用户选择，但重置智能向导相关状态
+                videoInfo = nil
+                recommendation = nil
+                isProcessing = false
+                progress = 0.0
+                status = ""
+                if useSmartWizard {
+                    loadVideoInfoAndCalculate()
+                }
+            }
+        case .failure(let error):
+            print("选择视频失败: \(error.localizedDescription)")
+        }
     }
     
     private func startCompression() {
@@ -155,6 +301,49 @@ struct VideoCompressionView: View {
                     }
                 }
             }
+        }
+    }
+    
+    // MARK: - 智能向导相关方法
+    
+    private func loadVideoInfoAndCalculate() {
+        guard let videoURL = viewModel.videoURL else { return }
+        
+        Task {
+            do {
+                let info = try await VideoInfoService.getVideoInfo(from: videoURL)
+                await MainActor.run {
+                    self.videoInfo = info
+                    calculateRecommendation()
+                }
+            } catch {
+                print("获取视频信息失败: \(error)")
+            }
+        }
+    }
+    
+    private func calculateRecommendation() {
+        guard let info = videoInfo else { return }
+        
+        let targetSizeBytes = Int64(targetFileSize * Double(fileSizeUnit.bytesMultiplier))
+        let rec = VideoCompressionCalculator.calculateRecommendation(
+            targetFileSize: targetSizeBytes,
+            videoInfo: info
+        )
+        
+        recommendation = rec
+    }
+    
+    private func applyRecommendation(_ rec: CompressionRecommendation) {
+        selectedResolution = rec.recommendedResolution
+        targetFrameRate = rec.recommendedFrameRate
+        
+        if let crf = rec.recommendedCRF {
+            useCRF = true
+            crfValue = crf
+        } else {
+            useCRF = false
+            bitrate = rec.bitrateString.replacingOccurrences(of: " Mbps", with: "M")
         }
     }
 }

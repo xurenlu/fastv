@@ -40,6 +40,17 @@ struct WatermarkDraggablePreviewView: View {
     @State private var resizeStartPoint: CGPoint = .zero
     @State private var resizeCorner: ResizeCorner = .none
     
+    // 旋转和颜色相关
+    let textColor: Color
+    let rotationMode: RotationMode?
+    let fixedRotationAngle: Double
+    let smoothRotationSpeed: Double
+    let randomRotationRange: (min: Double, max: Double)?
+    let enableRandomMovement: Bool
+    
+    @State private var previewRotation: Double = 0.0
+    @State private var movementTimer: Timer?
+    
     enum WatermarkType {
         case image
         case text
@@ -63,6 +74,12 @@ struct WatermarkDraggablePreviewView: View {
         fontSize: Int = 24,
         opacity: Double = 1.0,
         fontURL: URL? = nil,
+        textColor: Color = .white,
+        rotationMode: RotationMode? = nil,
+        fixedRotationAngle: Double = 0.0,
+        smoothRotationSpeed: Double = 10.0,
+        randomRotationRange: (min: Double, max: Double)? = nil,
+        enableRandomMovement: Bool = false,
         customPosition: Binding<CGPoint?> = .constant(nil),
         customSize: Binding<CGSize?> = .constant(nil),
         position: Binding<WatermarkPosition> = .constant(.bottomRight)
@@ -75,6 +92,12 @@ struct WatermarkDraggablePreviewView: View {
         self.fontSize = fontSize
         self.opacity = opacity
         self.fontURL = fontURL
+        self.textColor = textColor
+        self.rotationMode = rotationMode
+        self.fixedRotationAngle = fixedRotationAngle
+        self.smoothRotationSpeed = smoothRotationSpeed
+        self.randomRotationRange = randomRotationRange
+        self.enableRandomMovement = enableRandomMovement
         self._customPosition = customPosition
         self._customSize = customSize
         self._position = position
@@ -118,6 +141,9 @@ struct WatermarkDraggablePreviewView: View {
             if watermarkType == .timestamp {
                 startTimestampTimer()
             }
+            
+            // 启动旋转和移动定时器
+            startRotationTimer()
         }
         .onChange(of: watermarkType) { oldValue, newValue in
             if newValue == .timestamp {
@@ -132,6 +158,7 @@ struct WatermarkDraggablePreviewView: View {
         }
         .onDisappear {
             stopTimestampTimer()
+            stopRotationTimer()
         }
     }
     
@@ -186,48 +213,102 @@ struct WatermarkDraggablePreviewView: View {
     // 水印内容
     @ViewBuilder
     private func watermarkContent(rect: CGRect) -> some View {
-        Group {
-            switch watermarkType {
-            case .image:
-                if let watermarkImage = watermarkImage {
-                    Image(nsImage: watermarkImage)
+        switch watermarkType {
+        case .image:
+            if let watermarkImage = watermarkImage {
+                Image(nsImage: watermarkImage)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: rect.width, height: rect.height)
                         .opacity(opacity)
-                }
-            case .text:
-                if !watermarkText.isEmpty {
-                    Text(watermarkText)
-                        .font(resolveFont(size: CGFloat(fontSize)))
-                        .foregroundStyle(.white)
-                        .shadow(color: .black.opacity(0.8), radius: 2, x: 1, y: 1)
-                        .padding(6)
-                        .background {
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(.black.opacity(0.5))
+                        .position(x: rect.midX, y: rect.midY)
+            } else {
+                EmptyView()
+            }
+        case .text:
+            if !watermarkText.isEmpty, let videoSize = videoSize {
+                // 计算缩放后的字体大小
+                let scaledFontSize = calculateScaledFontSize(
+                    originalSize: CGFloat(fontSize),
+                    videoSize: videoSize,
+                    displayRect: rect
+                )
+                
+                // 计算当前旋转角度
+                let currentRotation: Double = {
+                    if let mode = rotationMode {
+                        switch mode {
+                        case .fixed:
+                            return fixedRotationAngle
+                        case .smooth:
+                            // 使用当前时间计算旋转角度
+                            return (Date().timeIntervalSince1970 * smoothRotationSpeed).truncatingRemainder(dividingBy: 360)
+                        case .random:
+                            return previewRotation
                         }
-                        .frame(minWidth: rect.width, minHeight: rect.height, alignment: .leading)
-                        .opacity(opacity)
-                }
-            case .timestamp:
-                Text(formatTimestamp(currentTimestamp))
-                    .font(resolveFont(size: CGFloat(fontSize)))
-                    .foregroundStyle(.white)
+                    } else {
+                        return 0
+                    }
+                }()
+                
+                Text(watermarkText)
+                    .font(resolveFont(size: scaledFontSize))
+                    .foregroundStyle(textColor)
                     .shadow(color: .black.opacity(0.8), radius: 2, x: 1, y: 1)
                     .padding(6)
                     .background {
                         RoundedRectangle(cornerRadius: 4)
                             .fill(.black.opacity(0.5))
                     }
+                    .rotationEffect(.degrees(currentRotation))
                     .frame(minWidth: rect.width, minHeight: rect.height, alignment: .leading)
                     .opacity(opacity)
+                    .position(x: rect.midX, y: rect.midY)
+            } else {
+                EmptyView()
+            }
+        case .timestamp:
+            if let videoSize = videoSize {
+                // 计算缩放后的字体大小
+                let scaledFontSize = calculateScaledFontSize(
+                    originalSize: CGFloat(fontSize),
+                    videoSize: videoSize,
+                    displayRect: rect
+                )
+                
+                // 计算当前旋转角度
+                let currentRotation: Double = {
+                    if let mode = rotationMode {
+                        switch mode {
+                        case .fixed:
+                            return fixedRotationAngle
+                        case .smooth:
+                            return (Date().timeIntervalSince1970 * smoothRotationSpeed).truncatingRemainder(dividingBy: 360)
+                        case .random:
+                            return previewRotation
+                        }
+                    } else {
+                        return 0
+                    }
+                }()
+                
+                Text(formatTimestamp(currentTimestamp))
+                    .font(resolveFont(size: scaledFontSize))
+                    .foregroundStyle(textColor)
+                    .shadow(color: .black.opacity(0.8), radius: 2, x: 1, y: 1)
+                    .padding(6)
+                    .background {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(.black.opacity(0.5))
+                    }
+                    .rotationEffect(.degrees(currentRotation))
+                    .frame(minWidth: rect.width, minHeight: rect.height, alignment: .leading)
+                    .opacity(opacity)
+                    .position(x: rect.midX, y: rect.midY)
+            } else {
+                EmptyView()
             }
         }
-        .position(
-            x: rect.midX,
-            y: rect.midY
-        )
     }
     
     // 水印控制框（用于拖动和调整大小）
@@ -551,6 +632,21 @@ struct WatermarkDraggablePreviewView: View {
         return formatter.string(from: date)
     }
     
+    // 计算缩放后的字体大小
+    private func calculateScaledFontSize(
+        originalSize: CGFloat,
+        videoSize: CGSize,
+        displayRect: CGRect
+    ) -> CGFloat {
+        // 计算预览区域相对于原始视频的缩放比例
+        let scaleX = displayRect.width / videoSize.width
+        let scaleY = displayRect.height / videoSize.height
+        let scale = min(scaleX, scaleY)
+        
+        // 返回缩放后的字体大小，确保预览与实际效果一致
+        return originalSize * scale
+    }
+    
     // 解析字体：优先使用传入字体文件，否则系统默认
     private func resolveFont(size: CGFloat) -> Font {
         guard let fontURL = fontURL else {
@@ -581,6 +677,45 @@ struct WatermarkDraggablePreviewView: View {
     private func stopTimestampTimer() {
         timestampTimer?.invalidate()
         timestampTimer = nil
+    }
+    
+    // 启动旋转定时器
+    private func startRotationTimer() {
+        stopRotationTimer()
+        
+        guard let rotationMode = rotationMode else {
+            previewRotation = fixedRotationAngle
+            return
+        }
+        
+        switch rotationMode {
+        case .smooth:
+            // 缓慢旋转：每帧更新
+            movementTimer = Timer.scheduledTimer(withTimeInterval: 0.033, repeats: true) { _ in
+                previewRotation = (Date().timeIntervalSince1970 * smoothRotationSpeed).truncatingRemainder(dividingBy: 360)
+            }
+            
+        case .random:
+            // 随机旋转：配合位置变化
+            if enableRandomMovement, let range = randomRotationRange {
+                previewRotation = Double.random(in: range.min...range.max)
+                movementTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
+                    previewRotation = Double.random(in: range.min...range.max)
+                }
+            } else {
+                previewRotation = fixedRotationAngle
+            }
+            
+        case .fixed:
+            previewRotation = fixedRotationAngle
+            break
+        }
+    }
+    
+    // 停止旋转定时器
+    private func stopRotationTimer() {
+        movementTimer?.invalidate()
+        movementTimer = nil
     }
 }
 

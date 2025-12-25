@@ -17,6 +17,7 @@ struct VideoCartoonView: View {
     @State private var originalPreviewImage: NSImage?
     @State private var isProcessingPreview = false
     @State private var errorMessage: String?
+    @State private var showVideoSelector = false
     
     var body: some View {
         ScrollView {
@@ -186,6 +187,37 @@ struct VideoCartoonView: View {
         .onChange(of: viewModel.videoURL) { _, _ in
             loadOriginalPreview()
             processedPreviewImage = nil
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                if viewModel.videoURL != nil {
+                    Button(action: { showVideoSelector = true }) {
+                        Label("更换视频", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                }
+            }
+        }
+        .fileImporter(
+            isPresented: $showVideoSelector,
+            allowedContentTypes: [.movie, .mpeg4Movie, .quickTimeMovie],
+            allowsMultipleSelection: false
+        ) { result in
+            handleVideoSelection(result)
+        }
+    }
+    
+    private func handleVideoSelection(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            if let url = urls.first {
+                viewModel.loadVideo(url)
+                // 重置预览图片
+                originalPreviewImage = nil
+                processedPreviewImage = nil
+                errorMessage = nil
+            }
+        case .failure(let error):
+            print("选择视频失败: \(error.localizedDescription)")
         }
     }
     

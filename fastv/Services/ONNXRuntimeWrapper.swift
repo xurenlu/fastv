@@ -237,7 +237,7 @@ class ONNXRuntimeWrapper {
         return Array(UnsafeBufferPointer(start: outputBuffer, count: count))
     }
     
-    func runInference(input: [[[Float]]], language: TranscriptLanguage = .auto) throws -> [Int] {
+    func runInference(input: [[[Float]]], language: TranscriptLanguage = .auto, enableCTCDeduplication: Bool = false) throws -> [Int] {
         guard let api = api else {
             throw VideoProcessingError.modelLoadFailed("API 未初始化")
         }
@@ -627,7 +627,7 @@ class ONNXRuntimeWrapper {
         }
         
         // 从 CTC logits 解码 token IDs
-        let tokenIDs = try decodeCTCLogits(from: ctcLogits, actualLength: actualSequenceLength, api: api)
+        let tokenIDs = try decodeCTCLogits(from: ctcLogits, actualLength: actualSequenceLength, api: api, enableDeduplication: enableCTCDeduplication)
         
         #if DEBUG
         print("ONNX Runtime CTC 解码后的 token IDs: \(tokenIDs.prefix(20))... (共 \(tokenIDs.count) 个)")
@@ -692,7 +692,7 @@ class ONNXRuntimeWrapper {
     /// 1. 对每个时间步执行 argmax 获取最可能的 token
     /// 2. 移除 blank token（通常是 0）
     /// 3. 移除连续重复的 token（CTC 去重）
-    private func decodeCTCLogits(from outputValue: OpaquePointer, actualLength: Int?, api: UnsafePointer<OrtApi>) throws -> [Int] {
+    private func decodeCTCLogits(from outputValue: OpaquePointer, actualLength: Int?, api: UnsafePointer<OrtApi>, enableDeduplication: Bool = false) throws -> [Int] {
         // 获取张量信息
         var tensorInfo: OpaquePointer?
         var status = api.pointee.GetTensorTypeAndShape(outputValue, &tensorInfo)
@@ -815,21 +815,30 @@ class ONNXRuntimeWrapper {
         print("非 0 token 数量: \(tokenIDs.count)")
         #endif
         
-        // CTC 去重：移除连续重复的 token
-        var deduplicatedTokens: [Int] = []
-        var prevToken: Int? = nil
-        for token in tokenIDs {
-            if token != prevToken {
-                deduplicatedTokens.append(token)
-                prevToken = token
+        // CTC 去重：移除连续重复的 token（可选）
+        // 注意：禁用去重可以保留叠词（如"谢谢"）和连续数字（如"100"中的"00"）
+        if enableDeduplication {
+            var deduplicatedTokens: [Int] = []
+            var prevToken: Int? = nil
+            for token in tokenIDs {
+                if token != prevToken {
+                    deduplicatedTokens.append(token)
+                    prevToken = token
+                }
             }
+            
+            #if DEBUG
+            print("CTC 去重后 token 数量: \(deduplicatedTokens.count)")
+            #endif
+            
+            return deduplicatedTokens
+        } else {
+            #if DEBUG
+            print("CTC 去重已禁用，保留所有 token")
+            #endif
+            
+            return tokenIDs
         }
-        
-        #if DEBUG
-        print("CTC 去重后 token 数量: \(deduplicatedTokens.count)")
-        #endif
-        
-        return deduplicatedTokens
     }
     
     private func extractTokenIDs(from outputValue: OpaquePointer, api: UnsafePointer<OrtApi>) throws -> [Int] {

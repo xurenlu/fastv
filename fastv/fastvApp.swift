@@ -445,23 +445,15 @@ struct fastvApp: App {
             var text = try await SpeechTranscriber.transcribe(recording: recording, language: language)
             print("✅ [fastvApp] 语音转文字成功: \(text.prefix(50))...")
             
-            // 快速纠错（如果启用，毫秒级，非常快）
-            if preferences.enableFastCorrection {
-                let correctionStartTime = Date()
-                text = TextCorrectionService.shared.correctText(text)
-                let correctionDuration = Date().timeIntervalSince(correctionStartTime) * 1000 // 转换为毫秒
-                print("✅ [fastvApp] 快速纠错完成，耗时: \(String(format: "%.2f", correctionDuration))毫秒")
-            }
-            
-            // 常错词自动修正（在AI优化之前）
+            // 自动纠错（包含内置规则和用户自定义规则，毫秒级，非常快）
             let mistakeManager = CommonMistakeManager.shared
             if mistakeManager.enableAutoCorrection {
-                let mistakeStartTime = Date()
+                let correctionStartTime = Date()
                 let originalText = text
-                text = mistakeManager.applyCorrections(to: text)
+                text = TextCorrectionService.shared.correctText(text)
                 if text != originalText {
-                    let mistakeDuration = Date().timeIntervalSince(mistakeStartTime) * 1000
-                    print("✅ [fastvApp] 常错词修正完成，耗时: \(String(format: "%.2f", mistakeDuration))毫秒")
+                    let correctionDuration = Date().timeIntervalSince(correctionStartTime) * 1000
+                    print("✅ [fastvApp] 自动纠错完成，耗时: \(String(format: "%.2f", correctionDuration))毫秒")
                     print("📝 [fastvApp] 修正前: \(originalText.prefix(50))...")
                     print("📝 [fastvApp] 修正后: \(text.prefix(50))...")
                 }
