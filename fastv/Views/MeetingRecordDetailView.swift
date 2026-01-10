@@ -368,6 +368,16 @@ struct MeetingRecordDetailView: View {
             .padding(20)
         }
         .navigationTitle("会议详情")
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button(action: {
+                    dismiss()
+                }) {
+                    Label("关闭", systemImage: "xmark.circle.fill")
+                }
+                .buttonStyle(.plain)
+            }
+        }
         .alert("确认删除", isPresented: $showDeleteConfirmation) {
             Button("取消", role: .cancel) {}
             Button("删除", role: .destructive) {
