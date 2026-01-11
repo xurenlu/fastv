@@ -349,7 +349,7 @@ struct VideoSegmentProcessor {
 }
 
 /// 线程安全的原子值包装器
-private class Atomic<T> {
+private final class Atomic<T> {
     private var _value: T
     private let lock = NSLock()
     
@@ -361,6 +361,10 @@ private class Atomic<T> {
     
     init(value: T) {
         self._value = value
+    }
+    
+    deinit {
+        // 显式 deinit 避免 Swift 6.2 编译器崩溃
     }
     
     func modify(_ transform: (T) -> T) {

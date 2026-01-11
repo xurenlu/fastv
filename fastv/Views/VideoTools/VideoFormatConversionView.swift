@@ -17,6 +17,7 @@ struct VideoFormatConversionView: View {
     @State private var progress: Double = 0.0
     @State private var status: String = ""
     @State private var showVideoSelector = false
+    @State private var currentTask: Task<Void, Never>?
     
     var body: some View {
         ScrollView {
@@ -63,14 +64,28 @@ struct VideoFormatConversionView: View {
                 }
                 .formStyle(.grouped)
                 
-                Button(action: {
-                    startConversion()
-                }) {
-                    Label("开始转换", systemImage: "arrow.triangle.2.circlepath")
+                HStack(spacing: 12) {
+                    Button(action: {
+                        startConversion()
+                    }) {
+                        Label("开始转换", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(viewModel.videoURL == nil || isProcessing)
+                    
+                    if isProcessing {
+                        Button(action: cancelTask) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark.circle")
+                                Text("取消")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .tint(.red)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(viewModel.videoURL == nil || isProcessing)
             }
             .padding()
         }
@@ -91,6 +106,16 @@ struct VideoFormatConversionView: View {
         ) { result in
             handleVideoSelection(result)
         }
+        .onDisappear {
+            cancelTask()
+        }
+    }
+    
+    private func cancelTask() {
+        currentTask?.cancel()
+        currentTask = nil
+        isProcessing = false
+        status = "操作已取消"
     }
     
     private func handleVideoSelection(_ result: Result<[URL], Error>) {
@@ -118,12 +143,9 @@ struct VideoFormatConversionView: View {
             savePanel.allowedContentTypes = [.mpeg4Movie]
         case .mov:
             savePanel.allowedContentTypes = [.quickTimeMovie]
-        case .avi:
-            savePanel.allowedContentTypes = []
-        case .mkv:
-            savePanel.allowedContentTypes = []
-        case .webm:
-            savePanel.allowedContentTypes = []
+        case .avi, .mkv, .webm:
+            // 这些格式没有系统定义的 UTType，允许所有视频类型
+            savePanel.allowedContentTypes = [.movie]
         }
         let baseName = inputURL.deletingPathExtension().lastPathComponent
         savePanel.nameFieldStringValue = "\(baseName)_converted.\(selectedFormat.rawValue)"
@@ -133,29 +155,39 @@ struct VideoFormatConversionView: View {
             progress = 0.0
             status = "准备转换..."
             
-            Task {
+            // 捕获当前参数值
+            let currentFormat = selectedFormat
+            let currentCodec = selectedCodec
+            
+            currentTask = Task {
                 do {
-                    try await VideoConverter.convert(
-                        inputURL: inputURL,
-                        outputURL: outputURL,
-                        format: selectedFormat,
-                        codec: selectedCodec,
-                        progressHandler: { prog, stat in
-                            Task { @MainActor in
-                                progress = prog
-                                status = stat
+                    // 在后台线程执行转换
+                    try await Task.detached(priority: .userInitiated) {
+                        try await VideoConverter.convert(
+                            inputURL: inputURL,
+                            outputURL: outputURL,
+                            format: currentFormat,
+                            codec: currentCodec,
+                            progressHandler: { prog, stat in
+                                Task { @MainActor in
+                                    progress = prog
+                                    status = stat
+                                }
                             }
-                        }
-                    )
+                        )
+                    }.value
                     
                     await MainActor.run {
                         isProcessing = false
                         status = "转换完成！"
+                        // 在 Finder 中显示
+                        NSWorkspace.shared.selectFile(outputURL.path, inFileViewerRootedAtPath: outputURL.deletingLastPathComponent().path)
                     }
                 } catch {
                     await MainActor.run {
                         isProcessing = false
                         status = "转换失败: \(error.localizedDescription)"
+                        print("❌ [VideoFormatConversionView] 转换失败: \(error)")
                     }
                 }
             }

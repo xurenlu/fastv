@@ -21,6 +21,7 @@ struct VideoExtractFramesView: View {
     @State private var imageFormat: ImageFormat = .png
     @State private var imageQuality: Double = 90
     @State private var showVideoSelector = false
+    @State private var currentTask: Task<Void, Never>?
     
     enum ImageFormat: String, CaseIterable, Identifiable {
         case png = "PNG"
@@ -173,25 +174,39 @@ struct VideoExtractFramesView: View {
                 }
                 
                 // 处理按钮
-                Button(action: {
-                    Task {
-                        await extractFrames()
-                    }
-                }) {
-                    HStack(spacing: 8) {
-                        if isProcessing {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Image(systemName: "photo")
+                HStack(spacing: 12) {
+                    Button(action: {
+                        currentTask = Task {
+                            await extractFrames()
                         }
-                        Text(isProcessing ? "提取中..." : "开始提取")
+                    }) {
+                        HStack(spacing: 8) {
+                            if isProcessing {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "photo")
+                            }
+                            Text(isProcessing ? "提取中..." : "开始提取")
+                        }
+                        .frame(minWidth: 120)
                     }
-                    .frame(minWidth: 120)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(isProcessing || (!extractFirst && !extractLast))
+                    
+                    if isProcessing {
+                        Button(action: cancelTask) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark.circle")
+                                Text("取消")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .tint(.red)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(isProcessing || (!extractFirst && !extractLast))
                 
                 // 进度和状态
                 if isProcessing {
@@ -222,6 +237,16 @@ struct VideoExtractFramesView: View {
         ) { result in
             handleVideoSelection(result)
         }
+        .onDisappear {
+            cancelTask()
+        }
+    }
+    
+    private func cancelTask() {
+        currentTask?.cancel()
+        currentTask = nil
+        isProcessing = false
+        statusMessage = "操作已取消"
     }
     
     private func handleVideoSelection(_ result: Result<[URL], Error>) {
@@ -246,65 +271,86 @@ struct VideoExtractFramesView: View {
     private func extractFrames() async {
         guard let videoURL = viewModel.videoURL else { return }
         
-        isProcessing = true
-        progress = 0
-        statusMessage = "正在加载视频..."
-        
-        let asset = AVAsset(url: videoURL)
-        let imageGenerator = AVAssetImageGenerator(asset: asset)
-        imageGenerator.appliesPreferredTrackTransform = true
-        imageGenerator.requestedTimeToleranceAfter = .zero
-        imageGenerator.requestedTimeToleranceBefore = .zero
+        // 确保状态更新在主线程
+        await MainActor.run {
+            isProcessing = true
+            progress = 0
+            statusMessage = "正在加载视频..."
+        }
         
         do {
-            let duration = try await asset.load(.duration)
             let outputDir = viewModel.outputDirectory ?? videoURL.deletingLastPathComponent()
             let videoName = videoURL.deletingPathExtension().lastPathComponent
             
             var extractedCount = 0
             let totalCount = (extractFirst ? 1 : 0) + (extractLast ? 1 : 0)
             
-            // 提取第一帧
-            if extractFirst {
-                statusMessage = "正在提取第一帧..."
-                let time = CMTime(seconds: 0, preferredTimescale: 600)
-                let cgImage = try imageGenerator.copyCGImage(at: time, actualTime: nil)
-                let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+            // 在后台线程执行帧提取，避免阻塞主线程
+            let result = try await Task.detached(priority: .userInitiated) {
+                let asset = AVAsset(url: videoURL)
+                let imageGenerator = AVAssetImageGenerator(asset: asset)
+                imageGenerator.appliesPreferredTrackTransform = true
+                imageGenerator.requestedTimeToleranceAfter = .zero
+                imageGenerator.requestedTimeToleranceBefore = .zero
                 
-                await MainActor.run {
-                    firstFrameImage = nsImage
+                let duration = try await asset.load(.duration)
+                
+                var firstImage: NSImage?
+                var lastImage: NSImage?
+                
+                // 提取第一帧
+                if extractFirst {
+                    await MainActor.run {
+                        statusMessage = "正在提取第一帧..."
+                    }
+                    let time = CMTime(seconds: 0, preferredTimescale: 600)
+                    let cgImage = try imageGenerator.copyCGImage(at: time, actualTime: nil)
+                    firstImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
                 }
                 
-                // 保存图片
+                // 提取最后一帧
+                if extractLast {
+                    await MainActor.run {
+                        statusMessage = "正在提取最后一帧..."
+                    }
+                    let lastTime = CMTime(seconds: max(0, duration.seconds - 0.1), preferredTimescale: 600)
+                    let cgImage = try imageGenerator.copyCGImage(at: lastTime, actualTime: nil)
+                    lastImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+                }
+                
+                return (firstImage, lastImage)
+            }.value
+            
+            // 更新 UI 状态
+            await MainActor.run {
+                firstFrameImage = result.0
+                lastFrameImage = result.1
+            }
+            
+            // 保存图片
+            if let firstImage = result.0 {
                 let filename = "\(videoName)_first_frame.\(imageFormat.fileExtension)"
                 let outputURL = outputDir.appendingPathComponent(filename)
-                try saveImage(nsImage, to: outputURL)
-                
+                try saveImage(firstImage, to: outputURL)
                 extractedCount += 1
-                progress = Double(extractedCount) / Double(totalCount)
+                await MainActor.run {
+                    progress = Double(extractedCount) / Double(totalCount)
+                }
             }
             
-            // 提取最后一帧
-            if extractLast {
-                statusMessage = "正在提取最后一帧..."
-                let lastTime = CMTime(seconds: duration.seconds - 0.1, preferredTimescale: 600)
-                let cgImage = try imageGenerator.copyCGImage(at: lastTime, actualTime: nil)
-                let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
-                
-                await MainActor.run {
-                    lastFrameImage = nsImage
-                }
-                
-                // 保存图片
+            if let lastImage = result.1 {
                 let filename = "\(videoName)_last_frame.\(imageFormat.fileExtension)"
                 let outputURL = outputDir.appendingPathComponent(filename)
-                try saveImage(nsImage, to: outputURL)
-                
+                try saveImage(lastImage, to: outputURL)
                 extractedCount += 1
-                progress = Double(extractedCount) / Double(totalCount)
+                await MainActor.run {
+                    progress = Double(extractedCount) / Double(totalCount)
+                }
             }
             
-            statusMessage = "提取完成！"
+            await MainActor.run {
+                statusMessage = "提取完成！"
+            }
             
             // 在 Finder 中显示
             NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: outputDir.path)
@@ -312,10 +358,14 @@ struct VideoExtractFramesView: View {
         } catch {
             await MainActor.run {
                 statusMessage = "提取失败: \(error.localizedDescription)"
+                print("❌ [VideoExtractFramesView] 提取失败: \(error)")
             }
         }
         
-        isProcessing = false
+        // 确保状态更新在主线程
+        await MainActor.run {
+            isProcessing = false
+        }
     }
     
     private func saveImage(_ image: NSImage, to url: URL) throws {

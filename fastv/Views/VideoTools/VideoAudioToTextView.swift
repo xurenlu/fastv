@@ -18,6 +18,7 @@ struct VideoAudioToTextView: View {
     @State private var transcriptText = ""
     @State private var outputURL: URL?
     @State private var showVideoSelector = false
+    @State private var currentTask: Task<Void, Never>?
     
     var body: some View {
         ScrollView {
@@ -175,25 +176,40 @@ struct VideoAudioToTextView: View {
                 }
                 
                 // 处理按钮
-                Button(action: {
-                    Task {
-                        await transcribeAudio()
-                    }
-                }) {
-                    HStack(spacing: 8) {
-                        if isProcessing {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Image(systemName: "doc.text")
+                HStack(spacing: 12) {
+                    Button(action: {
+                        currentTask = Task {
+                            await transcribeAudio()
                         }
-                        Text(isProcessing ? "转写中..." : "开始转写")
+                    }) {
+                        HStack(spacing: 8) {
+                            if isProcessing {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "doc.text")
+                            }
+                            Text(isProcessing ? "转写中..." : "开始转写")
+                        }
+                        .frame(minWidth: 120)
                     }
-                    .frame(minWidth: 120)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(isProcessing || viewModel.videoInfo?.hasAudio != true)
+                    
+                    // 取消按钮
+                    if isProcessing {
+                        Button(action: cancelTask) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark.circle")
+                                Text("取消")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .tint(.red)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(isProcessing || viewModel.videoInfo?.hasAudio != true)
                 
                 // 进度和状态
                 if isProcessing {
@@ -224,6 +240,16 @@ struct VideoAudioToTextView: View {
         ) { result in
             handleVideoSelection(result)
         }
+        .onDisappear {
+            cancelTask()
+        }
+    }
+    
+    private func cancelTask() {
+        currentTask?.cancel()
+        currentTask = nil
+        isProcessing = false
+        statusMessage = "操作已取消"
     }
     
     private func handleVideoSelection(_ result: Result<[URL], Error>) {
@@ -249,42 +275,79 @@ struct VideoAudioToTextView: View {
         guard let videoURL = viewModel.videoURL else { return }
         guard viewModel.videoInfo?.hasAudio == true else { return }
         
-        isProcessing = true
-        progress = 0
-        statusMessage = "正在提取音频..."
+        // 确保状态更新在主线程
+        await MainActor.run {
+            isProcessing = true
+            progress = 0
+            statusMessage = "正在提取音频..."
+        }
+        
+        let tempAudioURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(UUID().uuidString).wav")
+        
+        defer {
+            // 确保清理临时文件
+            try? FileManager.default.removeItem(at: tempAudioURL)
+        }
         
         do {
             let outputDir = viewModel.outputDirectory ?? videoURL.deletingLastPathComponent()
             let videoName = videoURL.deletingPathExtension().lastPathComponent
             
-            // 1. 先提取音频
-            progress = 0.1
-            let tempAudioURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("\(UUID().uuidString).wav")
+            // 1. 先提取音频（添加超时保护）
+            await MainActor.run {
+                progress = 0.1
+            }
             
-            try await AudioExtractor.extractAudio(
-                from: videoURL,
-                to: tempAudioURL,
-                format: .wav,
-                progressHandler: { prog in
-                    Task { @MainActor in
-                        progress = 0.1 + (prog * 0.2)
-                        statusMessage = "提取音频: \(Int(prog * 100))%"
-                    }
-                }
-            )
+            print("🎵 [VideoAudioToTextView] 开始提取音频...")
             
-            // 2. 转写音频
+            // 使用 Task.detached 确保音频提取在后台线程执行，并添加超时
+            try await withTimeout(seconds: VideoToolsConstants.audioExtractionTimeout) {
+                try await Task.detached(priority: .userInitiated) {
+                    try await AudioExtractor.extractAudio(
+                        from: videoURL,
+                        to: tempAudioURL,
+                        format: .wav,
+                        progressHandler: { prog in
+                            Task { @MainActor in
+                                progress = 0.1 + (prog * 0.2)
+                                statusMessage = "提取音频: \(Int(prog * 100))%"
+                            }
+                        }
+                    )
+                }.value
+            }
+            
+            print("✅ [VideoAudioToTextView] 音频提取完成")
+            
+            // 2. 转写音频（使用分段处理，在后台线程执行，避免阻塞主线程）
             await MainActor.run {
                 progress = 0.3
                 statusMessage = "正在转写音频..."
             }
             
-            let transcript = try await SpeechTranscriber.transcribe(
-                audioURL: tempAudioURL,
-                language: preferences.transcriptLanguage,
-                enableCTCDeduplication: preferences.enableCTCDeduplication
-            )
+            print("🎤 [VideoAudioToTextView] 开始转写音频（分段处理）...")
+            
+            // 使用 Task.detached 确保推理在后台线程执行，并添加超时
+            // 使用新的分段转录方法，支持进度回调
+            let transcript = try await withTimeout(seconds: VideoToolsConstants.transcriptionTimeout) {
+                try await Task.detached(priority: .userInitiated) {
+                    try await SpeechTranscriber.transcribeWithSegmentation(
+                        audioURL: tempAudioURL,
+                        language: await MainActor.run { preferences.transcriptLanguage },
+                        enableCTCDeduplication: await MainActor.run { preferences.enableCTCDeduplication },
+                        progressHandler: { segmentProgress, segmentStatus in
+                            Task { @MainActor in
+                                // 转写进度占 0.3 到 0.85 的区间
+                                progress = 0.3 + (segmentProgress * 0.55)
+                                statusMessage = segmentStatus
+                            }
+                        }
+                    )
+                }.value
+            }
+            
+            print("✅ [VideoAudioToTextView] 音频转写完成，文本长度: \(transcript.count)")
             
             // 3. 应用文本纠错
             await MainActor.run {
@@ -294,20 +357,23 @@ struct VideoAudioToTextView: View {
             
             var finalText = transcript
             
-            // 快速纠错
+            // 快速纠错（在主线程执行，因为很快）
             let mistakeManager = CommonMistakeManager.shared
-            if mistakeManager.enableAutoCorrection {
+            let enableAutoCorrection = await MainActor.run { mistakeManager.enableAutoCorrection }
+            if enableAutoCorrection {
                 finalText = TextCorrectionService.shared.correctText(finalText)
             }
             
             // AI 优化（如果启用）
-            if preferences.enableAIOptimization {
+            let shouldOptimize = await MainActor.run { self.preferences.enableAIOptimization }
+            if shouldOptimize {
                 do {
-                    let config = preferences.getConfig(for: .voiceInputOptimization)
+                    let config = await MainActor.run { self.preferences.getConfig(for: .voiceInputOptimization) }
+                    let systemPrompt = await MainActor.run { self.preferences.aiSystemPrompt }
                     finalText = try await OllamaService.shared.optimizeTranscript(
                         text: finalText,
                         profile: config.profile,
-                        systemPrompt: preferences.aiSystemPrompt
+                        systemPrompt: systemPrompt
                     )
                 } catch {
                     print("⚠️ AI 优化失败: \(error.localizedDescription)")
@@ -326,19 +392,60 @@ struct VideoAudioToTextView: View {
                 progress = 1.0
             }
             
-            // 清理临时文件
-            try? FileManager.default.removeItem(at: tempAudioURL)
-            
             // 在 Finder 中显示
             NSWorkspace.shared.selectFile(textURL.path, inFileViewerRootedAtPath: outputDir.path)
             
         } catch {
+            let errorMessage: String
+            if let timeoutError = error as? TimeoutError {
+                errorMessage = "操作超时: \(timeoutError.localizedDescription)"
+                print("⏱️ [VideoAudioToTextView] 操作超时: \(timeoutError)")
+            } else {
+                errorMessage = "转写失败: \(error.localizedDescription)"
+                print("❌ [VideoAudioToTextView] 转写失败: \(error)")
+                if let nsError = error as NSError? {
+                    print("   错误域: \(nsError.domain), 错误码: \(nsError.code)")
+                    print("   用户信息: \(nsError.userInfo)")
+                }
+            }
+            
             await MainActor.run {
-                statusMessage = "转写失败: \(error.localizedDescription)"
+                statusMessage = errorMessage
             }
         }
         
-        isProcessing = false
+        // 确保状态更新在主线程
+        await MainActor.run {
+            isProcessing = false
+        }
+    }
+    
+    /// 超时错误
+    private struct TimeoutError: LocalizedError {
+        let message: String
+        var errorDescription: String? { message }
+    }
+    
+    /// 带超时的异步操作包装器
+    private func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            // 添加实际操作任务
+            group.addTask {
+                try await operation()
+            }
+            
+            // 添加超时任务
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw TimeoutError(message: "操作超过 \(Int(seconds)) 秒未完成")
+            }
+            
+            // 等待第一个完成的任务
+            let result = try await group.next()!
+            // 取消其他任务
+            group.cancelAll()
+            return result
+        }
     }
 }
 

@@ -681,9 +681,10 @@ class UserPreferences: ObservableObject {
         autoStartCaptureSystemAudio = defaults.object(forKey: Keys.autoStartCaptureSystemAudio) as? Bool ?? false
         
         // 静音检测设置
-        silenceDetectionDuration = defaults.object(forKey: Keys.silenceDetectionDuration) as? Double ?? 1.0 // 默认1.0秒
+        // 降低默认静音时长阈值，使转写更快触发（0.8秒停顿即触发）
+        silenceDetectionDuration = defaults.object(forKey: Keys.silenceDetectionDuration) as? Double ?? 0.8 // 默认0.8秒
         silenceThreshold = defaults.object(forKey: Keys.silenceThreshold) as? Float ?? 0.01 // 默认0.01
-        silenceRelativeThreshold = defaults.object(forKey: Keys.silenceRelativeThreshold) as? Float ?? 0.3 // 默认30%
+        silenceRelativeThreshold = defaults.object(forKey: Keys.silenceRelativeThreshold) as? Float ?? 0.25 // 默认25%，更敏感
         
         // 引导流程设置，默认为未完成
         hasCompletedOnboarding = defaults.bool(forKey: Keys.hasCompletedOnboarding)

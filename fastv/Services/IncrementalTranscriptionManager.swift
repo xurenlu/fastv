@@ -40,17 +40,24 @@ class IncrementalTranscriptionManager: ObservableObject {
     @Published private(set) var segments: [TranscriptionSegment] = []
     @Published private(set) var isProcessing = false
     @Published private(set) var currentSegmentIndex: Int?
+    @Published private(set) var pendingSegmentsCount: Int = 0  // 等待转写的片段数
     
-    // 转写配置
-    private let minimumSegmentDuration: TimeInterval = 3.0  // 最短段落时长(秒)
-    private let maximumSegmentDuration: TimeInterval = 60.0 // 最长段落时长(秒)
+    // 转写配置（新策略：30-60秒切分）
+    static let minimumAccumulatedDuration: TimeInterval = 30.0  // 最小累积时长，达到后才允许切分
+    static let targetSegmentDuration: TimeInterval = 40.0       // 目标片段时长
+    static let maximumSegmentDuration: TimeInterval = 60.0      // 最大片段时长，超过强制切分
+    static let minimumSegmentDuration: TimeInterval = 5.0       // 最短段落时长，低于此时长跳过
     
-    // 转写队列
-    private var transcriptionQueue: [UUID] = []
+    // 转写队列 - 支持并发处理多个片段
+    private var transcriptionQueue: [(id: UUID, audioData: Data, sampleRate: Double, channelCount: Int, language: TranscriptLanguage)] = []
     private var currentTranscriptionTask: Task<Void, Never>?
+    private var isProcessingQueue = false
     
     // 转写完成回调：当段落转写完成时调用，参数是完整的转录文本
     var onTranscriptionUpdated: ((String) -> Void)?
+    
+    // 新增：片段开始转写回调
+    var onSegmentStarted: ((Int, Int) -> Void)?  // (当前片段索引, 总片段数)
     
     init() {}
     
@@ -73,8 +80,8 @@ class IncrementalTranscriptionManager: ObservableObject {
         let duration = endTime - startTime
         
         // 检查段落时长是否合理
-        guard duration >= minimumSegmentDuration else {
-            print("⚠️ [IncrementalTranscription] 段落时长过短(\(String(format: "%.2f", duration))s),跳过")
+        guard duration >= Self.minimumSegmentDuration else {
+            print("⚠️ [IncrementalTranscription] 段落时长过短(\(String(format: "%.2f", duration))s < \(Self.minimumSegmentDuration)s),跳过")
             return
         }
         
@@ -91,10 +98,30 @@ class IncrementalTranscriptionManager: ObservableObject {
         )
         
         segments.append(segment)
-        print("📝 [IncrementalTranscription] 添加新段落: 时长=\(String(format: "%.2f", duration))s, 数据大小=\(audioData.count)字节")
         
-        // 立即开始转写
-        startTranscription(for: segment.id, audioData: audioData, sampleRate: sampleRate, channelCount: channelCount, language: language)
+        // 添加到转写队列
+        transcriptionQueue.append((id: segment.id, audioData: audioData, sampleRate: sampleRate, channelCount: channelCount, language: language))
+        pendingSegmentsCount = transcriptionQueue.count
+        
+        print("📝 [IncrementalTranscription] 添加新段落 #\(segments.count): 时长=\(String(format: "%.2f", duration))s, 队列中=\(transcriptionQueue.count)个")
+        
+        // 立即开始处理队列（如果没有正在处理）
+        processQueue()
+    }
+    
+    /// 处理转写队列
+    private func processQueue() {
+        guard !isProcessingQueue else { return }
+        guard !transcriptionQueue.isEmpty else { return }
+        
+        isProcessingQueue = true
+        
+        // 取出队列中的第一个任务
+        let task = transcriptionQueue.removeFirst()
+        pendingSegmentsCount = transcriptionQueue.count
+        
+        // 开始转写
+        startTranscription(for: task.id, audioData: task.audioData, sampleRate: task.sampleRate, channelCount: task.channelCount, language: task.language)
     }
     
     /// 开始转写指定段落
@@ -107,6 +134,8 @@ class IncrementalTranscriptionManager: ObservableObject {
     ) {
         guard let index = segments.firstIndex(where: { $0.id == segmentId }) else {
             print("⚠️ [IncrementalTranscription] 未找到段落: \(segmentId)")
+            isProcessingQueue = false
+            processQueue()  // 继续处理队列中的下一个
             return
         }
         
@@ -115,10 +144,15 @@ class IncrementalTranscriptionManager: ObservableObject {
         currentSegmentIndex = index
         isProcessing = true
         
-        print("🔄 [IncrementalTranscription] 开始转写段落 #\(index + 1)")
+        // 通知片段开始转写
+        onSegmentStarted?(index + 1, segments.count)
         
-        // 创建转写任务
+        print("🔄 [IncrementalTranscription] 开始转写段落 #\(index + 1)/\(segments.count)，队列剩余: \(transcriptionQueue.count)个")
+        
+        // 创建转写任务 - 使用 Task.detached 确保在后台线程执行，避免阻塞 UI
         currentTranscriptionTask = Task { @MainActor in
+            let startTime = CFAbsoluteTimeGetCurrent()
+            
             do {
                 // 构造VoiceRecording
                 let recording = VoiceRecording(
@@ -127,17 +161,21 @@ class IncrementalTranscriptionManager: ObservableObject {
                     channelCount: channelCount
                 )
                 
-                // 调用转写服务
-                let transcript = try await SpeechTranscriber.transcribe(recording: recording, language: language)
+                // 使用 Task.detached 在后台线程执行转写，避免阻塞主线程
+                let transcript = try await Task.detached(priority: .userInitiated) {
+                    try await SpeechTranscriber.transcribe(recording: recording, language: language)
+                }.value
                 
-                // 更新段落
-                if let idx = segments.firstIndex(where: { $0.id == segmentId }) {
-                    segments[idx].transcript = transcript
-                    segments[idx].isTranscribing = false
-                    print("✅ [IncrementalTranscription] 段落 #\(idx + 1) 转写完成: \(transcript.prefix(30))...")
-                    
-                    // 通知观察者更新（在主线程）
-                    await MainActor.run {
+                let duration = CFAbsoluteTimeGetCurrent() - startTime
+                
+                // 回到主线程更新 UI
+                await MainActor.run {
+                    // 更新段落
+                    if let idx = self.segments.firstIndex(where: { $0.id == segmentId }) {
+                        self.segments[idx].transcript = transcript
+                        self.segments[idx].isTranscribing = false
+                        print("✅ [IncrementalTranscription] 段落 #\(idx + 1) 转写完成 (耗时\(String(format: "%.1f", duration))s): \(transcript.prefix(30))...")
+                        
                         self.objectWillChange.send()
                         
                         // 触发转写更新回调，传递完整的转录文本
@@ -146,16 +184,24 @@ class IncrementalTranscriptionManager: ObservableObject {
                     }
                 }
             } catch {
-                // 记录错误
-                if let idx = segments.firstIndex(where: { $0.id == segmentId }) {
-                    segments[idx].transcriptionError = error.localizedDescription
-                    segments[idx].isTranscribing = false
-                    print("❌ [IncrementalTranscription] 段落 #\(idx + 1) 转写失败: \(error)")
+                // 回到主线程记录错误
+                await MainActor.run {
+                    if let idx = self.segments.firstIndex(where: { $0.id == segmentId }) {
+                        self.segments[idx].transcriptionError = error.localizedDescription
+                        self.segments[idx].isTranscribing = false
+                        print("❌ [IncrementalTranscription] 段落 #\(idx + 1) 转写失败: \(error)")
+                    }
                 }
             }
             
-            currentSegmentIndex = nil
-            isProcessing = false
+            await MainActor.run {
+                self.currentSegmentIndex = nil
+                self.isProcessing = self.transcriptionQueue.count > 0
+                self.isProcessingQueue = false
+                
+                // 继续处理队列中的下一个任务
+                self.processQueue()
+            }
         }
     }
     
@@ -164,6 +210,22 @@ class IncrementalTranscriptionManager: ObservableObject {
         segments
             .compactMap { $0.transcript }
             .joined(separator: "\n")
+    }
+    
+    /// 获取最近的转写文本（只返回最后 N 个片段）
+    /// - Parameter count: 要返回的片段数量
+    /// - Returns: 最近转写的文本
+    func getRecentTranscript(count: Int = 2) -> String {
+        let completedSegments = segments.filter { $0.transcript != nil }
+        let recentSegments = completedSegments.suffix(count)
+        return recentSegments.compactMap { $0.transcript }.joined(separator: "\n")
+    }
+    
+    /// 获取当前正在转写的片段信息
+    func getCurrentTranscribingInfo() -> String? {
+        guard let index = currentSegmentIndex else { return nil }
+        let segment = segments[index]
+        return "正在转写: \(String(format: "%.0f", segment.startTime))s - \(String(format: "%.0f", segment.endTime))s"
     }
     
     /// 获取统计信息
@@ -181,7 +243,15 @@ class IncrementalTranscriptionManager: ObservableObject {
         if stats.total == 0 {
             return "暂无分段"
         }
-        return "已完成 \(stats.completed)/\(stats.total) 段"
+        
+        var desc = "已完成 \(stats.completed)/\(stats.total) 段"
+        if stats.transcribing > 0 {
+            desc += " (转写中...)"
+        }
+        if pendingSegmentsCount > 0 {
+            desc += " [等待: \(pendingSegmentsCount)]"
+        }
+        return desc
     }
     
     /// 清空所有段落
@@ -192,6 +262,8 @@ class IncrementalTranscriptionManager: ObservableObject {
         transcriptionQueue.removeAll()
         currentSegmentIndex = nil
         isProcessing = false
+        isProcessingQueue = false
+        pendingSegmentsCount = 0
     }
     
     /// 取消当前转写任务

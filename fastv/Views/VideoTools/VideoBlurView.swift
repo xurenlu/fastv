@@ -23,6 +23,7 @@ struct VideoBlurView: View {
     @State private var isLoadingPreview = false
     @State private var previewError: String?
     @State private var showVideoSelector = false
+    @State private var currentTask: Task<Void, Never>?
     
     enum BlurType {
         case mosaic
@@ -218,14 +219,28 @@ struct VideoBlurView: View {
                 }
                 .formStyle(.grouped)
                 
-                Button(action: {
-                    startBlur()
-                }) {
-                    Label("应用模糊", systemImage: "eye.slash.fill")
+                HStack(spacing: 12) {
+                    Button(action: {
+                        startBlur()
+                    }) {
+                        Label("应用模糊", systemImage: "eye.slash.fill")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(viewModel.videoURL == nil || isProcessing)
+                    
+                    if isProcessing {
+                        Button(action: cancelTask) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark.circle")
+                                Text("取消")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .tint(.red)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(viewModel.videoURL == nil || isProcessing)
             }
             .padding()
         }
@@ -246,6 +261,16 @@ struct VideoBlurView: View {
         ) { result in
             self.handleVideoSelection(result)
         }
+        .onDisappear {
+            cancelTask()
+        }
+    }
+    
+    private func cancelTask() {
+        currentTask?.cancel()
+        currentTask = nil
+        isProcessing = false
+        status = "操作已取消"
     }
     
     private func loadPreviewImage() {
@@ -389,11 +414,13 @@ struct VideoBlurView: View {
         savePanel.nameFieldStringValue = inputURL.deletingPathExtension().lastPathComponent + "_blurred"
         
         if savePanel.runModal() == .OK, let outputURL = savePanel.url {
-            isProcessing = true
-            progress = 0.0
-            status = "准备处理..."
+            Task { @MainActor in
+                isProcessing = true
+                progress = 0.0
+                status = "准备处理..."
+            }
             
-            Task {
+            currentTask = Task {
                 do {
                     switch blurType {
                     case .mosaic:

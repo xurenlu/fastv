@@ -8,8 +8,10 @@
 import Foundation
 import AVFoundation
 import Combine
+import CoreAudio
 
 /// 语音输入服务
+/// 支持同时录制麦克风和系统音频（需要 BlackHole 虚拟音频设备）
 @MainActor
 class VoiceInputService: ObservableObject {
     static let shared = VoiceInputService()
@@ -17,8 +19,12 @@ class VoiceInputService: ObservableObject {
     @Published private(set) var isRecording = false
     @Published private(set) var audioLevel: Float = 0.0 // 用于波形显示
     @Published private(set) var recordingDuration: TimeInterval = 0
+    @Published private(set) var isSystemAudioAvailable = false  // 系统音频是否可用
+    @Published private(set) var systemAudioStatus: String = ""  // 系统音频状态说明
     
     private var audioEngine: AVAudioEngine?
+    private var systemAudioEngine: AVAudioEngine?  // 用于捕获系统音频的独立引擎
+    private var mixerNode: AVAudioMixerNode?
     private var audioLevelTimer: Timer?
     nonisolated(unsafe) private var recordedBuffers: [Data] = []
     private var recordingOriginalFormat: AVAudioFormat?
@@ -31,6 +37,10 @@ class VoiceInputService: ObservableObject {
     private var lastSegmentTime: Date?
     nonisolated(unsafe) private var segmentBuffers: [Data] = []  // 当前段落的缓冲
     
+    // 系统音频缓冲（用于混合）
+    nonisolated(unsafe) private var systemAudioBuffers: [Data] = []
+    private let systemAudioQueue = DispatchQueue(label: "voiceInput.systemAudioQueue")
+    
     // 音频数据回调，用于波形显示
     var onAudioData: ((Float) -> Void)?
     
@@ -41,9 +51,113 @@ class VoiceInputService: ObservableObject {
     // 参数：转换后的 PCM 数据（Int16 格式，16kHz 单声道）
     var onConvertedAudioData: ((Data) -> Void)?
     
-    private init() {}
+    private init() {
+        // 初始化时检查系统音频可用性
+        Task { @MainActor in
+            await checkSystemAudioAvailability()
+        }
+    }
     
-    /// 开始录音
+    // MARK: - 系统音频检测
+    
+    /// 检查系统音频（BlackHole）是否可用
+    func checkSystemAudioAvailability() async {
+        let result = await Task.detached(priority: .userInitiated) {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
+            process.arguments = ["SPAudioDataType"]
+            
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            
+            do {
+                try process.run()
+                process.waitUntilExit()
+                
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                if let output = String(data: data, encoding: .utf8) {
+                    return output.contains("BlackHole") || output.contains("blackHole")
+                }
+                return false
+            } catch {
+                return false
+            }
+        }.value
+        
+        isSystemAudioAvailable = result
+        if result {
+            systemAudioStatus = "系统音频录制已启用"
+            print("✅ [VoiceInputService] BlackHole 虚拟音频设备可用，支持系统音频录制")
+        } else {
+            systemAudioStatus = "仅录制麦克风（安装 BlackHole 可录制系统音频）"
+            print("⚠️ [VoiceInputService] BlackHole 未安装，仅使用麦克风录制")
+        }
+    }
+    
+    /// 获取 BlackHole 设备 ID
+    nonisolated private func getBlackHoleDeviceID() -> AudioDeviceID? {
+        var propertyAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        
+        var dataSize: UInt32 = 0
+        var status = AudioObjectGetPropertyDataSize(
+            AudioObjectID(kAudioObjectSystemObject),
+            &propertyAddress,
+            0,
+            nil,
+            &dataSize
+        )
+        
+        guard status == noErr else { return nil }
+        
+        let deviceCount = Int(dataSize) / MemoryLayout<AudioDeviceID>.size
+        var deviceIDs = [AudioDeviceID](repeating: 0, count: deviceCount)
+        
+        status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &propertyAddress,
+            0,
+            nil,
+            &dataSize,
+            &deviceIDs
+        )
+        
+        guard status == noErr else { return nil }
+        
+        for deviceID in deviceIDs {
+            var namePropertyAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyDeviceNameCFString,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            
+            var deviceName: CFString = "" as CFString
+            var nameSize = UInt32(MemoryLayout<CFString>.size)
+            
+            status = AudioObjectGetPropertyData(
+                deviceID,
+                &namePropertyAddress,
+                0,
+                nil,
+                &nameSize,
+                &deviceName
+            )
+            
+            if status == noErr {
+                let name = deviceName as String
+                if name.lowercased().contains("blackhole") {
+                    return deviceID
+                }
+            }
+        }
+        
+        return nil
+    }
+    
+    /// 开始录音（同时录制麦克风和系统音频）
     func startRecording() throws {
         print("🎤 [VoiceInputService] startRecording() 被调用，当前 isRecording=\(isRecording)")
         
@@ -91,74 +205,47 @@ class VoiceInputService: ObservableObject {
             throw VoiceInputError.microphonePermissionDenied
         }
         
-        // 创建音频引擎
-        let engine = AVAudioEngine()
-        
-        // 检查麦克风是否可用（可能被其他应用占用）
-        let inputNode = engine.inputNode
-        
-        // 尝试获取输入格式，如果失败可能是麦克风被占用
-        let format = inputNode.inputFormat(forBus: 0)
-        print("✅ [VoiceInputService] 成功获取音频输入格式: \(format)")
-        
-        // 重置录音数据容器并保存原始格式
+        // 重置录音数据容器
         recordingDataQueue.sync {
             self.recordedBuffers = []
             self.segmentBuffers = []
         }
-        recordingOriginalFormat = format
+        systemAudioQueue.sync {
+            self.systemAudioBuffers = []
+        }
         recordingStartTime = Date()
         lastSegmentTime = Date()
         recordingDuration = 0
         
-        // 安装tap来捕获音频数据
+        // 创建主音频引擎（麦克风）
+        let engine = AVAudioEngine()
+        let inputNode = engine.inputNode
+        let format = inputNode.inputFormat(forBus: 0)
+        print("✅ [VoiceInputService] 麦克风输入格式: \(format)")
+        recordingOriginalFormat = format
+        
+        // 安装 tap 来捕获麦克风音频
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, time in
             guard let self = self else { return }
-            
-            // 计算音频电平（用于波形显示）
-            if let channelData = buffer.floatChannelData {
-                let channelDataValue = channelData.pointee
-                let frameCount = Int(buffer.frameLength)
-                let channelDataValueArray = stride(from: 0, to: frameCount, by: 1).map { channelDataValue[$0] }
-                
-                // 计算RMS
-                let rms = sqrt(channelDataValueArray.map { $0 * $0 }.reduce(0, +) / Float(channelDataValueArray.count))
-                
-                Task { @MainActor in
-                    self.audioLevel = rms
-                    self.onAudioData?(rms)
-                }
-            }
-            
-            // 写入缓冲
-            if let channelData = buffer.floatChannelData {
-                let frames = Int(buffer.frameLength)
-                let byteCount = frames * MemoryLayout<Float>.size
-                let pcmPointer = channelData.pointee
-                let data = Data(bytes: pcmPointer, count: byteCount)
-                self.recordingDataQueue.async {
-                    self.recordedBuffers.append(data)
-                    self.segmentBuffers.append(data)  // 同时写入分段缓冲
-                }
-                
-                // 实时转换音频数据（如果启用了回调）
-                // 注意：为了避免性能问题，这里采用批量处理策略
-                // 实际转换会在 MeetingRecordViewModel 中通过定时器批量处理
-            }
+            self.processMicrophoneBuffer(buffer)
         }
-
+        
         self.audioEngine = engine
         
-        // 启动引擎
+        // 尝试启动系统音频捕获（如果 BlackHole 可用）
+        if isSystemAudioAvailable {
+            startSystemAudioCapture()
+        }
+        
+        // 启动麦克风引擎
         do {
-            print("🎤 [VoiceInputService] 启动音频引擎...")
+            print("🎤 [VoiceInputService] 启动麦克风音频引擎...")
             try engine.start()
             isRecording = true
-            print("✅ [VoiceInputService] 音频引擎已启动，isRecording=\(isRecording)")
+            print("✅ [VoiceInputService] 麦克风音频引擎已启动")
             
             // 启动音频电平更新定时器
             audioLevelTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] timer in
-                // 定时器用于平滑音频电平衰减和更新录音时长
                 guard let strongSelf = self else {
                     timer.invalidate()
                     return
@@ -170,7 +257,6 @@ class VoiceInputService: ObservableObject {
                             strongSelf.audioLevel = 0.0
                         }
                     } else {
-                        // 更新录音时长
                         if let startTime = strongSelf.recordingStartTime {
                             strongSelf.recordingDuration = Date().timeIntervalSince(startTime)
                         }
@@ -181,6 +267,172 @@ class VoiceInputService: ObservableObject {
         } catch {
             print("❌ [VoiceInputService] 启动音频引擎失败: \(error)")
             throw VoiceInputError.failedToStartRecording(error.localizedDescription)
+        }
+    }
+    
+    /// 处理麦克风音频缓冲
+    nonisolated private func processMicrophoneBuffer(_ buffer: AVAudioPCMBuffer) {
+        // 计算音频电平（用于波形显示和静音检测）
+        if let channelData = buffer.floatChannelData {
+            let channelDataValue = channelData.pointee
+            let frameCount = Int(buffer.frameLength)
+            let channelDataValueArray = stride(from: 0, to: frameCount, by: 1).map { channelDataValue[$0] }
+            
+            // 计算RMS（原始值用于静音检测）
+            let rms = sqrt(channelDataValueArray.map { $0 * $0 }.reduce(0, +) / Float(channelDataValueArray.count))
+            
+            // 将 RMS 值放大并归一化到 0-1 范围（用于波形显示）
+            let displayLevel: Float
+            if rms > 0.0001 {
+                let logRms = log10(max(rms, 0.001))
+                let normalized = (logRms + 3.0) / 2.7
+                displayLevel = min(max(normalized, 0.05), 1.0)
+            } else {
+                displayLevel = 0.05
+            }
+            
+            Task { @MainActor [weak self] in
+                self?.audioLevel = displayLevel
+                self?.onAudioData?(rms)
+            }
+        }
+        
+        // 写入缓冲（混合麦克风和系统音频）
+        if let channelData = buffer.floatChannelData {
+            let frames = Int(buffer.frameLength)
+            let byteCount = frames * MemoryLayout<Float>.size
+            let pcmPointer = channelData.pointee
+            var micData = Data(bytes: pcmPointer, count: byteCount)
+            
+            // 尝试混合系统音频
+            systemAudioQueue.sync {
+                if !self.systemAudioBuffers.isEmpty {
+                    // 取出对应大小的系统音频数据进行混合
+                    let systemData = self.systemAudioBuffers.removeFirst()
+                    micData = self.mixAudioData(micData, with: systemData)
+                }
+            }
+            
+            recordingDataQueue.async {
+                self.recordedBuffers.append(micData)
+                self.segmentBuffers.append(micData)
+            }
+        }
+    }
+    
+    /// 启动系统音频捕获
+    private func startSystemAudioCapture() {
+        // 注意：在 macOS 上，使用 BlackHole 需要用户在系统设置中配置
+        // 这里我们尝试创建一个独立的引擎来捕获系统音频
+        // 但这需要用户将 BlackHole 设置为系统输入设备之一
+        
+        print("🔊 [VoiceInputService] 尝试启动系统音频捕获...")
+        
+        // 检查 BlackHole 设备
+        guard let blackHoleID = getBlackHoleDeviceID() else {
+            print("⚠️ [VoiceInputService] 未找到 BlackHole 设备 ID，跳过系统音频捕获")
+            return
+        }
+        
+        print("✅ [VoiceInputService] 找到 BlackHole 设备 ID: \(blackHoleID)")
+        
+        // 创建系统音频引擎
+        let sysEngine = AVAudioEngine()
+        let sysInputNode = sysEngine.inputNode
+        
+        // 尝试设置输入设备为 BlackHole
+        do {
+            try setAudioInputDevice(blackHoleID, for: sysEngine)
+        } catch {
+            print("⚠️ [VoiceInputService] 无法设置 BlackHole 为输入设备: \(error)")
+            print("💡 [VoiceInputService] 请在系统设置中将 BlackHole 添加到输入设备")
+            return
+        }
+        
+        let sysFormat = sysInputNode.inputFormat(forBus: 0)
+        print("✅ [VoiceInputService] 系统音频输入格式: \(sysFormat)")
+        
+        // 安装 tap 来捕获系统音频
+        sysInputNode.installTap(onBus: 0, bufferSize: 1024, format: sysFormat) { [weak self] buffer, time in
+            guard let self = self else { return }
+            self.processSystemAudioBuffer(buffer)
+        }
+        
+        // 启动系统音频引擎
+        do {
+            try sysEngine.start()
+            self.systemAudioEngine = sysEngine
+            print("✅ [VoiceInputService] 系统音频引擎已启动")
+        } catch {
+            print("⚠️ [VoiceInputService] 启动系统音频引擎失败: \(error)")
+        }
+    }
+    
+    /// 处理系统音频缓冲
+    nonisolated private func processSystemAudioBuffer(_ buffer: AVAudioPCMBuffer) {
+        if let channelData = buffer.floatChannelData {
+            let frames = Int(buffer.frameLength)
+            let byteCount = frames * MemoryLayout<Float>.size
+            let pcmPointer = channelData.pointee
+            let data = Data(bytes: pcmPointer, count: byteCount)
+            
+            systemAudioQueue.async {
+                self.systemAudioBuffers.append(data)
+                // 限制缓冲区大小，避免内存问题
+                while self.systemAudioBuffers.count > 100 {
+                    self.systemAudioBuffers.removeFirst()
+                }
+            }
+        }
+    }
+    
+    /// 混合两路音频数据
+    nonisolated private func mixAudioData(_ data1: Data, with data2: Data) -> Data {
+        let count1 = data1.count / MemoryLayout<Float>.size
+        let count2 = data2.count / MemoryLayout<Float>.size
+        let minCount = min(count1, count2)
+        
+        guard minCount > 0 else { return data1 }
+        
+        var result = [Float](repeating: 0, count: count1)
+        
+        data1.withUnsafeBytes { ptr1 in
+            if let baseAddress1 = ptr1.baseAddress?.assumingMemoryBound(to: Float.self) {
+                for i in 0..<count1 {
+                    result[i] = baseAddress1[i]
+                }
+            }
+        }
+        
+        data2.withUnsafeBytes { ptr2 in
+            if let baseAddress2 = ptr2.baseAddress?.assumingMemoryBound(to: Float.self) {
+                for i in 0..<minCount {
+                    // 简单混合：两路信号相加后除以2
+                    result[i] = (result[i] + baseAddress2[i]) * 0.5
+                }
+            }
+        }
+        
+        return Data(bytes: result, count: count1 * MemoryLayout<Float>.size)
+    }
+    
+    /// 设置音频输入设备
+    nonisolated private func setAudioInputDevice(_ deviceID: AudioDeviceID, for engine: AVAudioEngine) throws {
+        let inputNode = engine.inputNode
+        let audioUnit = inputNode.audioUnit!
+        
+        var deviceIDVar = deviceID
+        let status = AudioUnitSetProperty(
+            audioUnit,
+            kAudioOutputUnitProperty_CurrentDevice,
+            kAudioUnitScope_Global,
+            0,
+            &deviceIDVar,
+            UInt32(MemoryLayout<AudioDeviceID>.size)
+        )
+        
+        if status != noErr {
+            throw VoiceInputError.failedToStartRecording("无法设置音频输入设备: \(status)")
         }
     }
     
@@ -197,9 +449,20 @@ class VoiceInputService: ObservableObject {
         audioLevelTimer?.invalidate()
         audioLevelTimer = nil
         
+        // 停止麦克风引擎
         audioEngine?.inputNode.removeTap(onBus: 0)
         audioEngine?.stop()
         audioEngine = nil
+        
+        // 停止系统音频引擎
+        systemAudioEngine?.inputNode.removeTap(onBus: 0)
+        systemAudioEngine?.stop()
+        systemAudioEngine = nil
+        
+        // 清空系统音频缓冲
+        systemAudioQueue.sync {
+            self.systemAudioBuffers = []
+        }
         
         isRecording = false
         audioLevel = 0.0
@@ -297,13 +560,23 @@ class VoiceInputService: ObservableObject {
             audioLevelTimer?.invalidate()
             audioLevelTimer = nil
             
+            // 停止麦克风引擎
             audioEngine?.inputNode.removeTap(onBus: 0)
             audioEngine?.stop()
             audioEngine = nil
             
+            // 停止系统音频引擎
+            systemAudioEngine?.inputNode.removeTap(onBus: 0)
+            systemAudioEngine?.stop()
+            systemAudioEngine = nil
+            
             recordingDataQueue.sync {
                 self.recordedBuffers = []
                 self.segmentBuffers = []
+            }
+            
+            systemAudioQueue.sync {
+                self.systemAudioBuffers = []
             }
             
             isRecording = false
@@ -314,9 +587,24 @@ class VoiceInputService: ObservableObject {
         }
     }
     
+    /// 段落提取结果
+    struct SegmentResult {
+        let recording: VoiceRecording
+        let startTime: TimeInterval
+        let endTime: TimeInterval
+        var duration: TimeInterval { endTime - startTime }
+    }
+    
     /// 提取当前段落的音频数据(用于增量转写)
     /// - Returns: 当前段落的PCM数据,如果数据为空则返回nil
     func extractCurrentSegment() async throws -> VoiceRecording? {
+        let result = try await extractCurrentSegmentWithTiming()
+        return result?.recording
+    }
+    
+    /// 提取当前段落的音频数据及时间信息
+    /// - Returns: 段落结果包含录音数据和时间信息
+    func extractCurrentSegmentWithTiming() async throws -> SegmentResult? {
         guard isRecording else {
             print("⚠️ [VoiceInputService] 未在录音中,无法提取段落")
             return nil
@@ -326,6 +614,10 @@ class VoiceInputService: ObservableObject {
             print("⚠️ [VoiceInputService] 未知录音格式")
             return nil
         }
+        
+        // 记录段落开始时间（提取前）
+        let segmentStartTime = getLastSegmentTime()
+        let segmentEndTime = recordingDuration
         
         // 获取当前段落的缓冲数据
         let buffers: [Data] = recordingDataQueue.sync {
@@ -339,18 +631,19 @@ class VoiceInputService: ObservableObject {
             return nil
         }
         
-        // 更新段落时间
+        // 更新段落时间（提取后）
         lastSegmentTime = Date()
         
         let combinedData = buffers.reduce(Data(), +)
-        print("📊 [VoiceInputService] 提取段落数据: \(combinedData.count) 字节")
+        let duration = segmentEndTime - segmentStartTime
+        print("📊 [VoiceInputService] 提取段落数据: \(combinedData.count) 字节, 时长: \(String(format: "%.1f", duration))秒")
         
         // 提取需要的参数值，避免在后台任务中访问实例属性
         let sampleRate = recordingSampleRate
         let channels = recordingChannels
         
         // 将转码操作移到后台线程，避免阻塞 UI
-        return try await Task.detached(priority: .userInitiated) {
+        let recording = try await Task.detached(priority: .userInitiated) {
             do {
                 let recording = try await self.convertPCMData(
                     combinedData,
@@ -364,6 +657,8 @@ class VoiceInputService: ObservableObject {
                 throw error
             }
         }.value
+        
+        return SegmentResult(recording: recording, startTime: segmentStartTime, endTime: segmentEndTime)
     }
     
     /// 获取当前录音的总时长

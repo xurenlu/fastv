@@ -17,6 +17,7 @@ struct VideoSubtitleView: View {
     @State private var progress: Double = 0.0
     @State private var status: String = ""
     @State private var showVideoSelector = false
+    @State private var currentTask: Task<Void, Never>?
     
     var body: some View {
         ScrollView {
@@ -85,14 +86,28 @@ struct VideoSubtitleView: View {
                 }
                 .formStyle(.grouped)
                 
-                Button(action: {
-                    startSubtitle()
-                }) {
-                    Label("烧录字幕", systemImage: "text.bubble")
+                HStack(spacing: 12) {
+                    Button(action: {
+                        startSubtitle()
+                    }) {
+                        Label("烧录字幕", systemImage: "text.bubble")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(viewModel.videoURL == nil || subtitleURL == nil || isProcessing)
+                    
+                    if isProcessing {
+                        Button(action: cancelTask) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark.circle")
+                                Text("取消")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .tint(.red)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(viewModel.videoURL == nil || subtitleURL == nil || isProcessing)
             }
             .padding()
         }
@@ -113,6 +128,16 @@ struct VideoSubtitleView: View {
         ) { result in
             handleVideoSelection(result)
         }
+        .onDisappear {
+            cancelTask()
+        }
+    }
+    
+    private func cancelTask() {
+        currentTask?.cancel()
+        currentTask = nil
+        isProcessing = false
+        status = "操作已取消"
     }
     
     private func handleVideoSelection(_ result: Result<[URL], Error>) {
@@ -149,11 +174,13 @@ struct VideoSubtitleView: View {
         savePanel.nameFieldStringValue = inputURL.deletingPathExtension().lastPathComponent + "_subtitled"
         
         if savePanel.runModal() == .OK, let outputURL = savePanel.url {
-            isProcessing = true
-            progress = 0.0
-            status = "准备烧录字幕..."
+            Task { @MainActor in
+                isProcessing = true
+                progress = 0.0
+                status = "准备烧录字幕..."
+            }
             
-            Task {
+            currentTask = Task {
                 do {
                     if subtitleURL.pathExtension.lowercased() == "srt" {
                         try await VideoSubtitle.burnSRTSubtitle(

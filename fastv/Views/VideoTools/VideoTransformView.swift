@@ -20,6 +20,7 @@ struct VideoTransformView: View {
     @State private var previewImage: NSImage?
     @State private var videoSize: CGSize?
     @State private var showVideoSelector = false
+    @State private var currentTask: Task<Void, Never>?
     
     enum TransformType {
         case crop
@@ -132,14 +133,28 @@ struct VideoTransformView: View {
                 }
                 .formStyle(.grouped)
                 
-                Button(action: {
-                    startTransform()
-                }) {
-                    Label("应用变换", systemImage: "crop.rotate")
+                HStack(spacing: 12) {
+                    Button(action: {
+                        startTransform()
+                    }) {
+                        Label("应用变换", systemImage: "crop.rotate")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(viewModel.videoURL == nil || isProcessing)
+                    
+                    if isProcessing {
+                        Button(action: cancelTask) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark.circle")
+                                Text("取消")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .tint(.red)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(viewModel.videoURL == nil || isProcessing)
             }
             .padding()
         }
@@ -170,6 +185,16 @@ struct VideoTransformView: View {
         ) { result in
             handleVideoSelection(result)
         }
+        .onDisappear {
+            cancelTask()
+        }
+    }
+    
+    private func cancelTask() {
+        currentTask?.cancel()
+        currentTask = nil
+        isProcessing = false
+        status = "操作已取消"
     }
     
     private func handleVideoSelection(_ result: Result<[URL], Error>) {
@@ -250,11 +275,13 @@ struct VideoTransformView: View {
         savePanel.nameFieldStringValue = inputURL.deletingPathExtension().lastPathComponent + "_transformed"
         
         if savePanel.runModal() == .OK, let outputURL = savePanel.url {
-            isProcessing = true
-            progress = 0.0
-            status = "准备处理..."
+            Task { @MainActor in
+                isProcessing = true
+                progress = 0.0
+                status = "准备处理..."
+            }
             
-            Task {
+            currentTask = Task {
                 do {
                     switch transformType {
                     case .crop:

@@ -35,6 +35,9 @@ class SilenceDetector: ObservableObject {
     private var speechPeakLevel: Float = 0.0   // 说话时的峰值电平
     private var hasDetectedSpeech: Bool = false // 是否已检测到说话(用于判断是否可以使用相对阈值)
     
+    // 触发控制：确保每次静音段只触发一次回调
+    private var hasTriggeredForCurrentSilence: Bool = false
+    
     // 回调
     var onSilenceDetected: ((TimeInterval) -> Void)?
     var onSpeechDetected: (() -> Void)?
@@ -50,6 +53,7 @@ class SilenceDetector: ObservableObject {
         lastUpdateTime = Date()
         speechPeakLevel = 0.0
         hasDetectedSpeech = false
+        hasTriggeredForCurrentSilence = false
     }
     
     /// 处理新的音频电平数据
@@ -93,6 +97,7 @@ class SilenceDetector: ObservableObject {
                 // 刚进入静音
                 silenceStartTime = now
                 isSilent = true
+                hasTriggeredForCurrentSilence = false  // 新的静音段，重置触发标志
                 let detectionType = absoluteSilent ? "绝对阈值" : "相对下降"
                 print("🔇 [SilenceDetector] 检测到静音开始(\(detectionType)), 当前电平=\(String(format: "%.4f", averageLevel)), 峰值=\(String(format: "%.4f", speechPeakLevel))")
             }
@@ -101,13 +106,11 @@ class SilenceDetector: ObservableObject {
             if let startTime = silenceStartTime {
                 currentSilenceDuration = now.timeIntervalSince(startTime)
                 
-                // 如果达到最小静音时长,触发回调(只触发一次)
-                if currentSilenceDuration >= minimumSilenceDuration {
-                    let shouldTrigger = (currentSilenceDuration - minimumSilenceDuration) < 0.2 // 容差200ms
-                    if shouldTrigger {
-                        print("🔇 [SilenceDetector] 检测到有效静音段,持续时长: \(String(format: "%.2f", currentSilenceDuration))秒")
-                        onSilenceDetected?(currentSilenceDuration)
-                    }
+                // 如果达到最小静音时长且尚未触发过,立即触发回调
+                if currentSilenceDuration >= minimumSilenceDuration && !hasTriggeredForCurrentSilence {
+                    hasTriggeredForCurrentSilence = true  // 标记已触发，避免重复
+                    print("🔇 [SilenceDetector] 检测到有效静音段,持续时长: \(String(format: "%.2f", currentSilenceDuration))秒 → 立即触发转写")
+                    onSilenceDetected?(currentSilenceDuration)
                 }
             }
         } else {
@@ -116,9 +119,10 @@ class SilenceDetector: ObservableObject {
                 // 从静音恢复到有声
                 print("🔊 [SilenceDetector] 检测到语音恢复")
                 onSpeechDetected?()
-                // 重置峰值,为下一段说话做准备
+                // 重置峰值和触发标志,为下一段说话做准备
                 speechPeakLevel = 0.0
                 hasDetectedSpeech = false
+                hasTriggeredForCurrentSilence = false
             }
             isSilent = false
             silenceStartTime = nil

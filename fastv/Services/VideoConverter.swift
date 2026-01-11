@@ -76,6 +76,9 @@ struct VideoConverter {
         let selectedCodec = codec ?? VideoCodec(rawValue: preferences.videoToolsDefaultCodec) ?? .h264
         let selectedCRF = crf ?? preferences.videoToolsDefaultCRF
         
+        // 获取视频时长用于计算进度
+        let totalDuration = await getVideoDuration(from: inputURL)
+        
         // 构建 FFmpeg 参数
         var arguments: [String] = []
         
@@ -113,15 +116,14 @@ struct VideoConverter {
         // 输出文件
         arguments.append(outputURL.path)
         
-        // 执行转换
+        // 执行转换（带总时长用于计算进度）
         try await FFmpegService.execute(
             arguments: arguments,
+            totalDuration: totalDuration,
             progressHandler: { progress, status in
                 progressHandler(progress, status)
             },
-            outputHandler: { output in
-                // 可以在这里解析更详细的进度信息
-            }
+            outputHandler: { _ in }
         )
     }
     
@@ -147,6 +149,19 @@ struct VideoConverter {
         // 这里可以调用 ffprobe 获取详细信息
         // 暂时使用现有的 VideoInfoService
         return try await VideoInfoService.getVideoInfo(from: inputURL)
+    }
+    
+    // MARK: - Private Helpers
+    
+    /// 获取视频时长
+    private static func getVideoDuration(from url: URL) async -> TimeInterval? {
+        do {
+            let info = try await VideoInfoService.getVideoInfo(from: url)
+            return info.duration
+        } catch {
+            print("⚠️ [VideoConverter] 无法获取视频时长: \(error.localizedDescription)")
+            return nil
+        }
     }
 }
 

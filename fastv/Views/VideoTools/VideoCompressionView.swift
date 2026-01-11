@@ -26,6 +26,7 @@ struct VideoCompressionView: View {
     @State private var recommendation: CompressionRecommendation?
     @State private var videoInfo: VideoInfo?
     @State private var showVideoSelector = false
+    @State private var currentTask: Task<Void, Never>?
     
     var body: some View {
         ScrollView {
@@ -211,14 +212,28 @@ struct VideoCompressionView: View {
                 }
                 .formStyle(.grouped)
                 
-                Button(action: {
-                    startCompression()
-                }) {
-                    Label("开始压缩", systemImage: "arrow.down.circle")
+                HStack(spacing: 12) {
+                    Button(action: {
+                        startCompression()
+                    }) {
+                        Label("开始压缩", systemImage: "arrow.down.circle")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(viewModel.videoURL == nil || isProcessing)
+                    
+                    if isProcessing {
+                        Button(action: cancelTask) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark.circle")
+                                Text("取消")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .tint(.red)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(viewModel.videoURL == nil || isProcessing)
             }
             .padding()
         }
@@ -239,6 +254,16 @@ struct VideoCompressionView: View {
         ) { result in
             handleVideoSelection(result)
         }
+        .onDisappear {
+            cancelTask()
+        }
+    }
+    
+    private func cancelTask() {
+        currentTask?.cancel()
+        currentTask = nil
+        isProcessing = false
+        status = "操作已取消"
     }
     
     private func handleVideoSelection(_ result: Result<[URL], Error>) {
@@ -269,35 +294,48 @@ struct VideoCompressionView: View {
         savePanel.nameFieldStringValue = inputURL.deletingPathExtension().lastPathComponent + "_compressed"
         
         if savePanel.runModal() == .OK, let outputURL = savePanel.url {
+            // 确保状态更新在主线程（虽然在同步代码中，但为了一致性）
             isProcessing = true
             progress = 0.0
             status = "准备压缩..."
             
-            Task {
+            // 捕获当前参数值，避免在 Task 中访问 @State
+            let currentResolution = selectedResolution
+            let currentFrameRate = targetFrameRate
+            let currentBitrate = bitrate.isEmpty ? nil : bitrate
+            let currentCRF = useCRF ? crfValue : nil
+            
+            currentTask = Task {
                 do {
-                    try await VideoCompressor.compress(
-                        inputURL: inputURL,
-                        outputURL: outputURL,
-                        resolution: selectedResolution,
-                        frameRate: targetFrameRate,
-                        bitrate: bitrate.isEmpty ? nil : bitrate,
-                        crf: useCRF ? crfValue : nil,
-                        progressHandler: { prog, stat in
-                            Task { @MainActor in
-                                progress = prog
-                                status = stat
+                    // 在后台线程执行压缩
+                    try await Task.detached(priority: .userInitiated) {
+                        try await VideoCompressor.compress(
+                            inputURL: inputURL,
+                            outputURL: outputURL,
+                            resolution: currentResolution,
+                            frameRate: currentFrameRate,
+                            bitrate: currentBitrate,
+                            crf: currentCRF,
+                            progressHandler: { prog, stat in
+                                Task { @MainActor in
+                                    progress = prog
+                                    status = stat
+                                }
                             }
-                        }
-                    )
+                        )
+                    }.value
                     
                     await MainActor.run {
                         isProcessing = false
                         status = "压缩完成！"
+                        // 在 Finder 中显示
+                        NSWorkspace.shared.selectFile(outputURL.path, inFileViewerRootedAtPath: outputURL.deletingLastPathComponent().path)
                     }
                 } catch {
                     await MainActor.run {
                         isProcessing = false
                         status = "压缩失败: \(error.localizedDescription)"
+                        print("❌ [VideoCompressionView] 压缩失败: \(error)")
                     }
                 }
             }

@@ -76,7 +76,8 @@ struct SpeechTranscriber {
         return nil
     }
     
-    /// 从内存录音转文字（用于语音输入）
+    /// 从内存录音转文字（用于语音输入、会议记录、直播转录）
+    /// 自动检测录音时长，超过60秒自动分段处理
     static func transcribe(recording: VoiceRecording, language: TranscriptLanguage = .auto, enableCTCDeduplication: Bool? = nil) async throws -> String {
         guard recording.channelCount == 1 else {
             throw VideoProcessingError.transcriptionFailed("仅支持单声道录音")
@@ -93,10 +94,85 @@ struct SpeechTranscriber {
             ctcDedup = await MainActor.run { UserPreferences.shared.enableCTCDeduplication }
         }
         
+        // 获取归一化的音频样本
+        let samples = recording.normalizedSamples()
+        let duration = Double(samples.count) / recording.sampleRate
+        
+        #if DEBUG
+        print("🎤 [SpeechTranscriber] 录音时长: \(String(format: "%.2f", duration))s")
+        #endif
+        
+        // 如果录音时长超过60秒，使用分段处理
+        if AudioSegmenter.needsSegmentation(samples: samples, config: .realtime) {
+            #if DEBUG
+            print("📊 [SpeechTranscriber] 录音超过60秒，使用分段处理")
+            #endif
+            return try await transcribeRecordingWithSegmentation(
+                samples: samples,
+                sampleRate: recording.sampleRate,
+                language: language,
+                enableCTCDeduplication: ctcDedup
+            )
+        }
+        
+        // 短录音：直接处理
         let cmvnURL = resolveCMVNURL()
         let features = try await AudioFeatureExtractor.extractMelFeatures(from: recording, cmvnURL: cmvnURL)
         let transcript = try await performTranscription(features: features, language: language, enableCTCDeduplication: ctcDedup)
         return transcript
+    }
+    
+    /// 分段转录录音数据（内部方法）
+    private static func transcribeRecordingWithSegmentation(
+        samples: [Float],
+        sampleRate: Double,
+        language: TranscriptLanguage,
+        enableCTCDeduplication: Bool
+    ) async throws -> String {
+        // 使用实时配置进行分段
+        let segments = AudioSegmenter.segmentAudio(samples: samples, sampleRate: sampleRate, config: .realtime)
+        
+        #if DEBUG
+        print("📊 [SpeechTranscriber] 录音分成 \(segments.count) 个片段")
+        #endif
+        
+        var transcripts: [String] = []
+        let cmvnURL = resolveCMVNURL()
+        
+        for (index, segment) in segments.enumerated() {
+            #if DEBUG
+            print("🎤 [SpeechTranscriber] 处理片段 \(index + 1)/\(segments.count): \(String(format: "%.2f", segment.startTime))s - \(String(format: "%.2f", segment.endTime))s")
+            #endif
+            
+            // 将 Float 样本转换为 PCM Data
+            let pcmData = floatSamplesToPCMData(segment.samples)
+            let segmentRecording = VoiceRecording(pcmData: pcmData, sampleRate: sampleRate, channelCount: 1)
+            
+            // 提取特征并推理
+            let features = try await AudioFeatureExtractor.extractMelFeatures(from: segmentRecording, cmvnURL: cmvnURL)
+            let segmentTranscript = try await performTranscription(
+                features: features,
+                language: language,
+                enableCTCDeduplication: enableCTCDeduplication
+            )
+            
+            if !segmentTranscript.isEmpty {
+                transcripts.append(segmentTranscript)
+            }
+            
+            #if DEBUG
+            print("✅ [SpeechTranscriber] 片段 \(index + 1) 转录完成: \(segmentTranscript.prefix(30))...")
+            #endif
+        }
+        
+        // 合并结果
+        let finalTranscript = mergeTranscripts(transcripts, language: language)
+        
+        #if DEBUG
+        print("📝 [SpeechTranscriber] 分段录音转录完成，共 \(transcripts.count) 个片段")
+        #endif
+        
+        return finalTranscript
     }
     
     /// 从音频文件转文字
@@ -106,14 +182,38 @@ struct SpeechTranscriber {
     ///   - enableCTCDeduplication: 是否启用 CTC 去重，nil 则使用用户设置
     /// - Returns: 转录的文本
     static func transcribe(audioURL: URL, language: TranscriptLanguage = .auto, enableCTCDeduplication: Bool? = nil) async throws -> String {
+        // 使用分段转录，但不显示进度
+        return try await transcribeWithSegmentation(
+            audioURL: audioURL,
+            language: language,
+            enableCTCDeduplication: enableCTCDeduplication,
+            progressHandler: { _, _ in }
+        )
+    }
+    
+    /// 从音频文件转文字（带进度回调，支持长音频分段处理）
+    /// - Parameters:
+    ///   - audioURL: 音频文件 URL
+    ///   - language: 语言类型，默认为自动检测
+    ///   - enableCTCDeduplication: 是否启用 CTC 去重，nil 则使用用户设置
+    ///   - progressHandler: 进度回调 (进度 0.0-1.0, 状态消息)
+    /// - Returns: 转录的文本
+    static func transcribeWithSegmentation(
+        audioURL: URL,
+        language: TranscriptLanguage = .auto,
+        enableCTCDeduplication: Bool? = nil,
+        progressHandler: @escaping (Double, String) -> Void
+    ) async throws -> String {
         // 1. 预处理音频：转换为 16kHz 单声道 WAV
+        await MainActor.run { progressHandler(0.05, "正在预处理音频...") }
+        
         let processedAudioURL = try await preprocessAudio(audioURL: audioURL)
         defer {
             // 清理临时文件
             try? FileManager.default.removeItem(at: processedAudioURL)
         }
         
-        // 获取 CTC 去重设置（如果未指定，从用户偏好设置中获取）
+        // 获取 CTC 去重设置
         let ctcDedup: Bool
         if let enableCTCDeduplication = enableCTCDeduplication {
             ctcDedup = enableCTCDeduplication
@@ -121,14 +221,193 @@ struct SpeechTranscriber {
             ctcDedup = await MainActor.run { UserPreferences.shared.enableCTCDeduplication }
         }
         
-        // 2. 提取音频特征
+        // 2. 加载音频数据
+        await MainActor.run { progressHandler(0.1, "正在加载音频数据...") }
+        let audioSamples = try await loadAudioSamples(from: processedAudioURL)
+        
+        let totalDuration = Double(audioSamples.count) / 16000.0
+        #if DEBUG
+        print("🎵 音频总时长: \(String(format: "%.2f", totalDuration)) 秒")
+        #endif
+        
+        // 3. 判断是否需要分段
+        if !AudioSegmenter.needsSegmentation(samples: audioSamples) {
+            // 短音频：直接处理
+            await MainActor.run { progressHandler(0.2, "正在提取特征...") }
+            let cmvnURL = resolveCMVNURL()
+            let features = try await AudioFeatureExtractor.extractMelFeatures(from: processedAudioURL, cmvnURL: cmvnURL)
+            
+            await MainActor.run { progressHandler(0.4, "正在转录...") }
+            let transcript = try await performTranscription(features: features, language: language, enableCTCDeduplication: ctcDedup)
+            
+            await MainActor.run { progressHandler(1.0, "转录完成") }
+            return transcript
+        }
+        
+        // 4. 长音频：分段处理
+        await MainActor.run { progressHandler(0.1, "正在分析音频结构...") }
+        let segments = AudioSegmenter.segmentAudio(samples: audioSamples)
+        
+        #if DEBUG
+        print("📊 音频分成 \(segments.count) 个片段")
+        #endif
+        
+        // 5. 逐个片段处理
+        var transcripts: [String] = []
         let cmvnURL = resolveCMVNURL()
-        let features = try await AudioFeatureExtractor.extractMelFeatures(from: processedAudioURL, cmvnURL: cmvnURL)
         
-        // 3. 加载模型并推理
-        let transcript = try await performTranscription(features: features, language: language, enableCTCDeduplication: ctcDedup)
+        for (index, segment) in segments.enumerated() {
+            let segmentProgress = 0.1 + 0.85 * (Double(index) / Double(segments.count))
+            let statusMessage = "转录中: 片段 \(index + 1)/\(segments.count) (\(Int(segment.startTime))s-\(Int(segment.endTime))s)"
+            await MainActor.run { progressHandler(segmentProgress, statusMessage) }
+            
+            #if DEBUG
+            print("🎤 处理片段 \(index + 1)/\(segments.count): \(String(format: "%.2f", segment.startTime))s - \(String(format: "%.2f", segment.endTime))s")
+            #endif
+            
+            // 将 Float 样本转换为 Int16 PCM 数据
+            let pcmData = floatSamplesToPCMData(segment.samples)
+            let recording = VoiceRecording(pcmData: pcmData, sampleRate: 16000, channelCount: 1)
+            
+            // 提取该片段的特征
+            let features = try await AudioFeatureExtractor.extractMelFeatures(
+                from: recording,
+                cmvnURL: cmvnURL
+            )
+            
+            // 推理
+            let segmentTranscript = try await performTranscription(
+                features: features,
+                language: language,
+                enableCTCDeduplication: ctcDedup
+            )
+            
+            if !segmentTranscript.isEmpty {
+                transcripts.append(segmentTranscript)
+            }
+            
+            #if DEBUG
+            print("✅ 片段 \(index + 1) 转录结果: \(segmentTranscript.prefix(50))...")
+            #endif
+        }
         
-        return transcript
+        // 6. 合并结果
+        await MainActor.run { progressHandler(0.95, "正在合并结果...") }
+        let finalTranscript = mergeTranscripts(transcripts, language: language)
+        
+        await MainActor.run { progressHandler(1.0, "转录完成") }
+        
+        #if DEBUG
+        print("📝 最终转录结果: \(finalTranscript.prefix(100))...")
+        #endif
+        
+        return finalTranscript
+    }
+    
+    /// 加载音频样本数据
+    private static func loadAudioSamples(from audioURL: URL) async throws -> [Float] {
+        let asset = AVURLAsset(url: audioURL)
+        
+        guard let audioTrack = try await asset.loadTracks(withMediaType: .audio).first else {
+            throw VideoProcessingError.noAudioTrack
+        }
+        
+        let reader = try AVAssetReader(asset: asset)
+        let outputSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsNonInterleaved: false
+        ]
+        
+        let audioOutput = AVAssetReaderTrackOutput(track: audioTrack, outputSettings: outputSettings)
+        guard reader.canAdd(audioOutput) else {
+            throw VideoProcessingError.transcriptionFailed("无法添加音频输出")
+        }
+        reader.add(audioOutput)
+        
+        guard reader.startReading() else {
+            throw VideoProcessingError.transcriptionFailed("无法开始读取音频: \(reader.error?.localizedDescription ?? "未知错误")")
+        }
+        
+        var audioSamples: [Float] = []
+        
+        while let sampleBuffer = audioOutput.copyNextSampleBuffer() {
+            guard let blockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer) else {
+                continue
+            }
+            
+            var length: Int = 0
+            var dataPointer: UnsafeMutablePointer<Int8>? = nil
+            let status = CMBlockBufferGetDataPointer(blockBuffer, atOffset: 0, lengthAtOffsetOut: nil, totalLengthOut: &length, dataPointerOut: &dataPointer)
+            
+            guard status == noErr, let data = dataPointer else {
+                continue
+            }
+            
+            let sampleCount = length / 2
+            let floatSamples = data.withMemoryRebound(to: Int16.self, capacity: sampleCount) { int16Ptr -> [Float] in
+                let buffer = UnsafeBufferPointer(start: int16Ptr, count: sampleCount)
+                return buffer.map { Float($0) / 32768.0 }
+            }
+            
+            audioSamples.append(contentsOf: floatSamples)
+        }
+        
+        return audioSamples
+    }
+    
+    /// 将 Float 样本数据转换为 Int16 PCM Data
+    private static func floatSamplesToPCMData(_ samples: [Float]) -> Data {
+        var pcmData = Data(capacity: samples.count * MemoryLayout<Int16>.size)
+        for sample in samples {
+            // 将 -1.0 ~ 1.0 的 Float 转换为 Int16
+            let clamped = max(-1.0, min(1.0, sample))
+            let int16Value = Int16(clamped * Float(Int16.max))
+            withUnsafeBytes(of: int16Value.littleEndian) { bytes in
+                pcmData.append(contentsOf: bytes)
+            }
+        }
+        return pcmData
+    }
+    
+    /// 合并多个片段的转录结果
+    private static func mergeTranscripts(_ transcripts: [String], language: TranscriptLanguage) -> String {
+        guard !transcripts.isEmpty else { return "" }
+        
+        // 根据语言决定分隔符
+        // 中文/日文/韩文不需要空格，英文等需要空格
+        let needsSpace: Bool
+        switch language {
+        case .zh, .ja, .ko, .yue:
+            needsSpace = false
+        case .en:
+            needsSpace = true
+        case .auto, .nospeech:
+            // 自动检测：如果第一个转录结果主要是 CJK 字符，不加空格
+            if let first = transcripts.first {
+                let cjkCount = first.unicodeScalars.filter { scalar in
+                    // CJK 统一汉字范围
+                    (scalar.value >= 0x4E00 && scalar.value <= 0x9FFF) ||
+                    // 日文平假名
+                    (scalar.value >= 0x3040 && scalar.value <= 0x309F) ||
+                    // 日文片假名
+                    (scalar.value >= 0x30A0 && scalar.value <= 0x30FF) ||
+                    // 韩文
+                    (scalar.value >= 0xAC00 && scalar.value <= 0xD7AF)
+                }.count
+                needsSpace = cjkCount < first.count / 2
+            } else {
+                needsSpace = true
+            }
+        }
+        
+        if needsSpace {
+            return transcripts.joined(separator: " ")
+        } else {
+            return transcripts.joined(separator: "")
+        }
     }
     
     /// 预处理音频：转换为 16kHz 单声道 WAV 格式

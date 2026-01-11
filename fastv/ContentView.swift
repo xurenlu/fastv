@@ -17,7 +17,6 @@ enum SidebarItem: Identifiable, Hashable {
     case expense
     case health
     case meetingRecord
-    case liveTranscription
     case videoTools
     case aiChat
     case email
@@ -34,7 +33,6 @@ enum SidebarItem: Identifiable, Hashable {
         case .expense: return "记账"
         case .health: return "健康助理"
         case .meetingRecord: return "会议记录"
-        case .liveTranscription: return "直播转录"
         case .videoTools: return "视频工具"
         case .aiChat: return "AI Chat"
         case .email: return "邮箱"
@@ -53,7 +51,6 @@ enum SidebarItem: Identifiable, Hashable {
         case .expense: return "记账"
         case .health: return "健康助理"
         case .meetingRecord: return "会议记录"
-        case .liveTranscription: return "直播转录"
         case .videoTools: return "视频工具"
         case .aiChat: return "AI Chat"
         case .email: return "邮箱"
@@ -72,7 +69,6 @@ enum SidebarItem: Identifiable, Hashable {
         switch self {
         case .voiceInput: return "mic.fill"
         case .meetingRecord: return "calendar.badge.clock"
-        case .liveTranscription: return "waveform.circle.fill"
         case .videoTools: return "film.stack"
         case .aiTodo: return "checklist"
         case .aiChat: return "message.fill"
@@ -88,7 +84,7 @@ enum SidebarItem: Identifiable, Hashable {
     }
     
     static var builtInItems: [SidebarItem] {
-        [.voiceInput, .aiTodo, .diary, .expense, .health, .meetingRecord, .liveTranscription, .videoTools, .aiChat, .email, .intel, .market, .installed]
+        [.voiceInput, .aiTodo, .diary, .expense, .health, .meetingRecord, .videoTools, .aiChat, .email, .intel, .market, .installed]
     }
 }
 
@@ -160,16 +156,6 @@ struct ContentView: View {
                             }
                     case .meetingRecord:
                         MeetingRecordView()
-                            .toolbar {
-                                ToolbarItem(placement: .automatic) {
-                                    Button(action: { showSettings = true }) {
-                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
-                                    }
-                                    .help(NSLocalizedString("settings", comment: ""))
-                                }
-                            }
-                    case .liveTranscription:
-                        LiveTranscriptionView()
                             .toolbar {
                                 ToolbarItem(placement: .automatic) {
                                     Button(action: { showSettings = true }) {

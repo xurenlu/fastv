@@ -17,6 +17,7 @@ struct VideoExtractAudioView: View {
     @State private var statusMessage = ""
     @State private var outputURL: URL?
     @State private var showVideoSelector = false
+    @State private var currentTask: Task<Void, Never>?
     
     var body: some View {
         ScrollView {
@@ -159,25 +160,39 @@ struct VideoExtractAudioView: View {
                 }
                 
                 // 处理按钮
-                Button(action: {
-                    Task {
-                        await extractAudio()
-                    }
-                }) {
-                    HStack(spacing: 8) {
-                        if isProcessing {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Image(systemName: "waveform")
+                HStack(spacing: 12) {
+                    Button(action: {
+                        currentTask = Task {
+                            await extractAudio()
                         }
-                        Text(isProcessing ? "提取中..." : "开始提取")
+                    }) {
+                        HStack(spacing: 8) {
+                            if isProcessing {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "waveform")
+                            }
+                            Text(isProcessing ? "提取中..." : "开始提取")
+                        }
+                        .frame(minWidth: 120)
                     }
-                    .frame(minWidth: 120)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(isProcessing || viewModel.videoInfo?.hasAudio != true)
+                    
+                    if isProcessing {
+                        Button(action: cancelTask) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark.circle")
+                                Text("取消")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .tint(.red)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(isProcessing || viewModel.videoInfo?.hasAudio != true)
                 
                 // 进度和状态
                 if isProcessing {
@@ -208,6 +223,16 @@ struct VideoExtractAudioView: View {
         ) { result in
             handleVideoSelection(result)
         }
+        .onDisappear {
+            cancelTask()
+        }
+    }
+    
+    private func cancelTask() {
+        currentTask?.cancel()
+        currentTask = nil
+        isProcessing = false
+        statusMessage = "操作已取消"
     }
     
     private func handleVideoSelection(_ result: Result<[URL], Error>) {
@@ -232,9 +257,12 @@ struct VideoExtractAudioView: View {
         guard let videoURL = viewModel.videoURL else { return }
         guard viewModel.videoInfo?.hasAudio == true else { return }
         
-        isProcessing = true
-        progress = 0
-        statusMessage = "正在提取音频..."
+        // 确保状态更新在主线程
+        await MainActor.run {
+            isProcessing = true
+            progress = 0
+            statusMessage = "正在提取音频..."
+        }
         
         do {
             let outputDir = viewModel.outputDirectory ?? videoURL.deletingLastPathComponent()
@@ -243,35 +271,41 @@ struct VideoExtractAudioView: View {
             let audioFilename = "\(videoName).\(audioExtension)"
             let audioURL = outputDir.appendingPathComponent(audioFilename)
             
-            // 使用 AudioExtractor 提取音频
-            try await AudioExtractor.extractAudio(
-                from: videoURL,
-                to: audioURL,
-                format: preferences.audioFormat,
-                progressHandler: { prog in
-                    Task { @MainActor in
-                        progress = prog
-                        statusMessage = "正在提取音频... \(Int(prog * 100))%"
+            // 在后台线程执行音频提取，避免阻塞主线程
+            let actualURL = try await Task.detached(priority: .userInitiated) {
+                try await AudioExtractor.extractAudio(
+                    from: videoURL,
+                    to: audioURL,
+                    format: await MainActor.run { preferences.audioFormat },
+                    progressHandler: { prog in
+                        Task { @MainActor in
+                            progress = prog
+                            statusMessage = "正在提取音频... \(Int(prog * 100))%"
+                        }
                     }
-                }
-            )
+                )
+            }.value
             
             await MainActor.run {
-                outputURL = audioURL
+                outputURL = actualURL
                 statusMessage = "提取完成！"
                 progress = 1.0
             }
             
             // 在 Finder 中显示
-            NSWorkspace.shared.selectFile(audioURL.path, inFileViewerRootedAtPath: outputDir.path)
+            NSWorkspace.shared.selectFile(actualURL.path, inFileViewerRootedAtPath: outputDir.path)
             
         } catch {
             await MainActor.run {
                 statusMessage = "提取失败: \(error.localizedDescription)"
+                print("❌ [VideoExtractAudioView] 提取失败: \(error)")
             }
         }
         
-        isProcessing = false
+        // 确保状态更新在主线程
+        await MainActor.run {
+            isProcessing = false
+        }
     }
 }
 

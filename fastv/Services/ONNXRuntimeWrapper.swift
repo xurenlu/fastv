@@ -79,6 +79,25 @@ class ONNXRuntimeWrapper {
             }
         }
         
+        // 性能优化：设置多线程
+        let numThreads = max(4, ProcessInfo.processInfo.activeProcessorCount)
+        status = api.pointee.SetIntraOpNumThreads(sessionOptions, Int32(numThreads))
+        if status != nil {
+            let errorMsg = getErrorMessage(from: status, api: api)
+            api.pointee.ReleaseStatus(status)
+            print("⚠️ 设置线程数失败: \(errorMsg)")
+        } else {
+            print("✅ ONNX Runtime 使用 \(numThreads) 个线程")
+        }
+        
+        // 设置图优化级别
+        status = api.pointee.SetSessionGraphOptimizationLevel(sessionOptions, ORT_ENABLE_ALL)
+        if status != nil {
+            let errorMsg = getErrorMessage(from: status, api: api)
+            api.pointee.ReleaseStatus(status)
+            print("⚠️ 设置图优化级别失败: \(errorMsg)")
+        }
+        
         // 创建会话
         // 在 macOS 上，ORTCHAR_T 是 char，所以直接使用 path
         var session: OpaquePointer?
@@ -566,6 +585,9 @@ class ONNXRuntimeWrapper {
         }
         #endif
         
+        print("🔄 开始 ONNX 推理... (输入: \(sequenceLength) 帧，这可能需要一些时间)")
+        let inferenceStartTime = CFAbsoluteTimeGetCurrent()
+        
         // 准备输出名称 C 字符串
         let ctcLogitsCString = ctcLogitsOutputName.cString(using: .utf8)!
         var outputNamePtrs: [UnsafePointer<CChar>?] = [UnsafePointer(ctcLogitsCString)]
@@ -605,6 +627,10 @@ class ONNXRuntimeWrapper {
         }
         
         status = currentStatus
+        
+        let inferenceEndTime = CFAbsoluteTimeGetCurrent()
+        let inferenceDuration = inferenceEndTime - inferenceStartTime
+        print("✅ ONNX 推理完成，耗时: \(String(format: "%.2f", inferenceDuration)) 秒")
         
         if status != nil {
             let errorMsg = getErrorMessage(from: status, api: api)

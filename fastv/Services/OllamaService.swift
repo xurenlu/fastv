@@ -959,18 +959,18 @@ class OllamaService {
         let requestBody: [String: Any]
         
         if isDashScopeAPI {
-            // DashScope 格式：使用 input.messages
+            // DashScope 格式：使用 input.messages，content 为字符串
             requestBody = [
                 "model": model,
                 "input": [
                     "messages": [
                         [
                             "role": "system",
-                            "content": [["text": systemPrompt]]
+                            "content": systemPrompt
                         ],
                         [
                             "role": "user",
-                            "content": [["text": "请分析以下会议转录文本，生成摘要和待办事项：\n\n\(text)"]]
+                            "content": "请分析以下会议转录文本，生成摘要和待办事项：\n\n\(text)"
                         ]
                     ]
                 ],

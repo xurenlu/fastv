@@ -19,6 +19,7 @@ struct VideoSceneDetectionView: View {
     @State private var minSceneDuration: Double = 1.0
     @State private var outputURL: URL?
     @State private var showVideoSelector = false
+    @State private var currentTask: Task<Void, Never>?
     
     struct SceneChange: Identifiable {
         let id = UUID()
@@ -191,25 +192,39 @@ struct VideoSceneDetectionView: View {
                 }
                 
                 // 处理按钮
-                Button(action: {
-                    Task {
-                        await detectSceneChanges()
-                    }
-                }) {
-                    HStack(spacing: 8) {
-                        if isProcessing {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Image(systemName: "scissors")
+                HStack(spacing: 12) {
+                    Button(action: {
+                        currentTask = Task {
+                            await detectSceneChanges()
                         }
-                        Text(isProcessing ? "检测中..." : "开始检测")
+                    }) {
+                        HStack(spacing: 8) {
+                            if isProcessing {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "scissors")
+                            }
+                            Text(isProcessing ? "检测中..." : "开始检测")
+                        }
+                        .frame(minWidth: 120)
                     }
-                    .frame(minWidth: 120)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(isProcessing)
+                    
+                    if isProcessing {
+                        Button(action: cancelTask) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark.circle")
+                                Text("取消")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .tint(.red)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(isProcessing)
                 
                 // 进度和状态
                 if isProcessing {
@@ -240,6 +255,16 @@ struct VideoSceneDetectionView: View {
         ) { result in
             handleVideoSelection(result)
         }
+        .onDisappear {
+            cancelTask()
+        }
+    }
+    
+    private func cancelTask() {
+        currentTask?.cancel()
+        currentTask = nil
+        isProcessing = false
+        statusMessage = "操作已取消"
     }
     
     private func handleVideoSelection(_ result: Result<[URL], Error>) {
@@ -264,9 +289,11 @@ struct VideoSceneDetectionView: View {
     private func detectSceneChanges() async {
         guard let videoURL = viewModel.videoURL else { return }
         
-        isProcessing = true
-        progress = 0
-        statusMessage = "正在分析视频..."
+        await MainActor.run {
+            isProcessing = true
+            progress = 0
+            statusMessage = "正在分析视频..."
+        }
         
         do {
             let outputDir = viewModel.outputDirectory ?? videoURL.deletingLastPathComponent()
@@ -332,7 +359,9 @@ struct VideoSceneDetectionView: View {
             }
         }
         
-        isProcessing = false
+        await MainActor.run {
+            isProcessing = false
+        }
     }
     
     private func formatTime(_ seconds: TimeInterval) -> String {

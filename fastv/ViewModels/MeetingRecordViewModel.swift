@@ -13,6 +13,7 @@ enum ProcessingStage: String {
     case transcribing = "正在转文字..."
     case correcting = "正在修正文本..."
     case optimizing = "正在优化文本..."
+    case formatting = "正在整理文稿格式..."
     case diarizing = "正在分离说话人..."
     case summarizing = "正在生成摘要..."
     case saving = "正在保存..."
@@ -67,6 +68,11 @@ class MeetingRecordViewModel: ObservableObject {
     
     private var silenceCheckTask: Task<Void, Never>?
     private var transcriptUpdateTask: Task<Void, Never>?
+    private var segmentCheckTimer: Timer?  // 定期检查是否需要切分
+    
+    // 延迟切分策略相关
+    private var lastSegmentExtractTime: Date?  // 上次提取段落的时间
+    private var pendingSilencePoints: [TimeInterval] = []  // 待处理的停顿点（相对于录音开始的时间）
     
     init() {
         // 监听录音状态变化
@@ -351,18 +357,22 @@ class MeetingRecordViewModel: ObservableObject {
                 print("✅ [MeetingRecordViewModel] 使用增量转写结果,共 \(incrementalTranscription.segments.count) 个段落")
                 text = incrementalText
                 
-                // 只转写最后未完成的部分(如果有的话)
+                // 只转写最后未完成的部分(如果有的话) - 在后台线程执行
                 if recording.pcmData.count > 1000 {  // 至少有一些数据
                     print("🔄 [MeetingRecordViewModel] 转写最后剩余部分...")
-                    let lastPartText = try await SpeechTranscriber.transcribe(recording: recording, language: language)
+                    let lastPartText = try await Task.detached(priority: .userInitiated) {
+                        try await SpeechTranscriber.transcribe(recording: recording, language: language)
+                    }.value
                     if !lastPartText.isEmpty {
                         text += "\n" + lastPartText
                     }
                 }
             } else {
-                // 没有增量转写结果,进行完整转写
+                // 没有增量转写结果,进行完整转写 - 在后台线程执行
                 print("🔄 [MeetingRecordViewModel] 进行完整转写...")
-                text = try await SpeechTranscriber.transcribe(recording: recording, language: language)
+                text = try await Task.detached(priority: .userInitiated) {
+                    try await SpeechTranscriber.transcribe(recording: recording, language: language)
+                }.value
             }
             
             record.originalText = text
@@ -387,19 +397,24 @@ class MeetingRecordViewModel: ObservableObject {
             
             record.correctedText = text
             
-            // AI 修正文本（如果启用 AI 文本优化）
+            // AI 修正文本（如果启用 AI 文本优化）- 在后台线程执行
             if preferences.enableAIOptimization {
                 processingStage = .optimizing
-                processingProgress = 0.6
+                processingProgress = 0.5
+                
+                let currentText = text
+                let systemPrompt = preferences.aiSystemPrompt
                 
                 do {
-                    let optimizedText = try await OllamaService.shared.optimizeTranscript(
-                        text: text,
-                        scenario: .voiceInputOptimization,
-                        systemPrompt: preferences.aiSystemPrompt,
-                        useMistakes: true,
-                        useHighFrequencyWords: true
-                    )
+                    let optimizedText = try await Task.detached(priority: .userInitiated) {
+                        try await OllamaService.shared.optimizeTranscript(
+                            text: currentText,
+                            scenario: .voiceInputOptimization,
+                            systemPrompt: systemPrompt,
+                            useMistakes: true,
+                            useHighFrequencyWords: true
+                        )
+                    }.value
                     
                     // 检查是否已取消
                     guard !Task.isCancelled else {
@@ -411,6 +426,7 @@ class MeetingRecordViewModel: ObservableObject {
                     }
                     
                     record.correctedText = optimizedText
+                    text = optimizedText  // 更新 text 供后续使用
                 } catch {
                     if Task.isCancelled {
                         currentRecord = nil
@@ -423,33 +439,78 @@ class MeetingRecordViewModel: ObservableObject {
                 }
             }
             
-            // 说话人分离（如果启用）
+            // AI 文稿整理（修正错别字、添加换行、整理格式）- 在后台线程执行
+            processingStage = .formatting
+            processingProgress = 0.6
+            
+            let textToFormat = record.correctedText ?? text
+            
+            do {
+                let formattedText = try await Task.detached(priority: .userInitiated) { [self] in
+                    try await self.formatTranscriptWithAI(text: textToFormat)
+                }.value
+                
+                // 检查是否已取消
+                guard !Task.isCancelled else {
+                    currentRecord = nil
+                    isProcessing = false
+                    canCancelProcessing = false
+                    processingStage = nil
+                    return
+                }
+                
+                record.correctedText = formattedText
+                print("✅ [MeetingRecordViewModel] AI 文稿整理完成")
+            } catch {
+                if Task.isCancelled {
+                    currentRecord = nil
+                    isProcessing = false
+                    canCancelProcessing = false
+                    processingStage = nil
+                    return
+                }
+                print("⚠️ [MeetingRecordViewModel] AI 文稿整理失败: \(error.localizedDescription)")
+            }
+            
+            // 说话人分离（如果启用）- 在后台线程执行
             if preferences.enableSpeakerDiarization {
                 processingStage = .diarizing
                 processingProgress = 0.65
                 
+                let recordId = record.id
+                let existingWAVURL = wavFileURL
+                let minSpeakers = preferences.diarizationMinSpeakers
+                let maxSpeakers = preferences.diarizationMaxSpeakers
+                
                 do {
-                    // 保存录音到临时文件
-                    let tempDir = FileManager.default.temporaryDirectory
-                    let audioURL = tempDir.appendingPathComponent("\(record.id.uuidString).wav")
-                    
-                    // 如果已经有实时保存的 WAV 文件，直接使用；否则保存
-                    if let existingWAVURL = wavFileURL, FileManager.default.fileExists(atPath: existingWAVURL.path) {
-                        // 使用已实时保存的 WAV 文件（文件头已更新）
-                        try FileManager.default.copyItem(at: existingWAVURL, to: audioURL)
-                        print("✅ [MeetingRecordViewModel] 使用实时保存的 WAV 文件")
-                    } else {
-                        // 降级方案：将录音数据保存为 WAV 文件
-                        try await saveRecordingToWAV(recording: recording, to: audioURL)
-                        print("✅ [MeetingRecordViewModel] 使用降级方案保存 WAV 文件")
-                    }
-                    
-                    // 执行说话人分离
-                    let segments = try await SpeakerDiarizationService.shared.diarize(
-                        audioURL: audioURL,
-                        minSpeakers: preferences.diarizationMinSpeakers,
-                        maxSpeakers: preferences.diarizationMaxSpeakers
-                    )
+                    let segments = try await Task.detached(priority: .userInitiated) { [self] in
+                        // 保存录音到临时文件
+                        let tempDir = FileManager.default.temporaryDirectory
+                        let audioURL = tempDir.appendingPathComponent("\(recordId.uuidString).wav")
+                        
+                        // 如果已经有实时保存的 WAV 文件，直接使用；否则保存
+                        if let existingWAVURL = existingWAVURL, FileManager.default.fileExists(atPath: existingWAVURL.path) {
+                            // 使用已实时保存的 WAV 文件（文件头已更新）
+                            try FileManager.default.copyItem(at: existingWAVURL, to: audioURL)
+                            print("✅ [MeetingRecordViewModel] 使用实时保存的 WAV 文件")
+                        } else {
+                            // 降级方案：将录音数据保存为 WAV 文件
+                            try await self.saveRecordingToWAV(recording: recording, to: audioURL)
+                            print("✅ [MeetingRecordViewModel] 使用降级方案保存 WAV 文件")
+                        }
+                        
+                        // 执行说话人分离
+                        let segments = try await SpeakerDiarizationService.shared.diarize(
+                            audioURL: audioURL,
+                            minSpeakers: minSpeakers,
+                            maxSpeakers: maxSpeakers
+                        )
+                        
+                        // 清理临时文件
+                        try? FileManager.default.removeItem(at: audioURL)
+                        
+                        return segments
+                    }.value
                     
                     // 转换为 SpeakerSegmentInfo
                     record.speakerSegments = segments.map { segment in
@@ -460,9 +521,6 @@ class MeetingRecordViewModel: ObservableObject {
                             duration: segment.duration
                         )
                     }
-                    
-                    // 清理临时文件
-                    try? FileManager.default.removeItem(at: audioURL)
                     
                     // 关闭实时保存的 WAV 文件
                     closeWAVFile()
@@ -481,17 +539,22 @@ class MeetingRecordViewModel: ObservableObject {
                 }
             }
             
-            // 生成摘要和待办事项（如果启用会议记录 AI 摘要）
+            // 生成摘要和待办事项（如果启用会议记录 AI 摘要）- 在后台线程执行
             if preferences.enableMeetingSummaryAI {
                 processingStage = .summarizing
                 processingProgress = 0.8
                 
+                let textForSummary = record.correctedText
+                let summaryTimeout = preferences.getConfig(for: .meetingSummary).timeout * 2
+                
                 do {
-                    let markdownSummary = try await OllamaService.shared.generateMeetingSummary(
-                        text: record.correctedText,
-                        scenario: .meetingSummary,
-                        timeout: preferences.getConfig(for: .meetingSummary).timeout * 2 // 摘要生成可能需要更长时间
-                    )
+                    let markdownSummary = try await Task.detached(priority: .userInitiated) {
+                        try await OllamaService.shared.generateMeetingSummary(
+                            text: textForSummary,
+                            scenario: .meetingSummary,
+                            timeout: summaryTimeout // 摘要生成可能需要更长时间
+                        )
+                    }.value
                     
                     // 检查是否已取消
                     guard !Task.isCancelled else {
@@ -608,11 +671,19 @@ class MeetingRecordViewModel: ObservableObject {
     
     /// 设置静音检测
     private func setupSilenceDetection() {
-        // 当检测到有效静音段时触发
+        // 当检测到有效静音段时，记录停顿点（不立即切分）
         silenceDetector.onSilenceDetected = { [weak self] duration in
             guard let self = self else { return }
             Task { @MainActor in
-                await self.handleSilenceDetected()
+                self.recordSilencePoint()
+            }
+        }
+        
+        // 设置片段开始转写回调，用于更新进度显示
+        incrementalTranscription.onSegmentStarted = { [weak self] current, total in
+            guard let self = self else { return }
+            Task { @MainActor in
+                self.transcriptionProgress = "转写中: 片段 \(current)/\(total)"
             }
         }
         
@@ -620,6 +691,10 @@ class MeetingRecordViewModel: ObservableObject {
         incrementalTranscription.onTranscriptionUpdated = { [weak self] fullText in
             guard let self = self else { return }
             Task { @MainActor in
+                // 更新实时转写文本显示（只显示最近的内容）
+                self.realtimeTranscript = self.incrementalTranscription.getRecentTranscript(count: 2)
+                self.transcriptionProgress = self.incrementalTranscription.getProgressDescription()
+                
                 // 如果正在录音且有当前记录，更新记录的文本
                 if self.isRecording, var record = self.currentRecord {
                     record.originalText = fullText
@@ -639,6 +714,78 @@ class MeetingRecordViewModel: ObservableObject {
                     print("📝 [MeetingRecordViewModel] 实时更新会议记录文本，长度: \(fullText.count)")
                 }
             }
+        }
+    }
+    
+    /// 记录停顿点（延迟切分策略）
+    private func recordSilencePoint() {
+        let currentTime = recordingDuration
+        pendingSilencePoints.append(currentTime)
+        print("🔇 [MeetingRecordViewModel] 记录停顿点: \(String(format: "%.1f", currentTime))s (共 \(pendingSilencePoints.count) 个停顿点)")
+    }
+    
+    /// 检查是否需要切分并转写（定期调用）
+    private func checkAndExtractSegment() {
+        guard isRecording else { return }
+        
+        let lastExtractTime = lastSegmentExtractTime ?? recordingStartTime ?? Date()
+        let accumulatedDuration = Date().timeIntervalSince(lastExtractTime)
+        
+        let minDuration = IncrementalTranscriptionManager.minimumAccumulatedDuration
+        let maxDuration = IncrementalTranscriptionManager.maximumSegmentDuration
+        
+        // 条件1: 累积超过30秒且有停顿点
+        // 条件2: 累积超过60秒强制切分
+        let shouldExtract = (accumulatedDuration >= minDuration && !pendingSilencePoints.isEmpty) ||
+                           (accumulatedDuration >= maxDuration)
+        
+        if shouldExtract {
+            let reason = accumulatedDuration >= maxDuration ? "达到最大时长\(Int(maxDuration))秒" : "累积\(Int(accumulatedDuration))秒且有停顿点"
+            print("✂️ [MeetingRecordViewModel] 触发切分 (\(reason))")
+            
+            Task { @MainActor in
+                await self.extractAndTranscribeSegment()
+            }
+        }
+    }
+    
+    /// 提取并转写当前累积的音频段落
+    private func extractAndTranscribeSegment() async {
+        do {
+            guard let segmentResult = try await voiceService.extractCurrentSegmentWithTiming() else {
+                print("⚠️ [MeetingRecordViewModel] 段落音频为空,跳过")
+                return
+            }
+            
+            let startTime = segmentResult.startTime
+            let endTime = segmentResult.endTime
+            let duration = segmentResult.duration
+            
+            print("📊 [MeetingRecordViewModel] 提取段落: \(String(format: "%.1f", startTime))s - \(String(format: "%.1f", endTime))s (时长: \(String(format: "%.1f", duration))s)")
+            
+            // 清空已处理的停顿点
+            pendingSilencePoints.removeAll()
+            lastSegmentExtractTime = Date()
+            
+            // 获取语言设置
+            let languageString = preferences.voiceInputLanguage
+            let language = TranscriptLanguage(rawValue: languageString) ?? .zh
+            
+            // 添加到增量转写管理器
+            incrementalTranscription.addSegment(
+                audioData: segmentResult.recording.pcmData,
+                sampleRate: segmentResult.recording.sampleRate,
+                channelCount: segmentResult.recording.channelCount,
+                startTime: startTime,
+                endTime: endTime,
+                language: language
+            )
+            
+            // 更新进度显示
+            transcriptionProgress = "正在转写第 \(incrementalTranscription.segments.count) 段..."
+            
+        } catch {
+            print("❌ [MeetingRecordViewModel] 提取段落失败: \(error)")
         }
     }
     
@@ -662,6 +809,11 @@ class MeetingRecordViewModel: ObservableObject {
     /// 启动静音检测
     private func startSilenceDetection() {
         silenceCheckTask?.cancel()
+        segmentCheckTimer?.invalidate()
+        
+        // 重置延迟切分状态
+        lastSegmentExtractTime = Date()
+        pendingSilencePoints.removeAll()
         
         // 从 preferences 读取配置并应用到 SilenceDetector
         silenceDetector.silenceThreshold = preferences.silenceThreshold
@@ -669,15 +821,24 @@ class MeetingRecordViewModel: ObservableObject {
         silenceDetector.minimumSilenceDuration = preferences.silenceDetectionDuration
         
         print("✅ [MeetingRecordViewModel] 静音检测已启动 (绝对阈值=\(preferences.silenceThreshold), 相对阈值=\(Int(preferences.silenceRelativeThreshold * 100))%, 最小时长=\(preferences.silenceDetectionDuration)秒)")
+        print("✅ [MeetingRecordViewModel] 延迟切分策略: 最小累积=\(Int(IncrementalTranscriptionManager.minimumAccumulatedDuration))秒, 最大=\(Int(IncrementalTranscriptionManager.maximumSegmentDuration))秒")
         
         // 连接音频电平回调
-        voiceService.onAudioData = { [weak self] level in
+        voiceService.onAudioData = { [weak self] rawRms in
             guard let self = self else { return }
             Task { @MainActor in
-                // 更新音频电平（用于波形显示）
-                self.audioLevel = level
-                // 处理静音检测
-                self.silenceDetector.processAudioLevel(level)
+                // 更新音频电平（用于波形显示）- 使用 service 已归一化的值
+                self.audioLevel = self.voiceService.audioLevel
+                // 处理静音检测（使用原始 RMS 值）
+                self.silenceDetector.processAudioLevel(rawRms)
+            }
+        }
+        
+        // 启动定期检查定时器（每5秒检查一次是否需要切分）
+        segmentCheckTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            Task { @MainActor in
+                self.checkAndExtractSegment()
             }
         }
     }
@@ -688,76 +849,14 @@ class MeetingRecordViewModel: ObservableObject {
         silenceCheckTask = nil
         transcriptUpdateTask?.cancel()
         transcriptUpdateTask = nil
+        segmentCheckTimer?.invalidate()
+        segmentCheckTimer = nil
         voiceService.onAudioData = nil
         audioLevel = 0.0
+        pendingSilencePoints.removeAll()
         print("✅ [MeetingRecordViewModel] 静音检测已停止")
     }
     
-    /// 处理检测到的静音段
-    private func handleSilenceDetected() async {
-        print("🔇 [MeetingRecordViewModel] 检测到静音段,开始提取并转写")
-        
-        do {
-            // 提取当前段落的音频
-            guard let segmentRecording = try await voiceService.extractCurrentSegment() else {
-                print("⚠️ [MeetingRecordViewModel] 段落音频为空,跳过")
-                return
-            }
-            
-            let startTime = voiceService.getLastSegmentTime()
-            let endTime = voiceService.getCurrentDuration()
-            
-            print("📊 [MeetingRecordViewModel] 提取段落: \(String(format: "%.1f", startTime))s - \(String(format: "%.1f", endTime))s")
-            
-            // 获取语言设置
-            let languageString = preferences.voiceInputLanguage
-            let language = TranscriptLanguage(rawValue: languageString) ?? .zh
-            
-            // 添加到增量转写管理器
-            incrementalTranscription.addSegment(
-                audioData: segmentRecording.pcmData,
-                sampleRate: segmentRecording.sampleRate,
-                channelCount: segmentRecording.channelCount,
-                startTime: startTime,
-                endTime: endTime,
-                language: language
-            )
-            
-            // 更新实时转写内容
-            updateRealtimeTranscript()
-            
-        } catch {
-            print("❌ [MeetingRecordViewModel] 提取段落失败: \(error)")
-        }
-    }
-    
-    /// 更新实时转写文本
-    private func updateRealtimeTranscript() {
-        // 获取所有已完成的转写文本
-        let fullText = incrementalTranscription.getFullTranscript()
-        realtimeTranscript = fullText
-        
-        // 更新进度描述
-        transcriptionProgress = incrementalTranscription.getProgressDescription()
-        
-        // 启动定期更新任务(如果还没有启动)
-        if transcriptUpdateTask == nil && isRecording {
-            transcriptUpdateTask = Task { @MainActor in
-                while isRecording {
-                    // 获取所有已完成的转写文本
-                    let fullText = incrementalTranscription.getFullTranscript()
-                    realtimeTranscript = fullText
-                    
-                    // 更新进度描述
-                    transcriptionProgress = incrementalTranscription.getProgressDescription()
-                    
-                    // 每秒更新一次
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
-                }
-                transcriptUpdateTask = nil
-            }
-        }
-    }
     
     /// 解析 Markdown 格式的摘要，提取摘要文本和待办事项
     /// - Parameter markdownSummary: Markdown 格式的摘要字符串
@@ -811,6 +910,40 @@ class MeetingRecordViewModel: ObservableObject {
         }
         
         return (summaryText, actionItems)
+    }
+    
+    /// 使用 AI 整理文稿格式（可在后台线程执行）
+    /// - Parameter text: 原始转录文本
+    /// - Returns: 整理后的文本（修正错别字、添加标点、适当换行）
+    nonisolated private func formatTranscriptWithAI(text: String) async throws -> String {
+        guard !text.isEmpty else { return text }
+        
+        // 构建专门用于文稿整理的 system prompt
+        let formatSystemPrompt = """
+        你是一个专业的文稿整理助手。请对语音转录文本进行整理，要求：
+        1. 修正明显的错别字和同音字错误
+        2. 添加适当的标点符号（逗号、句号、问号等）
+        3. 在话题转换处适当添加段落分隔（空行）
+        4. 保持原意不变，不要添加、删除或改变内容的含义
+        5. 直接输出整理后的文本，不要添加任何说明或注释
+        """
+        
+        // 调用 AI 服务进行格式整理
+        let formattedText = try await OllamaService.shared.optimizeTranscript(
+            text: text,
+            scenario: .voiceInputOptimization,
+            systemPrompt: formatSystemPrompt,
+            useMistakes: true,
+            useHighFrequencyWords: true
+        )
+        
+        // 如果 AI 返回的结果为空或过短，返回原文
+        if formattedText.isEmpty || formattedText.count < text.count / 2 {
+            print("⚠️ [MeetingRecordViewModel] AI 文稿整理结果异常，使用原文")
+            return text
+        }
+        
+        return formattedText
     }
     
     /// 初始化 WAV 文件并写入文件头
