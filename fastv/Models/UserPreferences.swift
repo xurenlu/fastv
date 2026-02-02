@@ -36,6 +36,9 @@ class UserPreferences: ObservableObject {
         static let enableVoiceInput = "enableVoiceInput"
         static let voiceInputShortcutKeyCode = "voiceInputShortcutKeyCode"
         static let voiceInputShortcutModifiers = "voiceInputShortcutModifiers"
+        // 語音輸入+AI校正快捷鍵（第二個快捷鍵）
+        static let voiceInputWithAIShortcutKeyCode = "voiceInputWithAIShortcutKeyCode"
+        static let voiceInputWithAIShortcutModifiers = "voiceInputWithAIShortcutModifiers"
         static let voiceInputLanguage = "voiceInputLanguage"
         static let transcriptLanguage = "transcriptLanguage"
         static let waveformWindowPosition = "waveformWindowPosition"
@@ -189,6 +192,15 @@ class UserPreferences: ObservableObject {
     
     @Published var voiceInputShortcutModifiers: NSEvent.ModifierFlags {
         willSet { defaults.set(newValue.rawValue, forKey: Keys.voiceInputShortcutModifiers) }
+    }
+    
+    // 語音輸入+AI校正快捷鍵
+    @Published var voiceInputWithAIShortcutKeyCode: UInt16 {
+        willSet { defaults.set(newValue, forKey: Keys.voiceInputWithAIShortcutKeyCode) }
+    }
+    
+    @Published var voiceInputWithAIShortcutModifiers: NSEvent.ModifierFlags {
+        willSet { defaults.set(newValue.rawValue, forKey: Keys.voiceInputWithAIShortcutModifiers) }
     }
     
     @Published var voiceInputLanguage: String {
@@ -546,6 +558,22 @@ class UserPreferences: ObservableObject {
         } else {
             // 默认使用 Option 键作为修饰键
             voiceInputShortcutModifiers = .option
+        }
+        
+        // 語音輸入+AI校正快捷鍵（默認 FN+Control）
+        // 如果主快捷鍵是 FN，則 AI 校正快捷鍵默認為 FN+Control
+        if let savedAIKeyCode = defaults.object(forKey: Keys.voiceInputWithAIShortcutKeyCode) as? UInt16 {
+            voiceInputWithAIShortcutKeyCode = savedAIKeyCode
+        } else {
+            // 默認使用 FN 鍵
+            voiceInputWithAIShortcutKeyCode = 0x3F // FN鍵
+        }
+        
+        if let savedAIModifiers = defaults.object(forKey: Keys.voiceInputWithAIShortcutModifiers) as? UInt {
+            voiceInputWithAIShortcutModifiers = NSEvent.ModifierFlags(rawValue: savedAIModifiers)
+        } else {
+            // 默認使用 Control 修飾鍵（即 FN+Control）
+            voiceInputWithAIShortcutModifiers = .control
         }
         
         voiceInputLanguage = defaults.string(forKey: Keys.voiceInputLanguage) ?? "auto"

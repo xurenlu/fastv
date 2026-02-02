@@ -12,6 +12,8 @@ import AppKit
 
 // 全局变量：记录语音输入开始时间
 private var voiceInputStartTime: Date?
+// 記錄當前語音輸入是否需要 AI 校正
+private var currentVoiceInputNeedsAI: Bool = false
 
 private struct ShortcutConfig: Equatable {
     var isEnabled: Bool
@@ -272,25 +274,28 @@ struct fastvApp: App {
             return
         }
         
-        print("🔧 [fastvApp] 开始设置全局快捷键")
+        print("🔧 [fastvApp] 開始設置全局快捷鍵")
         
         let preferences = UserPreferences.shared
         
-        print("🔧 [fastvApp] 语音输入设置: enableVoiceInput=\(preferences.enableVoiceInput), keyCode=\(preferences.voiceInputShortcutKeyCode), modifiers=\(preferences.voiceInputShortcutModifiers.rawValue)")
+        print("🔧 [fastvApp] 語音輸入設置:")
+        print("  - 啟用: \(preferences.enableVoiceInput)")
+        print("  - 主快捷鍵: keyCode=\(preferences.voiceInputShortcutKeyCode), modifiers=\(preferences.voiceInputShortcutModifiers.rawValue)")
+        print("  - AI校正快捷鍵: keyCode=\(preferences.voiceInputWithAIShortcutKeyCode), modifiers=\(preferences.voiceInputWithAIShortcutModifiers.rawValue)")
         
-        // 设置快捷键监听回调（使用带Ctrl状态的回调）
-        print("🔧 [fastvApp] 设置快捷键回调函数")
-        GlobalShortcutMonitor.shared.onShortcutPressedWithCtrl = { hasCtrl in
-            print("🎯 [fastvApp] onShortcutPressed 回调被触发（Ctrl: \(hasCtrl)）")
+        // 設置快捷鍵監聽回調（使用新版帶類型的回調）
+        print("🔧 [fastvApp] 設置快捷鍵回調函數")
+        GlobalShortcutMonitor.shared.onShortcutPressedWithType = { shortcutType in
+            print("🎯 [fastvApp] onShortcutPressed 回調被觸發（類型: \(shortcutType)）")
             Task { @MainActor in
-                await handleShortcutPressed(hasCtrl: hasCtrl)
+                await handleShortcutPressed(shortcutType: shortcutType)
             }
         }
         
-        GlobalShortcutMonitor.shared.onShortcutReleasedWithCtrl = { hasCtrl in
-            print("🎯 [fastvApp] onShortcutReleased 回调被触发（Ctrl: \(hasCtrl)）")
+        GlobalShortcutMonitor.shared.onShortcutReleasedWithType = { shortcutType in
+            print("🎯 [fastvApp] onShortcutReleased 回調被觸發（類型: \(shortcutType)）")
             Task { @MainActor in
-                await handleShortcutReleased(hasCtrl: hasCtrl)
+                await handleShortcutReleased(shortcutType: shortcutType)
             }
         }
         
@@ -307,36 +312,41 @@ struct fastvApp: App {
         )
         
         if newConfig == lastShortcutConfig {
-            print("ℹ️ [fastvApp] 快捷键配置未变化（原因: \(reason)），跳过重新注册")
+            print("ℹ️ [fastvApp] 快捷鍵配置未變化（原因: \(reason)），跳過重新註冊")
             return
         }
         
         lastShortcutConfig = newConfig
         
         if newConfig.isEnabled {
-            print("🔧 [fastvApp] 快捷键配置已更新（原因: \(reason)），重新注册监听")
+            print("🔧 [fastvApp] 快捷鍵配置已更新（原因: \(reason)），重新註冊監聽")
+            // 傳遞雙快捷鍵配置
             GlobalShortcutMonitor.shared.startMonitoring(
                 keyCode: newConfig.keyCode,
-                modifiers: newConfig.modifiers
+                modifiers: newConfig.modifiers,
+                secondaryKeyCode: preferences.voiceInputWithAIShortcutKeyCode,
+                secondaryModifiers: preferences.voiceInputWithAIShortcutModifiers
             )
         } else {
-            print("ℹ️ [fastvApp] 语音输入已禁用（原因: \(reason)），停止快捷键监听")
+            print("ℹ️ [fastvApp] 語音輸入已禁用（原因: \(reason)），停止快捷鍵監聽")
             GlobalShortcutMonitor.shared.stopMonitoring()
         }
     }
     
     @MainActor
-    private func handleShortcutPressed(hasCtrl: Bool = false) async {
-        print("🎤 [fastvApp] handleShortcutPressed: 开始处理快捷键按下事件")
+    private func handleShortcutPressed(shortcutType: ShortcutType = .voiceInput) async {
+        let needsAI = shortcutType == .voiceInputWithAI
+        print("🎤 [fastvApp] handleShortcutPressed: 開始處理快捷鍵按下事件（類型: \(shortcutType), 需要AI: \(needsAI)）")
         
-        // 记录开始时间
+        // 記錄開始時間和是否需要 AI
         voiceInputStartTime = Date()
+        currentVoiceInputNeedsAI = needsAI
         
         let voiceService = VoiceInputService.shared
         let waveformManager = WaveformWindowManager.shared
         
         // 先显示波形窗口（即使录音失败也要显示）
-        print("📊 [fastvApp] 显示波形窗口...")
+        print("📊 [fastvApp] 顯示波形窗口...")
         waveformManager.show()
         print("✅ [fastvApp] 波形窗口已显示")
         
@@ -400,8 +410,9 @@ struct fastvApp: App {
     }
     
     @MainActor
-    private func handleShortcutReleased(hasCtrl: Bool = false) async {
-        print("🎤 [fastvApp] handleShortcutReleased: 开始处理快捷键释放事件")
+    private func handleShortcutReleased(shortcutType: ShortcutType = .voiceInput) async {
+        let needsAI = currentVoiceInputNeedsAI || shortcutType == .voiceInputWithAI
+        print("🎤 [fastvApp] handleShortcutReleased: 開始處理快捷鍵釋放事件（類型: \(shortcutType), 需要AI: \(needsAI)）")
         
         // 计算持续时间
         let duration: Double
@@ -459,11 +470,19 @@ struct fastvApp: App {
                 }
             }
             
-            // AI 优化（如果启用）
-            // 注意：已移除Control键检测，现在只根据设置决定是否启用AI优化
-            if preferences.enableAIOptimization {
-                print("🤖 [fastvApp] AI 优化已启用，开始优化文本（超时: \(preferences.aiTimeout)秒）...")
-                // 设置AI修正中状态
+            // AI 優化（根據快捷鍵類型決定）
+            // - FN：純語音輸入，不進行 AI 校正
+            // - FN+Control：語音輸入 + AI 校正
+            // 注意：即使用戶按了 AI 校正快捷鍵，如果 AI 服務未配置也不會進行校正
+            let shouldDoAI = needsAI && isAIServiceConfigured()
+            
+            if needsAI && !shouldDoAI {
+                print("⚠️ [fastvApp] 用戶按下了 AI 校正快捷鍵，但 AI 服務未配置，跳過 AI 校正")
+            }
+            
+            if shouldDoAI {
+                print("🤖 [fastvApp] AI 優化已觸發（通過快捷鍵），開始優化文本（超時: \(preferences.aiTimeout)秒）...")
+                // 設置AI修正中狀態
                 waveformManager.setAICorrecting()
                 
                 let aiStartTime = Date()
@@ -476,22 +495,26 @@ struct fastvApp: App {
                         useHighFrequencyWords: true
                     )
                     let aiDuration = Date().timeIntervalSince(aiStartTime)
-                    print("✅ [fastvApp] AI 优化完成，耗时: \(String(format: "%.2f", aiDuration))秒")
+                    print("✅ [fastvApp] AI 優化完成，耗時: \(String(format: "%.2f", aiDuration))秒")
                     print("📝 [fastvApp] 原文: \(text.prefix(50))...")
-                    print("📝 [fastvApp] 优化后: \(optimizedText.prefix(50))...")
+                    print("📝 [fastvApp] 優化後: \(optimizedText.prefix(50))...")
                     text = optimizedText
                     
-                    // AI修正成功：设置成功状态（会自动在1秒后隐藏窗口）
+                    // AI修正成功：設置成功狀態（會自動在1秒後隱藏窗口）
                     waveformManager.setAICorrected()
                 } catch {
-                    print("⚠️ [fastvApp] AI 优化失败，使用原始文本: \(error.localizedDescription)")
-                    // AI 优化失败不影响主流程，继续使用原始文本
-                    // AI修正失败：设置失败状态（会自动在0.8秒后隐藏窗口）
+                    print("⚠️ [fastvApp] AI 優化失敗，使用原始文本: \(error.localizedDescription)")
+                    // AI 優化失敗不影響主流程，繼續使用原始文本
+                    // AI修正失敗：設置失敗狀態（會自動在0.8秒後隱藏窗口）
                     waveformManager.setAICorrectionFailed()
                 }
             } else {
-                print("ℹ️ [fastvApp] AI 优化未启用（设置中已关闭），使用原始文本")
-                // AI修正未启用：设置未启用状态（会自动在0.8秒后隐藏窗口）
+                if needsAI {
+                    print("ℹ️ [fastvApp] AI 服務未配置，跳過 AI 優化")
+                } else {
+                    print("ℹ️ [fastvApp] 使用純語音輸入模式（FN鍵），不進行 AI 優化")
+                }
+                // AI修正未啟用：設置未啟用狀態（會自動在0.8秒後隱藏窗口）
                 waveformManager.setAICorrectionDisabled()
             }
             
@@ -528,6 +551,40 @@ struct fastvApp: App {
             // 转文字失败时也要隐藏窗口
             waveformManager.hide()
         }
+        
+        // 重置狀態
+        currentVoiceInputNeedsAI = false
+    }
+    
+    /// 檢查 AI 服務是否已配置
+    @MainActor
+    private func isAIServiceConfigured() -> Bool {
+        let preferences = UserPreferences.shared
+        
+        // 檢查是否有可用的 AI 服務配置
+        // 1. 檢查是否有默認 Profile
+        if let defaultProfile = preferences.getDefaultProfile() {
+            // 2. 檢查 endpoint 和 model 是否已設置
+            let hasEndpoint = !defaultProfile.endpoint.isEmpty
+            let hasModel = !defaultProfile.defaultModel.isEmpty
+            
+            if hasEndpoint && hasModel {
+                print("✅ [fastvApp] AI 服務已配置: \(defaultProfile.name) (\(defaultProfile.defaultModel))")
+                return true
+            }
+        }
+        
+        // 3. 向後兼容：檢查舊版配置
+        let hasLegacyEndpoint = !preferences.aiAPIEndpoint.isEmpty
+        let hasLegacyModel = !preferences.aiModel.isEmpty
+        
+        if hasLegacyEndpoint && hasLegacyModel {
+            print("✅ [fastvApp] AI 服務已配置（舊版配置）: \(preferences.aiAPIEndpoint) (\(preferences.aiModel))")
+            return true
+        }
+        
+        print("⚠️ [fastvApp] AI 服務未配置")
+        return false
     }
 }
 

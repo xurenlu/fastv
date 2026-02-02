@@ -21,13 +21,29 @@ struct QuickSettingsTab: View {
                 
                 if preferences.enableVoiceInput {
                     VStack(alignment: .leading, spacing: 16) {
-                        // 快捷键设置区域
+                        // 主快捷鍵設置區域（純語音輸入）
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(NSLocalizedString("global.shortcut", comment: ""))
-                                .font(.subheadline)
+                            HStack {
+                                Text("語音輸入快捷鍵")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                
+                                Spacer()
+                                
+                                Text("純語音輸入")
+                                    .font(.caption)
+                                    .foregroundStyle(.blue)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(Color.blue.opacity(0.1))
+                                    .clipShape(Capsule())
+                            }
+                            
+                            Text("當前快捷鍵：")
+                                .font(.caption)
                                 .foregroundStyle(.secondary)
                             
-                            // 快捷键捕获器
+                            // 主快捷鍵捕獲器
                             ShortcutCaptureView(
                                 keyCode: Binding(
                                     get: { preferences.voiceInputShortcutKeyCode },
@@ -38,6 +54,53 @@ struct QuickSettingsTab: View {
                                     set: { preferences.voiceInputShortcutModifiers = $0 }
                                 )
                             )
+                        }
+                        
+                        Divider()
+                        
+                        // AI 校正快捷鍵設置區域（語音輸入 + AI 校正）
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("AI 校正快捷鍵")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                
+                                Spacer()
+                                
+                                Text("語音輸入 + AI 校正")
+                                    .font(.caption)
+                                    .foregroundStyle(.purple)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(Color.purple.opacity(0.1))
+                                    .clipShape(Capsule())
+                            }
+                            
+                            Text("當前快捷鍵：")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            
+                            // AI 校正快捷鍵捕獲器
+                            ShortcutCaptureView(
+                                keyCode: Binding(
+                                    get: { preferences.voiceInputWithAIShortcutKeyCode },
+                                    set: { preferences.voiceInputWithAIShortcutKeyCode = $0 }
+                                ),
+                                modifiers: Binding(
+                                    get: { preferences.voiceInputWithAIShortcutModifiers },
+                                    set: { preferences.voiceInputWithAIShortcutModifiers = $0 }
+                                )
+                            )
+                            
+                            // AI 校正說明
+                            HStack(spacing: 6) {
+                                Image(systemName: "info.circle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.purple)
+                                Text("使用此快捷鍵時，語音識別完成後會自動進行 AI 文本優化。需要先在「AI與模型」中配置 AI 服務。")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                         
                         Divider()
@@ -201,7 +264,7 @@ struct QuickSettingsTab: View {
                         PermissionStatusView()
                         
                         // FN键提示
-                        if preferences.voiceInputShortcutKeyCode == 0x3F {
+                        if preferences.voiceInputShortcutKeyCode == 0x3F || preferences.voiceInputWithAIShortcutKeyCode == 0x3F {
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack(spacing: 6) {
                                     Image(systemName: "info.circle.fill")
@@ -215,44 +278,38 @@ struct QuickSettingsTab: View {
                             .padding(.top, 4)
                         }
                         
-                        // Control键提示
-                        if preferences.voiceInputShortcutKeyCode == 0xFFFF {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .font(.caption)
-                                        .foregroundStyle(.green)
-                                    Text("推荐：单独按左Control键是一个很好的选择，不容易与其他应用冲突。")
-                                        .font(.system(size: 11))
-                                        .foregroundStyle(.secondary)
-                                }
-                                
-                                HStack(spacing: 6) {
-                                    Image(systemName: "info.circle.fill")
-                                        .font(.caption)
-                                        .foregroundStyle(.blue)
-                                    Text("使用说明：\n• 单独按下左Control键开始录音\n• 如果同时按了其他键（如Ctrl+C），不会触发录音\n• 松开Control键后自动识别并插入文本")
-                                        .font(.system(size: 11))
-                                        .foregroundStyle(.secondary)
-                                }
+                        // 双快捷键使用说明
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "keyboard")
+                                    .font(.caption)
+                                    .foregroundStyle(.blue)
+                                Text("使用說明：")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.secondary)
                             }
-                            .padding(.top, 4)
-                        }
-                        
-                        // 显示当前快捷键说明
-                        if preferences.enableVoiceInput {
-                            let currentShortcut = formatShortcut(
+                            
+                            let voiceShortcut = formatShortcut(
                                 keyCode: preferences.voiceInputShortcutKeyCode,
                                 modifiers: preferences.voiceInputShortcutModifiers
                             )
-                            Text("当前快捷键：\(currentShortcut)")
+                            let aiShortcut = formatShortcut(
+                                keyCode: preferences.voiceInputWithAIShortcutKeyCode,
+                                modifiers: preferences.voiceInputWithAIShortcutModifiers
+                            )
+                            
+                            Text("• \(voiceShortcut)：按住開始錄音，鬆開後直接輸入文字")
                                 .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
-                                .padding(.top, 4)
+                            
+                            Text("• \(aiShortcut)：按住開始錄音，鬆開後進行 AI 校正再輸入")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
                         }
+                        .padding(.top, 4)
                     }
                 } else {
-                    Text("启用后可通过快捷键进行语音输入")
+                    Text("啟用後可通過快捷鍵進行語音輸入")
                 }
             }
             

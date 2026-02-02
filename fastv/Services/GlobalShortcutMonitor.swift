@@ -8,6 +8,12 @@
 import Foundation
 import AppKit
 
+/// 快捷鍵類型
+enum ShortcutType {
+    case voiceInput       // 純語音輸入
+    case voiceInputWithAI // 語音輸入 + AI 校正
+}
+
 /// 全局快捷键监听器
 class GlobalShortcutMonitor {
     static let shared = GlobalShortcutMonitor()
@@ -18,13 +24,24 @@ class GlobalShortcutMonitor {
     var onShortcutPressed: (() -> Void)?
     var onShortcutReleased: (() -> Void)?
     
-    // 带Ctrl键状态的回调
+    // 带Ctrl键状态的回调（舊版，保留兼容）
     var onShortcutPressedWithCtrl: ((Bool) -> Void)?
     var onShortcutReleasedWithCtrl: ((Bool) -> Void)?
+    
+    // 新版回調：帶快捷鍵類型
+    var onShortcutPressedWithType: ((ShortcutType) -> Void)?
+    var onShortcutReleasedWithType: ((ShortcutType) -> Void)?
     
     private var isKeyPressed = false
     private var targetKeyCode: UInt16?
     private var targetModifiers: NSEvent.ModifierFlags?
+    
+    // 第二個快捷鍵（語音輸入+AI校正）
+    private var secondaryKeyCode: UInt16?
+    private var secondaryModifiers: NSEvent.ModifierFlags?
+    
+    // 記錄當前觸發的是哪種快捷鍵
+    private var currentShortcutType: ShortcutType = .voiceInput
     
     // Control键相关状态
     private var controlKeyReleaseTimer: Timer?
@@ -39,14 +56,30 @@ class GlobalShortcutMonitor {
     
     private init() {}
     
-    /// 开始监听快捷键
-    func startMonitoring(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) {
-        print("🔧 [GlobalShortcutMonitor] 开始监听快捷键: keyCode=\(keyCode), modifiers=\(modifiers.rawValue)")
+    /// 開始監聽快捷鍵（雙快捷鍵版本）
+    /// - Parameters:
+    ///   - keyCode: 主快捷鍵鍵碼（純語音輸入）
+    ///   - modifiers: 主快捷鍵修飾鍵
+    ///   - secondaryKeyCode: 次快捷鍵鍵碼（語音輸入+AI校正），nil 表示不啟用
+    ///   - secondaryModifiers: 次快捷鍵修飾鍵
+    func startMonitoring(
+        keyCode: UInt16,
+        modifiers: NSEvent.ModifierFlags,
+        secondaryKeyCode: UInt16? = nil,
+        secondaryModifiers: NSEvent.ModifierFlags? = nil
+    ) {
+        print("🔧 [GlobalShortcutMonitor] 開始監聽快捷鍵:")
+        print("  - 主快捷鍵: keyCode=\(keyCode), modifiers=\(modifiers.rawValue)")
+        if let secKey = secondaryKeyCode, let secMod = secondaryModifiers {
+            print("  - AI校正快捷鍵: keyCode=\(secKey), modifiers=\(secMod.rawValue)")
+        }
         
         stopMonitoring()
         
         targetKeyCode = keyCode
         targetModifiers = modifiers
+        self.secondaryKeyCode = secondaryKeyCode
+        self.secondaryModifiers = secondaryModifiers
         
         // 检查辅助功能权限
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false]
@@ -112,7 +145,10 @@ class GlobalShortcutMonitor {
         
         targetKeyCode = nil
         targetModifiers = nil
+        secondaryKeyCode = nil
+        secondaryModifiers = nil
         isKeyPressed = false
+        currentShortcutType = .voiceInput
         controlKeyReleaseTimer?.invalidate()
         controlKeyReleaseTimer = nil
         lastControlKeyEventTime = nil
@@ -240,6 +276,7 @@ class GlobalShortcutMonitor {
     }
     
     /// 处理FN键事件（FN键通过flagsChanged事件触发）
+    /// 支持區分 FN（純語音輸入）和 FN+Control（語音輸入+AI校正）
     private func handleFNKeyEvent(_ event: NSEvent, targetModifiers: NSEvent.ModifierFlags) {
         // FN键是修饰键，通过flagsChanged或个别键盘的keyDown/keyUp触发
         let monitoredModifiers: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
@@ -247,8 +284,6 @@ class GlobalShortcutMonitor {
         let hasFunctionFlag = event.modifierFlags.contains(.function)
         
         // 严格检查FN键：必须同时满足keyCode匹配和function标志位
-        // keyCode 0x3F 是标准的FN键，但某些键盘可能使用其他keyCode
-        // 关键是要检查 .function 标志位，这是最可靠的判断方式
         let isFNKeyByCode = event.keyCode == 0x3F
         let isFNKey = isFNKeyByCode && hasFunctionFlag
         
@@ -267,24 +302,38 @@ class GlobalShortcutMonitor {
                 return
             }
             
-            print("🔑 [GlobalShortcutMonitor] FN键 flagsChanged: keyCode=\(event.keyCode), hasFunctionFlag=\(hasFunctionFlag), modifiers=\(eventModifiers.rawValue), 目标modifiers=\(targetModifiers.rawValue), isKeyPressed=\(isKeyPressed)")
-            
             // 检查是否按下了Ctrl键
             let hasCtrl = eventModifiers.contains(.control)
             isCtrlPressedWithFN = hasCtrl
             
-            // 检查修饰键是否匹配（FN单独或FN+Ctrl都允许）
-            let isModifiersMatch = eventModifiers == targetModifiers || (targetModifiers.isEmpty && hasCtrl)
-            
-            if !isModifiersMatch && !hasCtrl {
-                // 搭配的其他修饰键不一致，忽略
+            // 判斷觸發的是哪種快捷鍵
+            // 1. 如果主快捷鍵是 FN（無修飾鍵），次快捷鍵是 FN+Control
+            // 2. 根據當前的 Ctrl 狀態決定類型
+            let detectedType: ShortcutType
+            if hasCtrl && secondaryKeyCode == 0x3F && secondaryModifiers?.contains(.control) == true {
+                // FN+Control → 語音輸入+AI校正
+                detectedType = .voiceInputWithAI
+            } else if !hasCtrl && targetModifiers.isEmpty {
+                // 純 FN → 純語音輸入
+                detectedType = .voiceInput
+            } else if eventModifiers == targetModifiers {
+                // 其他情況：檢查是否匹配主快捷鍵
+                detectedType = .voiceInput
+            } else if hasCtrl {
+                // 有 Ctrl 但沒有配置次快捷鍵，仍視為語音輸入+AI（向後兼容）
+                detectedType = .voiceInputWithAI
+            } else {
+                // 不匹配任何快捷鍵
                 return
             }
             
+            print("🔑 [GlobalShortcutMonitor] FN鍵 flagsChanged: keyCode=\(event.keyCode), Ctrl=\(hasCtrl), 類型=\(detectedType)")
+            
             if !isKeyPressed {
-                print("✅ [GlobalShortcutMonitor] FN键按下检测到（Ctrl: \(hasCtrl)），等待确认没有其他键...")
+                print("✅ [GlobalShortcutMonitor] FN鍵按下檢測到（類型: \(detectedType)），等待確認沒有其他鍵...")
                 isKeyPressed = true
                 hasOtherKeyPressedWithFN = false
+                currentShortcutType = detectedType
                 lastFNKeyEventTime = Date()
                 
                 // 延迟一小段时间触发，确保没有其他键按下（防止快速打字时误触发）
@@ -292,21 +341,27 @@ class GlobalShortcutMonitor {
                 fnKeyReleaseTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: false) { [weak self] _ in
                     guard let self = self, self.isKeyPressed, !self.hasOtherKeyPressedWithFN else { return }
                     
-                    let ctrlState = self.isCtrlPressedWithFN
-                    print("✅ [GlobalShortcutMonitor] 确认FN键按下（Ctrl: \(ctrlState)），触发 onShortcutPressed")
+                    let shortcutType = self.currentShortcutType
+                    print("✅ [GlobalShortcutMonitor] 確認FN鍵按下（類型: \(shortcutType)），觸發 onShortcutPressed")
                     DispatchQueue.main.async {
-                        // 优先使用带Ctrl状态的回调
-                        if let callback = self.onShortcutPressedWithCtrl {
-                            callback(ctrlState)
+                        // 優先使用新版帶類型的回調
+                        if let callback = self.onShortcutPressedWithType {
+                            callback(shortcutType)
+                        } else if let callback = self.onShortcutPressedWithCtrl {
+                            callback(shortcutType == .voiceInputWithAI)
                         } else {
-                        self.onShortcutPressed?()
+                            self.onShortcutPressed?()
                         }
                     }
                 }
             } else {
-                // 更新Ctrl键状态
+                // 更新 Ctrl 鍵狀態和類型
                 isCtrlPressedWithFN = hasCtrl
-                // 更新最后事件时间
+                // 如果在按住 FN 期間按下了 Ctrl，更新類型為 AI 校正
+                if hasCtrl && currentShortcutType == .voiceInput {
+                    currentShortcutType = .voiceInputWithAI
+                    print("🔄 [GlobalShortcutMonitor] 檢測到 Ctrl 鍵按下，切換為語音輸入+AI校正模式")
+                }
                 lastFNKeyEventTime = Date()
             }
             
@@ -328,8 +383,13 @@ class GlobalShortcutMonitor {
                 print("✅ [GlobalShortcutMonitor] FN键按下匹配！触发 onShortcutPressed")
                 isKeyPressed = true
                 hasOtherKeyPressedWithFN = false
+                currentShortcutType = .voiceInput
                 DispatchQueue.main.async {
-                    self.onShortcutPressed?()
+                    if let callback = self.onShortcutPressedWithType {
+                        callback(.voiceInput)
+                    } else {
+                        self.onShortcutPressed?()
+                    }
                 }
             }
             
@@ -353,27 +413,31 @@ class GlobalShortcutMonitor {
         
         // 只有在没有按其他键的情况下才触发释放事件
         if !hasOtherKeyPressedWithFN {
-            let ctrlState = isCtrlPressedWithFN
-            print("✅ [GlobalShortcutMonitor] FN键释放（Ctrl: \(ctrlState)），触发 onShortcutReleased")
+            let shortcutType = currentShortcutType
+            print("✅ [GlobalShortcutMonitor] FN鍵釋放（類型: \(shortcutType)），觸發 onShortcutReleased")
             isKeyPressed = false
             lastFNKeyEventTime = nil
             hasOtherKeyPressedWithFN = false
             DispatchQueue.main.async {
-                // 优先使用带Ctrl状态的回调
-                if let callback = self.onShortcutReleasedWithCtrl {
-                    callback(ctrlState)
+                // 優先使用新版帶類型的回調
+                if let callback = self.onShortcutReleasedWithType {
+                    callback(shortcutType)
+                } else if let callback = self.onShortcutReleasedWithCtrl {
+                    callback(shortcutType == .voiceInputWithAI)
                 } else {
-                self.onShortcutReleased?()
+                    self.onShortcutReleased?()
                 }
             }
-            // 重置Ctrl状态
+            // 重置狀態
             isCtrlPressedWithFN = false
+            currentShortcutType = .voiceInput
         } else {
             print("ℹ️ [GlobalShortcutMonitor] FN键释放，但之前按了其他键，不触发释放事件")
             isKeyPressed = false
             hasOtherKeyPressedWithFN = false
             lastFNKeyEventTime = nil
             isCtrlPressedWithFN = false
+            currentShortcutType = .voiceInput
         }
     }
     
