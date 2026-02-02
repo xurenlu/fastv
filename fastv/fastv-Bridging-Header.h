@@ -15,9 +15,6 @@
 // Lua wrapper（用于规则引擎）
 #import "Services/LuaWrapper.h"
 
-// ONNX Runtime Bridge
-#import "Services/ONNXRuntimeBridge.h"
-
 // 注意：LibEtPan 的 C 头文件在 LibEtPanWrapper.m 中导入，不需要在这里导入
 // Swift 不需要直接访问 C API，只需要通过 LibEtPanWrapper 的 Objective-C 接口
 

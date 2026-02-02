@@ -22,7 +22,7 @@ enum CartoonStyle: String, CaseIterable, Identifiable {
     
     var modelName: String {
         switch self {
-        case .shinkai: return "face_paint_512_v2_0.onnx" // 暂时使用这个模型
+        case .shinkai: return "Shinkai_53.onnx"
         case .hayao: return "Hayao_64.onnx"
         case .paprika: return "Paprika_54.onnx"
         case .whitebox: return "whitebox.onnx"

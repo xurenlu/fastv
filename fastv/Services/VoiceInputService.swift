@@ -51,11 +51,26 @@ class VoiceInputService: ObservableObject {
     // 参数：转换后的 PCM 数据（Int16 格式，16kHz 单声道）
     var onConvertedAudioData: ((Data) -> Void)?
     
+    // 缓冲区大小限制（防止内存泄漏）
+    // 按照 48kHz * 4字节/样本 * 60秒 ≈ 11.5MB，限制为 50MB
+    private let maxBufferSizeBytes = 50 * 1024 * 1024
+    private var currentBufferSizeBytes = 0
+    private var currentSegmentSizeBytes = 0
+    
     private init() {
         // 初始化时检查系统音频可用性
         Task { @MainActor in
             await checkSystemAudioAvailability()
         }
+    }
+    
+    deinit {
+        // 確保資源被正確釋放
+        print("🧹 [VoiceInputService] deinit - 清理資源")
+        audioLevelTimer?.invalidate()
+        
+        // 注意：由於是 @MainActor 類，這裡需要小心處理
+        // 但至少確保 Timer 被清理
     }
     
     // MARK: - 系统音频检测
@@ -205,10 +220,12 @@ class VoiceInputService: ObservableObject {
             throw VoiceInputError.microphonePermissionDenied
         }
         
-        // 重置录音数据容器
+        // 重置录音数据容器和大小计数器
         recordingDataQueue.sync {
             self.recordedBuffers = []
             self.segmentBuffers = []
+            self.currentBufferSizeBytes = 0
+            self.currentSegmentSizeBytes = 0
         }
         systemAudioQueue.sync {
             self.systemAudioBuffers = []
@@ -314,8 +331,22 @@ class VoiceInputService: ObservableObject {
             }
             
             recordingDataQueue.async {
+                let dataSize = micData.count
+                
+                // 檢查緩衝區大小限制，防止內存泄漏
+                if self.currentBufferSizeBytes + dataSize > self.maxBufferSizeBytes {
+                    // 達到限制時，移除最舊的數據
+                    while self.currentBufferSizeBytes + dataSize > self.maxBufferSizeBytes && !self.recordedBuffers.isEmpty {
+                        let removed = self.recordedBuffers.removeFirst()
+                        self.currentBufferSizeBytes -= removed.count
+                    }
+                    print("⚠️ [VoiceInputService] 緩衝區達到上限，移除舊數據以防止內存泄漏")
+                }
+                
                 self.recordedBuffers.append(micData)
                 self.segmentBuffers.append(micData)
+                self.currentBufferSizeBytes += dataSize
+                self.currentSegmentSizeBytes += dataSize
             }
         }
     }
@@ -464,6 +495,11 @@ class VoiceInputService: ObservableObject {
             self.systemAudioBuffers = []
         }
         
+        // 清空回調，避免循環引用
+        onAudioData = nil
+        onSegmentReady = nil
+        // 注意：onConvertedAudioData 在使用後再清空
+        
         isRecording = false
         audioLevel = 0.0
         
@@ -573,11 +609,18 @@ class VoiceInputService: ObservableObject {
             recordingDataQueue.sync {
                 self.recordedBuffers = []
                 self.segmentBuffers = []
+                self.currentBufferSizeBytes = 0
+                self.currentSegmentSizeBytes = 0
             }
             
             systemAudioQueue.sync {
                 self.systemAudioBuffers = []
             }
+            
+            // 清空回調，避免循環引用
+            onAudioData = nil
+            onSegmentReady = nil
+            onConvertedAudioData = nil
             
             isRecording = false
             audioLevel = 0.0
@@ -585,6 +628,49 @@ class VoiceInputService: ObservableObject {
             recordingStartTime = nil
             lastSegmentTime = nil
         }
+    }
+    
+    /// 強制清理所有資源（用於調試內存泄漏時調用）
+    func forceCleanup() {
+        print("🧹 [VoiceInputService] forceCleanup() - 強制清理所有資源")
+        
+        audioLevelTimer?.invalidate()
+        audioLevelTimer = nil
+        
+        // 停止所有引擎
+        audioEngine?.inputNode.removeTap(onBus: 0)
+        audioEngine?.stop()
+        audioEngine = nil
+        
+        systemAudioEngine?.inputNode.removeTap(onBus: 0)
+        systemAudioEngine?.stop()
+        systemAudioEngine = nil
+        
+        // 清空所有緩衝區
+        recordingDataQueue.sync {
+            self.recordedBuffers = []
+            self.segmentBuffers = []
+            self.currentBufferSizeBytes = 0
+            self.currentSegmentSizeBytes = 0
+        }
+        
+        systemAudioQueue.sync {
+            self.systemAudioBuffers = []
+        }
+        
+        // 清空所有回調
+        onAudioData = nil
+        onSegmentReady = nil
+        onConvertedAudioData = nil
+        
+        isRecording = false
+        audioLevel = 0.0
+        recordingDuration = 0
+        recordingStartTime = nil
+        lastSegmentTime = nil
+        recordingOriginalFormat = nil
+        
+        print("✅ [VoiceInputService] 強制清理完成")
     }
     
     /// 段落提取结果
@@ -623,6 +709,7 @@ class VoiceInputService: ObservableObject {
         let buffers: [Data] = recordingDataQueue.sync {
             let result = self.segmentBuffers
             self.segmentBuffers = []  // 清空段落缓冲,开始新段落
+            self.currentSegmentSizeBytes = 0
             return result
         }
         

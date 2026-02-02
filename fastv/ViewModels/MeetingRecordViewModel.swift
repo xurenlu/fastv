@@ -95,6 +95,74 @@ class MeetingRecordViewModel: ObservableObject {
         setupMeetingDetection()
     }
     
+    deinit {
+        print("🧹 [MeetingRecordViewModel] deinit - 開始清理資源")
+        
+        // 取消所有定時器
+        durationTimer?.invalidate()
+        wavSaveTimer?.invalidate()
+        segmentCheckTimer?.invalidate()
+        
+        // 取消所有異步任務
+        processingTask?.cancel()
+        silenceCheckTask?.cancel()
+        transcriptUpdateTask?.cancel()
+        
+        // 關閉文件句柄
+        try? wavFileHandle?.close()
+        
+        print("✅ [MeetingRecordViewModel] deinit 完成")
+    }
+    
+    /// 清理資源（View 消失時調用）
+    func cleanup() {
+        print("🧹 [MeetingRecordViewModel] cleanup() - 清理資源")
+        
+        // 如果還在錄音，先停止
+        if isRecording {
+            print("⚠️ [MeetingRecordViewModel] 清理時仍在錄音，強制停止")
+            // 清理 VoiceInputService 的回調
+            voiceService.onConvertedAudioData = nil
+            voiceService.onAudioData = nil
+            voiceService.forceCleanup()
+        }
+        
+        // 取消所有定時器
+        durationTimer?.invalidate()
+        durationTimer = nil
+        wavSaveTimer?.invalidate()
+        wavSaveTimer = nil
+        segmentCheckTimer?.invalidate()
+        segmentCheckTimer = nil
+        
+        // 取消所有異步任務
+        processingTask?.cancel()
+        processingTask = nil
+        silenceCheckTask?.cancel()
+        silenceCheckTask = nil
+        transcriptUpdateTask?.cancel()
+        transcriptUpdateTask = nil
+        
+        // 關閉文件句柄
+        if let handle = wavFileHandle {
+            try? handle.close()
+            wavFileHandle = nil
+        }
+        
+        // 停止靜音檢測
+        stopSilenceDetection()
+        
+        // 停止系統音頻捕獲
+        if systemAudioCapture.isCapturing {
+            systemAudioCapture.stopCapture()
+        }
+        
+        // 禁用防睡眠
+        sleepWakeNotifier.disablePreventSleep()
+        
+        print("✅ [MeetingRecordViewModel] cleanup() 完成")
+    }
+    
     /// 设置会议检测
     private func setupMeetingDetection() {
         meetingDetector.setOnMeetingDetected { [weak self] meeting in

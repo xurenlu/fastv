@@ -285,6 +285,10 @@ struct MeetingRecordView: View {
             }
             .frame(minWidth: 600, minHeight: 500)
         }
+        .onDisappear {
+            // View 消失時清理資源，防止內存泄漏
+            viewModel.cleanup()
+        }
     }
     
     private func formatDuration(_ duration: Double) -> String {
