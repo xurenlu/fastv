@@ -52,7 +52,9 @@ struct QuickSettingsTab: View {
                                 modifiers: Binding(
                                     get: { preferences.voiceInputShortcutModifiers },
                                     set: { preferences.voiceInputShortcutModifiers = $0 }
-                                )
+                                ),
+                                defaultKeyCode: 0x3F,  // 默認 FN
+                                defaultModifiers: []
                             )
                         }
                         
@@ -89,7 +91,9 @@ struct QuickSettingsTab: View {
                                 modifiers: Binding(
                                     get: { preferences.voiceInputWithAIShortcutModifiers },
                                     set: { preferences.voiceInputWithAIShortcutModifiers = $0 }
-                                )
+                                ),
+                                defaultKeyCode: 0x3F,  // 默認 FN
+                                defaultModifiers: .control  // 默認 Control 修飾鍵
                             )
                             
                             // AI 校正說明

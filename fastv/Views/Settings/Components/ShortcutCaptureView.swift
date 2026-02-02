@@ -13,10 +13,20 @@ import AppKit
 struct ShortcutCaptureView: View {
     @Binding var keyCode: UInt16
     @Binding var modifiers: NSEvent.ModifierFlags
+    
+    // 默認值（用於恢復默認）
+    var defaultKeyCode: UInt16 = 0x3F  // 默認 FN
+    var defaultModifiers: NSEvent.ModifierFlags = []
+    
     @State private var isCapturing = false
     @State private var capturedKeyCode: UInt16?
     @State private var capturedModifiers: NSEvent.ModifierFlags = []
     @State private var eventMonitor: Any?
+    
+    // 用於組合鍵捕獲：記錄當前按住的修飾鍵
+    @State private var currentHeldModifiers: NSEvent.ModifierFlags = []
+    @State private var waitingForMainKey = false
+    @State private var captureTimer: Timer?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -60,58 +70,130 @@ struct ShortcutCaptureView: View {
                 }
             }
             
-            // 捕获按钮
-            Button(action: {
-                if isCapturing {
-                    stopCapturing()
-                } else {
-                    startCapturing()
+            // 按鈕區域
+            HStack(spacing: 8) {
+                // 捕获按钮
+                Button(action: {
+                    if isCapturing {
+                        stopCapturing()
+                    } else {
+                        startCapturing()
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: isCapturing ? "stop.circle.fill" : "keyboard")
+                            .font(.system(size: 13))
+                        
+                        Text(isCapturing ? NSLocalizedString("shortcut.capture.stop", comment: "") : NSLocalizedString("shortcut.capture.click", comment: ""))
+                            .font(.system(size: 13))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(isCapturing ? 
+                                  Color.red.opacity(0.1) : 
+                                  Color.accentColor.opacity(0.1))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .strokeBorder(
+                                        isCapturing ? Color.red.opacity(0.3) : Color.accentColor.opacity(0.3),
+                                        lineWidth: 1
+                                    )
+                            }
+                    }
+                    .foregroundStyle(isCapturing ? .red : .accentColor)
                 }
-            }) {
-                HStack {
-                    Image(systemName: isCapturing ? "stop.circle.fill" : "keyboard")
+                .buttonStyle(.plain)
+                
+                // 恢復默認按鈕
+                Button(action: {
+                    resetToDefault()
+                }) {
+                    Image(systemName: "arrow.counterclockwise")
                         .font(.system(size: 13))
-                    
-                    Text(isCapturing ? NSLocalizedString("shortcut.capture.stop", comment: "") : NSLocalizedString("shortcut.capture.click", comment: ""))
-                        .font(.system(size: 13))
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(isCapturing ? 
-                              Color.red.opacity(0.1) : 
-                              Color.accentColor.opacity(0.1))
-                        .overlay {
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background {
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .strokeBorder(
-                                    isCapturing ? Color.red.opacity(0.3) : Color.accentColor.opacity(0.3),
-                                    lineWidth: 1
-                                )
+                                .fill(Color.secondary.opacity(0.1))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .strokeBorder(Color.secondary.opacity(0.3), lineWidth: 1)
+                                }
                         }
+                        .foregroundStyle(.secondary)
                 }
-                .foregroundStyle(isCapturing ? .red : .accentColor)
+                .buttonStyle(.plain)
+                .help("恢復默認快捷鍵")
+                .disabled(isCapturing)
             }
-            .buttonStyle(.plain)
             
             if isCapturing {
-                HStack(spacing: 6) {
-                    Image(systemName: "info.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "info.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                        
+                        Text("請按下快捷鍵組合...")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
                     
-                    Text(NSLocalizedString("shortcut.capture.press.hint", comment: ""))
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                    // 顯示當前按住的修飾鍵
+                    if !currentHeldModifiers.isEmpty || waitingForMainKey {
+                        HStack(spacing: 4) {
+                            Text("當前：")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.tertiary)
+                            
+                            if currentHeldModifiers.contains(.control) {
+                                KeyBadge(symbol: "⌃")
+                            }
+                            if currentHeldModifiers.contains(.option) {
+                                KeyBadge(symbol: "⌥")
+                            }
+                            if currentHeldModifiers.contains(.shift) {
+                                KeyBadge(symbol: "⇧")
+                            }
+                            if currentHeldModifiers.contains(.command) {
+                                KeyBadge(symbol: "⌘")
+                            }
+                            
+                            if waitingForMainKey {
+                                Text("+ ?")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                    }
+                    
+                    Text("支持：FN、Control+FN、Option+V 等組合")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
                 }
             }
         }
+    }
+    
+    /// 恢復默認快捷鍵
+    private func resetToDefault() {
+        keyCode = defaultKeyCode
+        modifiers = defaultModifiers
+        print("🔄 [ShortcutCapture] 已恢復默認快捷鍵: keyCode=\(defaultKeyCode), modifiers=\(defaultModifiers.rawValue)")
     }
     
     private func startCapturing() {
         isCapturing = true
         capturedKeyCode = nil
         capturedModifiers = []
+        currentHeldModifiers = []
+        waitingForMainKey = false
+        
+        // 取消之前的定時器
+        captureTimer?.invalidate()
+        captureTimer = nil
         
         // 监听键盘事件
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { event in
@@ -124,6 +206,12 @@ struct ShortcutCaptureView: View {
     
     private func stopCapturing() {
         isCapturing = false
+        waitingForMainKey = false
+        currentHeldModifiers = []
+        
+        // 取消定時器
+        captureTimer?.invalidate()
+        captureTimer = nil
         
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
@@ -134,67 +222,118 @@ struct ShortcutCaptureView: View {
         if let capturedKeyCode = capturedKeyCode {
             keyCode = capturedKeyCode
             modifiers = capturedModifiers
+            print("✅ [ShortcutCapture] 設置快捷鍵: keyCode=\(capturedKeyCode), modifiers=\(capturedModifiers.rawValue)")
         }
     }
     
     private func handleCaptureEvent(_ event: NSEvent) -> NSEvent? {
-        // 处理修饰键（通过flagsChanged事件）
+        let monitoredModifiers: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+        
+        // 處理修飾鍵變化（通過 flagsChanged 事件）
         if event.type == .flagsChanged {
-            let currentModifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
+            let newModifiers = event.modifierFlags.intersection(monitoredModifiers)
+            let hasFunctionFlag = event.modifierFlags.contains(.function)
             
-            // 检测单独的Control键
-            if currentModifiers == .control {
-                print("🔑 [ShortcutCapture] 检测到单独的Control键")
-                capturedKeyCode = 0xFFFF // 使用特殊值表示"单独的Control键"
-                capturedModifiers = []
+            // 檢測 FN 鍵
+            // FN 鍵的 keyCode 是 0x3F，且有 .function 標誌
+            if event.keyCode == 0x3F && hasFunctionFlag {
+                print("🔑 [ShortcutCapture] 檢測到 FN 鍵，當前修飾鍵: \(currentHeldModifiers.rawValue)")
                 
-                // 延迟停止捕获，给用户反馈
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    stopCapturing()
+                // FN 鍵作為主鍵，當前按住的修飾鍵作為修飾鍵
+                capturedKeyCode = 0x3F
+                capturedModifiers = currentHeldModifiers
+                
+                // 取消之前的定時器
+                captureTimer?.invalidate()
+                
+                // 延遲停止捕獲，給用戶反饋
+                captureTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { [self] _ in
+                    DispatchQueue.main.async {
+                        self.stopCapturing()
+                    }
                 }
-                return nil // 消费事件
+                return nil
             }
             
-            // 检测FN键
-            // FN键的keyCode可能是0x3F，但也可能因键盘而异
-            if event.keyCode == 0x3F || (event.keyCode == 0 && currentModifiers.isEmpty) {
-                print("🔑 [ShortcutCapture] 检测到FN键")
-                capturedKeyCode = 0x3F // FN键
-                capturedModifiers = []
+            // 更新當前按住的修飾鍵
+            currentHeldModifiers = newModifiers
+            
+            // 如果有修飾鍵被按下，標記為等待主鍵
+            if !newModifiers.isEmpty {
+                waitingForMainKey = true
+                print("🔑 [ShortcutCapture] 修飾鍵按下: \(newModifiers.rawValue)，等待主鍵...")
                 
-                // 延迟停止捕获，给用户反馈
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    stopCapturing()
+                // 取消之前的定時器
+                captureTimer?.invalidate()
+                
+                // 設置一個較長的超時（2秒），如果用戶只按了修飾鍵沒有按主鍵
+                // 則視為單獨的修飾鍵（僅對 Control 鍵有效）
+                captureTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { [self] _ in
+                    DispatchQueue.main.async {
+                        if self.isCapturing && self.waitingForMainKey {
+                            // 超時，檢查是否是單獨的 Control 鍵
+                            if self.currentHeldModifiers == .control {
+                                print("🔑 [ShortcutCapture] 超時，設置為單獨的 Control 鍵")
+                                self.capturedKeyCode = 0xFFFF
+                                self.capturedModifiers = []
+                                self.stopCapturing()
+                            } else {
+                                // 其他修飾鍵組合，取消捕獲
+                                print("⚠️ [ShortcutCapture] 超時，未檢測到主鍵，取消捕獲")
+                                self.capturedKeyCode = nil
+                                self.stopCapturing()
+                            }
+                        }
+                    }
                 }
-                return nil // 消费事件
+            } else {
+                // 所有修飾鍵都釋放了
+                if waitingForMainKey && capturedKeyCode == nil {
+                    // 如果之前在等待主鍵但沒有捕獲到，取消捕獲
+                    print("⚠️ [ShortcutCapture] 修飾鍵釋放，未檢測到主鍵")
+                }
+                waitingForMainKey = false
+                
+                // 取消定時器
+                captureTimer?.invalidate()
+                captureTimer = nil
             }
+            
+            return nil
         }
         
-        // 处理普通按键
+        // 處理普通按鍵
         if event.type == .keyDown {
-            let eventModifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
+            let eventModifiers = event.modifierFlags.intersection(monitoredModifiers)
             
-            // 忽略功能键（F1-F12等），除非用户明确想要设置
-            // 但允许FN键（0x3F）
+            // 忽略功能鍵（F1-F12 等），但允許 FN 鍵（0x3F）
             if event.keyCode >= 0x7A && event.keyCode <= 0x7F && event.keyCode != 0x3F {
                 return event
             }
             
-            // 如果keyCode是0x3F，也认为是FN键
+            // 取消定時器
+            captureTimer?.invalidate()
+            captureTimer = nil
+            
+            // 如果 keyCode 是 0x3F，認為是 FN 鍵
             if event.keyCode == 0x3F {
                 capturedKeyCode = 0x3F
-                capturedModifiers = []
+                capturedModifiers = eventModifiers
+                print("🔑 [ShortcutCapture] 捕獲到 FN 鍵 + 修飾鍵: \(eventModifiers.rawValue)")
             } else {
                 capturedKeyCode = event.keyCode
                 capturedModifiers = eventModifiers
+                print("🔑 [ShortcutCapture] 捕獲到按鍵: keyCode=\(event.keyCode), modifiers=\(eventModifiers.rawValue)")
             }
             
-            // 延迟停止捕获，给用户反馈
+            waitingForMainKey = false
+            
+            // 延遲停止捕獲，給用戶反饋
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                stopCapturing()
+                self.stopCapturing()
             }
             
-            return nil // 消费事件，防止触发其他操作
+            return nil // 消費事件，防止觸發其他操作
         }
         
         return event
