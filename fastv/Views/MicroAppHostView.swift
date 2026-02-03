@@ -172,6 +172,9 @@ struct MicroAppWebView: NSViewRepresentable {
                 // 注入控制台日志捕获脚本
                 injectConsoleLogger(webView: webView, coordinator: context.coordinator)
                 
+                // 注入窗口管理脚本（处理模态窗口和弹窗）
+                injectWindowManager(webView: webView, coordinator: context.coordinator)
+                
                 // 设置进程终止回调
                 context.coordinator.onProcessTerminated = {
                     Task { @MainActor in
@@ -269,6 +272,274 @@ struct MicroAppWebView: NSViewRepresentable {
         
         // 注册消息处理器
         webView.configuration.userContentController.add(coordinator, name: "consoleLog")
+    }
+    
+    /// 注入窗口管理脚本（处理模态窗口和弹窗）
+    private func injectWindowManager(webView: WKWebView, coordinator: Coordinator) {
+        let script = """
+        (function() {
+            // 窗口管理器：确保所有模态窗口都可以关闭
+            const WindowManager = {
+                managedWindows: new Set(),
+                closeButtonStyle: `
+                    position: absolute;
+                    top: 12px;
+                    right: 12px;
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    background: rgba(0, 0, 0, 0.5);
+                    border: 1px solid rgba(255, 255, 255, 0.3);
+                    color: white;
+                    font-size: 18px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 999999;
+                    transition: all 0.2s;
+                    user-select: none;
+                `,
+                closeButtonHoverStyle: `
+                    background: rgba(255, 0, 0, 0.7);
+                    transform: scale(1.1);
+                `,
+                
+                // 检查元素是否是模态窗口
+                isModalWindow: function(element) {
+                    if (!element || element.tagName !== 'DIV') return false;
+                    
+                    const style = window.getComputedStyle(element);
+                    const position = style.position;
+                    const zIndex = parseInt(style.zIndex) || 0;
+                    const display = style.display;
+                    
+                    // 检查是否是固定定位或绝对定位的全屏覆盖层
+                    if ((position === 'fixed' || position === 'absolute') && 
+                        zIndex > 100 && 
+                        display !== 'none') {
+                        const rect = element.getBoundingClientRect();
+                        const viewportWidth = window.innerWidth;
+                        const viewportHeight = window.innerHeight;
+                        
+                        // 检查是否覆盖了大部分视口（至少50%）
+                        const coverage = (rect.width * rect.height) / (viewportWidth * viewportHeight);
+                        if (coverage > 0.5) {
+                            return true;
+                        }
+                    }
+                    
+                    return false;
+                },
+                
+                // 为模态窗口添加关闭按钮
+                addCloseButton: function(modalElement) {
+                    // 检查是否已经有关闭按钮
+                    if (modalElement.querySelector('.microapp-window-close-btn')) {
+                        return;
+                    }
+                    
+                    const closeBtn = document.createElement('button');
+                    closeBtn.className = 'microapp-window-close-btn';
+                    closeBtn.innerHTML = '×';
+                    closeBtn.setAttribute('aria-label', '关闭');
+                    closeBtn.style.cssText = this.closeButtonStyle;
+                    
+                    // 悬停效果
+                    closeBtn.addEventListener('mouseenter', function() {
+                        this.style.cssText = WindowManager.closeButtonStyle + WindowManager.closeButtonHoverStyle;
+                    });
+                    closeBtn.addEventListener('mouseleave', function() {
+                        this.style.cssText = WindowManager.closeButtonStyle;
+                    });
+                    
+                    // 点击关闭
+                    closeBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        WindowManager.closeWindow(modalElement);
+                    });
+                    
+                    // ESC键关闭
+                    const escHandler = function(e) {
+                        if (e.key === 'Escape' && modalElement.contains(document.activeElement)) {
+                            WindowManager.closeWindow(modalElement);
+                            document.removeEventListener('keydown', escHandler);
+                        }
+                    };
+                    document.addEventListener('keydown', escHandler);
+                    
+                    modalElement.appendChild(closeBtn);
+                    this.managedWindows.add(modalElement);
+                    
+                    // 设置超时：如果窗口在15秒内没有内容，自动关闭
+                    const timeoutId = setTimeout(function() {
+                        if (modalElement.parentNode && WindowManager.isWindowEmpty(modalElement)) {
+                            console.warn('[WindowManager] 检测到空窗口，自动关闭');
+                            WindowManager.closeWindow(modalElement);
+                        }
+                    }, 15000);
+                    
+                    // 存储超时ID，以便在窗口关闭时清除
+                    modalElement._closeTimeoutId = timeoutId;
+                    
+                    // 监听窗口内容变化，如果内容加载完成，清除超时
+                    const contentObserver = new MutationObserver(function() {
+                        if (!WindowManager.isWindowEmpty(modalElement)) {
+                            if (modalElement._closeTimeoutId) {
+                                clearTimeout(modalElement._closeTimeoutId);
+                                modalElement._closeTimeoutId = null;
+                            }
+                        }
+                    });
+                    contentObserver.observe(modalElement, {
+                        childList: true,
+                        subtree: true,
+                        characterData: true
+                    });
+                    modalElement._contentObserver = contentObserver;
+                },
+                
+                // 检查窗口是否为空
+                isWindowEmpty: function(element) {
+                    const children = Array.from(element.children);
+                    // 排除关闭按钮
+                    const contentChildren = children.filter(child => 
+                        !child.classList.contains('microapp-window-close-btn')
+                    );
+                    
+                    if (contentChildren.length === 0) {
+                        return true;
+                    }
+                    
+                    // 检查是否有可见内容
+                    let hasVisibleContent = false;
+                    for (const child of contentChildren) {
+                        const style = window.getComputedStyle(child);
+                        if (style.display !== 'none' && style.visibility !== 'hidden') {
+                            const rect = child.getBoundingClientRect();
+                            if (rect.width > 0 && rect.height > 0) {
+                                hasVisibleContent = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    return !hasVisibleContent;
+                },
+                
+                // 关闭窗口
+                closeWindow: function(modalElement) {
+                    if (!modalElement || !modalElement.parentNode) return;
+                    
+                    // 清除超时
+                    if (modalElement._closeTimeoutId) {
+                        clearTimeout(modalElement._closeTimeoutId);
+                        modalElement._closeTimeoutId = null;
+                    }
+                    
+                    // 停止内容观察器
+                    if (modalElement._contentObserver) {
+                        modalElement._contentObserver.disconnect();
+                        modalElement._contentObserver = null;
+                    }
+                    
+                    // 尝试触发关闭事件
+                    const closeEvent = new Event('close', { bubbles: true, cancelable: true });
+                    modalElement.dispatchEvent(closeEvent);
+                    
+                    // 如果事件被取消，不关闭窗口
+                    if (closeEvent.defaultPrevented) {
+                        return;
+                    }
+                    
+                    // 移除窗口
+                    modalElement.style.transition = 'opacity 0.2s';
+                    modalElement.style.opacity = '0';
+                    
+                    setTimeout(function() {
+                        if (modalElement.parentNode) {
+                            modalElement.remove();
+                        }
+                        WindowManager.managedWindows.delete(modalElement);
+                    }, 200);
+                },
+                
+                // 扫描并管理所有模态窗口
+                scanAndManageWindows: function() {
+                    const allDivs = document.querySelectorAll('div');
+                    for (const div of allDivs) {
+                        if (this.isModalWindow(div) && !this.managedWindows.has(div)) {
+                            this.addCloseButton(div);
+                        }
+                    }
+                },
+                
+                // 初始化
+                init: function() {
+                    // 立即扫描一次
+                    this.scanAndManageWindows();
+                    
+                    // 使用MutationObserver监听DOM变化
+                    const observer = new MutationObserver(function(mutations) {
+                        WindowManager.scanAndManageWindows();
+                    });
+                    
+                    observer.observe(document.body, {
+                        childList: true,
+                        subtree: true,
+                        attributes: true,
+                        attributeFilter: ['style', 'class']
+                    });
+                    
+                    // 拦截window.open（虽然已禁用，但提供一个安全的实现）
+                    const originalOpen = window.open;
+                    window.open = function(url, name, features) {
+                        console.warn('[WindowManager] window.open被调用，但已被禁用。请使用DOM创建模态窗口。');
+                        // 返回null表示窗口未打开
+                        return null;
+                    };
+                    
+                    // 监听点击事件，检测可能触发窗口打开的元素
+                    document.addEventListener('click', function(e) {
+                        // 延迟扫描，等待可能的窗口创建（多次扫描以确保捕获）
+                        setTimeout(function() {
+                            WindowManager.scanAndManageWindows();
+                        }, 100);
+                        setTimeout(function() {
+                            WindowManager.scanAndManageWindows();
+                        }, 500);
+                        setTimeout(function() {
+                            WindowManager.scanAndManageWindows();
+                        }, 1000);
+                    }, true);
+                    
+                    // 定期扫描（每2秒），确保不会遗漏任何窗口
+                    setInterval(function() {
+                        WindowManager.scanAndManageWindows();
+                    }, 2000);
+                    
+                    console.log('[WindowManager] 窗口管理器已初始化');
+                }
+            };
+            
+            // 等待DOM加载完成后初始化
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    WindowManager.init();
+                });
+            } else {
+                WindowManager.init();
+            }
+            
+            // 暴露到全局，方便调试
+            window.__microappWindowManager = WindowManager;
+        })();
+        """
+        
+        let userScript = WKUserScript(source: script, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
+        webView.configuration.userContentController.addUserScript(userScript)
     }
     
     /// 添加调试消息
