@@ -41,6 +41,8 @@
 "press.and.hold" = "按着说:";
 "enable.voice.input.in.settings" = "请在设置中启用语音输入法功能";
 "transcribing" = "转文字中...";
+"speech.model.preload.title" = "正在加载语音模型";
+"speech.model.preload.message" = "首次加载语音识别模型，请稍候…";
 
 // 设置
 "enable.voice.input" = "启用语音输入法";
@@ -309,3 +311,6 @@
 "about.version" = "版本";
 "about.copyright" = "版权所有";
 "show.app" = "显示 %@";
+
+// 邮箱
+"email.folder.local_sent" = "已发送(本地)";

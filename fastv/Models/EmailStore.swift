@@ -9,6 +9,9 @@ import Foundation
 import Combine
 import GRDB
 
+/// 本地“已发送”文件夹的 IMAP 路径（仅本地存在，不来自服务器）
+let kLocalSentFolderPath = "__LocalSent__"
+
 /// 邮箱数据管理器（类似ChatManager）
 @MainActor
 class EmailStore: ObservableObject {
@@ -43,6 +46,20 @@ class EmailStore: ObservableObject {
             Task.detached(priority: .background) { [weak self] in
                 guard let self = self else { return }
                 await self.preloadMessageCache()
+            }
+            
+            // SQLite 后台优化：延迟执行，避免与启动争抢；VACUUM 最多每天一次
+            Task.detached(priority: .background) { [weak self] in
+                guard self != nil else { return }
+                try? await Task.sleep(nanoseconds: 60_000_000_000) // 60 秒
+                let key = "EmailStore.lastSqliteVacuumDate"
+                let last = UserDefaults.standard.object(forKey: key) as? Date
+                let oneDay: TimeInterval = 86400
+                let includeVacuum = last == nil || Date().timeIntervalSince(last!) > oneDay
+                if includeVacuum {
+                    UserDefaults.standard.set(Date(), forKey: key)
+                }
+                EmailDatabase.shared.optimizeInBackground(includeVacuum: includeVacuum)
             }
         }
     }
@@ -236,9 +253,32 @@ class EmailStore: ObservableObject {
         return folders[accountId] ?? []
     }
     
+    /// 获取“本地已发送”文件夹（仅本地存在，用于存放本机发出的邮件）
+    func getLocalSentFolder(for accountId: UUID) -> EmailFolder? {
+        return folders[accountId]?.first { $0.path == kLocalSentFolderPath }
+    }
+    
+    /// 确保当前账号存在“本地已发送”文件夹，不存在则创建
+    func ensureLocalSentFolder(for accountId: UUID) async throws {
+        if getLocalSentFolder(for: accountId) != nil { return }
+        let localSent = EmailFolder(
+            id: UUID(),
+            accountId: accountId,
+            name: NSLocalizedString("email.folder.local_sent", value: "已发送(本地)", comment: "Local sent folder name"),
+            type: .sent,
+            path: kLocalSentFolderPath,
+            unreadCount: 0,
+            totalCount: 0
+        )
+        try await database.write { db in
+            try self.saveFolder(localSent, db: db)
+        }
+        await loadFolders()
+    }
+    
     // MARK: - Message Management
     
-    /// 添加邮件（批量，增量更新）
+    /// 添加邮件（批量，增量更新，深度去重）
     func addMessages(_ newMessages: [EmailMessage], folderId: UUID) async throws {
         // 由于 @MainActor，这里已经在主线程，但我们可以将耗时操作移到后台
         let existingMessages = messages[folderId] ?? []
@@ -278,6 +318,7 @@ class EmailStore: ObservableObject {
         
         // 在主线程更新 @Published 属性
         self.messages[folderId] = sortedMessages
+        FolderMessageCountCache.shared.updateCount(for: folderId, count: sortedMessages.count)
         self.notifyChange()
         print("✅ [EmailStore] 后台排序完成，通知UI更新")
         
@@ -287,24 +328,81 @@ class EmailStore: ObservableObject {
             do {
                 // 应用规则引擎处理邮件
                 let ruleEngine = EmailRuleEngine.shared
+                let deduplicationService = EmailDeduplicationService.shared
                 var processedMessages: [EmailMessage] = []
+                var newMessageCount = 0
                 
+                // 处理每个邮件
                 for message in updatedMessages {
-                    // 只对新邮件应用规则（避免重复处理）
-                    if hasNewMessages {
-                        let processed = await ruleEngine.processMessage(message)
-                        processedMessages.append(processed)
+                    // 深度去重检查：检查数据库中是否已存在
+                    let existingMessage = try await self.database.asyncRead { db in
+                        return try deduplicationService.checkDuplicate(message, in: db)
+                    }
+                    
+                    if let existingMessage = existingMessage {
+                        // 发现重复，合并数据（保留更完整的版本）
+                        var merged = message
+                        
+                        // 保留已有邮件的正文（如果新邮件没有正文）
+                        if !message.isBodyLoaded && existingMessage.isBodyLoaded {
+                            merged.textBody = existingMessage.textBody
+                            merged.htmlBody = existingMessage.htmlBody
+                            merged.isBodyLoaded = true
+                            merged.bodyCachedAt = existingMessage.bodyCachedAt
+                        }
+                        
+                        // 保留已有邮件的标签和AI信息
+                        if existingMessage.tags.isEmpty == false {
+                            merged.tags = Array(Set(merged.tags + existingMessage.tags))
+                        }
+                        if existingMessage.aiTags.isEmpty == false {
+                            merged.aiTags = Array(Set(merged.aiTags + existingMessage.aiTags))
+                        }
+                        if merged.aiSummary == nil, let summary = existingMessage.aiSummary {
+                            merged.aiSummary = summary
+                        }
+                        if merged.aiPriority == nil, let priority = existingMessage.aiPriority {
+                            merged.aiPriority = priority
+                        }
+                        
+                        // 保留已有邮件的状态标记
+                        merged.isRead = merged.isRead || existingMessage.isRead
+                        merged.isStarred = merged.isStarred || existingMessage.isStarred
+                        merged.isImportant = merged.isImportant || existingMessage.isImportant
+                        merged.hasAttachments = merged.hasAttachments || existingMessage.hasAttachments
+                        merged.isSpam = merged.isSpam || existingMessage.isSpam
+                        merged.isDeleted = merged.isDeleted || existingMessage.isDeleted
+                        merged.hasBeenReplied = merged.hasBeenReplied || existingMessage.hasBeenReplied
+                        
+                        // 更新数据库
+                        try await self.database.asyncWrite { db in
+                            try self.updateMessageInDatabase(merged, existingId: existingMessage.id, db: db)
+                        }
+                        print("🔄 [EmailStore] 发现重复邮件，已合并: \(merged.subject)")
                     } else {
-                        processedMessages.append(message)
+                        // 新邮件，应用规则引擎
+                        if hasNewMessages {
+                            let processed = await ruleEngine.processMessage(message)
+                            processedMessages.append(processed)
+                            newMessageCount += 1
+                        } else {
+                            processedMessages.append(message)
+                        }
                     }
                 }
                 
-                try await self.database.asyncWrite { db in
-                    for message in processedMessages {
-                        try self.saveMessage(message, db: db)
+                // 批量保存新邮件
+                if !processedMessages.isEmpty {
+                    try await self.database.asyncWrite { db in
+                        for message in processedMessages {
+                            try self.saveMessage(message, db: db)
+                        }
                     }
                 }
-                print("✅ [EmailStore] 后台保存了 \(processedMessages.count) 封邮件到数据库（已应用规则引擎）")
+                
+                if newMessageCount > 0 {
+                    print("✅ [EmailStore] 后台保存了 \(newMessageCount) 封新邮件到数据库（已应用规则引擎和深度去重）")
+                }
             } catch {
                 print("❌ [EmailStore] 后台保存邮件失败: \(error)")
             }
@@ -320,6 +418,27 @@ class EmailStore: ObservableObject {
         if let folderId = message.folderId,
            var folderMessages = messages[folderId],
            let index = folderMessages.firstIndex(where: { $0.id == message.id }) {
+            let existingMessage = folderMessages[index]
+            let existingHasBody = existingMessage.isBodyLoaded || (existingMessage.textBody?.isEmpty == false) || (existingMessage.htmlBody?.isEmpty == false)
+            let updatedHasBody = updated.isBodyLoaded || (updated.textBody?.isEmpty == false) || (updated.htmlBody?.isEmpty == false)
+            if existingHasBody && !updatedHasBody {
+                if updated.textBody?.isEmpty != false {
+                    updated.textBody = existingMessage.textBody
+                }
+                if updated.htmlBody?.isEmpty != false {
+                    updated.htmlBody = existingMessage.htmlBody
+                }
+                updated.isBodyLoaded = true
+                if updated.bodyCachedAt == nil {
+                    updated.bodyCachedAt = existingMessage.bodyCachedAt
+                }
+                if updated.preview.isEmpty {
+                    updated.preview = existingMessage.preview
+                }
+                if !updated.containsRemoteResources {
+                    updated.containsRemoteResources = existingMessage.containsRemoteResources
+                }
+            }
             folderMessages[index] = updated
             messages[folderId] = folderMessages
             let hasBody = updated.isBodyLoaded || (updated.textBody?.isEmpty == false) || (updated.htmlBody?.isEmpty == false)
@@ -352,16 +471,16 @@ class EmailStore: ObservableObject {
         return Array(sorted[offset..<endIndex])
     }
     
-    /// 获取邮件总数
+    /// 获取邮件总数（侧栏数字）
+    /// 优先使用来自数据库的数量缓存，避免只加载部分邮件时显示不全
     func getMessageCount(for folderId: UUID) -> Int {
-        // 优先从内存缓存获取
+        let cached = FolderMessageCountCache.shared.getCount(for: folderId)
+        if cached > 0 { return cached }
         if let count = messages[folderId]?.count, count > 0 {
-            // 同时更新持久化缓存
             FolderMessageCountCache.shared.updateCount(for: folderId, count: count)
             return count
         }
-        // 如果内存中没有，从持久化缓存获取
-        return FolderMessageCountCache.shared.getCount(for: folderId)
+        return 0
     }
     
     /// 获取某个账号的所有邮件总数
@@ -383,6 +502,40 @@ class EmailStore: ObservableObject {
         }
         // 按日期排序，取最新的
         return Array(allMessages.sorted { $0.date > $1.date }.prefix(limit))
+    }
+    
+    // MARK: - 深度去重和清理
+    
+    /// 清理数据库中的重复邮件
+    /// - Parameters:
+    ///   - accountId: 账号ID（可选，如果为nil则清理所有账号）
+    ///   - folderId: 文件夹ID（可选，如果为nil则清理所有文件夹）
+    /// - Returns: 删除的重复邮件数量
+    func cleanupDuplicateMessages(accountId: UUID? = nil, folderId: UUID? = nil) async throws -> Int {
+        let deletedCount = try await EmailDeduplicationService.shared.cleanupDuplicateMessages(
+            accountId: accountId,
+            folderId: folderId
+        )
+        
+        // 清理后重新加载受影响的文件夹
+        if let folderId = folderId {
+            await loadMessages(for: folderId, forceLoadMore: false)
+        } else if let accountId = accountId {
+            // 重新加载该账号的所有文件夹
+            let accountFolders = folders[accountId] ?? []
+            for folder in accountFolders {
+                await loadMessages(for: folder.id, forceLoadMore: false)
+            }
+        } else {
+            // 重新加载所有文件夹
+            let allFolders = folders.values.flatMap { $0 }
+            for folder in allFolders {
+                await loadMessages(for: folder.id, forceLoadMore: false)
+            }
+        }
+        
+        notifyChange()
+        return deletedCount
     }
     
     // MARK: - Draft Management
@@ -544,7 +697,140 @@ class EmailStore: ObservableObject {
         ])
     }
     
-    private func saveMessage(_ message: EmailMessage, db: Database) throws {
+    /// 合并数据库中已缓存的正文，避免空正文覆盖
+    nonisolated private func mergeCachedBodyIfNeeded(_ message: EmailMessage, messageId: UUID, db: Database) throws -> EmailMessage {
+        let hasTextBody = message.textBody?.isEmpty == false
+        let hasHtmlBody = message.htmlBody?.isEmpty == false
+        let hasBody = message.isBodyLoaded || hasTextBody || hasHtmlBody
+        if hasBody {
+            return message
+        }
+        
+        if let row = try Row.fetchOne(db, sql: """
+            SELECT text_body, html_body, is_body_loaded, body_cached_at, contains_remote_resources, preview
+            FROM email_messages WHERE id = ?
+        """, arguments: [messageId.uuidString]) {
+            var updated = message
+            let cachedTextBody = row["text_body"] as? String
+            let cachedHtmlBody = row["html_body"] as? String
+            let cachedIsBodyLoaded = (row["is_body_loaded"] as? Int64 ?? 0) != 0
+            let cachedBodyCachedAt = (row["body_cached_at"] as? Double).map { Date(timeIntervalSince1970: $0) }
+            let cachedPreview = row["preview"] as? String
+            let cachedContainsRemoteResources = (row["contains_remote_resources"] as? Int64 ?? 0) != 0
+            
+            if message.textBody?.isEmpty != false, let cachedTextBody, !cachedTextBody.isEmpty {
+                updated.textBody = cachedTextBody
+            }
+            if message.htmlBody?.isEmpty != false, let cachedHtmlBody, !cachedHtmlBody.isEmpty {
+                updated.htmlBody = cachedHtmlBody
+            }
+            if !updated.isBodyLoaded, cachedIsBodyLoaded || (updated.textBody?.isEmpty == false) || (updated.htmlBody?.isEmpty == false) {
+                updated.isBodyLoaded = true
+            }
+            if updated.bodyCachedAt == nil {
+                updated.bodyCachedAt = cachedBodyCachedAt
+            }
+            if updated.preview.isEmpty, let cachedPreview, !cachedPreview.isEmpty {
+                updated.preview = cachedPreview
+            }
+            if !updated.containsRemoteResources, cachedContainsRemoteResources {
+                updated.containsRemoteResources = true
+            }
+            return updated
+        }
+        
+        return message
+    }
+    
+    /// 更新已有邮件（使用指定的ID）
+    nonisolated private func updateMessageInDatabase(_ message: EmailMessage, existingId: UUID, db: Database) throws {
+        let message = try mergeCachedBodyIfNeeded(message, messageId: existingId, db: db)
+        // 序列化联系人列表
+        let toContacts = try? JSONEncoder().encode(message.to)
+        let ccContacts = try? JSONEncoder().encode(message.cc)
+        let bccContacts = try? JSONEncoder().encode(message.bcc)
+        let replyToContacts = try? JSONEncoder().encode(message.replyTo)
+        let tags = try? JSONEncoder().encode(message.tags)
+        let aiTags = try? JSONEncoder().encode(message.aiTags)
+        
+        // 验证外键
+        let accountIdString = message.accountId.uuidString
+        let accountExists = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM email_accounts WHERE id = ?", arguments: [accountIdString]) ?? 0
+        if accountExists == 0 {
+            print("⚠️ [EmailStore] 跳过更新邮件: account_id 不存在于数据库中 (\(accountIdString))")
+            return
+        }
+        
+        var validFolderId: String? = nil
+        if let folderId = message.folderId {
+            let folderIdString = folderId.uuidString
+            let folderExists = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM email_folders WHERE id = ?", arguments: [folderIdString]) ?? 0
+            if folderExists > 0 {
+                validFolderId = folderIdString
+            }
+        }
+        
+        // 更新邮件（使用已有ID）
+        try db.execute(sql: """
+            UPDATE email_messages SET
+                account_id = ?, folder_id = ?, uid = ?, message_id = ?, thread_id = ?,
+                subject = ?, from_name = ?, from_email = ?, to_contacts = ?, cc_contacts = ?,
+                bcc_contacts = ?, reply_to_contacts = ?, text_body = ?, html_body = ?, preview = ?,
+                date = ?, received_date = ?, is_read = ?, is_starred = ?, is_important = ?,
+                is_no_reply = ?, has_attachments = ?, is_spam = ?, is_deleted = ?, contains_remote_resources = ?,
+                tags = ?, ai_tags = ?, ai_summary = ?,
+                ai_priority = ?, synced_at = ?, updated_at = ?, is_body_loaded = ?, body_cached_at = ?, has_been_replied = ?, is_draft = ?
+            WHERE id = ?
+        """, arguments: [
+            message.accountId.uuidString,
+            validFolderId,
+            message.uid.map { Int64($0) },
+            message.messageId,
+            message.threadId,
+            message.subject,
+            message.from.name,
+            message.from.email,
+            toContacts,
+            ccContacts,
+            bccContacts,
+            replyToContacts,
+            message.textBody,
+            message.htmlBody,
+            message.preview,
+            message.date.timeIntervalSince1970,
+            message.receivedDate?.timeIntervalSince1970,
+            message.isRead ? 1 : 0,
+            message.isStarred ? 1 : 0,
+            message.isImportant ? 1 : 0,
+            message.isNoReply ? 1 : 0,
+            message.hasAttachments ? 1 : 0,
+            message.isSpam ? 1 : 0,
+            message.isDeleted ? 1 : 0,
+            message.containsRemoteResources ? 1 : 0,
+            tags,
+            aiTags,
+            message.aiSummary,
+            message.aiPriority?.rawValue,
+            message.syncedAt.timeIntervalSince1970,
+            Date().timeIntervalSince1970,
+            message.isBodyLoaded ? 1 : 0,
+            message.bodyCachedAt?.timeIntervalSince1970,
+            message.hasBeenReplied ? 1 : 0,
+            message.isDraft ? 1 : 0,
+            existingId.uuidString
+        ])
+        
+        // 更新附件
+        // 先删除旧附件
+        try db.execute(sql: "DELETE FROM email_attachments WHERE message_id = ?", arguments: [existingId.uuidString])
+        // 保存新附件
+        for attachment in message.attachments {
+            try saveAttachment(attachment, messageId: existingId, db: db)
+        }
+    }
+    
+    nonisolated private func saveMessage(_ message: EmailMessage, db: Database) throws {
+        let message = try mergeCachedBodyIfNeeded(message, messageId: message.id, db: db)
         // 序列化联系人列表
         let toContacts = try? JSONEncoder().encode(message.to)
         let ccContacts = try? JSONEncoder().encode(message.cc)
@@ -630,7 +916,7 @@ class EmailStore: ObservableObject {
         }
     }
     
-    private func saveAttachment(_ attachment: EmailAttachment, messageId: UUID, db: Database) throws {
+    nonisolated private func saveAttachment(_ attachment: EmailAttachment, messageId: UUID, db: Database) throws {
         try db.execute(sql: """
             INSERT OR REPLACE INTO email_attachments (
                 id, message_id, filename, mime_type, size,
@@ -689,12 +975,41 @@ class EmailStore: ObservableObject {
             }
             
             folders = loaded
+            
+            // 从数据库刷新各文件夹邮件数量，保证侧栏数字正确
+            await refreshFolderCountsFromDatabase()
         } catch {
             print("❌ [EmailStore] 加载文件夹失败: \(error)")
         }
     }
     
-    private func deduplicatedFolders(_ folders: [EmailFolder]) -> [EmailFolder] {
+    /// 从数据库刷新所有文件夹的邮件数量到缓存（启动或切换账号后数字准确）
+    private func refreshFolderCountsFromDatabase() async {
+        let folderIds = folders.values.flatMap { $0 }.map(\.id)
+        guard !folderIds.isEmpty else { return }
+        do {
+            let counts = try await database.asyncRead { db -> [UUID: Int] in
+                var result: [UUID: Int] = [:]
+                let rows = try Row.fetchAll(db, sql: """
+                    SELECT folder_id, COUNT(*) AS cnt FROM email_messages
+                    WHERE folder_id IS NOT NULL
+                    GROUP BY folder_id
+                """)
+                for row in rows {
+                    if let idString = row["folder_id"] as? String, let id = UUID(uuidString: idString) {
+                        result[id] = row["cnt"] as? Int ?? 0
+                    }
+                }
+                return result
+            }
+            FolderMessageCountCache.shared.updateCounts(counts)
+            print("📊 [EmailStore] 已从数据库刷新 \(counts.count) 个文件夹的邮件数量")
+        } catch {
+            print("⚠️ [EmailStore] 刷新文件夹数量失败: \(error)")
+        }
+    }
+    
+    nonisolated private func deduplicatedFolders(_ folders: [EmailFolder]) -> [EmailFolder] {
         var seen = Set<String>()
         var result: [EmailFolder] = []
         for folder in folders {
@@ -755,6 +1070,11 @@ class EmailStore: ObservableObject {
             let hasMoreInDatabase = (offset + firstBatch.count) < totalCount
             print("📦 [EmailStore] 加载完成: \(firstBatch.count) 封邮件，数据库总数: \(totalCount)，已加载: \(offset + firstBatch.count)，还有更多: \(hasMoreInDatabase)，耗时: \(String(format: "%.3f", loadElapsed * 1000))ms")
             
+            // 用数据库真实总数更新数量缓存，保证侧栏数字正确
+            await MainActor.run {
+                FolderMessageCountCache.shared.updateCount(for: folderId, count: totalCount)
+            }
+            
             // 立即更新UI
             await MainActor.run {
                 if forceLoadMore {
@@ -812,7 +1132,7 @@ class EmailStore: ObservableObject {
     
     // MARK: - Parsing
     
-    private func parseAccount(from row: Row) throws -> EmailAccount {
+    nonisolated private func parseAccount(from row: Row) throws -> EmailAccount {
         guard let idString = row["id"] as? String,
               let id = UUID(uuidString: idString) else {
             throw EmailDatabaseError.invalidData
@@ -847,7 +1167,7 @@ class EmailStore: ObservableObject {
     }
 
     /// 稳健解析端口字段，避免因为底层类型差异导致总是回落到默认值
-    private func parsePort(from row: Row, column: String, defaultPort: Int) -> Int {
+    nonisolated private func parsePort(from row: Row, column: String, defaultPort: Int) -> Int {
         // 1. 直接按 Int 读取（GRDB 通常会帮忙做转换）
         if let intValue = row[column] as? Int {
             return intValue
@@ -867,7 +1187,7 @@ class EmailStore: ObservableObject {
         return defaultPort
     }
     
-    private func parseFolder(from row: Row) throws -> EmailFolder {
+    nonisolated private func parseFolder(from row: Row) throws -> EmailFolder {
         guard let idString = row["id"] as? String,
               let id = UUID(uuidString: idString),
               let accountIdString = row["account_id"] as? String,
@@ -887,7 +1207,7 @@ class EmailStore: ObservableObject {
         )
     }
     
-    private func parseMessage(from row: Row, db: Database) throws -> EmailMessage {
+    nonisolated private func parseMessage(from row: Row, db: Database) throws -> EmailMessage {
         guard let idString = row["id"] as? String,
               let id = UUID(uuidString: idString),
               let accountIdString = row["account_id"] as? String,
@@ -968,7 +1288,7 @@ class EmailStore: ObservableObject {
         )
     }
     
-    private func loadAttachments(messageId: UUID, db: Database) throws -> [EmailAttachment] {
+    nonisolated private func loadAttachments(messageId: UUID, db: Database) throws -> [EmailAttachment] {
         var attachments: [EmailAttachment] = []
         let rows = try Row.fetchAll(db, sql: "SELECT * FROM email_attachments WHERE message_id = ?", arguments: [messageId.uuidString])
         

@@ -93,6 +93,16 @@ struct EmailBodyWebViewRepresentable: NSViewRepresentable {
                 DispatchQueue.main.async {
                     self.onHeightChange(max(h, 100))
                 }
+                if let loadStart = context.coordinator.lastLoadStart {
+                    let loadElapsed = Date().timeIntervalSince(loadStart) * 1000
+                    let injectMs = context.coordinator.lastInjectMs ?? 0
+                    let length = context.coordinator.lastHtmlLength ?? 0
+                    let showImg = context.coordinator.lastShowImages ?? false
+                    print("⏱ [EmailBodyWebView] 渲染完成: \(String(format: "%.1f", loadElapsed))ms, inject=\(String(format: "%.1f", injectMs))ms, length=\(length), showImages=\(showImg)")
+                }
+            }
+            if !success, let errorMessage {
+                print("⚠️ [EmailBodyWebView] 渲染失败: \(errorMessage)")
             }
         }
         
@@ -100,11 +110,17 @@ struct EmailBodyWebViewRepresentable: NSViewRepresentable {
         let html = htmlBody
         let showImg = showImages
         Task.detached(priority: .userInitiated) {
-            let styledHTML = await MainActor.run {
-                Self.injectEmailStylesStatic(into: html, showImages: showImg)
-            }
+            let injectStart = Date()
+            let styledHTML = Self.injectEmailStylesStatic(into: html, showImages: showImg)
+            let injectElapsed = Date().timeIntervalSince(injectStart) * 1000
+            print("⏱ [EmailBodyWebView] HTML 注入耗时: \(String(format: "%.1f", injectElapsed))ms, length=\(html.count), showImages=\(showImg)")
             await MainActor.run {
+                context.coordinator.lastInjectMs = injectElapsed
+                context.coordinator.lastHtmlLength = html.count
+                context.coordinator.lastShowImages = showImg
+                context.coordinator.lastLoadStart = Date()
                 webView.loadHTMLString(styledHTML, baseURL: nil)
+                print("⏱ [EmailBodyWebView] loadHTMLString 发起, length=\(html.count), showImages=\(showImg)")
             }
         }
     }
@@ -494,6 +510,10 @@ struct EmailBodyWebViewRepresentable: NSViewRepresentable {
     class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var renderCompleteHandler: ((Bool, String?, CGFloat?, CGFloat?) -> Void)?
         var lastContentHash: String?
+        var lastLoadStart: Date?
+        var lastInjectMs: Double?
+        var lastHtmlLength: Int?
+        var lastShowImages: Bool?
         
         func setRenderCompleteHandler(_ handler: @escaping (Bool, String?, CGFloat?, CGFloat?) -> Void) {
             self.renderCompleteHandler = handler

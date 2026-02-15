@@ -98,27 +98,37 @@ struct fastvApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(appState)
-                .onAppear {
-                    // 应用启动时，先清理可能遗留的工具条窗口（兜底方案）
-                    Task { @MainActor in
-                        print("🧹 [fastvApp] 应用启动，清理可能遗留的工具条窗口")
-                        WaveformWindowManager.shared.cleanup()
-                        
-                        // 确保状态栏已初始化
-                        StatusBarManager.shared.show()
-                        
-                        // 设置窗口标题为多语言的 APP 名称
-                        if let window = NSApplication.shared.windows.first {
-                            window.title = NSLocalizedString("app.name", comment: "应用名称")
-                        }
-                        
-                        // 延迟初始化，确保窗口已显示
-                        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
-                        setupVoiceInput()
-                    }
+            ZStack {
+                ContentView()
+                    .environmentObject(appState)
+                
+                // 语音模型预加载启动屏（仅当已完成引导且有模型文件时显示）
+                if UserPreferences.shared.hasCompletedOnboarding {
+                    SpeechModelPreloadSplashView(preloadManager: SpeechModelPreloadManager.shared)
                 }
+            }
+            .onAppear {
+                // 应用启动时预加载语音模型（若有模型文件），首次语音输入即可直接使用
+                SpeechModelPreloadManager.shared.startPreloadIfNeeded()
+                
+                // 应用启动时，先清理可能遗留的工具条窗口（兜底方案）
+                Task { @MainActor in
+                    print("🧹 [fastvApp] 应用启动，清理可能遗留的工具条窗口")
+                    WaveformWindowManager.shared.cleanup()
+                    
+                    // 确保状态栏已初始化
+                    StatusBarManager.shared.show()
+                    
+                    // 设置窗口标题为多语言的 APP 名称
+                    if let window = NSApplication.shared.windows.first {
+                        window.title = NSLocalizedString("app.name", comment: "应用名称")
+                    }
+                    
+                    // 延迟初始化，确保窗口已显示
+                    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
+                    setupVoiceInput()
+                }
+            }
         }
         .windowStyle(.automatic)
         .defaultSize(width: 800, height: 600)

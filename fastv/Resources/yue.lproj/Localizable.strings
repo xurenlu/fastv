@@ -41,6 +41,8 @@
 "press.and.hold" = "按著說：";
 "enable.voice.input.in.settings" = "請在設定中啟用語音輸入法功能";
 "transcribing" = "轉文字中...";
+"speech.model.preload.title" = "正在載入語音模型";
+"speech.model.preload.message" = "首次載入語音識別模型，請稍候…";
 
 // 設定
 "enable.voice.input" = "啟用語音輸入法";

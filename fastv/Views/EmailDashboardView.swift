@@ -109,7 +109,7 @@ struct EmailDashboardView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Image(systemName: "sun.max.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Color.orange)
                 Text("今日摘要")
                     .font(.headline)
                     .foregroundStyle(.primary)
@@ -140,7 +140,7 @@ struct EmailDashboardView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Image(systemName: "star.fill")
-                    .foregroundStyle(.yellow)
+                    .foregroundStyle(Color.yellow)
                 Text("重要邮件摘要")
                     .font(.headline)
                     .foregroundStyle(.primary)
@@ -171,7 +171,7 @@ struct EmailDashboardView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Image(systemName: "chart.line.uptrend.xyaxis")
-                    .foregroundStyle(.purple)
+                    .foregroundStyle(Color.purple)
                 Text("本周摘要")
                     .font(.headline)
                     .foregroundStyle(.primary)
@@ -183,9 +183,9 @@ struct EmailDashboardView: View {
             
             LazyVStack(spacing: 12) {
                 ForEach(Array(weekSummaries.prefix(10))) { message in
-                    SummaryCard(message: message, showFullSummary: false) {
+                    SummaryCard(message: message, onSelect: {
                         viewModel.selectMessage(message)
-                    }
+                    }, showFullSummary: false)
                 }
             }
         }
@@ -349,13 +349,13 @@ struct SummaryCard: View {
                         if message.isStarred {
                             Image(systemName: "star.fill")
                                 .font(.caption2)
-                                .foregroundStyle(.yellow)
+                                .foregroundStyle(Color.yellow)
                         }
                         
                         if message.isImportant {
                             Image(systemName: "exclamationmark.circle.fill")
                                 .font(.caption2)
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(Color.orange)
                         }
                         
                         if !message.aiTags.isEmpty {
@@ -365,7 +365,7 @@ struct SummaryCard: View {
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)
                                     .background(Color.blue.opacity(0.1))
-                                    .foregroundStyle(.blue)
+                                    .foregroundStyle(Color.blue)
                                     .clipShape(Capsule())
                             }
                         }

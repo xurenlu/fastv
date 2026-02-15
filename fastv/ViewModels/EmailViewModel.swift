@@ -37,6 +37,10 @@ class EmailViewModel: ObservableObject {
     @Published var selectedFolderId: UUID?
     @Published var selectedMessageId: UUID?
     
+    // 多选模式相关状态
+    @Published var isMultiSelectMode = false // 是否处于多选模式
+    @Published var selectedMessageIds: Set<UUID> = [] // 选中的邮件ID集合
+    
     @Published var isLoading = false // 邮件列表加载
     @Published var isLoadingFolders = false
     @Published var syncProgress: Double = 0.0
@@ -120,6 +124,11 @@ class EmailViewModel: ObservableObject {
     
     var selectedMessage: EmailMessage? {
         guard let messageId = selectedMessageId else { return nil }
+        if let folderId = selectedFolderId,
+           let storeMessages = emailStore.messages[folderId],
+           let storeMessage = storeMessages.first(where: { $0.id == messageId }) {
+            return storeMessage
+        }
         return messages.first { $0.id == messageId }
     }
     
@@ -204,6 +213,12 @@ class EmailViewModel: ObservableObject {
         $selectedMessageId
             .sink { [weak self] messageId in
                 guard let self = self else { return }
+                // 如果超级隐私模式开启，强制不显示图片
+                if self.preferences.emailSuperPrivacyMode {
+                    self.showImages = false
+                    return
+                }
+                
                 if let messageId = messageId,
                    let message = self.messages.first(where: { $0.id == messageId }) {
                     // 检查是否有记住的偏好设置
@@ -216,6 +231,17 @@ class EmailViewModel: ObservableObject {
                 } else {
                     // 没有选中邮件，使用全局设置
                     self.showImages = self.preferences.emailShowImages
+                }
+            }
+            .store(in: &cancellables)
+        
+        // 监听超级隐私模式变化
+        preferences.$emailSuperPrivacyMode
+            .sink { [weak self] enabled in
+                guard let self = self else { return }
+                if enabled {
+                    // 如果开启超级隐私模式，强制不显示图片
+                    self.showImages = false
                 }
             }
             .store(in: &cancellables)
@@ -450,13 +476,29 @@ class EmailViewModel: ObservableObject {
         let currentPageValue = currentPage
         let pageSizeValue = pageSize
         
-        // 统一在后台线程处理排序（无论数据量大小，确保零卡顿）
+        // 统一在后台线程处理去重和排序（无论数据量大小，确保零卡顿）
         print("📊 [EmailViewModel] 开始后台处理邮件，数量: \(allMessages.count)")
         let sortStart = Date()
         
         let processedMessages = await Task.detached(priority: .userInitiated) {
+            // 先去重：按 Message-ID 去重，避免同一封邮件在同一文件夹中有多个副本
+            var seen = Set<String>()
+            var deduplicated: [EmailMessage] = []
+            for msg in allMessages {
+                // 生成去重键：优先使用 Message-ID，否则使用 (subject, from.email, date) 组合
+                let key: String
+                if let mid = msg.messageId, !mid.isEmpty {
+                    key = mid
+                } else {
+                    key = "\(msg.subject)|\(msg.from.email)|\(msg.date.timeIntervalSince1970)"
+                }
+                if seen.insert(key).inserted {
+                    deduplicated.append(msg)
+                }
+            }
+            
             // 排序
-            let sorted = allMessages.sorted { $0.date > $1.date }
+            let sorted = deduplicated.sorted { $0.date > $1.date }
             let endIndex = min((currentPageValue + 1) * pageSizeValue, sorted.count)
             let newMessages = Array(sorted.prefix(endIndex))
             return (messages: newMessages, hasMore: sorted.count > endIndex)
@@ -506,6 +548,16 @@ class EmailViewModel: ObservableObject {
         }
     }
     
+    /// 为邮件生成去重键
+    /// - Parameter message: 邮件消息
+    /// - Returns: 去重键，优先使用 Message-ID，否则使用 (subject, from.email, date) 组合
+    private func deduplicationKey(for message: EmailMessage) -> String {
+        if let mid = message.messageId, !mid.isEmpty {
+            return mid
+        }
+        return "\(message.subject)|\(message.from.email)|\(message.date.timeIntervalSince1970)"
+    }
+    
     /// 更新所有文件夹的邮件（完全异步）
     /// - Parameter preserveHasMore: 如果为 true，不覆盖 hasMoreMessages 状态（用于加载更多模式）
     private func updateMessagesForAllFolders(preserveHasMore: Bool = false) async {
@@ -531,11 +583,23 @@ class EmailViewModel: ObservableObject {
         
         // 在后台线程处理合并和排序
         let processedMessages = await Task.detached(priority: .userInitiated) {
-            // 合并所有文件夹的邮件
+            // 合并所有文件夹的邮件，并去重
+            var seen = Set<String>()
             var combined: [EmailMessage] = []
             for folder in foldersForAccount {
                 if let folderMsgs = allFolderMessages[folder.id] {
-                    combined.append(contentsOf: folderMsgs)
+                    for msg in folderMsgs {
+                        // 生成去重键：优先使用 Message-ID，否则使用 (subject, from.email, date) 组合
+                        let key: String
+                        if let mid = msg.messageId, !mid.isEmpty {
+                            key = mid
+                        } else {
+                            key = "\(msg.subject)|\(msg.from.email)|\(msg.date.timeIntervalSince1970)"
+                        }
+                        if seen.insert(key).inserted {
+                            combined.append(msg)
+                        }
+                    }
                 }
             }
             
@@ -609,9 +673,18 @@ class EmailViewModel: ObservableObject {
     private func aggregatedMessagesForCurrentAccount() -> [EmailMessage] {
         guard let accountId = selectedAccountId else { return [] }
         let foldersForAccount = emailStore.getFolders(for: accountId)
+        // 合并所有文件夹的邮件，并去重
+        var seen = Set<String>()
         var combined: [EmailMessage] = []
         for folder in foldersForAccount {
-            combined.append(contentsOf: emailStore.messages[folder.id] ?? [])
+            if let folderMsgs = emailStore.messages[folder.id] {
+                for msg in folderMsgs {
+                    let key = deduplicationKey(for: msg)
+                    if seen.insert(key).inserted {
+                        combined.append(msg)
+                    }
+                }
+            }
         }
         return combined
     }
@@ -675,6 +748,8 @@ class EmailViewModel: ObservableObject {
             for folder in folders {
                 try await emailStore.addFolder(folder)
             }
+            // 确保存在“本地已发送”文件夹，用于存放本机发出的邮件
+            try await emailStore.ensureLocalSentFolder(for: account.id)
             
             isLoadingFolders = false
             
@@ -1061,13 +1136,29 @@ class EmailViewModel: ObservableObject {
         hasMoreMessages = true
         loadedDateRange = nil
         
-        // 2. 立即从缓存读取并显示（同步读取，极快）
+        // 2. 立即从缓存读取并显示（同步读取，极快，但需要去重）
         let cachedMessages = emailStore.messages[folder.id] ?? []
         if !cachedMessages.isEmpty {
-            // 有缓存，立即显示
-            messages = Array(cachedMessages.sorted { $0.date > $1.date }.prefix(pageSize))
+            // 有缓存，立即显示（需要去重）
+            // 使用与 updateMessagesFromStore 相同的去重逻辑
+            var seen = Set<String>()
+            var deduplicated: [EmailMessage] = []
+            for msg in cachedMessages {
+                // 生成去重键：优先使用 Message-ID，否则使用 (subject, from.email, date) 组合
+                let key: String
+                if let mid = msg.messageId, !mid.isEmpty {
+                    key = mid
+                } else {
+                    key = "\(msg.subject)|\(msg.from.email)|\(msg.date.timeIntervalSince1970)"
+                }
+                if seen.insert(key).inserted {
+                    deduplicated.append(msg)
+                }
+            }
+            let sorted = deduplicated.sorted { $0.date > $1.date }
+            messages = Array(sorted.prefix(pageSize))
             isLoading = false
-            print("📂 [EmailViewModel] 立即显示缓存: \(messages.count) 封邮件，耗时: \(String(format: "%.3f", Date().timeIntervalSince(startTime) * 1000))ms")
+            print("📂 [EmailViewModel] 立即显示缓存（已去重）: \(messages.count) 封邮件，原始: \(cachedMessages.count) 封，耗时: \(String(format: "%.3f", Date().timeIntervalSince(startTime) * 1000))ms")
         } else {
             // 无缓存，保留当前数据避免闪动，显示loading状态
             isLoading = true
@@ -1083,7 +1174,7 @@ class EmailViewModel: ObservableObject {
                 // 从数据库加载
                 await self.emailStore.loadMessages(for: folder.id)
                 
-                // 更新显示
+                // 更新显示（会执行去重）
                 await self.updateMessagesFromStore()
                 
                 await MainActor.run {
@@ -1091,6 +1182,15 @@ class EmailViewModel: ObservableObject {
                     let elapsed = Date().timeIntervalSince(startTime)
                     print("📂 [EmailViewModel] 数据库加载完成，耗时: \(String(format: "%.3f", elapsed * 1000))ms")
                 }
+            }
+        } else {
+            // 即使有缓存，也异步调用一次 updateMessagesFromStore 确保去重逻辑一致
+            // 这样可以处理缓存中可能存在的重复邮件
+            Task.detached(priority: .userInitiated) { [weak self] in
+                guard let self = self else { return }
+                // 延迟一点，确保UI先更新
+                try? await Task.sleep(nanoseconds: 50_000_000) // 0.05秒
+                await self.updateMessagesFromStore()
             }
         }
         
@@ -1196,9 +1296,11 @@ class EmailViewModel: ObservableObject {
                     // 正文加载完成后，再检查是否需要 AI 分析（仅在正文已加载时）
                     // 这样可以确保 AI 分析只在用户真正查看邮件时触发
                     let updatedMessage = self.messages.first(where: { $0.id == currentMessage.id }) ?? currentMessage
-                    let needsAIAnalysis = (self.preferences.emailAISmartTaggingEnabled && updatedMessage.aiTags.isEmpty) ||
+                    // 如果超级隐私模式开启，不进行 AI 分析
+                    let needsAIAnalysis = !self.preferences.emailSuperPrivacyMode &&
+                                         ((self.preferences.emailAISmartTaggingEnabled && updatedMessage.aiTags.isEmpty) ||
                                           (self.preferences.emailAISummaryEnabled && updatedMessage.aiSummary == nil) ||
-                                          (self.preferences.emailAIPriorityDetectionEnabled && updatedMessage.aiPriority == nil)
+                                          (self.preferences.emailAIPriorityDetectionEnabled && updatedMessage.aiPriority == nil))
                     
                     if needsAIAnalysis && updatedMessage.isBodyLoaded {
                         // 在后台线程执行 AI 分析，不阻塞 UI
@@ -1268,6 +1370,12 @@ class EmailViewModel: ObservableObject {
             return
         }
         
+        let startTime = Date()
+        let messageId = message.id.uuidString
+        let uid = message.uid ?? 0
+        let hasCachedBody = (message.textBody?.isEmpty == false) || (message.htmlBody?.isEmpty == false) || message.isBodyLoaded
+        print("⏱ [EmailViewModel] loadMessageBody 开始: subject=\(message.subject), uid=\(uid), id=\(messageId), cached=\(hasCachedBody)")
+        
         // 先检查本地是否有缓存
         let hasTextBody = message.textBody?.isEmpty == false
         let hasHtmlBody = message.htmlBody?.isEmpty == false
@@ -1308,6 +1416,8 @@ class EmailViewModel: ObservableObject {
                         }
                     }
                 }
+                let totalElapsed = Date().timeIntervalSince(startTime) * 1000
+                print("⏱ [EmailViewModel] loadMessageBody 缓存命中: \(String(format: "%.1f", totalElapsed))ms, uid=\(uid), id=\(messageId)")
                 return
             }
         }
@@ -1327,11 +1437,14 @@ class EmailViewModel: ObservableObject {
         print("📧 [EmailViewModel] 开始加载邮件正文: \(message.subject), folder: \(folder.name), uid: \(message.uid ?? 0)")
         
         do {
+            let fetchStart = Date()
             let content = try await emailService.fetchMessageBody(
                 account: account,
                 folder: folder,
                 message: message
             )
+            let fetchElapsed = Date().timeIntervalSince(fetchStart) * 1000
+            print("⏱ [EmailViewModel] fetchMessageBody 耗时: \(String(format: "%.1f", fetchElapsed))ms, uid=\(uid), id=\(messageId)")
             
             print("📧 [EmailViewModel] 邮件正文获取成功: textBody=\(content.textBody?.prefix(100) ?? "nil"), htmlBody=\(content.htmlBody?.prefix(100) ?? "nil")")
             
@@ -1350,6 +1463,14 @@ class EmailViewModel: ObservableObject {
             replaceMessageInList(with: updated)
             print("📝 [EmailViewModel] 已更新 ViewModel 邮件列表，邮件: \(updated.subject), folderId: \(updated.folderId?.uuidString ?? "nil")")
             
+            // 先同步更新 EmailStore 内存，再返回，避免用户切换文件夹再切回时从 Store 读到未含正文的邮件而重复显示「正在加载正文」
+            do {
+                try await self.emailStore.updateMessage(updated)
+                print("✅ [EmailViewModel] 邮件正文已写入 EmailStore，folderId: \(updated.folderId?.uuidString ?? "nil")")
+            } catch {
+                print("⚠️ [EmailViewModel] 更新邮件正文到 Store 失败: \(error)")
+            }
+            
             // 如果没有 textBody，在后台线程从 HTML 提取纯文本（用于搜索等功能）
             if content.textBody == nil, let htmlBody = content.htmlBody, !htmlBody.isEmpty {
                 Task.detached(priority: .background) { [weak self] in
@@ -1367,15 +1488,8 @@ class EmailViewModel: ObservableObject {
                 }
             }
             
-            // 后台保存到数据库和 EmailStore
-            Task(priority: .background) {
-                do {
-                    try await self.emailStore.updateMessage(updated)
-                    print("✅ [EmailViewModel] 邮件正文已保存到数据库和 EmailStore，folderId: \(updated.folderId?.uuidString ?? "nil")")
-                } catch {
-                    print("⚠️ [EmailViewModel] 更新邮件正文缓存失败: \(error)")
-                }
-            }
+            let totalElapsed = Date().timeIntervalSince(startTime) * 1000
+            print("⏱ [EmailViewModel] loadMessageBody 完成: \(String(format: "%.1f", totalElapsed))ms, uid=\(uid), id=\(messageId)")
         } catch {
             print("❌ [EmailViewModel] 加载正文失败: \(error)")
             errorMessage = "加载正文失败: \(error.localizedDescription)"
@@ -1620,6 +1734,9 @@ class EmailViewModel: ObservableObject {
             throw EmailServiceError.invalidConfiguration("未选择账号")
         }
         
+        // 如果超级隐私模式开启，强制不发送读回执
+        let shouldSendReadReceipt = preferences.emailSuperPrivacyMode ? false : preferences.emailReadReceiptEnabled
+        
         try await emailService.sendMessage(
             account: account,
             to: to,
@@ -1629,12 +1746,18 @@ class EmailViewModel: ObservableObject {
             body: body,
             htmlBody: htmlBody,
             attachments: attachments,
-            readReceipt: preferences.emailReadReceiptEnabled
+            readReceipt: shouldSendReadReceipt
         )
     }
     
     /// 使用AI分析邮件
     func analyzeMessageWithAI(_ message: EmailMessage) async {
+        // 如果超级隐私模式开启，不发送邮件内容给 AI
+        if preferences.emailSuperPrivacyMode {
+            print("🔒 [EmailViewModel] 超级隐私模式已启用，跳过 AI 分析")
+            return
+        }
+        
         do {
             // 在主线程一次性获取所有需要的配置和数据，避免多次切换
             let (currentMessage, needsTagging, needsPriority, needsSummary, config, prefs) = await MainActor.run {
@@ -2123,6 +2246,18 @@ class EmailViewModel: ObservableObject {
             sendProgress = 0.0
             sendStatusText = ""
             
+            // 保存到“已发送(本地)”文件夹，便于在客户端查看
+            if let account = currentAccount {
+                saveSentMessageToLocalFolder(
+                    account: account,
+                    to: draftToSend.to,
+                    cc: draftToSend.cc,
+                    bcc: draftToSend.bcc,
+                    subject: draftToSend.subject,
+                    body: draftToSend.body,
+                    htmlBody: draftToSend.htmlBody
+                )
+            }
             notifyEmailSent(subject: subject, success: true)
         } catch {
             // 发送失败
@@ -2250,6 +2385,18 @@ class EmailViewModel: ObservableObject {
             sendProgress = 0.0
             sendStatusText = ""
             
+            // 保存到“已发送(本地)”文件夹
+            if let account = currentAccount {
+                saveSentMessageToLocalFolder(
+                    account: account,
+                    to: draftToSend.to,
+                    cc: draftToSend.cc,
+                    bcc: draftToSend.bcc,
+                    subject: draftToSend.subject,
+                    body: draftToSend.body,
+                    htmlBody: draftToSend.htmlBody
+                )
+            }
             notifyEmailSent(subject: subject, success: true)
         } catch {
             // 发送失败
@@ -2291,11 +2438,17 @@ class EmailViewModel: ObservableObject {
     }
     
     /// 删除邮件
-    func deleteMessage(_ message: EmailMessage) async {
+    /// - Parameters:
+    ///   - message: 要删除的邮件
+    ///   - deleteOnServer: 是否在服务器上删除（true=服务器删除，false=仅本地删除）
+    func deleteMessage(_ message: EmailMessage, deleteOnServer: Bool = false) async {
         guard let account = currentAccount else { return }
         
         do {
-            try await emailService.deleteMessage(account: account, message: message)
+            // 如果需要在服务器上删除，调用服务器删除接口
+            if deleteOnServer {
+                try await emailService.deleteMessage(account: account, message: message)
+            }
             
             // 从 emailStore 获取最新数据（保留正文缓存）
             var updated = message
@@ -2317,10 +2470,139 @@ class EmailViewModel: ObservableObject {
             if selectedMessageId == message.id {
                 selectedMessageId = nil
             }
+            
+            // 如果是在多选模式下删除，从选中集合中移除
+            selectedMessageIds.remove(message.id)
         } catch {
             errorMessage = "删除失败: \(error.localizedDescription)"
             print("❌ [EmailViewModel] 删除邮件失败: \(error)")
         }
+    }
+    
+    /// 批量删除邮件
+    /// - Parameter deleteOnServer: 是否在服务器上删除
+    func deleteSelectedMessages(deleteOnServer: Bool) async {
+        let messagesToDelete = messages.filter { selectedMessageIds.contains($0.id) }
+        
+        for message in messagesToDelete {
+            await deleteMessage(message, deleteOnServer: deleteOnServer)
+        }
+        
+        // 清除多选状态
+        selectedMessageIds.removeAll()
+        isMultiSelectMode = false
+    }
+    
+    /// 切换多选模式
+    func toggleMultiSelectMode() {
+        isMultiSelectMode.toggle()
+        if !isMultiSelectMode {
+            selectedMessageIds.removeAll()
+        }
+    }
+    
+    /// 切换单个邮件的选中状态
+    func toggleMessageSelection(_ messageId: UUID) {
+        if selectedMessageIds.contains(messageId) {
+            selectedMessageIds.remove(messageId)
+        } else {
+            selectedMessageIds.insert(messageId)
+        }
+    }
+    
+    /// 全选/取消全选
+    func toggleSelectAll() {
+        let displayedMessages = searchText.isEmpty ? messages : searchResults
+        if selectedMessageIds.count == displayedMessages.count {
+            selectedMessageIds.removeAll()
+        } else {
+            selectedMessageIds = Set(displayedMessages.map { $0.id })
+        }
+    }
+    
+    /// 归档单个邮件
+    func archiveMessage(_ message: EmailMessage) async {
+        guard let account = currentAccount else { return }
+        
+        // 查找归档文件夹
+        let archiveFolder = folders.first { $0.type == .archive }
+        guard let archiveFolder = archiveFolder else {
+            errorMessage = "找不到归档文件夹"
+            return
+        }
+        
+        do {
+            try await emailService.moveMessage(account: account, message: message, to: archiveFolder)
+            
+            // 更新本地状态 - 创建新的邮件实例，因为 folderId 是 let 常量
+            let updated = EmailMessage(
+                id: message.id,
+                accountId: message.accountId,
+                folderId: archiveFolder.id,
+                uid: message.uid,
+                messageId: message.messageId,
+                threadId: message.threadId,
+                subject: message.subject,
+                from: message.from,
+                to: message.to,
+                cc: message.cc,
+                bcc: message.bcc,
+                replyTo: message.replyTo,
+                textBody: message.textBody,
+                htmlBody: message.htmlBody,
+                preview: message.preview,
+                date: message.date,
+                receivedDate: message.receivedDate,
+                isRead: message.isRead,
+                isStarred: message.isStarred,
+                isImportant: message.isImportant,
+                isNoReply: message.isNoReply,
+                hasAttachments: message.hasAttachments,
+                isSpam: message.isSpam,
+                isDeleted: message.isDeleted,
+                containsRemoteResources: message.containsRemoteResources,
+                hasBeenReplied: message.hasBeenReplied,
+                isDraft: message.isDraft,
+                tags: message.tags,
+                aiTags: message.aiTags,
+                aiSummary: message.aiSummary,
+                aiPriority: message.aiPriority,
+                attachments: message.attachments,
+                syncedAt: message.syncedAt,
+                updatedAt: Date(),
+                isBodyLoaded: message.isBodyLoaded,
+                bodyCachedAt: message.bodyCachedAt
+            )
+            try await emailStore.updateMessage(updated)
+            
+            // 从当前列表中移除
+            if let index = messages.firstIndex(where: { $0.id == message.id }) {
+                messages.remove(at: index)
+            }
+            
+            // 如果归档的是当前选中的邮件，清除选择
+            if selectedMessageId == message.id {
+                selectedMessageId = nil
+            }
+        } catch {
+            errorMessage = "归档失败: \(error.localizedDescription)"
+            print("❌ [EmailViewModel] 归档邮件失败: \(error)")
+        }
+    }
+    
+    /// 归档选中的邮件
+    func archiveSelectedMessages() async {
+        guard currentAccount != nil else { return }
+        
+        let messagesToArchive = messages.filter { selectedMessageIds.contains($0.id) }
+        
+        for message in messagesToArchive {
+            await archiveMessage(message)
+        }
+        
+        // 清除多选状态
+        selectedMessageIds.removeAll()
+        isMultiSelectMode = false
     }
     
     /// 标记为垃圾邮件
@@ -2431,12 +2713,70 @@ class EmailViewModel: ObservableObject {
     ///   - show: 是否显示图片
     ///   - remember: 是否记住此选择
     func updateImageDisplayPreference(for message: EmailMessage, show: Bool, remember: Bool) {
+        // 如果超级隐私模式开启，不允许显示图片
+        if preferences.emailSuperPrivacyMode {
+            showImages = false
+            return
+        }
+        
         imageDisplayPreferences.setShowImages(show, for: message.from, remember: remember)
         showImages = show
         
         // 如果记住，也更新全局设置（作为默认值）
         if remember {
             preferences.emailShowImages = show
+        }
+    }
+    
+    // MARK: - 已发送保存到本地
+    
+    /// 将刚发出的邮件保存到“已发送(本地)”文件夹，便于在客户端查看
+    private func saveSentMessageToLocalFolder(
+        account: EmailAccount,
+        to: [EmailContact],
+        cc: [EmailContact],
+        bcc: [EmailContact],
+        subject: String,
+        body: String,
+        htmlBody: String?
+    ) {
+        guard let folder = emailStore.getLocalSentFolder(for: account.id) else { return }
+        let from = EmailContact(name: account.displayName.isEmpty ? nil : account.displayName, email: account.emailAddress)
+        let preview = body.prefix(200).trimmingCharacters(in: .whitespacesAndNewlines)
+        let now = Date()
+        let sentMessage = EmailMessage(
+            accountId: account.id,
+            folderId: folder.id,
+            uid: nil,
+            messageId: nil,
+            threadId: nil,
+            subject: subject.isEmpty ? "(无主题)" : subject,
+            from: from,
+            to: to,
+            cc: cc,
+            bcc: bcc,
+            replyTo: [],
+            textBody: body.isEmpty ? nil : body,
+            htmlBody: htmlBody,
+            preview: String(preview),
+            date: now,
+            receivedDate: now,
+            isRead: true,
+            isStarred: false,
+            isImportant: false,
+            isNoReply: false,
+            hasAttachments: false,
+            isSpam: false,
+            isDeleted: false,
+            containsRemoteResources: false,
+            hasBeenReplied: false,
+            isDraft: false,
+            syncedAt: now,
+            updatedAt: now,
+            isBodyLoaded: true
+        )
+        Task {
+            try? await emailStore.addMessages([sentMessage], folderId: folder.id)
         }
     }
     

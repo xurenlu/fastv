@@ -110,5 +110,19 @@ class EmailImageDisplayPreferences {
     func clearAllPreferences() {
         preferences = [:]
     }
+    
+    /// 获取所有保存的偏好设置
+    /// - Returns: 字典，key 为邮箱地址或域名，value 为是否显示图片
+    func getAllPreferences() -> [String: Bool] {
+        return preferences
+    }
+    
+    /// 删除指定 key 的偏好设置（用于设置页面）
+    /// - Parameter key: 邮箱地址或域名
+    func removePreference(for key: String) {
+        var updatedPreferences = preferences
+        updatedPreferences.removeValue(forKey: key.lowercased())
+        preferences = updatedPreferences
+    }
 }
 

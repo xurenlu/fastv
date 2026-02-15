@@ -41,6 +41,8 @@
 "press.and.hold" = "Press and Hold:";
 "enable.voice.input.in.settings" = "Please enable voice input in settings";
 "transcribing" = "Transcribing...";
+"speech.model.preload.title" = "Loading Voice Model";
+"speech.model.preload.message" = "Preparing the speech recognition model for the first time. This may take a few seconds.";
 
 // Settings
 "enable.voice.input" = "Enable Voice Input";
@@ -309,3 +311,6 @@
 "about.version" = "Version";
 "about.copyright" = "Copyright";
 "show.app" = "Show %@";
+
+// Email
+"email.folder.local_sent" = "Sent (Local)";

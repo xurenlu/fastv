@@ -78,7 +78,15 @@ struct SpeechTranscriber {
     
     /// 从内存录音转文字（用于语音输入、会议记录、直播转录）
     /// 自动检测录音时长，超过60秒自动分段处理
+    /// 使用 Task.detached 确保在后台线程执行，避免阻塞主线程
     static func transcribe(recording: VoiceRecording, language: TranscriptLanguage = .auto, enableCTCDeduplication: Bool? = nil) async throws -> String {
+        return try await Task.detached(priority: .userInitiated) {
+            try await transcribeImpl(recording: recording, language: language, enableCTCDeduplication: enableCTCDeduplication)
+        }.value
+    }
+    
+    /// 转录实现（在后台线程执行）
+    private static func transcribeImpl(recording: VoiceRecording, language: TranscriptLanguage = .auto, enableCTCDeduplication: Bool? = nil) async throws -> String {
         guard recording.channelCount == 1 else {
             throw VideoProcessingError.transcriptionFailed("仅支持单声道录音")
         }
@@ -555,13 +563,14 @@ struct SpeechTranscriber {
     }
     
     /// 执行语音转文字推理
+    /// 使用缓存的 ONNX 模型（SpeechTranscriptionModel），避免每次重新加载
     /// - Parameters:
     ///   - features: 音频特征
     ///   - language: 语言类型
     ///   - enableCTCDeduplication: 是否启用 CTC 去重
     /// - Returns: 转录的文本
     private static func performTranscription(features: [[Float]], language: TranscriptLanguage, enableCTCDeduplication: Bool = false) async throws -> String {
-        // 检查模型文件是否存在
+        // 检查 tokens 文件
         guard let tokensPath = tokensPath else {
             throw VideoProcessingError.modelLoadFailed("tokens 文件未找到")
         }
@@ -569,41 +578,17 @@ struct SpeechTranscriber {
         // 加载 token 映射
         let tokenMap = try await loadTokenMap(from: tokensPath)
         
-        // 准备输入：将特征转换为模型输入格式
-        // 输入形状：[batch_size=1, sequence_length, feature_dim]
-        let inputFeatures: [[[Float]]] = [features]
-        
-        // 使用 ONNX Runtime（通过 C wrapper）
-        guard let modelPath = modelPath else {
-            let modelDir = getModelDirectory()
-            throw VideoProcessingError.modelLoadFailed(
-                """
-                模型文件未找到。
-                
-                请先在设置中下载 model.onnx 文件。
-                模型文件应位于：\(modelDir.path)
-                
-                注意：其他文件（tokens.json、config.yaml、am.mvn）已随应用提供，无需下载。
-                """
-            )
-        }
-        
         #if DEBUG
-        print("使用 ONNX Runtime 进行推理")
-        print("模型路径: \(modelPath.path)")
+        print("使用缓存的 ONNX 模型进行推理")
         print("输入特征数量: \(features.count) 帧, 每帧 \(features.first?.count ?? 0) 维")
         if let firstFrame = features.first {
             let minVal = firstFrame.min() ?? 0
             let maxVal = firstFrame.max() ?? 0
             let avgVal = firstFrame.reduce(0, +) / Float(firstFrame.count)
             print("特征值范围: min=\(minVal), max=\(maxVal), avg=\(avgVal)")
-            
-            // 检查特征值是否全为 0 或异常
             let nonZeroCount = firstFrame.filter { abs($0) > 1e-6 }.count
             print("非零特征数量: \(nonZeroCount)/\(firstFrame.count)")
         }
-        
-        // 检查所有帧的特征值
         var allMin: Float = Float.infinity
         var allMax: Float = -Float.infinity
         var totalSum: Float = 0
@@ -618,11 +603,12 @@ struct SpeechTranscriber {
         print("所有帧特征值范围: min=\(allMin), max=\(allMax), avg=\(allAvg)")
         #endif
         
-        let onnxWrapper = ONNXRuntimeWrapper()
-        try onnxWrapper.loadModel(from: modelPath.path)
-        
-        // 运行推理
-        let tokenIDs = try onnxWrapper.runInference(input: inputFeatures, language: language, enableCTCDeduplication: enableCTCDeduplication)
+        // 使用缓存的模型运行推理（首次调用时加载，后续复用）
+        let tokenIDs = try await SpeechTranscriptionModel.shared.runInference(
+            features: features,
+            language: language,
+            enableCTCDeduplication: enableCTCDeduplication
+        )
         
         // 后处理：token 解码和文本规范化
         let text = postprocessTokens(tokenIDs: tokenIDs, tokenMap: tokenMap)

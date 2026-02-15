@@ -29,6 +29,12 @@ class EmailAutoReplyScheduler {
             return
         }
         
+        // 如果超级隐私模式开启，不发送邮件内容给 AI 生成自动回复
+        guard !preferences.emailSuperPrivacyMode else {
+            print("🔒 [EmailAutoReplyScheduler] 超级隐私模式已启用，跳过自动回复")
+            return
+        }
+        
         // 检查是否已处理过
         guard !processedMessageIds.contains(message.id) else {
             return

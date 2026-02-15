@@ -289,6 +289,36 @@ class EmailDatabase {
             try dbQueue.read(block)
         }.value
     }
+    
+    // MARK: - 后台优化
+    
+    /// 后台执行 SQLite 文件优化（不阻塞主线程，适合空闲时调用）
+    /// - 执行 PRAGMA optimize 更新统计信息，利于查询计划器
+    /// - 执行 VACUUM 回收删除产生的空闲页并整理文件（较耗时，会短暂占用写锁）
+    /// - 建议由调用方节流，例如每天最多执行一次 VACUUM
+    func optimizeInBackground(includeVacuum: Bool = true) {
+        guard dbQueue != nil else { return }
+        Task.detached(priority: .background) { [weak self] in
+            guard let self = self else { return }
+            do {
+                // 1. PRAGMA optimize：轻量，更新各表统计信息
+                try await self.asyncWrite { db in
+                    try db.execute(sql: "PRAGMA optimize")
+                }
+                print("✅ [EmailDatabase] PRAGMA optimize 完成")
+                
+                if includeVacuum {
+                    // 2. VACUUM：重建库文件、回收空间、整理碎片（会占用写锁一段时间）
+                    try await self.asyncWrite { db in
+                        try db.execute(sql: "VACUUM")
+                    }
+                    print("✅ [EmailDatabase] VACUUM 完成")
+                }
+            } catch {
+                print("⚠️ [EmailDatabase] 后台优化失败: \(error)")
+            }
+        }
+    }
 }
 
 enum EmailDatabaseError: Error {

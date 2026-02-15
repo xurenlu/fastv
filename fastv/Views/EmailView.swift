@@ -16,6 +16,9 @@ struct EmailView: View {
     @State private var showComposeWindow = false
     @State private var composeWindowType: EmailComposeWindowView.ComposeType?
     @State private var showMessageHeaders = false
+    @State private var showDeleteConfirmation = false
+    @State private var deleteOnServer = false // 删除选项：是否在服务器上删除
+    @State private var messageToDelete: EmailMessage? // 单个删除的邮件
     
     var body: some View {
         HSplitView {
@@ -50,6 +53,27 @@ struct EmailView: View {
             }
         }
         .navigationTitle("邮箱")
+        .sheet(isPresented: $showDeleteConfirmation) {
+            DeleteConfirmationView(
+                isPresented: $showDeleteConfirmation,
+                deleteOnServer: $deleteOnServer,
+                messageCount: messageToDelete != nil ? 1 : viewModel.selectedMessageIds.count,
+                onConfirm: {
+                    if let message = messageToDelete {
+                        // 单个删除
+                        Task {
+                            await viewModel.deleteMessage(message, deleteOnServer: deleteOnServer)
+                            messageToDelete = nil
+                        }
+                    } else {
+                        // 批量删除
+                        Task {
+                            await viewModel.deleteSelectedMessages(deleteOnServer: deleteOnServer)
+                        }
+                    }
+                }
+            )
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(action: {
@@ -354,14 +378,88 @@ struct EmailView: View {
     
     private var messageListView: some View {
         VStack(spacing: 0) {
-            // 搜索栏
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField("搜索邮件", text: $viewModel.searchText)
-                    .textFieldStyle(.plain)
+            // 搜索栏和多选模式切换
+            VStack(spacing: 0) {
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("搜索邮件", text: $viewModel.searchText)
+                        .textFieldStyle(.plain)
+                    
+                    // 多选模式切换按钮
+                    Button(action: {
+                        viewModel.toggleMultiSelectMode()
+                    }) {
+                        Image(systemName: viewModel.isMultiSelectMode ? "checkmark.circle.fill" : "checkmark.circle")
+                            .foregroundStyle(viewModel.isMultiSelectMode ? Color.blue : .secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(viewModel.isMultiSelectMode ? "退出多选模式" : "进入多选模式")
+                }
+                .padding()
+                
+                // 批量操作工具栏（多选模式下显示）
+                if viewModel.isMultiSelectMode {
+                    Divider()
+                    HStack(spacing: 12) {
+                        // 全选按钮
+                        Button(action: {
+                            viewModel.toggleSelectAll()
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: viewModel.selectedMessageIds.count == (viewModel.searchText.isEmpty ? viewModel.messages.count : viewModel.searchResults.count) ? "checkmark.circle.fill" : "circle")
+                                Text(viewModel.selectedMessageIds.count == (viewModel.searchText.isEmpty ? viewModel.messages.count : viewModel.searchResults.count) ? "取消全选" : "全选")
+                                    .font(.caption)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Spacer()
+                        
+                        // 选中数量提示
+                        if !viewModel.selectedMessageIds.isEmpty {
+                            Text("已选中 \(viewModel.selectedMessageIds.count) 封")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        // 批量归档按钮
+                        Button(action: {
+                            Task {
+                                await viewModel.archiveSelectedMessages()
+                            }
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "archivebox")
+                                Text("归档")
+                                    .font(.caption)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(viewModel.selectedMessageIds.isEmpty)
+                        
+                        // 批量删除按钮
+                        Button(action: {
+                            messageToDelete = nil // 确保是批量删除
+                            showDeleteConfirmation = true
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "trash")
+                                Text("删除")
+                                    .font(.caption)
+                            }
+                            .foregroundStyle(Color.red)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(viewModel.selectedMessageIds.isEmpty)
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(Color(NSColor.controlBackgroundColor))
+                }
             }
-            .padding()
             
             Divider()
             
@@ -377,8 +475,12 @@ struct EmailView: View {
                     let displayedMessages = viewModel.searchText.isEmpty ? viewModel.messages : viewModel.searchResults
                     
                     let messageBinding = Binding<UUID?>(
-                        get: { viewModel.selectedMessageId },
+                        get: { viewModel.isMultiSelectMode ? nil : viewModel.selectedMessageId },
                         set: { newId in
+                            // 多选模式下不处理单个选择
+                            if viewModel.isMultiSelectMode {
+                                return
+                            }
                             // 直接同步更新，SwiftUI 会自动处理状态更新
                             if let id = newId,
                                let message = viewModel.messages.first(where: { $0.id == id }) {
@@ -392,8 +494,16 @@ struct EmailView: View {
                     List(selection: messageBinding) {
                         // 直接使用 displayedMessages，避免创建新数组破坏 ForEach 的稳定标识
                         ForEach(displayedMessages, id: \.id) { message in
-                            MessageRow(message: message, showAttachments: viewModel.showAttachments)
-                                .tag(message.id)
+                            MessageRow(
+                                message: message,
+                                showAttachments: viewModel.showAttachments,
+                                isMultiSelectMode: viewModel.isMultiSelectMode,
+                                isSelected: viewModel.selectedMessageIds.contains(message.id),
+                                onToggleSelection: {
+                                    viewModel.toggleMessageSelection(message.id)
+                                }
+                            )
+                            .tag(message.id)
                         }
                         
                         // 底部加载区域：加载触发器 / 加载指示器 / 没有更多提示
@@ -726,7 +836,7 @@ struct EmailView: View {
                             } else {
                                 // 根据是否已优化显示不同的图标和颜色
                                 Image(systemName: viewModel.isLayoutOptimized(for: message) ? "sparkles.rectangle.stack.fill" : "sparkles.rectangle.stack")
-                                    .foregroundStyle(viewModel.isLayoutOptimized(for: message) ? .purple : .secondary)
+                                    .foregroundStyle(viewModel.isLayoutOptimized(for: message) ? Color.purple : .secondary)
                                     .frame(width: 32, height: 32)
                             }
                         }
@@ -742,7 +852,7 @@ struct EmailView: View {
                         }
                     }) {
                         Image(systemName: message.isStarred ? "star.fill" : "star")
-                            .foregroundStyle(message.isStarred ? .yellow : .secondary)
+                            .foregroundStyle(message.isStarred ? Color.yellow : .secondary)
                             .frame(width: 32, height: 32)
                     }
                     .buttonStyle(.plain)
@@ -756,7 +866,7 @@ struct EmailView: View {
                             }
                         }) {
                             Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(Color.orange)
                                 .frame(width: 32, height: 32)
                         }
                         .buttonStyle(.plain)
@@ -777,12 +887,11 @@ struct EmailView: View {
                     
                     // 删除按钮
                     Button(action: {
-                        Task {
-                            await viewModel.deleteMessage(message)
-                        }
+                        messageToDelete = message
+                        showDeleteConfirmation = true
                     }) {
                         Image(systemName: "trash")
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Color.red)
                             .frame(width: 32, height: 32)
                     }
                     .buttonStyle(.plain)
@@ -856,48 +965,53 @@ struct EmailView: View {
 private struct RemoteResourcesBannerView: View {
     let message: EmailMessage
     @ObservedObject var viewModel: EmailViewModel
+    @ObservedObject var preferences = UserPreferences.shared
     @State private var rememberChoice = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                Image(systemName: "photo.fill")
-                    .foregroundStyle(.blue)
+                Image(systemName: preferences.emailSuperPrivacyMode ? "lock.shield.fill" : "photo.fill")
+                    .foregroundStyle(preferences.emailSuperPrivacyMode ? Color.orange : Color.blue)
                     .font(.title3)
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("此邮件包含外部图片")
+                    Text(preferences.emailSuperPrivacyMode ? "超级隐私模式已启用" : "此邮件包含外部图片")
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundStyle(.primary)
                     
-                    Text("为了保护您的隐私，图片默认不显示")
+                    Text(preferences.emailSuperPrivacyMode ? "所有远程内容已被阻止，图片不会显示" : "为了保护您的隐私，图片默认不显示")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 
                 Spacer()
                 
-                Button(action: {
-                    viewModel.updateImageDisplayPreference(
-                        for: message,
-                        show: true,
-                        remember: rememberChoice
-                    )
-                }) {
-                    Text("显示图片")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                if !preferences.emailSuperPrivacyMode {
+                    Button(action: {
+                        viewModel.updateImageDisplayPreference(
+                            for: message,
+                            show: true,
+                            remember: rememberChoice
+                        )
+                    }) {
+                        Text("显示图片")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
-                .buttonStyle(.borderedProminent)
             }
             
-            Toggle(isOn: $rememberChoice) {
-                Text("记住此选择（按发件人邮箱和域名）")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            if !preferences.emailSuperPrivacyMode {
+                Toggle(isOn: $rememberChoice) {
+                    Text("记住此选择（按发件人邮箱和域名）")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .toggleStyle(.checkbox)
             }
-            .toggleStyle(.checkbox)
         }
         .padding(16)
         .background {
@@ -905,7 +1019,7 @@ private struct RemoteResourcesBannerView: View {
                 .fill(Color(NSColor.controlBackgroundColor))
                 .overlay {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                        .stroke(preferences.emailSuperPrivacyMode ? Color.orange.opacity(0.2) : Color.blue.opacity(0.2), lineWidth: 1)
                 }
         }
         .padding(.bottom, 8)
@@ -974,7 +1088,7 @@ struct FolderRow: View {
                     }) {
                         Image(systemName: "trash")
                             .font(.caption)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Color.red)
                             .frame(width: 20, height: 20)
                     }
                     .buttonStyle(.plain)
@@ -998,9 +1112,23 @@ struct FolderRow: View {
 struct MessageRow: View {
     let message: EmailMessage
     let showAttachments: Bool
+    let isMultiSelectMode: Bool
+    let isSelected: Bool
+    let onToggleSelection: () -> Void
     
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
+            // 多选模式下的复选框
+            if isMultiSelectMode {
+                Button(action: onToggleSelection) {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(isSelected ? Color.blue : .secondary)
+                        .font(.system(size: 18))
+                }
+                .buttonStyle(.plain)
+                .frame(width: 24)
+            }
+            
             EmailAvatarView(email: message.from.email, size: 36)
             
             VStack(alignment: .leading, spacing: 6) {
@@ -1053,10 +1181,10 @@ struct MessageRow: View {
                     HStack(spacing: 6) {
                         Image(systemName: "paperclip")
                             .font(.caption2)
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(Color.blue)
                         Text("\(message.attachments.count) 个附件")
                             .font(.caption2)
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(Color.blue)
                     }
                     .padding(.top, 4)
                 }
@@ -1066,6 +1194,24 @@ struct MessageRow: View {
         .padding(.horizontal, 4)
         .background(message.isRead ? Color.clear : Color.blue.opacity(0.03))
         .contentShape(Rectangle())
+        // 仅在多选模式下添加点击手势，避免阻止 List 的选择功能
+        .if(isMultiSelectMode) { view in
+            view.onTapGesture {
+                onToggleSelection()
+            }
+        }
+    }
+}
+
+// MARK: - View Extension for Conditional Modifier
+private extension View {
+    @ViewBuilder
+    func `if`<Transform: View>(_ condition: Bool, transform: (Self) -> Transform) -> some View {
+        if condition {
+            transform(self)
+        } else {
+            self
+        }
     }
 }
 
@@ -1645,6 +1791,101 @@ struct InfoRow: View {
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+// MARK: - Delete Confirmation View
+
+struct DeleteConfirmationView: View {
+    @Binding var isPresented: Bool
+    @Binding var deleteOnServer: Bool
+    let messageCount: Int
+    let onConfirm: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            // 标题
+            Text("删除邮件")
+                .font(.headline)
+            
+            // 说明文字
+            Text(messageCount > 1 ? "确定要删除 \(messageCount) 封邮件吗？" : "确定要删除这封邮件吗？")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            
+            // 删除选项
+            VStack(alignment: .leading, spacing: 12) {
+                Text("删除方式：")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Button(action: {
+                    deleteOnServer = false
+                }) {
+                    HStack {
+                        Image(systemName: deleteOnServer ? "circle" : "checkmark.circle.fill")
+                            .foregroundStyle(deleteOnServer ? .secondary : Color.blue)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("仅本地删除")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            Text("邮件将从本应用中删除，但服务器上仍保留")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding()
+                    .background(deleteOnServer ? Color.clear : Color.blue.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
+                
+                Button(action: {
+                    deleteOnServer = true
+                }) {
+                    HStack {
+                        Image(systemName: deleteOnServer ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(deleteOnServer ? Color.blue : .secondary)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("服务器删除")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            Text("邮件将从服务器和本应用中删除")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding()
+                    .background(deleteOnServer ? Color.blue.opacity(0.1) : Color.clear)
+                    .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding()
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(8)
+            
+            // 按钮
+            HStack(spacing: 12) {
+                Button("取消") {
+                    isPresented = false
+                }
+                .buttonStyle(.bordered)
+                
+                Spacer()
+                
+                Button("删除") {
+                    onConfirm()
+                    isPresented = false
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
+            }
+        }
+        .padding(24)
+        .frame(width: 450)
     }
 }
 

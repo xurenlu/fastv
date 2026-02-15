@@ -108,6 +108,8 @@ class UserPreferences: ObservableObject {
         // 邮件加载策略
         static let emailInitialLoadThreshold = "emailInitialLoadThreshold" // 初始加载阈值
         static let emailStopAutoSyncAfterThreshold = "emailStopAutoSyncAfterThreshold" // 达到阈值后停止自动同步
+        // 超级隐私模式
+        static let emailSuperPrivacyMode = "emailSuperPrivacyMode" // 超级隐私模式（禁用所有远程加载、图片显示、读回执等）
         // 视频处理相关设置
         static let ffmpegPath = "ffmpegPath" // FFmpeg 可执行文件路径
         static let videoToolsDefaultCodec = "videoToolsDefaultCodec" // 默认视频编码器
@@ -448,6 +450,11 @@ class UserPreferences: ObservableObject {
         willSet { defaults.set(newValue, forKey: Keys.emailStopAutoSyncAfterThreshold) }
     }
     
+    /// 超级隐私模式（一旦开启，永远不会加载任何远程内容、不会显示图片、不会发送读回执等）
+    @Published var emailSuperPrivacyMode: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.emailSuperPrivacyMode) }
+    }
+    
     // 视频处理相关设置
     @Published var ffmpegPath: String {
         willSet { defaults.set(newValue, forKey: Keys.ffmpegPath) }
@@ -752,6 +759,9 @@ class UserPreferences: ObservableObject {
         // 邮件加载策略默认值
         emailInitialLoadThreshold = defaults.object(forKey: Keys.emailInitialLoadThreshold) as? Int ?? 30
         emailStopAutoSyncAfterThreshold = defaults.object(forKey: Keys.emailStopAutoSyncAfterThreshold) as? Bool ?? true
+        
+        // 超级隐私模式默认值（默认关闭）
+        emailSuperPrivacyMode = defaults.object(forKey: Keys.emailSuperPrivacyMode) as? Bool ?? false
         
         // 视频处理设置默认值
         ffmpegPath = defaults.string(forKey: Keys.ffmpegPath) ?? "" // 默认为空，自动检测

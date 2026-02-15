@@ -41,6 +41,8 @@
 "press.and.hold" = "押して話す:";
 "enable.voice.input.in.settings" = "設定で音声入力を有効にしてください";
 "transcribing" = "文字変換中...";
+"speech.model.preload.title" = "音声モデルを読み込み中";
+"speech.model.preload.message" = "初回の音声認識モデルの読み込み中です。しばらくお待ちください。";
 
 // 設定
 "enable.voice.input" = "音声入力を有効にする";

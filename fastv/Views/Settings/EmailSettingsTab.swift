@@ -11,6 +11,8 @@ import SwiftUI
 struct EmailSettingsTab: View {
     @ObservedObject var preferences = UserPreferences.shared
     @State private var showSignatureManager = false
+    @State private var imagePreferences: [String: Bool] = [:]
+    @State private var showImagePreferencesManager = false
     
     var body: some View {
         Form {
@@ -55,6 +57,44 @@ struct EmailSettingsTab: View {
                 Text("读回执")
             }
             
+            // 隐私设置
+            Section {
+                Toggle("超级隐私模式", isOn: $preferences.emailSuperPrivacyMode)
+                    .help("一旦开启，永远不会加载任何远程内容、不会显示图片、不会发送读回执等")
+                
+                if preferences.emailSuperPrivacyMode {
+                    Text("超级隐私模式已启用：所有远程内容将被阻止，图片不会显示，读回执不会发送")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Button(action: {
+                    loadImagePreferences()
+                    showImagePreferencesManager = true
+                }) {
+                    HStack {
+                        Image(systemName: "photo.fill")
+                            .foregroundStyle(Color.blue)
+                        Text("管理图片显示偏好")
+                        Spacer()
+                        if !imagePreferences.isEmpty {
+                            Text("\(imagePreferences.count) 项")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .help("查看和管理已保存的图片显示偏好设置")
+            } header: {
+                Text("隐私")
+            } footer: {
+                Text("超级隐私模式会覆盖所有其他设置，确保最大程度的隐私保护")
+            }
+            
             // 签名设置
             Section {
                 Button(action: {
@@ -62,7 +102,7 @@ struct EmailSettingsTab: View {
                 }) {
                     HStack {
                         Image(systemName: "signature")
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(Color.blue)
                         Text("管理签名")
                         Spacer()
                         Image(systemName: "chevron.right")
@@ -120,10 +160,226 @@ struct EmailSettingsTab: View {
             } footer: {
                 Text("启用此选项可减少应用启动时的资源占用，邮件将按需加载")
             }
+            
+            // 数据管理
+            Section {
+                CleanupDuplicateMessagesView()
+            } header: {
+                Text("数据管理")
+            } footer: {
+                Text("清理重复邮件可以释放存储空间并提高性能。系统会自动保留最完整、最新的邮件版本。")
+            }
         }
         .formStyle(.grouped)
         .sheet(isPresented: $showSignatureManager) {
             EmailSignatureView()
+        }
+        .sheet(isPresented: $showImagePreferencesManager) {
+            ImagePreferencesManagerView(preferences: $imagePreferences)
+        }
+        .onAppear {
+            loadImagePreferences()
+        }
+    }
+    
+    private func loadImagePreferences() {
+        imagePreferences = EmailImageDisplayPreferences.shared.getAllPreferences()
+    }
+}
+
+/// 图片显示偏好管理视图
+struct ImagePreferencesManagerView: View {
+    @Binding var preferences: [String: Bool]
+    @Environment(\.dismiss) private var dismiss
+    @State private var searchText = ""
+    
+    private var filteredPreferences: [(key: String, value: Bool)] {
+        let sorted = preferences.sorted { $0.key < $1.key }
+        if searchText.isEmpty {
+            return sorted
+        }
+        return sorted.filter { $0.key.localizedCaseInsensitiveContains(searchText) }
+    }
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                if filteredPreferences.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "photo.fill")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.secondary)
+                        Text("暂无已保存的偏好设置")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                        Text("当您在邮件中选择\"记住此选择\"时，偏好设置会显示在这里")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(Array(filteredPreferences.enumerated()), id: \.element.key) { index, item in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(item.key)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.primary)
+                                    
+                                    HStack(spacing: 4) {
+                                        Image(systemName: item.value ? "photo.fill" : "photo")
+                                            .font(.caption)
+                                            .foregroundStyle(item.value ? Color.green : .secondary)
+                                        Text(item.value ? "显示图片" : "不显示图片")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                Button(action: {
+                                    removePreference(key: item.key)
+                                }) {
+                                    Image(systemName: "trash")
+                                        .foregroundStyle(Color.red)
+                                }
+                                .buttonStyle(.plain)
+                                .help("删除此偏好设置")
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("图片显示偏好")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("完成") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .primaryAction) {
+                    if !preferences.isEmpty {
+                        Button("清除全部") {
+                            clearAllPreferences()
+                        }
+                    }
+                }
+            }
+            .searchable(text: $searchText, prompt: "搜索邮箱地址或域名")
+        }
+        .frame(width: 600, height: 500)
+    }
+    
+    private func removePreference(key: String) {
+        EmailImageDisplayPreferences.shared.removePreference(for: key)
+        preferences.removeValue(forKey: key)
+    }
+    
+    private func clearAllPreferences() {
+        EmailImageDisplayPreferences.shared.clearAllPreferences()
+        preferences = [:]
+    }
+}
+
+/// 清理重复邮件视图
+struct CleanupDuplicateMessagesView: View {
+    @State private var isCleaning = false
+    @State private var cleanupResult: CleanupResult?
+    @State private var showConfirmation = false
+    
+    enum CleanupResult {
+        case success(Int)
+        case failure(String)
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "trash")
+                    .foregroundStyle(Color.orange)
+                Text("清理重复邮件")
+                    .font(.subheadline)
+                Spacer()
+            }
+            
+            if let result = cleanupResult {
+                switch result {
+                case .success(let count):
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Color.green)
+                        Text("清理完成，已删除 \(count) 封重复邮件")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                case .failure(let error):
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(Color.red)
+                        Text("清理失败: \(error)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            
+            Button(action: {
+                showConfirmation = true
+            }) {
+                HStack {
+                    if isCleaning {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "sparkles")
+                    }
+                    Text(isCleaning ? "正在清理..." : "开始清理")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(isCleaning)
+            .help("扫描并删除数据库中的重复邮件")
+        }
+        .padding(.vertical, 4)
+        .confirmationDialog("确认清理重复邮件", isPresented: $showConfirmation) {
+            Button("清理所有账号", role: .destructive) {
+                cleanupAllAccounts()
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("此操作将扫描数据库并删除重复的邮件。系统会自动保留最完整、最新的版本。")
+        }
+    }
+    
+    private func cleanupAllAccounts() {
+        isCleaning = true
+        cleanupResult = nil
+        
+        Task {
+            do {
+                let deletedCount = try await EmailStore.shared.cleanupDuplicateMessages()
+                await MainActor.run {
+                    isCleaning = false
+                    cleanupResult = .success(deletedCount)
+                    
+                    // 3秒后清除结果提示
+                    Task {
+                        try? await Task.sleep(nanoseconds: 3_000_000_000)
+                        await MainActor.run {
+                            cleanupResult = nil
+                        }
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isCleaning = false
+                    cleanupResult = .failure(error.localizedDescription)
+                }
+            }
         }
     }
 }

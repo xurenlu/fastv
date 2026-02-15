@@ -2,6 +2,21 @@
 
 所有版本變更記錄。
 
+## [1.2.4] - 2026-02-16
+
+### 新增
+- 郵件去重服務（EmailDeduplicationService）
+- 語音模型預加載管理（SpeechModelPreloadManager、SpeechTranscriptionModel）
+- 語音模型預加載啟動畫面（SpeechModelPreloadSplashView）
+
+### 改進
+- 郵件相關：EmailStore、EmailViewModel、EmailView、EmailDatabase 功能增強
+- 郵件設置標籤頁擴展（EmailSettingsTab）
+- 郵件自動回覆調度、圖片顯示偏好
+- 語音轉寫服務（SpeechTranscriber）優化
+- 郵件正文 WebView、儀表板視圖改進
+- 多語言本地化更新（en、ja、ko、yue、zh-Hans）
+
 ## [1.0.9] - 2026-02-02
 
 ### 新增

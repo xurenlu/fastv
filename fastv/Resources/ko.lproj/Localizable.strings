@@ -41,6 +41,8 @@
 "press.and.hold" = "누르고 말하기:";
 "enable.voice.input.in.settings" = "설정에서 음성 입력 기능을 활성화하세요";
 "transcribing" = "텍스트 변환 중...";
+"speech.model.preload.title" = "음성 모델 로딩 중";
+"speech.model.preload.message" = "음성 인식 모델을 처음 로딩하고 있습니다. 잠시만 기다려 주세요.";
 
 // 설정
 "enable.voice.input" = "음성 입력 활성화";

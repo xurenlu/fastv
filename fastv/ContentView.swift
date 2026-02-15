@@ -106,10 +106,11 @@ struct ContentView: View {
     }
     
     var body: some View {
-        // 检查是否完成引导流程
-        if !preferences.hasCompletedOnboarding {
-            OnboardingView()
-        } else {
+        Group {
+            // 检查是否完成引导流程
+            if !preferences.hasCompletedOnboarding {
+                OnboardingView()
+            } else {
             NavigationSplitView {
                 // 左侧侧边栏
                 List(selection: $selectedSidebarItem) {
@@ -304,6 +305,12 @@ struct ContentView: View {
                 if let appId = notification.userInfo?["appId"] as? String {
                     selectedSidebarItem = .microApp(appId)
                 }
+            }
+        }
+        .onChange(of: preferences.hasCompletedOnboarding) { _, completed in
+            if completed {
+                // 用户完成引导后，若已下载模型则预加载
+                SpeechModelPreloadManager.shared.startPreloadIfNeeded()
             }
         }
     }
