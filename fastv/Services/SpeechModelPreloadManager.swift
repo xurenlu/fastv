@@ -10,17 +10,19 @@ import SwiftUI
 
 /// 语音模型预加载状态管理
 /// 应用启动时若有模型文件则后台预加载，显示启动屏转移注意力
-final class SpeechModelPreloadManager: ObservableObject {
+@MainActor
+@Observable
+final class SpeechModelPreloadManager {
     static let shared = SpeechModelPreloadManager()
     
     /// 是否正在预加载
-    @Published private(set) var isPreloading = false
+    private(set) var isPreloading = false
     
     /// 预加载是否已完成（含跳过：无模型时）
-    @Published private(set) var isPreloadComplete = false
+    private(set) var isPreloadComplete = false
     
     /// 预加载耗时（秒），用于日志
-    @Published private(set) var preloadDuration: Double = 0
+    private(set) var preloadDuration: Double = 0
     
     private init() {}
     

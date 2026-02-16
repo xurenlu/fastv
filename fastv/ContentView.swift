@@ -306,6 +306,7 @@ struct ContentView: View {
                     selectedSidebarItem = .microApp(appId)
                 }
             }
+            }
         }
         .onChange(of: preferences.hasCompletedOnboarding) { _, completed in
             if completed {
@@ -314,27 +315,12 @@ struct ContentView: View {
             }
         }
     }
-    
-    private func selectVideoFiles() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.movie, .mpeg4Movie, .quickTimeMovie, .avi]
-        panel.allowsMultipleSelection = true
-        panel.canChooseDirectories = false
-        panel.canChooseFiles = true
-        panel.title = "选择视频文件"
-        
-        if panel.runModal() == .OK {
-            let urls = panel.urls
-            if !urls.isEmpty {
-                viewModel.loadVideos(urls)
-            }
-        }
-    }
 }
 
 #Preview {
     ContentView()
 }
+
 
 // MARK: - 视频信息卡片
 struct VideoInfoCard: View {

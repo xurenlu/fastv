@@ -10,7 +10,7 @@ import SwiftUI
 /// 语音模型预加载启动屏
 /// 在模型加载期间显示，让用户知道需要先加载模型
 struct SpeechModelPreloadSplashView: View {
-    @ObservedObject var preloadManager: SpeechModelPreloadManager
+    var preloadManager: SpeechModelPreloadManager
     
     var body: some View {
         if preloadManager.isPreloading {
