@@ -61,6 +61,25 @@ class EmailStore: ObservableObject {
                 }
                 EmailDatabase.shared.optimizeInBackground(includeVacuum: includeVacuum)
             }
+            
+            // 重复邮件清理：后台静默执行，最多每 24 小时一次
+            Task.detached(priority: .background) { [weak self] in
+                guard let self = self else { return }
+                try? await Task.sleep(nanoseconds: 120_000_000_000) // 启动后 2 分钟再执行，避免与预加载争抢
+                let key = "EmailStore.lastDuplicateCleanupDate"
+                let last = UserDefaults.standard.object(forKey: key) as? Date
+                let oneDay: TimeInterval = 86400
+                guard last == nil || Date().timeIntervalSince(last!) > oneDay else { return }
+                UserDefaults.standard.set(Date(), forKey: key)
+                do {
+                    let deleted = try await self.cleanupDuplicateMessages()
+                    if deleted > 0 {
+                        print("🧹 [EmailStore] 后台已清理 \(deleted) 封重复邮件")
+                    }
+                } catch {
+                    print("⚠️ [EmailStore] 后台清理重复邮件失败: \(error)")
+                }
+            }
         }
     }
     
@@ -297,6 +316,9 @@ class EmailStore: ObservableObject {
                     updated.isBodyLoaded = true
                     updated.bodyCachedAt = existing.bodyCachedAt // 保留缓存时间
                 }
+                // 保留已有邮件的状态标记（服务端 FLAGS 优先；无 FLAGS 时保留本地状态）
+                updated.isRead = message.isRead ? message.isRead : existing.isRead
+                updated.isStarred = message.isStarred ? message.isStarred : existing.isStarred
                 updatedMessages.append(updated)
                 workingMessages[existingIndex] = updated
             } else {
@@ -483,15 +505,48 @@ class EmailStore: ObservableObject {
         return 0
     }
     
-    /// 获取某个账号的所有邮件总数
+    /// 获取某个账号的所有邮件总数（去重后，与「所有邮件」视图显示逻辑一致）
     func getTotalMessageCount(for accountId: UUID) -> Int {
-        // 获取该账号的所有文件夹
-        guard let accountFolders = folders[accountId] else { return 0 }
-        
-        // 累加所有文件夹的邮件数量
-        return accountFolders.reduce(0) { total, folder in
-            total + getMessageCount(for: folder.id)
+        // 按 message_id 去重：同一封邮件可能存在于多个文件夹，只计一次
+        // 与 ViewModel 中 updateMessagesForAllFolders 的去重逻辑保持一致
+        // 有 message_id 时按 message_id 分组，否则按 subject|from_email|date 分组
+        let count = try? database.read { db -> Int in
+            try Int.fetchOne(db, sql: """
+                SELECT COUNT(*) FROM (
+                    SELECT 1 FROM email_messages 
+                    WHERE account_id = ? 
+                    AND is_draft = 0 
+                    AND is_spam = 0 
+                    AND is_deleted = 0
+                    GROUP BY CASE 
+                        WHEN message_id IS NOT NULL AND TRIM(message_id) != '' THEN TRIM(message_id)
+                        ELSE COALESCE(subject, '') || '|' || COALESCE(from_email, '') || '|' || CAST(date AS TEXT)
+                    END
+                )
+            """, arguments: [accountId.uuidString]) ?? 0
         }
+        
+        if let count = count, count > 0 {
+            return count
+        }
+        
+        // 降级方案：如果数据库查询失败或为0，尝试从内存缓存累加（并排除重复）
+        guard let accountFolders = folders[accountId] else { return 0 }
+        var seenMessageIds = Set<String>()
+        var fallbackCount = 0
+        for folder in accountFolders {
+            if folder.type == .drafts || folder.type == .spam || folder.type == .trash {
+                continue
+            }
+            let folderMessages = messages[folder.id] ?? []
+            for msg in folderMessages where !msg.isDeleted && !msg.isSpam {
+                let key = msg.messageId.flatMap { $0.isEmpty ? nil : $0 } ?? "\(msg.subject)|\(msg.from.email)|\(msg.date.timeIntervalSince1970)"
+                if seenMessageIds.insert(key).inserted {
+                    fallbackCount += 1
+                }
+            }
+        }
+        return fallbackCount
     }
     
     /// 获取所有邮件（用于 AI 摘要汇总）
@@ -534,6 +589,8 @@ class EmailStore: ObservableObject {
             }
         }
         
+        // 从数据库刷新各文件夹数量缓存，确保侧栏数字正确
+        await refreshFolderCountsFromDatabase()
         notifyChange()
         return deletedCount
     }
@@ -992,7 +1049,9 @@ class EmailStore: ObservableObject {
                 var result: [UUID: Int] = [:]
                 let rows = try Row.fetchAll(db, sql: """
                     SELECT folder_id, COUNT(*) AS cnt FROM email_messages
-                    WHERE folder_id IS NOT NULL
+                    WHERE folder_id IS NOT NULL 
+                    AND is_deleted = 0 
+                    AND is_spam = 0
                     GROUP BY folder_id
                 """)
                 for row in rows {
@@ -1044,20 +1103,27 @@ class EmailStore: ObservableObject {
             
             // 分批加载：先加载一批立即显示，同时查询总数以判断是否还有更多
             let (firstBatch, totalCount) = try await database.asyncRead { db -> ([EmailMessage], Int) in
-                // 先查询总数
-                let totalCount = try Int.fetchOne(db, sql: """
-                    SELECT COUNT(*) FROM email_messages
-                    WHERE folder_id = ?
-                """, arguments: [folderId.uuidString]) ?? 0
+                // 先查询总数（过滤掉已删除和垃圾邮件，除非是在对应的文件夹中）
+                // 先获取文件夹类型
+                let folderRow = try Row.fetchOne(db, sql: "SELECT type FROM email_folders WHERE id = ?", arguments: [folderId.uuidString])
+                let folderType = folderRow?["type"] as? String
+                
+                var countSql = "SELECT COUNT(*) FROM email_messages WHERE folder_id = ?"
+                if folderType != "trash" && folderType != "spam" {
+                    countSql += " AND is_deleted = 0 AND is_spam = 0"
+                }
+                
+                let totalCount = try Int.fetchOne(db, sql: countSql, arguments: [folderId.uuidString]) ?? 0
                 
                 // 再加载一批
                 var messages: [EmailMessage] = []
-                let rows = try Row.fetchAll(db, sql: """
-                    SELECT * FROM email_messages
-                    WHERE folder_id = ?
-                    ORDER BY date DESC
-                    LIMIT ? OFFSET ?
-                """, arguments: [folderId.uuidString, limit, offset])
+                var fetchSql = "SELECT * FROM email_messages WHERE folder_id = ?"
+                if folderType != "trash" && folderType != "spam" {
+                    fetchSql += " AND is_deleted = 0 AND is_spam = 0"
+                }
+                fetchSql += " ORDER BY date DESC LIMIT ? OFFSET ?"
+                
+                let rows = try Row.fetchAll(db, sql: fetchSql, arguments: [folderId.uuidString, limit, offset])
                 
                 for row in rows {
                     let message = try self.parseMessage(from: row, db: db)
@@ -1096,13 +1162,18 @@ class EmailStore: ObservableObject {
                     
                     do {
                         let remainingMessages = try await self.database.asyncRead { db -> [EmailMessage] in
+                            // 获取文件夹类型
+                            let folderRow = try Row.fetchOne(db, sql: "SELECT type FROM email_folders WHERE id = ?", arguments: [folderId.uuidString])
+                            let folderType = folderRow?["type"] as? String
+                            
+                            var fetchSql = "SELECT * FROM email_messages WHERE folder_id = ?"
+                            if folderType != "trash" && folderType != "spam" {
+                                fetchSql += " AND is_deleted = 0 AND is_spam = 0"
+                            }
+                            fetchSql += " ORDER BY date DESC LIMIT 900 OFFSET 100"
+                            
                             var messages: [EmailMessage] = []
-                            let rows = try Row.fetchAll(db, sql: """
-                                SELECT * FROM email_messages
-                                WHERE folder_id = ?
-                                ORDER BY date DESC
-                                LIMIT 900 OFFSET 100
-                            """, arguments: [folderId.uuidString])
+                            let rows = try Row.fetchAll(db, sql: fetchSql, arguments: [folderId.uuidString])
                             
                             for row in rows {
                                 let message = try self.parseMessage(from: row, db: db)

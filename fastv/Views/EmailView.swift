@@ -185,9 +185,10 @@ struct EmailView: View {
             
             Divider()
             
-            // 文件夹列表
+            // 文件夹列表（填充剩余空间，避免选中邮件时出现大块空白）
             if viewModel.selectedAccountId != nil {
                 folderListContent
+                    .frame(maxHeight: .infinity)
             } else {
                 // 没有选择账号时的提示
                 VStack(spacing: 8) {
@@ -398,6 +399,59 @@ struct EmailView: View {
                 }
                 .padding()
                 
+                // 过滤和排序工具栏
+                HStack(spacing: 8) {
+                    Menu {
+                        ForEach(EmailViewModel.EmailFilterMode.allCases, id: \.rawValue) { mode in
+                            Button(action: { viewModel.filterMode = mode }) {
+                                HStack {
+                                    Text(mode.displayName)
+                                    if viewModel.filterMode == mode {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "line.3.horizontal.decrease.circle")
+                                .font(.system(size: 12))
+                            Text(viewModel.filterMode.displayName)
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    
+                    Menu {
+                        ForEach(EmailViewModel.EmailSortMode.allCases, id: \.rawValue) { mode in
+                            Button(action: { viewModel.sortMode = mode }) {
+                                HStack {
+                                    Text(mode.displayName)
+                                    if viewModel.sortMode == mode {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.up.arrow.down.circle")
+                                .font(.system(size: 12))
+                            Text(viewModel.sortMode.displayName)
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+                
                 // 批量操作工具栏（多选模式下显示）
                 if viewModel.isMultiSelectMode {
                     Divider()
@@ -471,83 +525,70 @@ struct EmailView: View {
                 emptyMessageListView
             } else {
                 ScrollViewReader { _ in
-                    // 在 List 外部计算 displayedMessages，避免布局时重新计算
+                    // 在外部计算 displayedMessages，避免布局时重新计算
                     let displayedMessages = viewModel.searchText.isEmpty ? viewModel.messages : viewModel.searchResults
                     
-                    let messageBinding = Binding<UUID?>(
-                        get: { viewModel.isMultiSelectMode ? nil : viewModel.selectedMessageId },
-                        set: { newId in
-                            // 多选模式下不处理单个选择
-                            if viewModel.isMultiSelectMode {
-                                return
-                            }
-                            // 直接同步更新，SwiftUI 会自动处理状态更新
-                            if let id = newId,
-                               let message = viewModel.messages.first(where: { $0.id == id }) {
-                                viewModel.selectMessage(message)
-                            } else {
-                                viewModel.selectedMessageId = nil
-                            }
-                        }
-                    )
-                    
-                    List(selection: messageBinding) {
-                        // 直接使用 displayedMessages，避免创建新数组破坏 ForEach 的稳定标识
-                        ForEach(displayedMessages, id: \.id) { message in
-                            MessageRow(
-                                message: message,
-                                showAttachments: viewModel.showAttachments,
-                                isMultiSelectMode: viewModel.isMultiSelectMode,
-                                isSelected: viewModel.selectedMessageIds.contains(message.id),
-                                onToggleSelection: {
-                                    viewModel.toggleMessageSelection(message.id)
+                    // 使用 ScrollView 替代 List，避免 macOS List 顶部裁剪和切 app 后高度错乱问题
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            // 顶部留白，防止首行被裁剪或遮挡
+                            Color.clear.frame(height: 8)
+                            
+                            ForEach(displayedMessages, id: \.id) { message in
+                                MessageRow(
+                                    message: message,
+                                    showAttachments: viewModel.showAttachments,
+                                    isMultiSelectMode: viewModel.isMultiSelectMode,
+                                    isSelected: viewModel.selectedMessageIds.contains(message.id),
+                                    onToggleSelection: {
+                                        viewModel.toggleMessageSelection(message.id)
+                                    }
+                                )
+                                .tag(message.id)
+                                .contentShape(Rectangle())
+                                .background(viewModel.selectedMessageId == message.id && !viewModel.isMultiSelectMode ? Color.accentColor.opacity(0.15) : Color.clear)
+                                .if(!viewModel.isMultiSelectMode) { view in
+                                    view.onTapGesture { viewModel.selectMessage(message) }
                                 }
-                            )
-                            .tag(message.id)
-                        }
-                        
-                        // 底部加载区域：加载触发器 / 加载指示器 / 没有更多提示
-                        // 移除 Group，直接在 List 中使用条件视图
-                        if viewModel.isLoadingMore {
-                            // 加载中：显示加载指示器
-                            HStack {
-                                Spacer()
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                Text("加载更多...")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
                             }
-                            .padding()
-                        } else if viewModel.hasMoreMessages {
-                            // 未加载：显示触发器（滚动到底部时自动加载）
-                            Color.clear
-                                .frame(height: 1)
-                                .onAppear {
-                                    // 使用 Task 避免阻塞 UI
-                                    Task { @MainActor in
-                                        // 稍微延迟，避免快速滚动时频繁触发
-                                        try? await Task.sleep(nanoseconds: 200_000_000) // 0.2秒防抖
-                                        // 再次检查状态，避免重复加载
-                                        if viewModel.hasMoreMessages && !viewModel.isLoadingMore {
-                                            viewModel.loadMoreMessages()
+                            
+                            // 底部加载区域
+                            if viewModel.isLoadingMore {
+                                HStack {
+                                    Spacer()
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                    Text("加载更多...")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                }
+                                .padding()
+                            } else if viewModel.hasMoreMessages {
+                                Color.clear
+                                    .frame(height: 1)
+                                    .onAppear {
+                                        Task { @MainActor in
+                                            try? await Task.sleep(nanoseconds: 200_000_000)
+                                            if viewModel.hasMoreMessages && !viewModel.isLoadingMore {
+                                                viewModel.loadMoreMessages()
+                                            }
                                         }
                                     }
+                            } else {
+                                HStack {
+                                    Spacer()
+                                    Text("已经没有更多邮件")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
                                 }
-                        } else {
-                            // 已经没有更多邮件：显示提示文案
-                            HStack {
-                                Spacer()
-                                Text("已经没有更多邮件")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
+                                .padding(.vertical, 8)
                             }
-                            .padding(.vertical, 8)
                         }
+                        .padding(.horizontal, 4)
                     }
-                    .listStyle(.plain)
+                    .scrollIndicators(.visible)
                 }
             }
         }

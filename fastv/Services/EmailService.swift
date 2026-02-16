@@ -1161,6 +1161,10 @@ class EmailService {
         // 检测是否为no-reply地址
         let isNoReply = isNoReplyAddress(from.email)
         
+        // 解析 IMAP FLAGS（已读、星标等，来自 LibEtPan fetch FLAGS）
+        let isRead = (headers["seen"] as? NSNumber)?.boolValue ?? false
+        let isStarred = (headers["flagged"] as? NSNumber)?.boolValue ?? false
+        
         // 生成预览文本（使用主题作为初始预览）
         let preview = subject.isEmpty ? "" : subject
         
@@ -1181,6 +1185,8 @@ class EmailService {
             preview: preview,
             date: date,  // 使用邮件发送时间
             receivedDate: receivedDate,  // 设置接收时间
+            isRead: isRead,
+            isStarred: isStarred,
             isNoReply: isNoReply,
             isBodyLoaded: false
         )

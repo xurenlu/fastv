@@ -714,11 +714,13 @@ static void ensureUserInitiatedQoS(void) {
     // 设置线程 QoS，避免优先级反转
     ensureUserInitiatedQoS();
     
-    // 简化实现：使用 UID fetch 获取 ENVELOPE（包含基本头信息）
+    // 使用 UID fetch 获取 ENVELOPE 和 FLAGS（包含已读/星标状态）
     struct mailimap_set *set = mailimap_set_new_single(uid);
     struct mailimap_fetch_type *fetch_type = mailimap_fetch_type_new_fetch_att_list_empty();
-    struct mailimap_fetch_att *fetch_att = mailimap_fetch_att_new_envelope();
-    mailimap_fetch_type_new_fetch_att_list_add(fetch_type, fetch_att);
+    struct mailimap_fetch_att *fetch_att_env = mailimap_fetch_att_new_envelope();
+    struct mailimap_fetch_att *fetch_att_flags = mailimap_fetch_att_new_flags();
+    mailimap_fetch_type_new_fetch_att_list_add(fetch_type, fetch_att_env);
+    mailimap_fetch_type_new_fetch_att_list_add(fetch_type, fetch_att_flags);
     
     clist *fetch_result = NULL;
     int r = mailimap_uid_fetch((mailimap *)_imapSession, set, fetch_type, &fetch_result);
@@ -743,8 +745,11 @@ static void ensureUserInitiatedQoS(void) {
         return nil;
     }
     
-    // 解析 ENVELOPE
+    // 解析 ENVELOPE 和 FLAGS
     NSMutableDictionary<NSString *, id> *headers = [NSMutableDictionary dictionary];
+    headers[@"uid"] = @(uid);
+    BOOL hasSeen = NO;
+    BOOL hasFlagged = NO;
     
     clistiter *iter;
     for (iter = clist_begin(fetch_result); iter != NULL; iter = clist_next(iter)) {
@@ -754,7 +759,19 @@ static void ensureUserInitiatedQoS(void) {
         for (att_iter = clist_begin(msg_att->att_list); att_iter != NULL; att_iter = clist_next(att_iter)) {
             struct mailimap_msg_att_item *item = (struct mailimap_msg_att_item *)clist_content(att_iter);
             
-            if (item->att_type == MAILIMAP_MSG_ATT_ITEM_STATIC) {
+            if (item->att_type == MAILIMAP_MSG_ATT_ITEM_DYNAMIC && item->att_data.att_dyn && item->att_data.att_dyn->att_list) {
+                clistiter *flag_iter;
+                for (flag_iter = clist_begin(item->att_data.att_dyn->att_list); flag_iter != NULL; flag_iter = clist_next(flag_iter)) {
+                    struct mailimap_flag_fetch *flag_fetch = (struct mailimap_flag_fetch *)clist_content(flag_iter);
+                    if (flag_fetch->fl_flag) {
+                        if (flag_fetch->fl_flag->fl_type == MAILIMAP_FLAG_SEEN) {
+                            hasSeen = YES;
+                        } else if (flag_fetch->fl_flag->fl_type == MAILIMAP_FLAG_FLAGGED) {
+                            hasFlagged = YES;
+                        }
+                    }
+                }
+            } else if (item->att_type == MAILIMAP_MSG_ATT_ITEM_STATIC) {
                 struct mailimap_msg_att_static *att_static = item->att_data.att_static;
                 
                 if (att_static->att_type == MAILIMAP_MSG_ATT_ENVELOPE) {
@@ -817,6 +834,9 @@ static void ensureUserInitiatedQoS(void) {
         }
     }
     
+    headers[@"seen"] = @(hasSeen);
+    headers[@"flagged"] = @(hasFlagged);
+    
     mailimap_fetch_list_free(fetch_result);
     
     NSLog(@"✅ [LibEtPan] 获取邮件头成功，UID: %u", uid);
@@ -850,12 +870,14 @@ static void ensureUserInitiatedQoS(void) {
     // 设置线程 QoS，避免优先级反转
     ensureUserInitiatedQoS();
     
-    // 构建fetch请求: FETCH (UID ENVELOPE)
+    // 构建fetch请求: FETCH (UID ENVELOPE FLAGS)
     struct mailimap_fetch_type *fetch_type = mailimap_fetch_type_new_fetch_att_list_empty();
     struct mailimap_fetch_att *fetch_att_uid = mailimap_fetch_att_new_uid();
     struct mailimap_fetch_att *fetch_att_env = mailimap_fetch_att_new_envelope();
+    struct mailimap_fetch_att *fetch_att_flags = mailimap_fetch_att_new_flags();
     mailimap_fetch_type_new_fetch_att_list_add(fetch_type, fetch_att_uid);
     mailimap_fetch_type_new_fetch_att_list_add(fetch_type, fetch_att_env);
+    mailimap_fetch_type_new_fetch_att_list_add(fetch_type, fetch_att_flags);
     
     clist *fetch_result = NULL;
     int r = mailimap_uid_fetch((mailimap *)_imapSession, set, fetch_type, &fetch_result);
@@ -888,8 +910,10 @@ static void ensureUserInitiatedQoS(void) {
         
         uint32_t uid = 0;
         struct mailimap_envelope *env = NULL;
+        BOOL hasSeen = NO;
+        BOOL hasFlagged = NO;
         
-        // 提取UID和ENVELOPE
+        // 提取UID、ENVELOPE和FLAGS
         clistiter *att_iter;
         for (att_iter = clist_begin(msg_att->att_list); att_iter != NULL; att_iter = clist_next(att_iter)) {
             struct mailimap_msg_att_item *item = (struct mailimap_msg_att_item *)clist_content(att_iter);
@@ -899,6 +923,18 @@ static void ensureUserInitiatedQoS(void) {
                     uid = item->att_data.att_static->att_data.att_uid;
                 } else if (item->att_data.att_static->att_type == MAILIMAP_MSG_ATT_ENVELOPE) {
                     env = item->att_data.att_static->att_data.att_env;
+                }
+            } else if (item->att_type == MAILIMAP_MSG_ATT_ITEM_DYNAMIC && item->att_data.att_dyn && item->att_data.att_dyn->att_list) {
+                clistiter *flag_iter;
+                for (flag_iter = clist_begin(item->att_data.att_dyn->att_list); flag_iter != NULL; flag_iter = clist_next(flag_iter)) {
+                    struct mailimap_flag_fetch *flag_fetch = (struct mailimap_flag_fetch *)clist_content(flag_iter);
+                    if (flag_fetch->fl_flag) {
+                        if (flag_fetch->fl_flag->fl_type == MAILIMAP_FLAG_SEEN) {
+                            hasSeen = YES;
+                        } else if (flag_fetch->fl_flag->fl_type == MAILIMAP_FLAG_FLAGGED) {
+                            hasFlagged = YES;
+                        }
+                    }
                 }
             }
         }
@@ -970,6 +1006,8 @@ static void ensureUserInitiatedQoS(void) {
         if (env->env_message_id) {
             headers[@"message-id"] = [NSString stringWithUTF8String:env->env_message_id];
         }
+        headers[@"seen"] = @(hasSeen);
+        headers[@"flagged"] = @(hasFlagged);
         
         [allHeaders addObject:headers];
     }

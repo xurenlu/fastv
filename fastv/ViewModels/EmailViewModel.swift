@@ -110,6 +110,41 @@ class EmailViewModel: ObservableObject {
         case thread // 线程视图
     }
     
+    /// 邮件过滤模式
+    enum EmailFilterMode: String, CaseIterable {
+        case all = "all"
+        case unread = "unread"
+        case starred = "starred"
+        case hasAttachments = "hasAttachments"
+        
+        var displayName: String {
+            switch self {
+            case .all: return NSLocalizedString("email.filter.all", value: "全部", comment: "Filter: all emails")
+            case .unread: return NSLocalizedString("email.filter.unread", value: "未读", comment: "Filter: unread only")
+            case .starred: return NSLocalizedString("email.filter.starred", value: "星标", comment: "Filter: starred only")
+            case .hasAttachments: return NSLocalizedString("email.filter.attachments", value: "有附件", comment: "Filter: with attachments")
+            }
+        }
+    }
+    
+    /// 邮件排序模式
+    enum EmailSortMode: String, CaseIterable {
+        case dateDesc = "dateDesc"
+        case dateAsc = "dateAsc"
+        case unreadFirst = "unreadFirst"
+        
+        var displayName: String {
+            switch self {
+            case .dateDesc: return NSLocalizedString("email.sort.newest", value: "最新优先", comment: "Sort: newest first")
+            case .dateAsc: return NSLocalizedString("email.sort.oldest", value: "最早优先", comment: "Sort: oldest first")
+            case .unreadFirst: return NSLocalizedString("email.sort.unread_first", value: "未读优先", comment: "Sort: unread first")
+            }
+        }
+    }
+    
+    @Published var filterMode: EmailFilterMode = .all
+    @Published var sortMode: EmailSortMode = .dateDesc
+    
     // 分页加载状态
     @Published var isLoadingMore = false
     @Published var hasMoreMessages = true
@@ -179,6 +214,21 @@ class EmailViewModel: ObservableObject {
                     
                     print("🔄 [EmailViewModel] 执行防抖后的邮件列表更新")
                     await self.updateMessagesFromStore()
+                }
+            }
+            .store(in: &cancellables)
+        
+        // 监听过滤/排序模式变化，重新应用过滤和排序
+        Publishers.CombineLatest($filterMode, $sortMode)
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _, _ in
+                Task { @MainActor in
+                    await self?.updateMessagesFromStore()
+                    // 搜索模式下，重新执行搜索以应用新的排序
+                    if let self = self, !self.searchText.isEmpty {
+                        self.performSearch(query: self.searchText)
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -475,8 +525,10 @@ class EmailViewModel: ObservableObject {
         let allMessages = emailStore.messages[folderId] ?? []
         let currentPageValue = currentPage
         let pageSizeValue = pageSize
+        let filterModeValue = filterMode
+        let sortModeValue = sortMode
         
-        // 统一在后台线程处理去重和排序（无论数据量大小，确保零卡顿）
+        // 统一在后台线程处理去重、过滤和排序（无论数据量大小，确保零卡顿）
         print("📊 [EmailViewModel] 开始后台处理邮件，数量: \(allMessages.count)")
         let sortStart = Date()
         
@@ -497,8 +549,32 @@ class EmailViewModel: ObservableObject {
                 }
             }
             
+            // 过滤
+            let filtered: [EmailMessage]
+            switch filterModeValue {
+            case .all:
+                filtered = deduplicated
+            case .unread:
+                filtered = deduplicated.filter { !$0.isRead }
+            case .starred:
+                filtered = deduplicated.filter { $0.isStarred }
+            case .hasAttachments:
+                filtered = deduplicated.filter { $0.hasAttachments }
+            }
+            
             // 排序
-            let sorted = deduplicated.sorted { $0.date > $1.date }
+            let sorted: [EmailMessage]
+            switch sortModeValue {
+            case .dateDesc:
+                sorted = filtered.sorted { $0.date > $1.date }
+            case .dateAsc:
+                sorted = filtered.sorted { $0.date < $1.date }
+            case .unreadFirst:
+                sorted = filtered.sorted { m1, m2 in
+                    if m1.isRead != m2.isRead { return !m1.isRead }
+                    return m1.date > m2.date
+                }
+            }
             let endIndex = min((currentPageValue + 1) * pageSizeValue, sorted.count)
             let newMessages = Array(sorted.prefix(endIndex))
             return (messages: newMessages, hasMore: sorted.count > endIndex)
@@ -581,14 +657,26 @@ class EmailViewModel: ObservableObject {
         print("📊 [EmailViewModel] 开始合并所有文件夹的邮件，文件夹数: \(foldersForAccount.count)")
         let mergeStart = Date()
         
-        // 在后台线程处理合并和排序
+        let filterModeValue = filterMode
+        let sortModeValue = sortMode
+        
+        // 在后台线程处理合并、过滤和排序
         let processedMessages = await Task.detached(priority: .userInitiated) {
             // 合并所有文件夹的邮件，并去重
             var seen = Set<String>()
             var combined: [EmailMessage] = []
             for folder in foldersForAccount {
+                // 过滤掉垃圾邮件和已删除邮件文件夹（除非是专门查看这些文件夹）
+                if folder.type == .spam || folder.type == .trash {
+                    continue
+                }
+                
                 if let folderMsgs = allFolderMessages[folder.id] {
                     for msg in folderMsgs {
+                        // 过滤掉已标记为删除或垃圾的邮件
+                        if msg.isDeleted || msg.isSpam {
+                            continue
+                        }
                         // 生成去重键：优先使用 Message-ID，否则使用 (subject, from.email, date) 组合
                         let key: String
                         if let mid = msg.messageId, !mid.isEmpty {
@@ -603,8 +691,32 @@ class EmailViewModel: ObservableObject {
                 }
             }
             
+            // 过滤
+            let filtered: [EmailMessage]
+            switch filterModeValue {
+            case .all:
+                filtered = combined
+            case .unread:
+                filtered = combined.filter { !$0.isRead }
+            case .starred:
+                filtered = combined.filter { $0.isStarred }
+            case .hasAttachments:
+                filtered = combined.filter { $0.hasAttachments }
+            }
+            
             // 排序
-            let sorted = combined.sorted { $0.date > $1.date }
+            let sorted: [EmailMessage]
+            switch sortModeValue {
+            case .dateDesc:
+                sorted = filtered.sorted { $0.date > $1.date }
+            case .dateAsc:
+                sorted = filtered.sorted { $0.date < $1.date }
+            case .unreadFirst:
+                sorted = filtered.sorted { m1, m2 in
+                    if m1.isRead != m2.isRead { return !m1.isRead }
+                    return m1.date > m2.date
+                }
+            }
             let endIndex = min((currentPageValue + 1) * pageSizeValue, sorted.count)
             let newMessages = Array(sorted.prefix(endIndex))
             
@@ -1700,8 +1812,20 @@ class EmailViewModel: ObservableObject {
             // 检查是否被取消（搜索过程中）
             guard !Task.isCancelled else { return }
             
-            // 按日期排序（最新的在前）
-            let sortedResults = localResults.sorted { $0.date > $1.date }
+            // 应用当前排序模式
+            let sortModeValue = await MainActor.run { self.sortMode }
+            let sortedResults: [EmailMessage]
+            switch sortModeValue {
+            case .dateDesc:
+                sortedResults = localResults.sorted { $0.date > $1.date }
+            case .dateAsc:
+                sortedResults = localResults.sorted { $0.date < $1.date }
+            case .unreadFirst:
+                sortedResults = localResults.sorted { m1, m2 in
+                    if m1.isRead != m2.isRead { return !m1.isRead }
+                    return m1.date > m2.date
+                }
+            }
             
             // 更新结果到主线程
             await MainActor.run {
