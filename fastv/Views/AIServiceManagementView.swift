@@ -446,24 +446,7 @@ struct ProfileRowView: View {
     }
     
     private func protocolIcon(for type: AIProtocolType) -> String {
-        switch type {
-        case .openAI:
-            return "brain.head.profile"
-        case .azureOpenAI:
-            return "cloud.fill"
-        case .dashScope:
-            return "cloud.sun.fill"
-        case .ollama:
-            return "server.rack"
-        case .claude:
-            return "sparkles"
-        case .someIM:
-            return "network"
-        case .gemini:
-            return "star.circle.fill"
-        case .custom:
-            return "gearshape.fill"
-        }
+        return type.iconName
     }
 }
 
@@ -498,7 +481,7 @@ struct AIProfileEditView: View {
             _endpoint = State(initialValue: "")
             _apiKey = State(initialValue: "")
             _defaultModel = State(initialValue: "")
-            _timeout = State(initialValue: 30.0)
+            _timeout = State(initialValue: AIProtocolType.ollama.defaultTimeout)
         }
     }
     
@@ -548,12 +531,16 @@ struct AIProfileEditView: View {
                     }
                     .pickerStyle(.menu)
                     .onChange(of: protocolType) { oldValue, newValue in
-                        // 当协议类型改变时，更新 endpoint 和 model
+                        // 当协议类型改变时，更新 endpoint、model 和超时
                         if endpoint.isEmpty || endpoint == oldValue.defaultEndpoint {
                             endpoint = newValue.defaultEndpoint ?? ""
                         }
                         if defaultModel.isEmpty || !newValue.recommendedModels.contains(defaultModel) {
                             defaultModel = newValue.recommendedModels.first ?? ""
+                        }
+                        // 如果超时还是旧协议的默认值，自动更新为新协议的默认值
+                        if timeout == oldValue.defaultTimeout {
+                            timeout = newValue.defaultTimeout
                         }
                     }
                 } header: {
@@ -695,7 +682,12 @@ struct AIProfileEditView: View {
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
                         }
-                        Slider(value: $timeout, in: 2.0...60.0, step: 0.5)
+                        Slider(value: $timeout, in: 2.0...180.0, step: 0.5)
+                        if protocolType != .ollama {
+                            Text("云端 API 建议设置 60 秒以上，长对话或复杂任务可能需要更长时间")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
                     }
     }
     

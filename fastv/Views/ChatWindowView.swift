@@ -14,6 +14,14 @@ struct ChatWindowView: View {
     @State private var showSettings = false
     @State private var showParameters = false
     
+    private func regenerateResponse(for message: ChatMessage) {
+        Task { await viewModel.regenerateResponse(for: message) }
+    }
+    
+    private func retryMessage(_ message: ChatMessage) {
+        Task { await viewModel.retryMessage(message) }
+    }
+    
     var needsConfiguration: Bool {
         preferences.aiServiceProfiles.isEmpty || preferences.getDefaultProfile() == nil
     }
@@ -179,7 +187,9 @@ struct ChatWindowView: View {
                             ForEach(viewModel.currentMessages) { message in
                                 ChatMessageView(
                                     message: message,
-                                    modelName: message.isAIMessage ? viewModel.selectedModel : nil
+                                    modelName: message.isAIMessage ? viewModel.selectedModel : nil,
+                                    onRegenerate: message.isAIMessage ? { regenerateResponse(for: message) } : nil,
+                                    onRetry: (message.isUserMessage && message.sendError != nil) ? { retryMessage(message) } : nil
                                 )
                                 .id(message.id)
                             }

@@ -89,6 +89,7 @@ class AIChatViewModel: ObservableObject {
         currentSessionId = session.id
         selectedModel = session.model
         errorMessage = nil
+        loadAvailableModels()  // 刷新模型列表
     }
     
     /// 选择会话
@@ -96,6 +97,7 @@ class AIChatViewModel: ObservableObject {
         currentSessionId = session.id
         selectedModel = session.model.isEmpty ? getDefaultModel() : session.model
         errorMessage = nil
+        loadAvailableModels()  // 刷新模型列表，确保当前会话的模型在列表中
         updateCurrentMessages()
     }
     
@@ -116,18 +118,24 @@ class AIChatViewModel: ObservableObject {
     
     // MARK: - Model Management
     
-    /// 加载可用模型列表
+    /// 加载可用模型列表（根据 AI 聊天场景绑定的 Profile 动态加载）
     private func loadAvailableModels() {
-        // 只保留指定的模型列表
-        let defaultModels = [
-            "qwen-flash",      // 文本模型（快速版）
-            "qwen-max",        // 文本模型（最强版）
-            "qwen-vl-plus",   // 视觉理解模型（增强版）
-            "qwen-vl-max"     // 视觉理解模型（最强版）
-        ]
+        let config = UserPreferences.shared.getConfig(for: .aiChat)
+        var models = config.profile.protocolType.recommendedModels
         
-        availableModels = defaultModels
-        selectedModel = getDefaultModel()
+        if models.isEmpty {
+            models = ["qwen-flash", "qwen-max", "qwen-vl-plus", "qwen-vl-max"]
+        }
+        
+        // 确保当前选中的模型在列表中（支持自定义模型名）
+        if !selectedModel.isEmpty && !models.contains(selectedModel) {
+            models.insert(selectedModel, at: 0)
+        }
+        
+        availableModels = models
+        if selectedModel.isEmpty {
+            selectedModel = getDefaultModel()
+        }
     }
     
     /// 获取默认模型
@@ -460,18 +468,91 @@ class AIChatViewModel: ObservableObject {
         chatManager.deleteMessage(message)
     }
     
-    /// 重试发送失败的消息
+    /// 重试发送失败的消息（先删除失败消息，再重新发送，避免重复）
     func retryMessage(_ message: ChatMessage) async {
         guard message.isUserMessage && message.sendError != nil else {
             return
         }
         
+        let text = message.content
+        let sessionId = message.sessionId
+        let attachments = message.attachments
+        
+        // 先删除失败的用户消息，避免重复
+        chatManager.deleteMessage(message)
+        
         // 重新发送
-        await sendMessage(
-            text: message.content,
-            sessionId: message.sessionId,
-            attachments: message.attachments
-        )
+        await sendMessage(text: text, sessionId: sessionId, attachments: attachments)
+    }
+    
+    /// 重新生成 AI 回复（删除当前 AI 回复，基于原用户消息重新请求）
+    func regenerateResponse(for aiMessage: ChatMessage) async {
+        guard aiMessage.isAIMessage else { return }
+        guard let sessionId = currentSessionId, sessionId == aiMessage.sessionId else { return }
+        
+        let messages = chatManager.getMessages(for: sessionId)
+        guard let aiIndex = messages.firstIndex(where: { $0.id == aiMessage.id }) else { return }
+        
+        // 找到该 AI 消息之前的最后一条用户消息
+        let messagesBeforeAI = Array(messages.prefix(aiIndex))
+        guard let lastUserMessage = messagesBeforeAI.last(where: { $0.role == .user }) else {
+            return
+        }
+        
+        // 删除当前 AI 回复
+        chatManager.deleteMessage(aiMessage)
+        
+        // 使用原用户消息重新请求 AI（不创建新的用户消息）
+        isSending = true
+        errorMessage = nil
+        
+        let historyMessages = chatManager.getMessages(for: sessionId)
+        var apiMessages: [[String: Any]] = []
+        let recentMessages = Array(historyMessages.suffix(20))
+        for msg in recentMessages {
+            apiMessages.append(chatService.convertToAPIMessage(msg))
+        }
+        
+        let preferences = UserPreferences.shared
+        let config = preferences.getConfig(for: .aiChat)
+        let model = selectedModel.isEmpty ? config.model : selectedModel
+        
+        do {
+            let result = try await chatService.sendMessage(
+                messages: apiMessages,
+                profile: config.profile,
+                model: model,
+                timeout: config.timeout,
+                preferences: preferences
+            )
+            
+            let newAIMessage = ChatMessage(
+                sessionId: sessionId,
+                role: .assistant,
+                content: result.content,
+                contentType: .text,
+                thinking: result.thinking
+            )
+            chatManager.addMessage(newAIMessage)
+            
+            // 异步生成标题和总结（如需要）
+            let allMessages = chatManager.getMessages(for: sessionId)
+            let conversationMessages = allMessages.filter { $0.role == .user || $0.role == .assistant }
+            let totalLength = conversationMessages.reduce(0) { $0 + $1.content.count }
+            
+            if let session = chatManager.getSession(id: sessionId),
+               session.title.hasPrefix("新对话") && totalLength >= 100 {
+                Task { await generateSessionTitle(sessionId: sessionId) }
+            }
+            if conversationMessages.count >= 3 {
+                Task { await generateSessionSummary(sessionId: sessionId) }
+            }
+        } catch {
+            errorMessage = "重新生成失败: \(error.localizedDescription)"
+            print("❌ [AIChatViewModel] 重新生成失败: \(error)")
+        }
+        
+        isSending = false
     }
     
     // MARK: - Summary Generation

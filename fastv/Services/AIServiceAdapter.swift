@@ -42,8 +42,8 @@ class AIServiceAdapter {
         // 根据协议类型拼接路径
         let path: String
         switch profile.protocolType {
-        case .openAI, .azureOpenAI, .someIM:
-            path = "/v1/chat/completions"
+        case .openAI, .azureOpenAI, .someIM, .openRouter:
+            path = "/chat/completions"
         case .dashScope:
             // DashScope 需要根据内容类型选择端点，默认使用文本生成
             // 如果 endpoint 已经包含 /compatible-mode/v1，只添加 /chat/completions
@@ -119,7 +119,7 @@ class AIServiceAdapter {
         let usesDashScopeCompatibleMode = endpoint.contains("compatible-mode") || endpoint.contains("/chat/completions")
         
         switch profile.protocolType {
-        case .openAI, .azureOpenAI, .someIM:
+        case .openAI, .azureOpenAI, .someIM, .openRouter:
             // OpenAI 兼容格式
             var body: [String: Any] = [
                 "model": effectiveModel,
@@ -359,7 +359,7 @@ class AIServiceAdapter {
         let dashScopeUsesCompatibleMode = endpoint.contains("compatible-mode") || endpoint.contains("/chat/completions")
         
         switch profile.protocolType {
-        case .openAI, .azureOpenAI, .someIM:
+        case .openAI, .azureOpenAI, .someIM, .openRouter:
             // OpenAI 格式
             if let choices = json["choices"] as? [[String: Any]],
                let firstChoice = choices.first,

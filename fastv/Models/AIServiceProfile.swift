@@ -16,6 +16,7 @@ enum AIProtocolType: String, Codable, CaseIterable {
     case claude = "claude"
     case someIM = "some_im"
     case gemini = "gemini"
+    case openRouter = "openrouter"
     case custom = "custom"
     
     var displayName: String {
@@ -34,8 +35,10 @@ enum AIProtocolType: String, Codable, CaseIterable {
             return "Some.IM"
         case .gemini:
             return "Google Gemini"
+        case .openRouter:
+            return "OpenRouter"
         case .custom:
-            return "自定义"
+            return "自定义（中转站）"
         }
     }
     
@@ -56,6 +59,8 @@ enum AIProtocolType: String, Codable, CaseIterable {
             return "message.fill"
         case .gemini:
             return "star.fill"
+        case .openRouter:
+            return "arrow.triangle.branch"
         case .custom:
             return "gearshape.fill"
         }
@@ -78,6 +83,8 @@ enum AIProtocolType: String, Codable, CaseIterable {
             return "https://api.some.im/api/v2/text-generation"
         case .gemini:
             return "https://generativelanguage.googleapis.com/v1beta"
+        case .openRouter:
+            return "https://openrouter.ai/api/v1"
         case .custom:
             return nil
         }
@@ -120,8 +127,28 @@ enum AIProtocolType: String, Codable, CaseIterable {
             return ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
         case .gemini:
             return ["gemini-3-pro-preview", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro"]
+        case .openRouter:
+            return ["openai/gpt-4o-mini", "openai/gpt-4o", "anthropic/claude-3.5-sonnet", "google/gemini-2.0-flash", "deepseek/deepseek-chat", "meta-llama/llama-3.1-70b-instruct"]
         case .custom:
             return []
+        }
+    }
+    
+    /// 默认超时时间（秒）
+    var defaultTimeout: Double {
+        switch self {
+        case .ollama:
+            return 5.0       // 本地服务，响应快
+        case .dashScope:
+            return 60.0      // DashScope 云端 API，推理较慢
+        case .claude:
+            return 60.0      // Claude 云端 API
+        case .gemini:
+            return 60.0      // Gemini 云端 API
+        case .openAI, .azureOpenAI, .openRouter, .someIM:
+            return 30.0      // OpenAI 系列通常较快
+        case .custom:
+            return 60.0      // 自定义服务，预留更多时间
         }
     }
     
@@ -207,7 +234,7 @@ struct AIServiceProfile: Codable, Identifiable, Equatable {
         endpoint: String? = nil,
         apiKey: String = "",
         defaultModel: String = "",
-        timeout: Double = 30.0,
+        timeout: Double? = nil,
         isDefault: Bool = false,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
@@ -218,7 +245,7 @@ struct AIServiceProfile: Codable, Identifiable, Equatable {
         self.endpoint = endpoint ?? protocolType.defaultEndpoint ?? ""
         self.apiKey = apiKey
         self.defaultModel = defaultModel.isEmpty ? (protocolType.recommendedModels.first ?? "") : defaultModel
-        self.timeout = timeout
+        self.timeout = timeout ?? protocolType.defaultTimeout
         self.isDefault = isDefault
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -246,7 +273,7 @@ struct AIServiceProfile: Codable, Identifiable, Equatable {
         endpoint = try container.decodeIfPresent(String.self, forKey: .endpoint) ?? protocolType.defaultEndpoint ?? ""
         apiKey = try container.decodeIfPresent(String.self, forKey: .apiKey) ?? ""
         defaultModel = try container.decodeIfPresent(String.self, forKey: .defaultModel) ?? (protocolType.recommendedModels.first ?? "")
-        timeout = try container.decodeIfPresent(Double.self, forKey: .timeout) ?? (protocolType == .ollama ? 5.0 : 30.0)
+        timeout = try container.decodeIfPresent(Double.self, forKey: .timeout) ?? protocolType.defaultTimeout
         isDefault = try container.decodeIfPresent(Bool.self, forKey: .isDefault) ?? false
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
@@ -266,7 +293,7 @@ struct AIServiceProfile: Codable, Identifiable, Equatable {
             name: protocolType.displayName,
             protocolType: protocolType,
             defaultModel: protocolType.recommendedModels.first ?? "",
-            timeout: protocolType == .ollama ? 5.0 : 30.0
+            timeout: protocolType.defaultTimeout
         )
     }
 }

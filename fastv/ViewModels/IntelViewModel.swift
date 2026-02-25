@@ -50,6 +50,8 @@ class IntelViewModel: ObservableObject {
     @Published var inputFieldHeight: CGFloat = 60  // 默认两行高度（约60像素）
     @Published var selectedKeyword: String? = nil  // 用于词云筛选
     @Published var calendarDisplayMonths: [Date] = []  // 当前显示的三个月
+    /// 历史情报按日期筛选：nil 表示查看全部，有值表示只显示该日期的条目
+    @Published var historyFilterDate: Date? = nil
     
     private let store = IntelStore.shared
     private let aiService = IntelAIService.shared
@@ -86,6 +88,11 @@ class IntelViewModel: ObservableObject {
                 entry.sources.contains { $0.lowercased().contains(searchText) } ||
                 entry.keywords.contains { $0.lowercased().contains(searchText) }
             }
+        }
+        
+        // 如果按日期筛选，只显示该日期的条目
+        if let filterDate = historyFilterDate {
+            history = history.filter { calendar.isDate($0.date, inSameDayAs: filterDate) }
         }
         
         return history.sorted { $0.date > $1.date }
@@ -475,6 +482,11 @@ class IntelViewModel: ObservableObject {
     /// 清除关键词筛选
     func clearKeywordFilter() {
         selectedKeyword = nil
+    }
+    
+    /// 清除历史日期筛选，返回查看全部
+    func clearHistoryDateFilter() {
+        historyFilterDate = nil
     }
     
     /// 检查指定日期是否有情报

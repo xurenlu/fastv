@@ -329,24 +329,27 @@ struct ImagePreviewView: View {
     }
 }
 
-// 表格视图
+// 表格视图（列对齐布局，确保每列宽度一致）
 struct TableView: View {
     let headers: [String]
     let rows: [[String]]
     let isTransparentBackground: Bool
     
+    private let cellPadding = EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12)
+    private let minColumnWidth: CGFloat = 80
+    
     var body: some View {
         ScrollView(.horizontal, showsIndicators: true) {
-            VStack(spacing: 0) {
-                // 表头
-                HStack(spacing: 0) {
-                    ForEach(Array(headers.enumerated()), id: \.offset) { index, header in
+            // 按列布局：每列一个 VStack，保证同列单元格宽度一致
+            HStack(alignment: .top, spacing: 0) {
+                ForEach(Array(headers.enumerated()), id: \.offset) { colIndex, header in
+                    VStack(alignment: .leading, spacing: 0) {
+                        // 表头
                         Text(header)
-                            .font(.headline)
+                            .font(.system(size: 13, weight: .semibold))
                             .foregroundColor(isTransparentBackground ? .white : .primary)
-                            .padding(8)
-                            .frame(minWidth: 100, alignment: .leading)
-                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(cellPadding)
+                            .frame(minWidth: minColumnWidth, maxWidth: .infinity, alignment: .leading)
                             .background(isTransparentBackground ? Color.white.opacity(0.1) : Color.secondary.opacity(0.1))
                             .textSelection(.enabled)
                             .contextMenu {
@@ -358,47 +361,43 @@ struct TableView: View {
                                 .keyboardShortcut("c", modifiers: .command)
                             }
                         
-                        if index < headers.count - 1 {
-                            Divider()
-                        }
-                    }
-                }
-                
-                // 数据行
-                ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
-                    HStack(spacing: 0) {
-                        ForEach(Array(row.enumerated()), id: \.offset) { colIndex, cell in
-                            Text(cell)
-                                .font(.body)
+                        // 数据行
+                        ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
+                            let cellText = colIndex < row.count ? row[colIndex] : ""
+                            Text(cellText)
+                                .font(.system(size: 13))
                                 .foregroundColor(isTransparentBackground ? .white.opacity(0.9) : .primary)
-                                .padding(8)
-                                .frame(minWidth: 100, alignment: .leading)
-                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(cellPadding)
+                                .frame(minWidth: minColumnWidth, maxWidth: .infinity, alignment: .leading)
+                                .background(
+                                    rowIndex % 2 == 1
+                                        ? (isTransparentBackground ? Color.white.opacity(0.03) : Color.secondary.opacity(0.04))
+                                        : Color.clear
+                                )
                                 .textSelection(.enabled)
                                 .contextMenu {
                                     Button("复制") {
                                         let pasteboard = NSPasteboard.general
                                         pasteboard.clearContents()
-                                        pasteboard.setString(cell, forType: .string)
+                                        pasteboard.setString(cellText, forType: .string)
                                     }
                                     .keyboardShortcut("c", modifiers: .command)
                                 }
-                            
-                            if colIndex < row.count - 1 {
-                                Divider()
-                            }
                         }
                     }
-                    
-                    if rowIndex < rows.count - 1 {
-                        Divider()
+                    .overlay(alignment: .trailing) {
+                        if colIndex < headers.count - 1 {
+                            Rectangle()
+                                .fill(isTransparentBackground ? Color.white.opacity(0.2) : Color.secondary.opacity(0.2))
+                                .frame(width: 1)
+                        }
                     }
                 }
             }
         }
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(isTransparentBackground ? Color.white.opacity(0.3) : Color.secondary.opacity(0.3), lineWidth: 1)
+                .stroke(isTransparentBackground ? Color.white.opacity(0.3) : Color.secondary.opacity(0.25), lineWidth: 1)
         )
         .cornerRadius(8)
     }

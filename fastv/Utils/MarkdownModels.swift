@@ -239,8 +239,8 @@ func parseMarkdown(_ markdown: String) -> [MarkdownElement] {
             }
         }
         
-        // 表格解析
-        if line.contains("|") && line.trimmingCharacters(in: .whitespaces).hasPrefix("|") {
+        // 表格解析（支持 | A | B | 或 A | B 两种格式）
+        if line.contains("|") {
             if let tableData = parseTable(lines: lines, startIndex: i) {
                 elements.append(MarkdownElement(type: .table(headers: tableData.headers, rows: tableData.rows), content: ""))
                 i = tableData.endIndex
@@ -574,7 +574,8 @@ func parseTable(lines: [String], startIndex: Int) -> TableData? {
     }
     
     let headerLine = tableLines[0]
-    let headers = parseTableRow(headerLine)
+    var headers = parseTableRow(headerLine)
+    guard headers.count >= 2 else { return nil }
     
     let separatorLine = tableLines[1]
     let separatorCells = parseTableRow(separatorLine)
@@ -588,10 +589,15 @@ func parseTable(lines: [String], startIndex: Int) -> TableData? {
     
     var rows: [[String]] = []
     for j in 2..<tableLines.count {
-        let rowData = parseTableRow(tableLines[j])
-        if rowData.count == headers.count {
-            rows.append(rowData)
+        var rowData = parseTableRow(tableLines[j])
+        if rowData.isEmpty { continue }
+        // 列数不足时用空字符串填充，超出时截断
+        if rowData.count < headers.count {
+            rowData += Array(repeating: "", count: headers.count - rowData.count)
+        } else if rowData.count > headers.count {
+            rowData = Array(rowData.prefix(headers.count))
         }
+        rows.append(rowData)
     }
     
     return TableData(headers: headers, rows: rows, endIndex: i)
@@ -600,13 +606,15 @@ func parseTable(lines: [String], startIndex: Int) -> TableData? {
 // 解析表格行
 func parseTableRow(_ line: String) -> [String] {
     let trimmed = line.trimmingCharacters(in: .whitespaces)
+    let cells: [String]
     if trimmed.hasPrefix("|") {
         let withoutPrefix = String(trimmed.dropFirst())
-        let cells = withoutPrefix.components(separatedBy: "|")
-        return cells.map { $0.trimmingCharacters(in: .whitespaces) }
+        cells = withoutPrefix.components(separatedBy: "|")
     } else {
-        let cells = trimmed.components(separatedBy: "|")
-        return cells.map { $0.trimmingCharacters(in: .whitespaces) }
+        cells = trimmed.components(separatedBy: "|")
     }
+    let trimmedCells = cells.map { $0.trimmingCharacters(in: .whitespaces) }
+    // 移除尾随空单元格（由 | A | B | 末尾的 | 产生）
+    return trimmedCells.last == "" ? Array(trimmedCells.dropLast()) : trimmedCells
 }
 

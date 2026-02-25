@@ -189,7 +189,14 @@ struct ThreeMonthCalendarView: View {
                         },
                         onDateSelected: { date in
                             viewModel.selectedDate = date
-                            viewModel.selectedTab = .today
+                            // 只有选择今天时才切换到「今日的情报」，否则保持在「历史情报」
+                            if Calendar.current.isDateInToday(date) {
+                                viewModel.selectedTab = .today
+                                viewModel.clearHistoryDateFilter()
+                            } else {
+                                // 在历史 tab 中点击某天，按该日期筛选列表
+                                viewModel.historyFilterDate = date
+                            }
                             viewModel.load(date: date)
                         }
                     )

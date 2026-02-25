@@ -123,6 +123,17 @@ struct IntelView: View {
         }
     }
     
+    /// 历史情报空状态提示文案
+    private var historyEmptyMessage: String {
+        if viewModel.historyFilterDate != nil {
+            return "该日期暂无情报"
+        }
+        if !viewModel.historySearchText.isEmpty || viewModel.selectedKeyword != nil {
+            return "未找到匹配的历史情报"
+        }
+        return "暂无历史情报"
+    }
+    
     // MARK: - History Content Section
     
     private var historyContentSection: some View {
@@ -175,14 +186,37 @@ struct IntelView: View {
                     }
                     .padding(.horizontal, 16)
                     
+                    // 按日期筛选时的返回按钮
+                    if let filterDate = viewModel.historyFilterDate {
+                        HStack(spacing: 12) {
+                            Text("正在查看 \(filterDate.formatted(date: .long, time: .omitted)) 的情报")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Button(action: {
+                                viewModel.clearHistoryDateFilter()
+                            }) {
+                                Label("返回全部", systemImage: "arrow.uturn.backward")
+                                    .font(.subheadline)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color.accentColor.opacity(0.08))
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                    
                     // 历史情报卡片列表
                     if viewModel.historyEntries.isEmpty {
                         VStack(spacing: 12) {
                             Image(systemName: "clock.arrow.circlepath")
                                 .font(.system(size: 48))
                                 .foregroundStyle(.secondary.opacity(0.5))
-                            Text(viewModel.historySearchText.isEmpty && viewModel.selectedKeyword == nil ? 
-                                 "暂无历史情报" : "未找到匹配的历史情报")
+                            Text(historyEmptyMessage)
                                 .font(.headline)
                                 .foregroundStyle(.secondary)
                         }

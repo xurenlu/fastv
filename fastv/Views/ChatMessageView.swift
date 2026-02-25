@@ -12,14 +12,18 @@ import AVKit
 struct ChatMessageView: View {
     let message: ChatMessage
     let modelName: String?  // 模型名称（用于生成头像）
+    var onRegenerate: (() -> Void)? = nil
+    var onRetry: (() -> Void)? = nil
     @State private var imageData: Data?
     @State private var parsedElements: [MarkdownElement] = []
     @State private var isHovered = false
     @State private var showCopySuccess = false
     
-    init(message: ChatMessage, modelName: String? = nil) {
+    init(message: ChatMessage, modelName: String? = nil, onRegenerate: (() -> Void)? = nil, onRetry: (() -> Void)? = nil) {
         self.message = message
         self.modelName = modelName
+        self.onRegenerate = onRegenerate
+        self.onRetry = onRetry
     }
     
     var body: some View {
@@ -70,13 +74,32 @@ struct ChatMessageView: View {
                         ProgressView()
                             .scaleEffect(0.7)
                     } else if message.sendError != nil {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.red)
+                        Button(action: { onRetry?() }) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.red)
+                        }
+                        .buttonStyle(.plain)
+                        .help(message.sendError ?? "发送失败，点击重试")
                     } else if message.isUserMessage {
                         Image(systemName: "checkmark")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
+                    }
+                }
+                
+                // AI 消息底部操作栏（hover 时显示重新生成按钮）
+                if message.isAIMessage && isHovered {
+                    HStack(spacing: 8) {
+                        Button(action: { onRegenerate?() }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.counterclockwise")
+                                Text("重新生成")
+                            }
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
