@@ -72,7 +72,7 @@
 "voice.input.description" = "단축키를 눌러 음성 입력을 시작하고, 놓으면 자동으로 인식하여 텍스트를 삽입합니다. 마이크 및 접근성 권한이 필요합니다.";
 "fn.key.hint" = "팁: FN 키만 누르면 음성 입력만 수행하고, FN+Ctrl 조합은 음성 입력 후 자동으로 AI 최적화를 수행합니다(말버릇 제거, 구두점 추가, 오타 수정).";
 "enable.incremental.transcription" = "스마트 세그먼트 전사";
-"incremental.transcription.description" = "일시 정지 감지 시 자동으로 전사하여 삽입합니다. 단축키를 놓을 필요가 없습니다";
+"incremental.transcription.description" = "일시 정지 시 백그라운드 전사, 단축키 해제 시 한 번에 출력. AI 최적화 지원";
 "silence.detection.duration" = "일시 정지 임계값";
 
 // 통계

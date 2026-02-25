@@ -72,7 +72,7 @@
 "voice.input.description" = "按下快捷鍵開始語音輸入，鬆開時自動識別並插入文字。需要麥克風和輔助功能權限。";
 "fn.key.hint" = "提示：單獨按FN鍵僅進行語音輸入，FN+Ctrl組合會在語音輸入後自動進行AI優化（去除語氣詞、添加標點、修正錯別字）。";
 "enable.incremental.transcription" = "智能分段轉文字";
-"incremental.transcription.description" = "檢測到停頓時自動轉寫並插入，無需鬆開快捷鍵";
+"incremental.transcription.description" = "檢測停頓時後台轉寫，鬆開快捷鍵時一次性輸出，支援 AI 優化整段";
 "silence.detection.duration" = "停頓閾值";
 
 // 統計

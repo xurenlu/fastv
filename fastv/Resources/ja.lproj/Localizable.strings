@@ -72,7 +72,7 @@
 "voice.input.description" = "ショートカットを押して音声入力を開始し、離すと自動的に認識してテキストを挿入します。マイクとアクセシビリティの権限が必要です。";
 "fn.key.hint" = "ヒント：FNキーのみで音声入力のみ。FN+Ctrlで音声入力後にAI最適化（フィラー語の削除、句読点の追加、誤字修正）が行われます。";
 "enable.incremental.transcription" = "スマートセグメント転写";
-"incremental.transcription.description" = "ポーズを検出すると自動で転写して挿入。ショートカットを離す必要はありません";
+"incremental.transcription.description" = "ポーズでバックグラウンド転写、ショートカット解放時に一括出力。AI最適化対応";
 "silence.detection.duration" = "ポーズ閾値";
 
 // 統計

@@ -18,14 +18,17 @@ private var currentVoiceInputNeedsAI: Bool = false
 private var currentSessionUsesIncremental: Bool = false
 // 本次錄音會話的靜音檢測器（智能分段時使用）
 private var currentSessionSilenceDetector: SilenceDetector?
+// 智能分段轉寫串行隊列：確保按時間順序插入，避免並發導致順序錯亂
+private var incrementalTranscriptionTask: Task<Void, Never>?
+// 智能分段轉寫結果緩存：邊說邊轉但不插入，鬆鍵時一次性合併輸出（利於 AI 優化整段）
+private var incrementalTranscriptionResults: [String] = []
 
-/// 智能分段：靜音觸發時提取當前段落、轉寫並插入
+/// 智能分段：靜音觸發時提取當前段落、轉寫並緩存（串行執行，不插入，鬆鍵時一次性輸出）
 @MainActor
 private func performIncrementalSegmentTranscription() async {
     let voiceService = VoiceInputService.shared
-    let preferences = UserPreferences.shared
     let waveformManager = WaveformWindowManager.shared
-    let language = TranscriptLanguage(rawValue: preferences.voiceInputLanguage) ?? .zh
+    let language = TranscriptLanguage(rawValue: UserPreferences.shared.voiceInputLanguage) ?? .zh
     
     guard let result = try? await voiceService.extractCurrentSegmentWithTiming() else { return }
     guard result.duration >= 1.0 else {
@@ -43,12 +46,8 @@ private func performIncrementalSegmentTranscription() async {
         }
         guard !text.isEmpty else { return }
         
-        if preferences.useDirectTextInsertion {
-            DirectTextInsertionService.shared.insertText(text)
-        } else {
-            TextInsertionService.shared.insertText(text)
-        }
-        print("✅ [fastvApp] 智能分段插入: \(text.prefix(30))...")
+        incrementalTranscriptionResults.append(text)
+        print("✅ [fastvApp] 智能分段轉寫緩存: \(text.prefix(30))... (共\(incrementalTranscriptionResults.count)段)")
     } catch {
         print("❌ [fastvApp] 智能分段轉寫失敗: \(error)")
     }
@@ -396,6 +395,7 @@ struct fastvApp: App {
         
         let preferences = UserPreferences.shared
         currentSessionUsesIncremental = preferences.enableIncrementalTranscription
+        incrementalTranscriptionResults = []
         
         let voiceService = VoiceInputService.shared
         let waveformManager = WaveformWindowManager.shared
@@ -418,7 +418,9 @@ struct fastvApp: App {
                 silenceDetector.relativeThreshold = preferences.silenceRelativeThreshold
                 silenceDetector.minimumSilenceDuration = preferences.silenceDetectionDuration
                 silenceDetector.onSilenceDetected = { _ in
-                    Task { @MainActor in
+                    let previousTask = incrementalTranscriptionTask
+                    incrementalTranscriptionTask = Task { @MainActor in
+                        await previousTask?.value  // 等待上一段完成，保證按時間順序插入
                         await performIncrementalSegmentTranscription()
                     }
                 }
@@ -512,6 +514,9 @@ struct fastvApp: App {
         // 智能分段模式：先提取剩余段落（須在 stopRecording 之前，因 extract 要求 isRecording）
         var remainingSegmentResult: VoiceInputService.SegmentResult?
         if currentSessionUsesIncremental {
+            // 先等待進行中的分段轉寫完成，再提取剩餘段落，保證插入順序
+            await incrementalTranscriptionTask?.value
+            incrementalTranscriptionTask = nil
             remainingSegmentResult = try? await voiceService.extractCurrentSegmentWithTiming()
             currentSessionSilenceDetector?.reset()
             currentSessionSilenceDetector?.onSilenceDetected = nil
@@ -527,27 +532,67 @@ struct fastvApp: App {
         }
         print("✅ [fastvApp] 录音已停止，PCM字节数: \(recording.pcmData.count)")
         
-        // 智能分段模式：只轉寫剩餘段落，不轉寫整段（已插入的段落不再處理）
+        // 智能分段模式：合併緩存分段 + 剩餘段落，一次性輸出（支持 AI 優化整段）
         if currentSessionUsesIncremental {
-            if let result = remainingSegmentResult, result.duration >= 1.0 {
+            var fullText = incrementalTranscriptionResults.joined()
+            incrementalTranscriptionResults = []
+            
+            // 轉寫剩餘段落並合併
+            let minRemainingDuration = fullText.isEmpty ? 1.0 : 1.5
+            if let result = remainingSegmentResult, result.duration >= minRemainingDuration {
                 do {
-                    var text = try await SpeechTranscriber.transcribe(recording: result.recording, language: TranscriptLanguage(rawValue: preferences.voiceInputLanguage) ?? .zh)
+                    var remainingText = try await SpeechTranscriber.transcribe(recording: result.recording, language: TranscriptLanguage(rawValue: preferences.voiceInputLanguage) ?? .zh)
                     if CommonMistakeManager.shared.enableAutoCorrection {
-                        text = TextCorrectionService.shared.correctText(text)
+                        remainingText = TextCorrectionService.shared.correctText(remainingText)
                     }
-                    if !text.isEmpty {
-                        if preferences.useDirectTextInsertion {
-                            DirectTextInsertionService.shared.insertText(text)
-                        } else {
-                            TextInsertionService.shared.insertText(text)
-                        }
-                        print("✅ [fastvApp] 智能分段（剩餘）插入: \(text.prefix(30))...")
+                    if !remainingText.isEmpty {
+                        fullText += remainingText
                     }
                 } catch {
                     print("❌ [fastvApp] 智能分段剩餘轉寫失敗: \(error)")
                 }
             }
-            waveformManager.setAICorrectionDisabled()
+            
+            guard !fullText.isEmpty else {
+                waveformManager.setAICorrectionDisabled()
+                currentSessionUsesIncremental = false
+                currentVoiceInputNeedsAI = false
+                return
+            }
+            
+            // 與非智能分段共用後續流程：糾錯、AI 優化、插入
+            var text = fullText
+            let mistakeManager = CommonMistakeManager.shared
+            if mistakeManager.enableAutoCorrection {
+                text = TextCorrectionService.shared.correctText(text)
+            }
+            
+            let shouldDoAI = needsAI && isAIServiceConfigured()
+            if shouldDoAI {
+                waveformManager.setAICorrecting()
+                do {
+                    text = try await OllamaService.shared.optimizeTranscript(
+                        text: text,
+                        scenario: .voiceInputOptimization,
+                        systemPrompt: preferences.aiSystemPrompt,
+                        useMistakes: true,
+                        useHighFrequencyWords: true
+                    )
+                    waveformManager.setAICorrected()
+                } catch {
+                    print("⚠️ [fastvApp] AI 優化失敗，使用原始文本: \(error.localizedDescription)")
+                    waveformManager.setAICorrectionFailed()
+                }
+            } else {
+                waveformManager.setAICorrectionDisabled()
+            }
+            
+            if preferences.useDirectTextInsertion {
+                DirectTextInsertionService.shared.insertText(text)
+            } else {
+                TextInsertionService.shared.insertText(text)
+            }
+            print("✅ [fastvApp] 智能分段一次性插入: \(text.prefix(50))...")
             currentSessionUsesIncremental = false
             currentVoiceInputNeedsAI = false
             return
