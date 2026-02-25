@@ -9,232 +9,278 @@ import SwiftUI
 
 struct ChatWindowView: View {
     @ObservedObject var viewModel: AIChatViewModel
-    
     @ObservedObject private var preferences = UserPreferences.shared
     @State private var showSettings = false
     @State private var showParameters = false
-    
+
     private func regenerateResponse(for message: ChatMessage) {
         Task { await viewModel.regenerateResponse(for: message) }
     }
-    
+
     private func retryMessage(_ message: ChatMessage) {
         Task { await viewModel.retryMessage(message) }
     }
-    
+
     var needsConfiguration: Bool {
         preferences.aiServiceProfiles.isEmpty || preferences.getDefaultProfile() == nil
     }
-    
+
+    /// 当前选中的模型是否支持思考模式（qwen3 系列）
+    private var modelSupportsThinking: Bool {
+        viewModel.selectedModel.lowercased().contains("qwen3")
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            // 配置提示横幅
+            // 配置提示横幅 - Apple 风格：克制、可操作
             if needsConfiguration {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                    Text("请先在设置中配置 API Endpoint（API Key 可选，某些本地 API 如 Ollama 不需要）")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Button("打开设置") {
-                        showSettings = true
-                    }
-                    .buttonStyle(.borderless)
-                    .controlSize(.small)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-                
-                Divider()
+                configBanner
             }
-            
-            // 顶部：模型选择器和参数设置
-            VStack(spacing: 0) {
-                HStack {
-                    if !viewModel.availableModels.isEmpty {
-                        Picker("模型", selection: Binding(
-                            get: { viewModel.selectedModel },
-                            set: { viewModel.changeModel($0) }
-                        )) {
-                            ForEach(viewModel.availableModels, id: \.self) { model in
-                                Text(model).tag(model)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .frame(width: 200)
-                        .disabled(needsConfiguration)
-                    } else {
-                        Text("无可用模型")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    // 参数设置按钮
-                    Button(action: {
-                        withAnimation {
-                            showParameters.toggle()
-                        }
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: showParameters ? "chevron.down" : "chevron.right")
-                                .font(.caption2)
-                            Text("参数")
-                                .font(.caption)
-                        }
-                        .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(needsConfiguration)
-                    
-                    Spacer()
-                    
-                    if let session = viewModel.currentSession {
-                        Text(session.title)
-                            .font(.headline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color(NSColor.controlBackgroundColor))
-                
-                // 参数设置面板
-                if showParameters {
-                    VStack(spacing: 0) {
-                        Divider()
-                        
-                        HStack(spacing: 24) {
-                            // Temperature
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text("温度")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    Spacer()
-                                    Text(String(format: "%.2f", preferences.chatTemperature))
-                                        .font(.caption)
-                                        .monospacedDigit()
-                                        .foregroundStyle(.secondary)
-                                        .frame(width: 40, alignment: .trailing)
-                                }
-                                Slider(value: $preferences.chatTemperature, in: 0...2, step: 0.1)
-                                    .frame(width: 140)
-                            }
-                            
-                            // Top P
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text("Top P")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    Spacer()
-                                    Text(String(format: "%.2f", preferences.chatTopP))
-                                        .font(.caption)
-                                        .monospacedDigit()
-                                        .foregroundStyle(.secondary)
-                                        .frame(width: 40, alignment: .trailing)
-                                }
-                                Slider(value: $preferences.chatTopP, in: 0...1, step: 0.05)
-                                    .frame(width: 140)
-                            }
-                            
-                            // Top K
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Top K")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                TextField("0=不设置", value: $preferences.chatTopK, format: .number)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(width: 70)
-                            }
-                            
-                            // Max Tokens
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Max Tokens")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                TextField("", value: $preferences.chatMaxTokens, format: .number)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(width: 90)
-                            }
-                            
-                            Spacer()
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                    }
-                    .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-                }
-            }
-            
+
+            // 顶部：模型选择器和参数
+            toolbarSection
+
             Divider()
-            
+
             // 消息列表
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        if viewModel.currentMessages.isEmpty {
-                            Spacer()
-                            ContentUnavailableView {
-                                Text("开始对话")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                        } else {
-                            ForEach(viewModel.currentMessages) { message in
-                                ChatMessageView(
-                                    message: message,
-                                    modelName: message.isAIMessage ? viewModel.selectedModel : nil,
-                                    onRegenerate: message.isAIMessage ? { regenerateResponse(for: message) } : nil,
-                                    onRetry: (message.isUserMessage && message.sendError != nil) ? { retryMessage(message) } : nil
-                                )
-                                .id(message.id)
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                }
-                .onChange(of: viewModel.currentMessages.count) { oldValue, newValue in
-                    // 只在真正添加新消息时滚动到底部（数量增加）
-                    if newValue > oldValue, let lastMessage = viewModel.currentMessages.last {
-                        // 使用不带动画的滚动，避免跳动
-                        DispatchQueue.main.async {
-                            proxy.scrollTo(lastMessage.id, anchor: .bottom)
-                        }
-                    }
-                }
-                .onChange(of: viewModel.currentSessionId) { _, _ in
-                    // 切换会话时滚动到底部
-                    if let lastMessage = viewModel.currentMessages.last {
-                        DispatchQueue.main.async {
-                            proxy.scrollTo(lastMessage.id, anchor: .bottom)
-                        }
-                    }
-                }
-            }
-            
+            messageListSection
+
             Divider()
-            
+
             // 输入区域
             ChatInputView(viewModel: viewModel)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(Color(NSColor.controlBackgroundColor))
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .background(.regularMaterial)
                 .disabled(needsConfiguration)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .windowBackgroundColor))
         .sheet(isPresented: $showSettings) {
             SettingsView()
                 .frame(minWidth: 800, idealWidth: 900, maxWidth: 1000, minHeight: 600, idealHeight: 700, maxHeight: 800)
         }
+    }
+
+    // MARK: - Config Banner
+
+    private var configBanner: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.subheadline)
+                .foregroundStyle(.orange)
+                .symbolRenderingMode(.hierarchical)
+
+            Text(NSLocalizedString("chat.config.required", comment: ""))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Button(NSLocalizedString("chat.open.settings", comment: "")) {
+                showSettings = true
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(Color.orange.opacity(0.08))
+    }
+
+    // MARK: - Toolbar
+
+    private var toolbarSection: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 16) {
+                // Provider 选择器
+                if !viewModel.availableProfiles.isEmpty {
+                    Picker(NSLocalizedString("chat.provider", comment: ""), selection: Binding(
+                        get: { viewModel.selectedProfileId ?? viewModel.availableProfiles.first!.id },
+                        set: { viewModel.changeProfile($0) }
+                    )) {
+                        ForEach(viewModel.availableProfiles) { profile in
+                            HStack {
+                                Image(systemName: profile.protocolType.iconName)
+                                    .foregroundStyle(.secondary)
+                                Text(profile.name)
+                            }
+                            .tag(profile.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 200)
+                    .disabled(needsConfiguration)
+                }
+                
+                // 模型选择器
+                if !viewModel.availableModels.isEmpty {
+                    Picker(NSLocalizedString("chat.model", comment: ""), selection: Binding(
+                        get: { viewModel.selectedModel },
+                        set: { viewModel.changeModel($0) }
+                    )) {
+                        ForEach(viewModel.availableModels, id: \.self) { model in
+                            Text(model).tag(model)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 200)
+                    .disabled(needsConfiguration)
+                } else if viewModel.availableProfiles.isEmpty {
+                    Text(NSLocalizedString("chat.no.models", comment: ""))
+                        .font(.subheadline)
+                        .foregroundStyle(.tertiary)
+                }
+
+                Button(action: { withAnimation(.easeInOut(duration: 0.25)) { showParameters.toggle() } }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: showParameters ? "chevron.down" : "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                        Text(NSLocalizedString("chat.parameters", comment: ""))
+                            .font(.caption)
+                    }
+                    .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .disabled(needsConfiguration)
+
+                Spacer()
+
+                if let session = viewModel.currentSession {
+                    Text(session.title)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(Color(nsColor: .controlBackgroundColor))
+
+            if showParameters {
+                Divider()
+                parametersPanel
+            }
+        }
+    }
+
+    private var parametersPanel: some View {
+        HStack(spacing: 28) {
+            parameterSlider(
+                label: "温度",
+                value: $preferences.chatTemperature,
+                range: 0...2,
+                step: 0.1,
+                width: 140
+            )
+            parameterSlider(
+                label: "Top P",
+                value: $preferences.chatTopP,
+                range: 0...1,
+                step: 0.05,
+                width: 140
+            )
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Top K")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("0=不设置", value: $preferences.chatTopK, format: .number)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 70)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Max Tokens")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("", value: $preferences.chatMaxTokens, format: .number)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 90)
+            }
+            // 思考模式（仅 qwen3 等支持 thinking 的模型显示）
+            if modelSupportsThinking {
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(isOn: $preferences.chatEnableThinking) {
+                        Text(NSLocalizedString("chat.thinking.mode", comment: ""))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .toggleStyle(.switch)
+                    .help(NSLocalizedString("chat.thinking.mode.help", comment: ""))
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.6))
+    }
+
+    private func parameterSlider(label: String, value: Binding<Double>, range: ClosedRange<Double>, step: Double, width: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(String(format: "%.2f", value.wrappedValue))
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 40, alignment: .trailing)
+            }
+            Slider(value: value, in: range, step: step)
+                .frame(width: width)
+        }
+    }
+
+    // MARK: - Message List
+
+    private var messageListSection: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 16) {
+                    if viewModel.currentMessages.isEmpty {
+                        Spacer()
+                        ContentUnavailableView {
+                            Text(NSLocalizedString("chat.start.conversation", comment: ""))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    } else {
+                        ForEach(viewModel.currentMessages) { message in
+                            ChatMessageView(
+                                message: message,
+                                modelName: message.isAIMessage ? viewModel.selectedModel : nil,
+                                onRegenerate: message.isAIMessage ? { regenerateResponse(for: message) } : nil,
+                                onRetry: (message.isUserMessage && message.sendError != nil) ? { retryMessage(message) } : nil
+                            )
+                            .id(message.id)
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 20)
+            }
+            .onChange(of: viewModel.currentMessages.count) { oldValue, newValue in
+                if newValue > oldValue, let lastMessage = viewModel.currentMessages.last {
+                    DispatchQueue.main.async {
+                        proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                    }
+                }
+            }
+            .onChange(of: viewModel.currentSessionId) { _, _ in
+                if let lastMessage = viewModel.currentMessages.last {
+                    DispatchQueue.main.async {
+                        proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
 #Preview {
     ChatWindowView(viewModel: AIChatViewModel())
 }
-

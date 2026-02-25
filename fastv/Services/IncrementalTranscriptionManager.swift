@@ -181,6 +181,7 @@ class IncrementalTranscriptionManager: ObservableObject {
                     return try await SpeechTranscriber.transcribe(
                         recording: recording,
                         language: language,
+                        enableCTCDeduplication: nil,
                         cancellationCheck: isCancelled
                     )
                 }.value

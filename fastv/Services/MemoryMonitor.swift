@@ -7,6 +7,7 @@
 
 import Foundation
 import Dispatch
+import Darwin
 
 /// 内存监控服务
 /// 用于监控应用内存使用情况，在内存压力时记录日志并建议清理
@@ -52,10 +53,13 @@ class MemoryMonitor {
     func checkMemoryUsage() {
         let memoryInfo = getMemoryUsage()
         let usedMB = memoryInfo.used / 1024 / 1024
+        let systemFreeMB = getSystemFreeMemoryMB()
 
         #if DEBUG
         if usedMB > warningThreshold {
-            print("⚠️ [MemoryMonitor] 内存使用: \(usedMB)MB (可用: \(memoryInfo.free / 1024 / 1024)MB)")
+            // used=本进程驻留内存；systemFree=系统空闲内存（来自 host_statistics64）
+            let freeStr = systemFreeMB.map { "系统可用: \($0)MB" } ?? "本进程占用"
+            print("⚠️ [MemoryMonitor] 内存使用: \(usedMB)MB (\(freeStr))")
 
             if usedMB > criticalThreshold {
                 print("🚨 [MemoryMonitor] 内存使用严重: \(usedMB)MB")
@@ -68,6 +72,23 @@ class MemoryMonitor {
             }
         }
         #endif
+    }
+
+    /// 获取系统空闲内存（MB），来自 host_statistics64，失败时返回 nil
+    private func getSystemFreeMemoryMB() -> UInt64? {
+        var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
+        var stats = vm_statistics64_data_t()
+        let host = mach_host_self()
+        let kerr = withUnsafeMutablePointer(to: &stats) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                host_statistics64(host, HOST_VM_INFO64, $0, &count)
+            }
+        }
+        guard kerr == KERN_SUCCESS else { return nil }
+        // free_count + inactive_count 约等于可回收/可用内存（页大小通常 16KB）
+        let pageSize = UInt64(vm_kernel_page_size)
+        let freeBytes = (UInt64(stats.free_count) + UInt64(stats.inactive_count)) * pageSize
+        return freeBytes / 1024 / 1024
     }
 
     /// 获取当前内存使用信息

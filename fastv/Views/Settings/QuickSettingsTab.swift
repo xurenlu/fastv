@@ -158,6 +158,25 @@ struct QuickSettingsTab: View {
                         
                         Divider()
                         
+                        // 松开后尾缓冲：减少末尾内容丢失
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 8) {
+                                Text(NSLocalizedString("voice.input.release.tail.buffer", comment: ""))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Slider(value: $preferences.voiceInputReleaseTailBufferSeconds, in: 0...1.0, step: 0.1)
+                                Text("\(String(format: "%.1f", preferences.voiceInputReleaseTailBufferSeconds))s")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 28, alignment: .trailing)
+                            }
+                            Text(NSLocalizedString("voice.input.release.tail.buffer.description", comment: ""))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Divider()
+                        
                         // 悬浮工具条位置设置
                         Picker(NSLocalizedString("waveform.window.position", comment: ""), selection: $preferences.waveformWindowPosition) {
                             ForEach(WaveformWindowPosition.allCases, id: \.self) { position in

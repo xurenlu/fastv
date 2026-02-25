@@ -65,11 +65,19 @@ struct ChatMessageView: View {
                 }
                 
                 // 时间戳和状态
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     Text(message.formattedTime)
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
-                    
+
+                    // AI 消息：显示响应耗时（x.xxx 秒）
+                    if message.isAIMessage, let responseTime = message.formattedResponseTime {
+                        Text("\(responseTime) \(NSLocalizedString("chat.response.time.unit", comment: "秒"))")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .monospacedDigit()
+                    }
+
                     if message.isSending {
                         ProgressView()
                             .scaleEffect(0.7)
@@ -377,7 +385,7 @@ struct ChatMessageView: View {
                 Image(systemName: "brain.head.profile")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text("思考过程")
+                Text(NSLocalizedString("chat.thinking.process", comment: ""))
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)

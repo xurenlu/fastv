@@ -88,6 +88,7 @@ class UserPreferences: ObservableObject {
         static let silenceThreshold = "silenceThreshold"
         static let silenceRelativeThreshold = "silenceRelativeThreshold"
         static let enableIncrementalTranscription = "enableIncrementalTranscription"
+        static let voiceInputReleaseTailBufferSeconds = "voiceInputReleaseTailBufferSeconds"
         // AI 服务配置相关（新）
         static let aiServiceProfiles = "aiServiceProfiles"
         static let aiScenarioBindings = "aiScenarioBindings"
@@ -369,6 +370,11 @@ class UserPreferences: ObservableObject {
         willSet { defaults.set(newValue, forKey: Keys.enableIncrementalTranscription) }
     }
     
+    /// 松开快捷键后继续录音的尾缓冲时长（秒），用于减少末尾内容丢失，默认 0.3 秒
+    @Published var voiceInputReleaseTailBufferSeconds: Double {
+        willSet { defaults.set(newValue, forKey: Keys.voiceInputReleaseTailBufferSeconds) }
+    }
+    
     // 引导流程相关
     @Published var hasCompletedOnboarding: Bool {
         willSet { defaults.set(newValue, forKey: Keys.hasCompletedOnboarding) }
@@ -519,7 +525,7 @@ class UserPreferences: ObservableObject {
     @Published var huggingFaceToken: String {
         willSet { defaults.set(newValue, forKey: Keys.huggingFaceToken) }
     }
-    
+
     // MARK: - Initialization
     
     private init() {
@@ -737,6 +743,7 @@ class UserPreferences: ObservableObject {
         silenceThreshold = defaults.object(forKey: Keys.silenceThreshold) as? Float ?? 0.01 // 默认0.01
         silenceRelativeThreshold = defaults.object(forKey: Keys.silenceRelativeThreshold) as? Float ?? 0.25 // 默认25%，更敏感
         enableIncrementalTranscription = defaults.object(forKey: Keys.enableIncrementalTranscription) as? Bool ?? false
+        voiceInputReleaseTailBufferSeconds = defaults.object(forKey: Keys.voiceInputReleaseTailBufferSeconds) as? Double ?? 0.3
         
         // 引导流程设置，默认为未完成
         hasCompletedOnboarding = defaults.bool(forKey: Keys.hasCompletedOnboarding)
@@ -798,10 +805,10 @@ class UserPreferences: ObservableObject {
         videoYoloModelPath = defaults.string(forKey: Keys.videoYoloModelPath) ?? ""
         videoFaceModelPath = defaults.string(forKey: Keys.videoFaceModelPath) ?? ""
         isVideoModelsDownloaded = defaults.object(forKey: Keys.isVideoModelsDownloaded) as? Bool ?? false
-        
+
         // Hugging Face Token 默认值
         huggingFaceToken = defaults.string(forKey: Keys.huggingFaceToken) ?? ""
-        
+
         // 检查模型是否已下载（在所有属性初始化之后）
         isModelDownloaded = defaults.object(forKey: Keys.isModelDownloaded) as? Bool ?? false
         // 如果标记为已下载，验证文件是否真的存在
@@ -977,6 +984,8 @@ class UserPreferences: ObservableObject {
             AIServiceProfile.createDefault(for: .ollama).with(name: "Ollama (本地)", isDefault: true),
             AIServiceProfile.createDefault(for: .openAI).with(name: "OpenAI"),
             AIServiceProfile.createDefault(for: .dashScope).with(name: "阿里云 DashScope"),
+            AIServiceProfile.createDefault(for: .zhipuAI).with(name: "智谱 AI"),
+            AIServiceProfile.createDefault(for: .miniMaxCN).with(name: "MiniMax (国内)"),
             AIServiceProfile.createDefault(for: .someIM).with(name: "Some.IM"),
             AIServiceProfile.createDefault(for: .gemini).with(name: "Google Gemini"),
             AIServiceProfile.createDefault(for: .claude).with(name: "Claude")

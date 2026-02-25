@@ -43,6 +43,8 @@
 "transcribing" = "텍스트 변환 중...";
 "speech.model.preload.title" = "음성 모델 로딩 중";
 "speech.model.preload.message" = "음성 인식 모델을 처음 로딩하고 있습니다. 잠시만 기다려 주세요.";
+"voice.recording.too.short.title" = "녹음이 너무 짧습니다";
+"voice.recording.too.short.message" = "녹음이 너무 짧아 정확한 인식이 어렵습니다. 최소 0.5초 이상 말씀해 주세요.";
 
 // 설정
 "enable.voice.input" = "음성 입력 활성화";
@@ -74,6 +76,8 @@
 "enable.incremental.transcription" = "스마트 세그먼트 전사";
 "incremental.transcription.description" = "일시 정지 시 백그라운드 전사, 단축키 해제 시 한 번에 출력. AI 최적화 지원";
 "silence.detection.duration" = "일시 정지 임계값";
+"voice.input.release.tail.buffer" = "해제 후 테일 버퍼";
+"voice.input.release.tail.buffer.description" = "단축키를 놓은 후 잠시 녹음을 계속하여 끝부분 내용 손실을 줄임 (0으로 비활성화)";
 
 // 통계
 "total.duration" = "총 시간";

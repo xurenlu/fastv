@@ -139,7 +139,7 @@ enum AIProtocolType: String, Codable, CaseIterable {
         case .azureOpenAI:
             return ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
         case .dashScope:
-            return ["qwen3.5-flash", "qwen3.5-plus", "qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext"]
+            return ["qwen-flash", "qwen3.5-flash", "qwen3.5-plus", "qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext", "qwen-vl-plus", "qwen-vl-max"]
         case .ollama:
             return ["gemma2:2b", "deepseek-r1:1.5b", "qwen2.5:7b", "llama3.2:3b"]
         case .claude:
@@ -151,11 +151,34 @@ enum AIProtocolType: String, Codable, CaseIterable {
         case .openRouter:
             return ["openai/gpt-4o-mini", "openai/gpt-4o", "anthropic/claude-3.5-sonnet", "google/gemini-2.0-flash", "deepseek/deepseek-chat", "meta-llama/llama-3.1-70b-instruct"]
         case .zhipuAI:
-            return ["glm-4-flash", "glm-4-air", "glm-4", "glm-4-plus", "glm-4-long", "glm-4-airx"]
+            return ["glm-4-flash", "glm-4-air", "glm-4", "glm-4-plus", "glm-4-long", "glm-4-airx", "glm-4v", "glm-4v-plus"]
         case .miniMaxCN, .miniMaxGlobal:
             return ["MiniMax-M2.5", "MiniMax-M2.5-highspeed", "MiniMax-M2.1", "MiniMax-M2.1-highspeed", "MiniMax-M2", "M2-her"]
         case .custom:
             return []
+        }
+    }
+    
+    /// 判断指定模型是否支持视觉（图片/多模态）
+    func supportsVision(model: String) -> Bool {
+        let m = model.lowercased()
+        switch self {
+        case .dashScope:
+            return m.contains("qwen-vl") || m.contains("qwen2-vl")
+        case .zhipuAI:
+            return m.contains("glm-4v") || m.contains("glm-4-plus")
+        case .miniMaxCN, .miniMaxGlobal:
+            return m.contains("abab6.5s") || m.contains("vision") || m.contains("m2")
+        case .openAI, .azureOpenAI:
+            return m.contains("gpt-4o") || m.contains("gpt-4-vision") || m.contains("gpt-4-turbo")
+        case .claude:
+            return m.contains("claude-3")
+        case .gemini:
+            return m.contains("gemini-1.5") || m.contains("gemini-2")
+        case .openRouter, .someIM, .custom:
+            return m.contains("vision") || m.contains("vl") || m.contains("4o") || m.contains("gpt-4")
+        case .ollama:
+            return m.contains("llava") || m.contains("vision") || m.contains("qwen-vl")
         }
     }
     
@@ -221,16 +244,21 @@ enum AIProtocolType: String, Codable, CaseIterable {
 /// AI 服务使用场景
 enum AIScenario: String, Codable, CaseIterable {
     case voiceInputOptimization = "voice_input_optimization"  // 语音输入优化
-    case meetingSummary = "meeting_summary"                    // 会议摘要
+    case meetingSummary = "meeting_summary"                    // 会议摘要（已移除）
     case todoParsing = "todo_parsing"                          // Todo 解析
     case aiChat = "ai_chat"                                     // AI 聊天
     case textCorrection = "text_correction"                     // 文本纠错
     case errorDetection = "error_detection"                    // 错误检测
-    case videoAnalysis = "video_analysis"                       // 视频分析
-    case diaryAnalysis = "diary_analysis"                       // 日记分析
-    case expenseParsing = "expense_parsing"                     // 记账解析
-    case intelGeneration = "intel_generation"                   // 情报生成
-    
+    case videoAnalysis = "video_analysis"                       // 视频分析（已移除）
+    case diaryAnalysis = "diary_analysis"                       // 日记分析（已移除）
+    case expenseParsing = "expense_parsing"                     // 记账解析（已移除）
+    case intelGeneration = "intel_generation"                   // 情报生成（已移除）
+
+    /// 当前版本仍在使用的场景，仅这些场景在设置中显示 AI 配置
+    static var activeScenarios: [AIScenario] {
+        [.voiceInputOptimization, .todoParsing, .aiChat]
+    }
+
     var displayName: String {
         switch self {
         case .voiceInputOptimization:

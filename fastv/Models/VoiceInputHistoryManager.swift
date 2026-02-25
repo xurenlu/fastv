@@ -199,7 +199,10 @@ class VoiceInputHistoryManager: ObservableObject {
         }
 
         if let decoded = try? JSONDecoder().decode([VoiceInputHistoryRecord].self, from: data) {
-            records = decoded
+            records = Array(decoded.prefix(maxRecords))
+            if decoded.count > maxRecords {
+                saveRecords()
+            }
         } else {
             records = []
         }

@@ -299,6 +299,26 @@ class VoiceInputService: ObservableObject {
         }
     }
 
+    /// 强制释放麦克风（用于应用退出/崩溃时的同步清理，不处理录音数据）
+    /// 确保状态栏的橙色麦克风图标能及时消失
+    func forceReleaseMicrophone() {
+        guard isRecording else { return }
+        print("🧹 [VoiceInputService] forceReleaseMicrophone() - 应用退出时强制释放麦克风")
+        audioLevelTimer?.invalidate()
+        audioLevelTimer = nil
+        cleanupAudioTap()
+        audioEngine?.stop()
+        audioEngine = nil
+        systemAudioEngine?.stop()
+        systemAudioEngine = nil
+        onAudioData = nil
+        onSegmentReady = nil
+        onConvertedAudioData = nil
+        isRecording = false
+        audioLevel = 0.0
+        print("✅ [VoiceInputService] 麦克风已释放")
+    }
+
     /// 清理音频 tap（确保在所有退出路径中调用）
     private func cleanupAudioTap() {
         if isMicTapInstalled, let engine = audioEngine {
@@ -441,8 +461,9 @@ class VoiceInputService: ObservableObject {
 
             systemAudioQueue.async {
                 // 同时检查缓冲区数量和字节大小
-                while self.systemAudioBuffers.count >= self.maxSystemAudioBuffers ||
-                      self.currentSystemAudioBytes >= self.maxSystemAudioBytes {
+                while (self.systemAudioBuffers.count >= self.maxSystemAudioBuffers ||
+                       self.currentSystemAudioBytes >= self.maxSystemAudioBytes),
+                      !self.systemAudioBuffers.isEmpty {
                     let removed = self.systemAudioBuffers.removeFirst()
                     self.currentSystemAudioBytes -= removed.count
                 }

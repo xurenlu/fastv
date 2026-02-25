@@ -71,7 +71,7 @@ struct ContentView: View {
                 .navigationTitle("功能")
                 .frame(minWidth: 140, idealWidth: 160, maxWidth: 180)
             } detail: {
-                // 右侧内容区域
+                // 右侧内容区域（.id 确保切换时销毁旧视图，释放内存，避免累积导致无响应）
                 Group {
                     switch selectedSidebarItem {
                     case .voiceInput:
@@ -120,6 +120,7 @@ struct ContentView: View {
                     SettingsView()
                         .frame(minWidth: 800, idealWidth: 900, maxWidth: 1000, minHeight: 600, idealHeight: 700, maxHeight: 800)
                 }
+                .id(selectedSidebarItem)
             }
             .frame(minWidth: 720, minHeight: 520)
             }

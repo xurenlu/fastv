@@ -8,7 +8,7 @@
 import SwiftUI
 
 /// Tab 2: AI与模型
-/// 包含：AI服务管理、场景映射、AI文本优化、文本纠错、会议AI摘要、模型文件
+/// 包含：AI服务管理、场景映射（语音优化/Todo/聊天）、AI文本优化、文本纠错、模型文件
 struct AIModelSettingsTab: View {
     @ObservedObject var preferences = UserPreferences.shared
     
@@ -103,7 +103,7 @@ struct AIModelSettingsTab: View {
             } header: {
                 Text("场景映射")
             } footer: {
-                Text("为不同功能场景（语音优化、会议摘要、Todo、AI 聊天等）配置独立的 AI 服务和模型。")
+                Text("为不同功能场景（语音输入优化、AI Todo、AI 聊天）配置独立的 AI 服务和模型。")
             }
             
             // AI 文本优化功能
@@ -191,13 +191,32 @@ struct AIModelSettingsTab: View {
                 }
             }
             
-            // 模型文件信息
+            // 语音转写模型
             Section {
-                ModelFileInfoView()
+                NavigationLink {
+                    OnboardingView()
+                        .navigationTitle("模型下载")
+                        .frame(minWidth: 600, minHeight: 500)
+                } label: {
+                    HStack {
+                        Image(systemName: "arrow.down.circle")
+                        Text("下载语音转写模型")
+                        Spacer()
+                        if ModelDownloader.shared.checkModelFilesExist() {
+                            Text("已下载")
+                                .foregroundStyle(.green)
+                                .font(.caption)
+                        } else {
+                            Text("未下载")
+                                .foregroundStyle(.orange)
+                                .font(.caption)
+                        }
+                    }
+                }
             } header: {
-                Text("模型文件")
+                Text("语音转写模型")
             } footer: {
-                Text("语音识别模型文件，首次使用需要下载（约 894MB）")
+                Text("SenseVoice（阿里达摩院）- 低延迟、中文优化、10秒音频约70ms")
             }
         }
         .formStyle(.grouped)

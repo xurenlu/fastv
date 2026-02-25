@@ -506,10 +506,9 @@ class EmailStore: ObservableObject {
     }
     
     /// 获取某个账号的所有邮件总数（去重后，与「所有邮件」视图显示逻辑一致）
+    /// - Note: 同步版本会阻塞主线程，仅用于兼容旧代码。新代码请使用 getTotalMessageCountAsync
     func getTotalMessageCount(for accountId: UUID) -> Int {
         // 按 message_id 去重：同一封邮件可能存在于多个文件夹，只计一次
-        // 与 ViewModel 中 updateMessagesForAllFolders 的去重逻辑保持一致
-        // 有 message_id 时按 message_id 分组，否则按 subject|from_email|date 分组
         let count = try? database.read { db -> Int in
             try Int.fetchOne(db, sql: """
                 SELECT COUNT(*) FROM (
@@ -530,7 +529,37 @@ class EmailStore: ObservableObject {
             return count
         }
         
-        // 降级方案：如果数据库查询失败或为0，尝试从内存缓存累加（并排除重复）
+        // 降级方案：从内存缓存累加
+        return getTotalMessageCountFromMemory(for: accountId)
+    }
+    
+    /// 异步获取账号邮件总数，不阻塞主线程（用于 View 层）
+    func getTotalMessageCountAsync(for accountId: UUID) async -> Int {
+        do {
+            let count = try await database.asyncRead { db -> Int in
+                try Int.fetchOne(db, sql: """
+                    SELECT COUNT(*) FROM (
+                        SELECT 1 FROM email_messages 
+                        WHERE account_id = ? 
+                        AND is_draft = 0 
+                        AND is_spam = 0 
+                        AND is_deleted = 0
+                        GROUP BY CASE 
+                            WHEN message_id IS NOT NULL AND TRIM(message_id) != '' THEN TRIM(message_id)
+                            ELSE COALESCE(subject, '') || '|' || COALESCE(from_email, '') || '|' || CAST(date AS TEXT)
+                        END
+                    )
+                """, arguments: [accountId.uuidString]) ?? 0
+            }
+            if count > 0 { return count }
+        } catch {
+            print("⚠️ [EmailStore] getTotalMessageCountAsync 失败: \(error)")
+        }
+        return await MainActor.run { getTotalMessageCountFromMemory(for: accountId) }
+    }
+    
+    /// 从内存缓存计算邮件总数（降级方案）
+    private func getTotalMessageCountFromMemory(for accountId: UUID) -> Int {
         guard let accountFolders = folders[accountId] else { return 0 }
         var seenMessageIds = Set<String>()
         var fallbackCount = 0

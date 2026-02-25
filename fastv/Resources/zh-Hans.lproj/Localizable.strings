@@ -43,6 +43,8 @@
 "transcribing" = "转文字中...";
 "speech.model.preload.title" = "正在加载语音模型";
 "speech.model.preload.message" = "首次加载语音识别模型，请稍候…";
+"voice.recording.too.short.title" = "录音过短";
+"voice.recording.too.short.message" = "录音时长过短，识别可能不准确。建议至少说半秒以上。";
 
 // 设置
 "enable.voice.input" = "启用语音输入法";
@@ -74,6 +76,8 @@
 "enable.incremental.transcription" = "智能分段转文字";
 "incremental.transcription.description" = "检测停顿时后台转写，松开快捷键时一次性输出，支持 AI 优化整段";
 "silence.detection.duration" = "停顿阈值";
+"voice.input.release.tail.buffer" = "松开后尾缓冲";
+"voice.input.release.tail.buffer.description" = "松开快捷键后继续录音一小段时间，减少末尾内容丢失（0 为关闭）";
 
 // 统计
 "total.duration" = "总时长";
@@ -288,6 +292,62 @@
 "start.recording" = "开始录音";
 "stop.recording" = "停止录音";
 "ai.process" = "AI 解析";
+
+// AI 聊天
+"ai.chat" = "AI 聊天";
+"chat.new.session" = "新建会话";
+"chat.create.new.session" = "创建新会话";
+"chat.click.to.create" = "点击左侧「新建会话」开始对话";
+"chat.empty.sessions" = "暂无会话";
+"chat.start.conversation" = "开始对话";
+"chat.config.required" = "请先在设置中配置 API Endpoint（API Key 可选，某些本地 API 如 Ollama 不需要）";
+"chat.open.settings" = "打开设置";
+"chat.provider" = "服务商";
+"chat.model" = "模型";
+"chat.no.models" = "无可用模型";
+"chat.attachment.not.supported" = "当前服务商或模型不支持图片/附件";
+"chat.parameters" = "参数";
+"chat.send" = "发送";
+"chat.upload.image" = "上传图片/附件";
+"chat.voice.input" = "语音输入";
+"chat.voice.not.supported" = "语音功能暂未支持";
+"chat.stop.recording" = "停止录音";
+"chat.delete.session" = "删除会话";
+"chat.delete.session.confirm" = "确定要删除这个会话吗？此操作无法撤销。";
+"chat.response.time.unit" = "秒";
+"chat.thinking.mode" = "思考模式";
+"chat.thinking.mode.help" = "开启后模型会先进行推理再回复，质量更高但响应更慢。仅 qwen3 等支持 thinking 的模型有效。";
+"chat.thinking.process" = "思考过程";
+
+// 邮箱
+"email.new.message" = "新邮件";
+"email.account.management" = "账号管理";
+"email.sync" = "同步";
+"email.account" = "账号";
+"email.select.account" = "请选择邮箱账号";
+"email.no.account" = "没有邮箱账号";
+"email.add.account" = "添加账号";
+"email.no.folders" = "没有文件夹";
+"email.refresh" = "刷新";
+"email.loading.folders" = "正在加载文件夹...";
+"email.write" = "写邮件";
+"email.all.messages" = "所有邮件";
+"email.folders" = "文件夹";
+"email.empty.folders" = "空文件夹";
+"email.search" = "搜索邮件";
+"email.multi.select" = "进入多选模式";
+"email.exit.multi.select" = "退出多选模式";
+"email.select.all" = "全选";
+"email.deselect.all" = "取消全选";
+"email.selected.count" = "已选中 %d 封";
+"email.archive" = "归档";
+"email.delete" = "删除";
+"email.no.messages" = "没有邮件";
+"email.no.messages.sync.hint" = "暂无邮件，稍后同步或选择文件夹";
+"email.select.message.hint" = "请在邮件列表中选择一封邮件";
+"email.no.more.messages" = "已经没有更多邮件";
+"email.load.more" = "加载更多...";
+"email.ai.summary" = "AI 摘要";
 "sync.from.reminders" = "从提醒事项同步";
 "sync.from.reminders.help" = "从 macOS 提醒事项应用同步待办事项";
 "reminders.permission.denied" = "需要访问提醒事项的权限。请在系统设置 > 隐私与安全性 > 提醒事项中授权。";
@@ -331,3 +391,39 @@
 
 // 邮箱
 "email.folder.local_sent" = "已发送(本地)";
+
+// 产品特性介绍
+"feature.intro.skip" = "跳过";
+"feature.intro.previous" = "上一步";
+"feature.intro.next" = "下一步";
+"feature.intro.start" = "开始使用";
+
+// 特性1: 闪电速度
+"feature.intro.speed.title" = "闪电般的转写速度";
+"feature.intro.speed.description" = "采用本地高性能模型，无需网络连接，10 秒音频仅需约 70 毫秒即可完成转写，比实时还快。";
+"feature.intro.speed.highlight" = "比实时快 100+ 倍";
+
+// 特性2: 动态规划精准
+"feature.intro.accuracy.title" = "动态规划算法，又快又准";
+"feature.intro.accuracy.description" = "创新的动态规划分段策略，智能识别停顿和语速变化，在保证极速的同时，实现更高准确率。";
+"feature.intro.accuracy.highlight" = "准确率提升 20%+";
+
+// 特性3: 智能分段
+"feature.intro.smart.title" = "智能增量转写";
+"feature.intro.smart.description" = "边说边转，无需等待录音结束。自动检测语音停顿，实时展示转写结果，体验更流畅。";
+"feature.intro.smart.highlight" = "实时响应，无需等待";
+
+// 特性4: 多语言支持
+"feature.intro.multilang.title" = "多语言支持";
+"feature.intro.multilang.description" = "支持中文、英语、日语、韩语、粤语等多种语言，自动识别语种，满足全球化需求。";
+"feature.intro.multilang.highlight" = "支持 6+ 种语言";
+
+// 启动屏特性介绍（简化版）
+"feature.splash.speed.subtitle" = "10 秒音频仅需 70ms";
+"feature.splash.accuracy.subtitle" = "动态规划算法，又快又准";
+"feature.splash.smart.subtitle" = "边说边转，实时响应";
+"feature.splash.multilang.subtitle" = "支持 6+ 种语言";
+
+// 模型预加载提示
+"speech.model.preload.title" = "正在初始化语音模型...";
+"speech.model.preload.message" = "首次使用需要加载模型，请稍候";

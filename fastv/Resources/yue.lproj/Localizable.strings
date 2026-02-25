@@ -43,6 +43,8 @@
 "transcribing" = "轉文字中...";
 "speech.model.preload.title" = "正在載入語音模型";
 "speech.model.preload.message" = "首次載入語音識別模型，請稍候…";
+"voice.recording.too.short.title" = "錄音過短";
+"voice.recording.too.short.message" = "錄音時長過短，識別可能唔準。建議至少講半秒以上。";
 
 // 設定
 "enable.voice.input" = "啟用語音輸入法";
@@ -74,6 +76,8 @@
 "enable.incremental.transcription" = "智能分段轉文字";
 "incremental.transcription.description" = "檢測停頓時後台轉寫，鬆開快捷鍵時一次性輸出，支援 AI 優化整段";
 "silence.detection.duration" = "停頓閾值";
+"voice.input.release.tail.buffer" = "鬆開後尾緩衝";
+"voice.input.release.tail.buffer.description" = "鬆開快捷鍵後繼續錄音一小段時間，減少末尾內容丟失（0 為關閉）";
 
 // 統計
 "total.duration" = "總時長";

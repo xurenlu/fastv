@@ -43,6 +43,8 @@
 "transcribing" = "文字変換中...";
 "speech.model.preload.title" = "音声モデルを読み込み中";
 "speech.model.preload.message" = "初回の音声認識モデルの読み込み中です。しばらくお待ちください。";
+"voice.recording.too.short.title" = "録音が短すぎます";
+"voice.recording.too.short.message" = "録音が短すぎて正確な認識ができません。少なくとも0.5秒以上話してください。";
 
 // 設定
 "enable.voice.input" = "音声入力を有効にする";
@@ -74,6 +76,8 @@
 "enable.incremental.transcription" = "スマートセグメント転写";
 "incremental.transcription.description" = "ポーズでバックグラウンド転写、ショートカット解放時に一括出力。AI最適化対応";
 "silence.detection.duration" = "ポーズ閾値";
+"voice.input.release.tail.buffer" = "リリース後テールバッファ";
+"voice.input.release.tail.buffer.description" = "ショートカットを離した後、少し録音を続けて末尾の内容の欠落を減らす（0で無効）";
 
 // 統計
 "total.duration" = "合計時間";
