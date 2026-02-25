@@ -78,12 +78,24 @@
 // 統計
 "total.duration" = "合計時間";
 "total.characters" = "合計文字数";
+"today.characters" = "今日";
+"avg.characters.per.record" = "1件あたり平均";
+"copy.success" = "コピーしました";
 "characters.per.minute" = "文字/分";
 "minutes" = "分";
 "hours" = "時間";
 "characters" = "文字";
 "key" = "キー";
 "minute" = "分";
+"seconds.short" = "秒";
+"stats.today" = "今日";
+"stats.all" = "累計";
+"stats.characters" = "文字数";
+"stats.chars.per.min" = "文字/分";
+"stats.audio.seconds" = "音声";
+"stats.transcription.seconds" = "転写";
+"stats.realtime.factor" = "RTF";
+"stats.realtime.factor.unit" = "倍";
 
 // オンボーディング
 "onboarding.welcome" = "智響（ちきょう / Chikyō）へようこそ";
@@ -216,7 +228,9 @@
 "ai.test.connection" = "接続をテスト";
 "ai.test.connection.help" = "Ollama APIへの接続をテスト";
 "ai.fetch.models" = "モデルリストを取得";
-"ai.fetch.models.help" = "Ollamaから利用可能なモデルリストを取得";
+"ai.fetch.models.help" = "Ollamaからダウンロード済みモデルを取得し、ダウンロード可能なモデルを表示";
+"ai.ollama.models.downloaded" = "ダウンロード済み";
+"ai.ollama.models.available" = "ダウンロード可能（↓をタップでダウンロード）";
 "ai.test.optimization" = "テキスト最適化をテスト";
 "ai.test.optimization.help" = "テストテキストを送信してAI最適化機能を検証";
 "settings.title" = "設定";

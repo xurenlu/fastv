@@ -78,12 +78,24 @@
 // Statistics
 "total.duration" = "Total Duration";
 "total.characters" = "Total Characters";
+"today.characters" = "Today";
+"avg.characters.per.record" = "Avg per record";
+"copy.success" = "Copied";
 "characters.per.minute" = "chars/min";
 "minutes" = "min";
 "hours" = "hours";
 "characters" = "chars";
 "key" = "Key";
 "minute" = "min";
+"seconds.short" = "s";
+"stats.today" = "Today";
+"stats.all" = "All";
+"stats.characters" = "Chars";
+"stats.chars.per.min" = "Chars/min";
+"stats.audio.seconds" = "Audio";
+"stats.transcription.seconds" = "Transcribe";
+"stats.realtime.factor" = "RTF";
+"stats.realtime.factor.unit" = "x";
 
 // Onboarding
 "onboarding.welcome" = "Welcome to row1";
@@ -216,7 +228,9 @@
 "ai.test.connection" = "Test Connection";
 "ai.test.connection.help" = "Test connection to Ollama API";
 "ai.fetch.models" = "Fetch Model List";
-"ai.fetch.models.help" = "Fetch available model list from Ollama";
+"ai.fetch.models.help" = "Fetch downloaded models from Ollama and show available models to download";
+"ai.ollama.models.downloaded" = "Downloaded";
+"ai.ollama.models.available" = "Available (tap ↓ to download)";
 "ai.test.optimization" = "Test Text Optimization";
 "ai.test.optimization.help" = "Send test text to verify AI optimization functionality";
 "settings.title" = "Settings";

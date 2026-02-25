@@ -55,20 +55,21 @@ struct AIServiceManagementView: View {
             } else {
                 List {
                     ForEach(preferences.aiServiceProfiles) { profile in
+                        let capturedProfile = profile
                         ProfileRowView(
                             profile: profile,
                             isSelected: selectedProfile?.id == profile.id,
-                            onSelect: { selectedProfile = profile },
+                            onSelect: { selectedProfile = capturedProfile },
                             onEdit: {
-                                editingProfile = profile
+                                editingProfile = capturedProfile
                                 showEditSheet = true
                             },
                             onDelete: {
-                                profileToDelete = profile
+                                profileToDelete = capturedProfile
                                 showDeleteAlert = true
                             },
                             onSetDefault: {
-                                preferences.setDefaultProfile(profile)
+                                preferences.setDefaultProfile(capturedProfile)
                             }
                         )
                         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
@@ -463,6 +464,14 @@ struct AIProfileEditView: View {
     @State private var defaultModel: String
     @State private var timeout: Double
     
+    // Ollama 模型列表相关
+    @State private var downloadedModels: [OllamaModelInfo] = []
+    @State private var availableLibraryModels: [OllamaModelInfo] = []
+    @State private var isFetchingModels = false
+    @State private var fetchingError: String?
+    @State private var downloadingModel: String?
+    @State private var downloadProgress: (status: String, completed: Int64, total: Int64) = ("", 0, 0)
+    
     init(profile: AIServiceProfile?, onSave: @escaping (AIServiceProfile) -> Void, onCancel: @escaping () -> Void) {
         self.profile = profile
         self.onSave = onSave
@@ -560,8 +569,12 @@ struct AIProfileEditView: View {
                 Section {
             endpointField
             apiKeyField
-            modelField
-            recommendedModelsView
+            if protocolType == .ollama {
+                ollamaModelSection
+            } else {
+                modelField
+                recommendedModelsView
+            }
             timeoutSlider
         } header: {
             Text("连接配置")
@@ -599,9 +612,9 @@ struct AIProfileEditView: View {
                         SecureField("API Key", text: $apiKey, prompt: Text("输入您的 API Key"))
                             .textFieldStyle(.roundedBorder)
                         
-                        // 申请链接按钮（仅阿里云显示）
-                        if protocolType == .dashScope {
-                Button(action: openAliyunAPIKeyPage) {
+                        // 申请链接按钮（部分服务显示）
+                        if let apiKeyURL = protocolType.apiKeyApplicationURL {
+                            Button(action: { openURL(apiKeyURL) }) {
                                 HStack(spacing: 4) {
                                     Image(systemName: "link")
                                         .font(.caption)
@@ -616,10 +629,216 @@ struct AIProfileEditView: View {
                     }
     }
     
-    private func openAliyunAPIKeyPage() {
-        let aliyunAPIKeyURL = "https://bailian.console.aliyun.com/?accounttraceid=ecf52b9459854c13be278b89515acd5ekwwf&tab=model#/api-key"
-        if let url = URL(string: aliyunAPIKeyURL) {
+    private func openURL(_ urlString: String) {
+        if let url = URL(string: urlString) {
             NSWorkspace.shared.open(url)
+        }
+    }
+    
+    // MARK: - Ollama 模型选择（已下载 + 可下载 + 下载）
+    @ViewBuilder
+    private var ollamaModelSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            TextField(NSLocalizedString("ai.model.name", comment: ""), text: $defaultModel, prompt: Text(NSLocalizedString("ai.model.example", comment: "")))
+                .textFieldStyle(.roundedBorder)
+            
+            Button(action: fetchOllamaModels) {
+                HStack(spacing: 6) {
+                    if isFetchingModels {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    Text(NSLocalizedString("ai.fetch.models", comment: ""))
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .disabled(isFetchingModels || endpoint.isEmpty)
+            .help(NSLocalizedString("ai.fetch.models.help", comment: ""))
+            
+            if let error = fetchingError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+            
+            // 已下载的模型
+            if !downloadedModels.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(NSLocalizedString("ai.ollama.models.downloaded", comment: "已下载"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(downloadedModels) { model in
+                                ollamaModelChip(model: model, isDownloaded: true)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            }
+            
+            // 可下载的模型
+            if !availableLibraryModels.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(NSLocalizedString("ai.ollama.models.available", comment: "可下载"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(availableLibraryModels) { model in
+                                ollamaLibraryModelChip(model: model)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            }
+            
+            // 下载进度
+            if let downloading = downloadingModel {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                    Text("\(downloading): \(downloadProgress.status)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if downloadProgress.total > 0 {
+                        Text("\(formatBytes(downloadProgress.completed)) / \(formatBytes(downloadProgress.total))")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func ollamaModelChip(model: OllamaModelInfo, isDownloaded: Bool) -> some View {
+        let isSelected = defaultModel == model.name
+        Button(action: { defaultModel = model.name }) {
+            HStack(spacing: 4) {
+                Text(model.name)
+                    .font(.caption)
+                Text("(\(model.formattedSize))")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(isSelected ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.1))
+            )
+            .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+        }
+        .buttonStyle(.plain)
+    }
+    
+    @ViewBuilder
+    private func ollamaLibraryModelChip(model: OllamaModelInfo) -> some View {
+        let isSelected = defaultModel == model.name
+        let isDownloading = downloadingModel == model.name
+        HStack(spacing: 4) {
+            Button(action: { defaultModel = model.name }) {
+                HStack(spacing: 4) {
+                    Text(model.name)
+                        .font(.caption)
+                    if let param = model.parameterSize {
+                        Text("(\(param))")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    Text("· \(model.formattedSize)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(isSelected ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.08))
+                )
+                .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+            }
+            .buttonStyle(.plain)
+            
+            Button(action: { pullOllamaModel(model.name) }) {
+                Image(systemName: "arrow.down.circle")
+                    .font(.system(size: 14))
+                    .foregroundStyle(isDownloading ? Color.secondary : Color.accentColor)
+            }
+            .buttonStyle(.plain)
+            .disabled(isDownloading || downloadingModel != nil)
+        }
+    }
+    
+    private func formatBytes(_ bytes: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        formatter.allowedUnits = [.useGB, .useMB]
+        formatter.includesUnit = true
+        return formatter.string(fromByteCount: bytes)
+    }
+    
+    private func fetchOllamaModels() {
+        isFetchingModels = true
+        fetchingError = nil
+        Task {
+            do {
+                let models = try await OllamaService.shared.fetchModelsWithDetails(
+                    endpoint: effectiveEndpoint,
+                    apiToken: apiKey.isEmpty ? nil : apiKey
+                )
+                let downloadedNames = Set(models.map { $0.name.lowercased() })
+                let available = OllamaLibrary.availableModels(excludingDownloaded: downloadedNames)
+                await MainActor.run {
+                    downloadedModels = models
+                    availableLibraryModels = available
+                    isFetchingModels = false
+                }
+            } catch {
+                await MainActor.run {
+                    fetchingError = error.localizedDescription
+                    isFetchingModels = false
+                }
+            }
+        }
+    }
+    
+    private var effectiveEndpoint: String {
+        let e = endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !e.isEmpty { return e }
+        return protocolType.defaultEndpoint ?? "http://127.0.0.1:11434"
+    }
+    
+    private func pullOllamaModel(_ model: String) {
+        guard downloadingModel == nil else { return }
+        downloadingModel = model
+        downloadProgress = ("", 0, 0)
+        Task {
+            do {
+                try await OllamaService.shared.pullModel(
+                    endpoint: effectiveEndpoint,
+                    model: model,
+                    apiToken: apiKey.isEmpty ? nil : apiKey
+                ) { status, completed, total in
+                    downloadProgress = (status, completed, total)
+                }
+                await MainActor.run {
+                    downloadingModel = nil
+                    defaultModel = model
+                    fetchOllamaModels() // 刷新列表
+                }
+            } catch {
+                await MainActor.run {
+                    downloadingModel = nil
+                    fetchingError = error.localizedDescription
+                }
+            }
         }
     }
     

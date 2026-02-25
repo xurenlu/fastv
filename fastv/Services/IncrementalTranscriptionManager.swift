@@ -138,36 +138,55 @@ class IncrementalTranscriptionManager: ObservableObject {
             processQueue()  // 继续处理队列中的下一个
             return
         }
-        
+
         // 标记为转写中
         segments[index].isTranscribing = true
         currentSegmentIndex = index
         isProcessing = true
-        
+
         // 通知片段开始转写
         onSegmentStarted?(index + 1, segments.count)
-        
+
         print("🔄 [IncrementalTranscription] 开始转写段落 #\(index + 1)/\(segments.count)，队列剩余: \(transcriptionQueue.count)个")
-        
+
         // 创建转写任务 - 使用 Task.detached 确保在后台线程执行，避免阻塞 UI
         currentTranscriptionTask = Task { @MainActor in
             let startTime = CFAbsoluteTimeGetCurrent()
-            
+
             do {
+                // 检查是否已取消
+                guard !Task.isCancelled else {
+                    print("⚠️ [IncrementalTranscription] 任务已取消，跳过转写")
+                    await MainActor.run {
+                        self.currentSegmentIndex = nil
+                        self.isProcessingQueue = false
+                        self.processQueue()
+                    }
+                    return
+                }
+
                 // 构造VoiceRecording
                 let recording = VoiceRecording(
                     pcmData: audioData,
                     sampleRate: sampleRate,
                     channelCount: channelCount
                 )
-                
+
                 // 使用 Task.detached 在后台线程执行转写，避免阻塞主线程
+                // 传递父任务的检查函数，支持协作式取消
                 let transcript = try await Task.detached(priority: .userInitiated) {
-                    try await SpeechTranscriber.transcribe(recording: recording, language: language)
+                    // 定期检查取消状态
+                    let isCancelled = { Task.isCancelled }
+
+                    return try await SpeechTranscriber.transcribe(
+                        recording: recording,
+                        language: language,
+                        cancellationCheck: isCancelled
+                    )
                 }.value
-                
+
                 let duration = CFAbsoluteTimeGetCurrent() - startTime
-                
+
                 // 回到主线程更新 UI
                 await MainActor.run {
                     // 更新段落
@@ -175,9 +194,9 @@ class IncrementalTranscriptionManager: ObservableObject {
                         self.segments[idx].transcript = transcript
                         self.segments[idx].isTranscribing = false
                         print("✅ [IncrementalTranscription] 段落 #\(idx + 1) 转写完成 (耗时\(String(format: "%.1f", duration))s): \(transcript.prefix(30))...")
-                        
+
                         self.objectWillChange.send()
-                        
+
                         // 触发转写更新回调，传递完整的转录文本
                         let fullText = self.getFullTranscript()
                         self.onTranscriptionUpdated?(fullText)
@@ -187,18 +206,25 @@ class IncrementalTranscriptionManager: ObservableObject {
                 // 回到主线程记录错误
                 await MainActor.run {
                     if let idx = self.segments.firstIndex(where: { $0.id == segmentId }) {
-                        self.segments[idx].transcriptionError = error.localizedDescription
-                        self.segments[idx].isTranscribing = false
-                        print("❌ [IncrementalTranscription] 段落 #\(idx + 1) 转写失败: \(error)")
+                        // 检查是否是取消错误
+                        let nsError = error as NSError
+                        if Task.isCancelled || nsError.domain == NSCocoaErrorDomain && nsError.code == NSUserCancelledError {
+                            self.segments[idx].isTranscribing = false
+                            print("⚠️ [IncrementalTranscription] 段落 #\(idx + 1) 转写已取消")
+                        } else {
+                            self.segments[idx].transcriptionError = error.localizedDescription
+                            self.segments[idx].isTranscribing = false
+                            print("❌ [IncrementalTranscription] 段落 #\(idx + 1) 转写失败: \(error)")
+                        }
                     }
                 }
             }
-            
+
             await MainActor.run {
                 self.currentSegmentIndex = nil
                 self.isProcessing = self.transcriptionQueue.count > 0
                 self.isProcessingQueue = false
-                
+
                 // 继续处理队列中的下一个任务
                 self.processQueue()
             }

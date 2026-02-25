@@ -78,12 +78,24 @@
 // 统计
 "total.duration" = "总时长";
 "total.characters" = "总字数";
+"today.characters" = "今日字数";
+"avg.characters.per.record" = "平均每条";
+"copy.success" = "已复制成功";
 "characters.per.minute" = "字/分";
 "minutes" = "分";
 "hours" = "小时";
 "characters" = "字";
 "key" = "键";
 "minute" = "分";
+"seconds.short" = "秒";
+"stats.today" = "今日";
+"stats.all" = "累计";
+"stats.characters" = "字数";
+"stats.chars.per.min" = "字/分";
+"stats.audio.seconds" = "识别语音";
+"stats.transcription.seconds" = "识别耗时";
+"stats.realtime.factor" = "实时率";
+"stats.realtime.factor.unit" = "倍";
 
 // 引导流程
 "onboarding.welcome" = "欢迎使用 若一智能助手";
@@ -216,7 +228,9 @@
 "ai.test.connection" = "测试连接";
 "ai.test.connection.help" = "测试与 Ollama API 的连接";
 "ai.fetch.models" = "获取模型列表";
-"ai.fetch.models.help" = "从 Ollama 获取可用的模型列表";
+"ai.fetch.models.help" = "从 Ollama 获取已下载的模型列表，并显示可下载的推荐模型";
+"ai.ollama.models.downloaded" = "已下载";
+"ai.ollama.models.available" = "可下载（点击右侧 ↓ 下载）";
 "ai.test.optimization" = "测试文本优化";
 "ai.test.optimization.help" = "发送测试文本，验证 AI 优化功能是否正常工作";
 "settings.title" = "设置";

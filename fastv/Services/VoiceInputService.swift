@@ -26,6 +26,9 @@ class VoiceInputService: ObservableObject {
     private var systemAudioEngine: AVAudioEngine?  // 用于捕获系统音频的独立引擎
     private var mixerNode: AVAudioMixerNode?
     private var audioLevelTimer: Timer?
+    // 跟踪 tap 安装状态，确保正确清理
+    private var isMicTapInstalled = false
+    private var isSystemAudioTapInstalled = false
     nonisolated(unsafe) private var recordedBuffers: [Data] = []
     private var recordingOriginalFormat: AVAudioFormat?
     private let recordingSampleRate: Double = 16000
@@ -56,6 +59,11 @@ class VoiceInputService: ObservableObject {
     private let maxBufferSizeBytes = 50 * 1024 * 1024
     private var currentBufferSizeBytes = 0
     private var currentSegmentSizeBytes = 0
+
+    // 系统音频缓冲区限制（防止内存问题）
+    private let maxSystemAudioBuffers = 100
+    private let maxSystemAudioBytes = 10 * 1024 * 1024  // 10MB
+    nonisolated(unsafe) private var currentSystemAudioBytes = 0
     
     private init() {
         // 初始化时检查系统音频可用性
@@ -229,6 +237,7 @@ class VoiceInputService: ObservableObject {
         }
         systemAudioQueue.sync {
             self.systemAudioBuffers = []
+            self.currentSystemAudioBytes = 0
         }
         recordingStartTime = Date()
         lastSegmentTime = Date()
@@ -240,27 +249,28 @@ class VoiceInputService: ObservableObject {
         let format = inputNode.inputFormat(forBus: 0)
         print("✅ [VoiceInputService] 麦克风输入格式: \(format)")
         recordingOriginalFormat = format
-        
+
         // 安装 tap 来捕获麦克风音频
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, time in
             guard let self = self else { return }
             self.processMicrophoneBuffer(buffer)
         }
-        
+        isMicTapInstalled = true
+
         self.audioEngine = engine
-        
+
         // 尝试启动系统音频捕获（如果 BlackHole 可用）
         if isSystemAudioAvailable {
             startSystemAudioCapture()
         }
-        
+
         // 启动麦克风引擎
         do {
             print("🎤 [VoiceInputService] 启动麦克风音频引擎...")
             try engine.start()
             isRecording = true
             print("✅ [VoiceInputService] 麦克风音频引擎已启动")
-            
+
             // 启动音频电平更新定时器
             audioLevelTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] timer in
                 guard let strongSelf = self else {
@@ -283,7 +293,23 @@ class VoiceInputService: ObservableObject {
             print("✅ [VoiceInputService] 音频电平定时器已启动")
         } catch {
             print("❌ [VoiceInputService] 启动音频引擎失败: \(error)")
+            // 启动失败时清理 tap
+            cleanupAudioTap()
             throw VoiceInputError.failedToStartRecording(error.localizedDescription)
+        }
+    }
+
+    /// 清理音频 tap（确保在所有退出路径中调用）
+    private func cleanupAudioTap() {
+        if isMicTapInstalled, let engine = audioEngine {
+            engine.inputNode.removeTap(onBus: 0)
+            isMicTapInstalled = false
+            print("🧹 [VoiceInputService] 已移除麦克风 tap")
+        }
+        if isSystemAudioTapInstalled, let sysEngine = systemAudioEngine {
+            sysEngine.inputNode.removeTap(onBus: 0)
+            isSystemAudioTapInstalled = false
+            print("🧹 [VoiceInputService] 已移除系统音频 tap")
         }
     }
     
@@ -356,21 +382,21 @@ class VoiceInputService: ObservableObject {
         // 注意：在 macOS 上，使用 BlackHole 需要用户在系统设置中配置
         // 这里我们尝试创建一个独立的引擎来捕获系统音频
         // 但这需要用户将 BlackHole 设置为系统输入设备之一
-        
+
         print("🔊 [VoiceInputService] 尝试启动系统音频捕获...")
-        
+
         // 检查 BlackHole 设备
         guard let blackHoleID = getBlackHoleDeviceID() else {
             print("⚠️ [VoiceInputService] 未找到 BlackHole 设备 ID，跳过系统音频捕获")
             return
         }
-        
+
         print("✅ [VoiceInputService] 找到 BlackHole 设备 ID: \(blackHoleID)")
-        
+
         // 创建系统音频引擎
         let sysEngine = AVAudioEngine()
         let sysInputNode = sysEngine.inputNode
-        
+
         // 尝试设置输入设备为 BlackHole
         do {
             try setAudioInputDevice(blackHoleID, for: sysEngine)
@@ -379,16 +405,17 @@ class VoiceInputService: ObservableObject {
             print("💡 [VoiceInputService] 请在系统设置中将 BlackHole 添加到输入设备")
             return
         }
-        
+
         let sysFormat = sysInputNode.inputFormat(forBus: 0)
         print("✅ [VoiceInputService] 系统音频输入格式: \(sysFormat)")
-        
+
         // 安装 tap 来捕获系统音频
         sysInputNode.installTap(onBus: 0, bufferSize: 1024, format: sysFormat) { [weak self] buffer, time in
             guard let self = self else { return }
             self.processSystemAudioBuffer(buffer)
         }
-        
+        isSystemAudioTapInstalled = true
+
         // 启动系统音频引擎
         do {
             try sysEngine.start()
@@ -396,6 +423,11 @@ class VoiceInputService: ObservableObject {
             print("✅ [VoiceInputService] 系统音频引擎已启动")
         } catch {
             print("⚠️ [VoiceInputService] 启动系统音频引擎失败: \(error)")
+            // 失败时清理 tap
+            if isSystemAudioTapInstalled {
+                sysInputNode.removeTap(onBus: 0)
+                isSystemAudioTapInstalled = false
+            }
         }
     }
     
@@ -406,12 +438,21 @@ class VoiceInputService: ObservableObject {
             let byteCount = frames * MemoryLayout<Float>.size
             let pcmPointer = channelData.pointee
             let data = Data(bytes: pcmPointer, count: byteCount)
-            
+
             systemAudioQueue.async {
+                // 同时检查缓冲区数量和字节大小
+                while self.systemAudioBuffers.count >= self.maxSystemAudioBuffers ||
+                      self.currentSystemAudioBytes >= self.maxSystemAudioBytes {
+                    let removed = self.systemAudioBuffers.removeFirst()
+                    self.currentSystemAudioBytes -= removed.count
+                }
+
                 self.systemAudioBuffers.append(data)
-                // 限制缓冲区大小，避免内存问题
-                while self.systemAudioBuffers.count > 100 {
-                    self.systemAudioBuffers.removeFirst()
+                self.currentSystemAudioBytes += byteCount
+
+                // 监控和警告
+                if self.systemAudioBuffers.count > self.maxSystemAudioBuffers / 2 {
+                    print("⚠️ [VoiceInputService] 系统音频缓冲区使用: \(self.systemAudioBuffers.count)/\(self.maxSystemAudioBuffers), \(self.currentSystemAudioBytes / 1024)KB/\(self.maxSystemAudioBytes / 1024)KB")
                 }
             }
         }
@@ -470,36 +511,38 @@ class VoiceInputService: ObservableObject {
     /// 停止录音并返回音频数据
     func stopRecording() async throws -> VoiceRecording? {
         print("🎤 [VoiceInputService] stopRecording() 被调用，当前 isRecording=\(isRecording)")
-        
+
         guard isRecording else {
             print("ℹ️ [VoiceInputService] 未在录音中，返回 nil")
             return nil
         }
-        
+
         print("🎤 [VoiceInputService] 停止音频引擎和定时器...")
         audioLevelTimer?.invalidate()
         audioLevelTimer = nil
-        
+
+        // 清理所有 tap
+        cleanupAudioTap()
+
         // 停止麦克风引擎
-        audioEngine?.inputNode.removeTap(onBus: 0)
         audioEngine?.stop()
         audioEngine = nil
-        
+
         // 停止系统音频引擎
-        systemAudioEngine?.inputNode.removeTap(onBus: 0)
         systemAudioEngine?.stop()
         systemAudioEngine = nil
-        
+
         // 清空系统音频缓冲
         systemAudioQueue.sync {
             self.systemAudioBuffers = []
+            self.currentSystemAudioBytes = 0
         }
-        
+
         // 清空回調，避免循環引用
         onAudioData = nil
         onSegmentReady = nil
         // 注意：onConvertedAudioData 在使用後再清空
-        
+
         isRecording = false
         audioLevel = 0.0
         
@@ -600,33 +643,35 @@ class VoiceInputService: ObservableObject {
         Task { @MainActor in
             audioLevelTimer?.invalidate()
             audioLevelTimer = nil
-            
+
+            // 清理所有 tap
+            cleanupAudioTap()
+
             // 停止麦克风引擎
-            audioEngine?.inputNode.removeTap(onBus: 0)
             audioEngine?.stop()
             audioEngine = nil
-            
+
             // 停止系统音频引擎
-            systemAudioEngine?.inputNode.removeTap(onBus: 0)
             systemAudioEngine?.stop()
             systemAudioEngine = nil
-            
+
             recordingDataQueue.sync {
                 self.recordedBuffers = []
                 self.segmentBuffers = []
                 self.currentBufferSizeBytes = 0
                 self.currentSegmentSizeBytes = 0
             }
-            
+
             systemAudioQueue.sync {
                 self.systemAudioBuffers = []
+                self.currentSystemAudioBytes = 0
             }
-            
+
             // 清空回調，避免循環引用
             onAudioData = nil
             onSegmentReady = nil
             onConvertedAudioData = nil
-            
+
             isRecording = false
             audioLevel = 0.0
             recordingDuration = 0
@@ -634,20 +679,21 @@ class VoiceInputService: ObservableObject {
             lastSegmentTime = nil
         }
     }
-    
+
     /// 強制清理所有資源（用於調試內存泄漏時調用）
     func forceCleanup() {
         print("🧹 [VoiceInputService] forceCleanup() - 強制清理所有資源")
-        
+
         audioLevelTimer?.invalidate()
         audioLevelTimer = nil
-        
+
+        // 清理所有 tap
+        cleanupAudioTap()
+
         // 停止所有引擎
-        audioEngine?.inputNode.removeTap(onBus: 0)
         audioEngine?.stop()
         audioEngine = nil
-        
-        systemAudioEngine?.inputNode.removeTap(onBus: 0)
+
         systemAudioEngine?.stop()
         systemAudioEngine = nil
         
@@ -661,6 +707,7 @@ class VoiceInputService: ObservableObject {
         
         systemAudioQueue.sync {
             self.systemAudioBuffers = []
+            self.currentSystemAudioBytes = 0
         }
         
         // 清空所有回調
@@ -805,41 +852,38 @@ class VoiceInputService: ObservableObject {
               ) else {
             throw VoiceInputError.failedToStartRecording("无法创建输出缓冲")
         }
-        
-        print("🔄 [VoiceInputService] 开始转换: 源帧数=\(frames), 源采样率=\(originalFormat.sampleRate), 目标采样率=\(toSampleRate), 目标容量=\(outputCapacity)")
-        
+
         var error: NSError?
-        let inputExhaustedLock = NSLock()
+        // 使用 os_unfair_lock 替代 NSLock，性能更好且避免死锁风险
+        var inputExhaustedLock = os_unfair_lock()
         let inputExhaustedRef = UnsafeMutablePointer<Bool>.allocate(capacity: 1)
         inputExhaustedRef.initialize(to: false)
         defer {
             inputExhaustedRef.deinitialize(count: 1)
             inputExhaustedRef.deallocate()
         }
-        
+
         let inputBlock: AVAudioConverterInputBlock = { inNumPackets, outStatus in
-            // 确保只提供一次数据
-            inputExhaustedLock.lock()
-            defer { inputExhaustedLock.unlock() }
-            
+            // 使用 os_unfair_lock 确保只提供一次数据
+            os_unfair_lock_lock(&inputExhaustedLock)
+            defer { os_unfair_lock_unlock(&inputExhaustedLock) }
+
             if inputExhaustedRef.pointee {
                 outStatus.pointee = .noDataNow
                 return nil
             }
-            
+
             inputExhaustedRef.pointee = true
             outStatus.pointee = .haveData
             return sourceBuffer
         }
-        
+
         converter.convert(to: convertedBuffer, error: &error, withInputFrom: inputBlock)
-        
+
         if let error = error {
             throw VoiceInputError.failedToStartRecording("转换失败: \(error.localizedDescription)")
         }
-        
-        print("✅ [VoiceInputService] 转换完成: 输出帧数=\(convertedBuffer.frameLength)")
-        
+
         guard let channelData = convertedBuffer.int16ChannelData else {
             throw VoiceInputError.failedToStartRecording("转换结果为空")
         }

@@ -74,7 +74,7 @@ struct AIModelSettingsTab: View {
             } header: {
                 Text("AI 服务配置")
             } footer: {
-                Text("管理多个 AI 服务配置，支持 OpenAI、DashScope、Ollama、Claude、Some.IM、Gemini、OpenRouter 及自定义中转站（任意 OpenAI 兼容接口）等协议。")
+                Text("管理多个 AI 服务配置，支持 OpenAI、DashScope、智谱 AI、MiniMax（国内/国际）、Ollama、Claude、Some.IM、Gemini、OpenRouter 及自定义中转站等协议。")
             }
             
             // AI 场景映射

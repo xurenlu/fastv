@@ -490,8 +490,6 @@ struct AIConfigurationStep: View {
     
     var onAPIKeyChanged: ((Bool) -> Void)?
     
-    // 阿里云API Key申请链接
-    private let aliyunAPIKeyURL = "https://bailian.console.aliyun.com/?accounttraceid=ecf52b9459854c13be278b89515acd5ekwwf&tab=model#/api-key"
     
     var body: some View {
         VStack(spacing: 16) {
@@ -572,10 +570,10 @@ struct AIConfigurationStep: View {
                         
                         Spacer()
                         
-                        // 申请链接按钮（仅阿里云显示）
-                        if selectedProtocolType == .dashScope {
+                        // 申请链接按钮（有专属申请页的服务显示）
+                        if let apiKeyURL = selectedProtocolType.apiKeyApplicationURL {
                             Button(action: {
-                                if let url = URL(string: aliyunAPIKeyURL) {
+                                if let url = URL(string: apiKeyURL) {
                                     NSWorkspace.shared.open(url)
                                 }
                             }) {

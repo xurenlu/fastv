@@ -9,11 +9,14 @@ fastv 现在支持多个 AI 服务配置，可以为不同的功能场景配置�
 1. **OpenAI** - OpenAI API（默认 endpoint: `https://api.openai.com/v1`）
 2. **Azure OpenAI** - Azure 托管的 OpenAI 服务
 3. **阿里云 DashScope** - 阿里云通义千问服务（默认 endpoint: `https://dashscope.aliyuncs.com/compatible-mode/v1`）
-4. **Ollama** - 本地 Ollama 服务（默认 endpoint: `http://127.0.0.1:11434`）
-5. **Claude** - Anthropic Claude API（默认 endpoint: `https://api.anthropic.com/v1`）
-6. **Some.IM** - Some.IM 服务（固定 endpoint: `https://api.some.im/api/v2/text-generation`，仅需填写 API Key）
-7. **Google Gemini** - Google Gemini API（默认 endpoint: `https://generativelanguage.googleapis.com/v1beta`）
-8. **自定义** - 自定义协议和端点
+4. **智谱 AI** - 智谱 GLM 系列（默认 endpoint: `https://open.bigmodel.cn/api/paas/v4`）
+5. **MiniMax (国内)** - MiniMax 国内版（默认 endpoint: `https://api.minimaxi.com/v1`）
+6. **MiniMax (国际)** - MiniMax 国际版（默认 endpoint: `https://api.minimax.io/v1`）
+7. **Ollama** - 本地 Ollama 服务（默认 endpoint: `http://127.0.0.1:11434`）
+8. **Claude** - Anthropic Claude API（默认 endpoint: `https://api.anthropic.com/v1`）
+9. **Some.IM** - Some.IM 服务（固定 endpoint: `https://api.some.im/api/v2/text-generation`，仅需填写 API Key）
+10. **Google Gemini** - Google Gemini API（默认 endpoint: `https://generativelanguage.googleapis.com/v1beta`）
+11. **自定义** - 自定义协议和端点
 
 ## 配置步骤
 
@@ -73,6 +76,21 @@ fastv 现在支持多个 AI 服务配置，可以为不同的功能场景配置�
 - **协议**：DashScope 专用协议
 - **认证**：使用 `Authorization: Bearer <token>` Header
 - **特殊功能**：支持搜索增强和思考过程（thinking）
+
+### 智谱 AI
+
+- **Endpoint**：默认 `https://open.bigmodel.cn/api/paas/v4`
+- **协议**：OpenAI 兼容格式
+- **认证**：使用 `Authorization: Bearer <token>` Header
+- **模型**：glm-4-flash、glm-4、glm-4-plus、glm-4-long 等
+
+### MiniMax（国内 / 国际）
+
+- **国内版 Endpoint**：`https://api.minimaxi.com/v1`（适用于中国内地）
+- **国际版 Endpoint**：`https://api.minimax.io/v1`（适用于海外）
+- **协议**：OpenAI 兼容格式
+- **认证**：使用 `Authorization: Bearer <token>` Header
+- **模型**：MiniMax-M2.5、MiniMax-M2.1、MiniMax-M2、M2-her 等
 
 ## 数据迁移
 

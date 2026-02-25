@@ -78,12 +78,24 @@
 // 통계
 "total.duration" = "총 시간";
 "total.characters" = "총 글자 수";
+"today.characters" = "오늘";
+"avg.characters.per.record" = "평균/건";
+"copy.success" = "복사됨";
 "characters.per.minute" = "자/분";
 "minutes" = "분";
 "hours" = "시간";
 "characters" = "자";
 "key" = "키";
 "minute" = "분";
+"seconds.short" = "초";
+"stats.today" = "오늘";
+"stats.all" = "전체";
+"stats.characters" = "글자 수";
+"stats.chars.per.min" = "자/분";
+"stats.audio.seconds" = "음성";
+"stats.transcription.seconds" = "전사";
+"stats.realtime.factor" = "RTF";
+"stats.realtime.factor.unit" = "배";
 
 // 온보딩
 "onboarding.welcome" = "妙打에 오신 것을 환영합니다";
@@ -216,7 +228,9 @@
 "ai.test.connection" = "연결 테스트";
 "ai.test.connection.help" = "Ollama API 연결 테스트";
 "ai.fetch.models" = "모델 목록 가져오기";
-"ai.fetch.models.help" = "Ollama에서 사용 가능한 모델 목록 가져오기";
+"ai.fetch.models.help" = "Ollama에서 다운로드된 모델을 가져오고 다운로드 가능한 모델 표시";
+"ai.ollama.models.downloaded" = "다운로드됨";
+"ai.ollama.models.available" = "다운로드 가능 (↓ 탭하여 다운로드)";
 "ai.test.optimization" = "텍스트 최적화 테스트";
 "ai.test.optimization.help" = "테스트 텍스트를 보내 AI 최적화 기능이 정상적으로 작동하는지 확인";
 "settings.title" = "설정";

@@ -78,12 +78,24 @@
 // 統計
 "total.duration" = "總時長";
 "total.characters" = "總字數";
+"today.characters" = "今日";
+"avg.characters.per.record" = "平均每條";
+"copy.success" = "已複製成功";
 "characters.per.minute" = "字/分";
 "minutes" = "分";
 "hours" = "小時";
 "characters" = "字";
 "key" = "鍵";
 "minute" = "分";
+"seconds.short" = "秒";
+"stats.today" = "今日";
+"stats.all" = "累計";
+"stats.characters" = "字數";
+"stats.chars.per.min" = "字/分";
+"stats.audio.seconds" = "識別語音";
+"stats.transcription.seconds" = "識別耗時";
+"stats.realtime.factor" = "實時率";
+"stats.realtime.factor.unit" = "倍";
 
 // 引導流程
 "onboarding.welcome" = "歡迎使用 妙打";
@@ -216,7 +228,9 @@
 "ai.test.connection" = "測試連線";
 "ai.test.connection.help" = "測試與 Ollama API 的連線";
 "ai.fetch.models" = "取得模型列表";
-"ai.fetch.models.help" = "從 Ollama 取得可用的模型列表";
+"ai.fetch.models.help" = "從 Ollama 取得已下載的模型列表，並顯示可下載的推薦模型";
+"ai.ollama.models.downloaded" = "已下載";
+"ai.ollama.models.available" = "可下載（點擊右側 ↓ 下載）";
 "ai.test.optimization" = "測試文字優化";
 "ai.test.optimization.help" = "發送測試文字，驗證 AI 優化功能是否正常運作";
 "settings.title" = "設定";

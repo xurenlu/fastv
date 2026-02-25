@@ -26,9 +26,9 @@ class TextInsertionService {
     // 记录最后一次插入的文本，用于调试
     private var lastInsertedText: String?
     private var insertionCount = 0
-    // 用于防止重入
+    // 用于防止重入 - 使用 os_unfair_lock 替代 NSLock，性能更好
     private var isInserting = false
-    private let lock = NSLock()
+    private var lock = os_unfair_lock()
     
     /// 将文本插入到当前激活的输入框
     /// - Parameter text: 要插入的文本
@@ -40,16 +40,16 @@ class TextInsertionService {
         }
         
         // 防止重入
-        lock.lock()
+        os_unfair_lock_lock(&lock)
         if isInserting {
-            lock.unlock()
+            os_unfair_lock_unlock(&lock)
             print("⚠️ [TextInsertionService] 正在插入中，跳过本次请求")
             return
         }
         isInserting = true
         insertionCount += 1
         let currentCount = insertionCount
-        lock.unlock()
+        os_unfair_lock_unlock(&lock)
         
         print("═══════════════════════════════════════════════════════")
         print("📝 [TextInsertionService] 开始插入操作 #\(currentCount)")
@@ -73,10 +73,11 @@ class TextInsertionService {
     private func finishInsertion(text: String, operationId: Int) {
         // 延迟重置状态，确保粘贴完成
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            self?.lock.lock()
-            self?.lastInsertedText = text
-            self?.isInserting = false
-            self?.lock.unlock()
+            guard let self = self else { return }
+            os_unfair_lock_lock(&self.lock)
+            self.lastInsertedText = text
+            self.isInserting = false
+            os_unfair_lock_unlock(&self.lock)
             print("✅ [TextInsertionService] 插入操作 #\(operationId) 完成")
             print("═══════════════════════════════════════════════════════")
         }

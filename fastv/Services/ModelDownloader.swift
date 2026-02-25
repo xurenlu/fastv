@@ -259,6 +259,7 @@ class ModelDownloader: ObservableObject {
             configuration.waitsForConnectivity = true
             
             let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
+            delegate.setSession(session)  // 设置 session 引用以便清理
             let task = session.downloadTask(with: url)
             downloadTask = task
             
@@ -387,10 +388,11 @@ class DownloadTaskDelegate: NSObject, URLSessionDownloadDelegate {
     var progressHandler: ((Double, String) -> Void)?
     var speedUpdateHandler: ((String) -> Void)?
     var completionHandler: ((Result<(URL, URLResponse), Error>) -> Void)?
-    
+
     private let destinationURL: URL
     private let tempFileURL: URL
-    
+    private var session: URLSession?
+
     init(
         destinationURL: URL,
         tempFileURL: URL,
@@ -402,11 +404,27 @@ class DownloadTaskDelegate: NSObject, URLSessionDownloadDelegate {
         self.progressHandler = progress
         self.completionHandler = completion
     }
-    
+
+    // 设置 session 引用（在创建 session 后调用）
+    func setSession(_ session: URLSession) {
+        self.session = session
+    }
+
+    // 清理 session
+    private func cleanupSession() {
+        session?.finishTasksAndInvalidate()
+        session = nil
+    }
+
+    deinit {
+        // 确保在释放时清理 session
+        cleanupSession()
+    }
+
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
         self.totalBytesWritten = totalBytesWritten
         self.totalBytesExpected = totalBytesExpectedToWrite
-        
+
         let progress = totalBytesExpectedToWrite > 0 ? Double(totalBytesWritten) / Double(totalBytesExpectedToWrite) : 0.0
         // 确保在主线程调用 progressHandler
         DispatchQueue.main.async { [weak self] in
@@ -443,25 +461,26 @@ class DownloadTaskDelegate: NSObject, URLSessionDownloadDelegate {
                 return
             }
         }
-        
+
         // 检查下载的文件是否存在
         guard FileManager.default.fileExists(atPath: downloadedFileURL.path) else {
             DispatchQueue.main.async { [weak self] in
                 self?.completionHandler?(.failure(ModelDownloadError.downloadFailed(NSLocalizedString("model.download.error.temp.file.not.found", comment: ""))))
             }
+            cleanupSession()
             return
         }
-        
+
         do {
             // 将下载的文件复制到临时位置（避免被系统删除）
             // 删除已存在的临时文件（如果有）
             if FileManager.default.fileExists(atPath: tempFileURL.path) {
                 try FileManager.default.removeItem(at: tempFileURL)
             }
-            
+
             // 复制文件到临时位置
             try FileManager.default.copyItem(at: downloadedFileURL, to: tempFileURL)
-            
+
             // 捕获需要的值，避免在闭包中引用 self 的属性
             let finalTempFileURL = tempFileURL
             if let response = downloadTask.response {
@@ -481,6 +500,9 @@ class DownloadTaskDelegate: NSObject, URLSessionDownloadDelegate {
                 self?.completionHandler?(.failure(ModelDownloadError.downloadFailed(error.localizedDescription)))
             }
         }
+
+        // 下载完成，清理 session
+        cleanupSession()
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
@@ -488,7 +510,7 @@ class DownloadTaskDelegate: NSObject, URLSessionDownloadDelegate {
             // 检查是否是网络错误或超时错误
             let nsError = error as NSError
             var errorMessage = error.localizedDescription
-            
+
             if nsError.domain == NSURLErrorDomain {
                 switch nsError.code {
                 case NSURLErrorTimedOut:
@@ -503,13 +525,16 @@ class DownloadTaskDelegate: NSObject, URLSessionDownloadDelegate {
                     break
                 }
             }
-            
+
             print("❌ [ModelDownloader] 下载任务完成时出错: \(errorMessage)")
             // 确保在主线程调用 completionHandler
             DispatchQueue.main.async { [weak self] in
                 self?.completionHandler?(.failure(ModelDownloadError.downloadFailed(errorMessage)))
             }
         }
+
+        // 任务完成，清理 session
+        cleanupSession()
     }
 }
 

@@ -17,6 +17,9 @@ enum AIProtocolType: String, Codable, CaseIterable {
     case someIM = "some_im"
     case gemini = "gemini"
     case openRouter = "openrouter"
+    case zhipuAI = "zhipu_ai"           // 智谱 AI
+    case miniMaxCN = "minimax_cn"        // MiniMax 国内版
+    case miniMaxGlobal = "minimax_global"  // MiniMax 国际版
     case custom = "custom"
     
     var displayName: String {
@@ -37,6 +40,12 @@ enum AIProtocolType: String, Codable, CaseIterable {
             return "Google Gemini"
         case .openRouter:
             return "OpenRouter"
+        case .zhipuAI:
+            return "智谱 AI"
+        case .miniMaxCN:
+            return "MiniMax (国内)"
+        case .miniMaxGlobal:
+            return "MiniMax (国际)"
         case .custom:
             return "自定义（中转站）"
         }
@@ -61,6 +70,12 @@ enum AIProtocolType: String, Codable, CaseIterable {
             return "star.fill"
         case .openRouter:
             return "arrow.triangle.branch"
+        case .zhipuAI:
+            return "brain"
+        case .miniMaxCN:
+            return "globe.asia.australia.fill"
+        case .miniMaxGlobal:
+            return "globe.americas.fill"
         case .custom:
             return "gearshape.fill"
         }
@@ -85,6 +100,12 @@ enum AIProtocolType: String, Codable, CaseIterable {
             return "https://generativelanguage.googleapis.com/v1beta"
         case .openRouter:
             return "https://openrouter.ai/api/v1"
+        case .zhipuAI:
+            return "https://open.bigmodel.cn/api/paas/v4"
+        case .miniMaxCN:
+            return "https://api.minimaxi.com/v1"
+        case .miniMaxGlobal:
+            return "https://api.minimax.io/v1"
         case .custom:
             return nil
         }
@@ -118,7 +139,7 @@ enum AIProtocolType: String, Codable, CaseIterable {
         case .azureOpenAI:
             return ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
         case .dashScope:
-            return ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext"]
+            return ["qwen3.5-flash", "qwen3.5-plus", "qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext"]
         case .ollama:
             return ["gemma2:2b", "deepseek-r1:1.5b", "qwen2.5:7b", "llama3.2:3b"]
         case .claude:
@@ -129,6 +150,10 @@ enum AIProtocolType: String, Codable, CaseIterable {
             return ["gemini-3-pro-preview", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro"]
         case .openRouter:
             return ["openai/gpt-4o-mini", "openai/gpt-4o", "anthropic/claude-3.5-sonnet", "google/gemini-2.0-flash", "deepseek/deepseek-chat", "meta-llama/llama-3.1-70b-instruct"]
+        case .zhipuAI:
+            return ["glm-4-flash", "glm-4-air", "glm-4", "glm-4-plus", "glm-4-long", "glm-4-airx"]
+        case .miniMaxCN, .miniMaxGlobal:
+            return ["MiniMax-M2.5", "MiniMax-M2.5-highspeed", "MiniMax-M2.1", "MiniMax-M2.1-highspeed", "MiniMax-M2", "M2-her"]
         case .custom:
             return []
         }
@@ -147,6 +172,8 @@ enum AIProtocolType: String, Codable, CaseIterable {
             return 60.0      // Gemini 云端 API
         case .openAI, .azureOpenAI, .openRouter, .someIM:
             return 30.0      // OpenAI 系列通常较快
+        case .zhipuAI, .miniMaxCN, .miniMaxGlobal:
+            return 60.0      // 国内云端 API
         case .custom:
             return 60.0      // 自定义服务，预留更多时间
         }
@@ -171,6 +198,22 @@ enum AIProtocolType: String, Codable, CaseIterable {
             return apiKey // 直接使用 API Key，不使用 Bearer
         default:
             return "Bearer \(apiKey)"
+        }
+    }
+    
+    /// API Key 申请页面 URL（nil 表示无专属申请页）
+    var apiKeyApplicationURL: String? {
+        switch self {
+        case .dashScope:
+            return "https://bailian.console.aliyun.com/?tab=model#/api-key"
+        case .zhipuAI:
+            return "https://open.bigmodel.cn/usercenter/apikeys"
+        case .miniMaxCN:
+            return "https://platform.minimaxi.com/user-center/basic-information/interface-key"
+        case .miniMaxGlobal:
+            return "https://platform.minimax.io/user-center/basic-information/interface-key"
+        default:
+            return nil
         }
     }
 }

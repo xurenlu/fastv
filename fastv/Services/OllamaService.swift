@@ -579,9 +579,15 @@ class OllamaService {
         return try await testOptimization(profile: profile, systemPrompt: systemPrompt)
     }
     
-    /// 获取可用的模型列表
+    /// 获取可用的模型列表（仅名称，兼容旧调用）
     func fetchModels(endpoint: String, apiToken: String?) async throws -> [String] {
-        print("🤖 [OllamaService] 获取模型列表: \(endpoint)")
+        let models = try await fetchModelsWithDetails(endpoint: endpoint, apiToken: apiToken)
+        return models.map { $0.name }
+    }
+    
+    /// 获取可用的模型列表（含大小等详情）
+    func fetchModelsWithDetails(endpoint: String, apiToken: String?) async throws -> [OllamaModelInfo] {
+        print("🤖 [OllamaService] 获取模型列表（含详情）: \(endpoint)")
         
         guard let url = URL(string: "\(endpoint)/api/tags") else {
             throw OllamaError.invalidEndpoint
@@ -606,16 +612,95 @@ class OllamaService {
             throw OllamaError.requestFailed(httpResponse.statusCode, "获取模型列表失败")
         }
         
-        // 解析响应
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let models = json["models"] as? [[String: Any]] else {
             throw OllamaError.invalidResponse
         }
         
-        let modelNames = models.compactMap { $0["name"] as? String }
-        print("✅ [OllamaService] 获取到 \(modelNames.count) 个模型")
+        let result = models.compactMap { dict -> OllamaModelInfo? in
+            guard let name = dict["name"] as? String else { return nil }
+            let size = (dict["size"] as? NSNumber)?.int64Value ?? 0
+            let details = dict["details"] as? [String: Any]
+            let paramSize = details?["parameter_size"] as? String
+            return OllamaModelInfo(
+                id: name,
+                name: name,
+                sizeBytes: size,
+                isDownloaded: true,
+                parameterSize: paramSize
+            )
+        }
+        print("✅ [OllamaService] 获取到 \(result.count) 个已下载模型")
+        return result
+    }
+    
+    /// 拉取（下载）模型
+    /// - Parameters:
+    ///   - endpoint: Ollama API 端点
+    ///   - model: 模型名称，如 "gemma2:2b"
+    ///   - apiToken: API Token（可选）
+    ///   - onProgress: 进度回调 (status, completed, total)，流式响应时持续调用
+    func pullModel(
+        endpoint: String,
+        model: String,
+        apiToken: String?,
+        onProgress: @escaping (String, Int64, Int64) -> Void
+    ) async throws {
+        print("🤖 [OllamaService] 开始下载模型: \(model)")
         
-        return modelNames
+        guard let url = URL(string: "\(endpoint)/api/pull") else {
+            throw OllamaError.invalidEndpoint
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = apiToken, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.timeoutInterval = 3600 // 下载可能较久
+        
+        let body: [String: Any] = ["model": model, "stream": true]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OllamaError.invalidResponse
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            var errorData = Data()
+            for try await byte in bytes {
+                errorData.append(byte)
+            }
+            let errorMessage = (try? JSONSerialization.jsonObject(with: errorData) as? [String: Any])?["error"] as? String ?? "未知错误"
+            throw OllamaError.requestFailed(httpResponse.statusCode, errorMessage)
+        }
+        
+        var lineBuffer: [UInt8] = []
+        var lastStatus = ""
+        var completed: Int64 = 0
+        var total: Int64 = 0
+        
+        for try await byte in bytes {
+            if byte == 10 { // newline
+                if !lineBuffer.isEmpty,
+                   let line = String(bytes: lineBuffer, encoding: .utf8),
+                   let data = line.data(using: .utf8),
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    if let s = json["status"] as? String { lastStatus = s }
+                    if let t = json["total"] as? NSNumber { total = t.int64Value }
+                    if let c = json["completed"] as? NSNumber { completed = c.int64Value }
+                    await MainActor.run { onProgress(lastStatus, completed, total) }
+                }
+                lineBuffer = []
+            } else {
+                lineBuffer.append(byte)
+            }
+        }
+        
+        print("✅ [OllamaService] 模型下载完成: \(model)")
     }
     
     /// 分析图片内容（使用新的配置系统）

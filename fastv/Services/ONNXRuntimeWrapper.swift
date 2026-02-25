@@ -363,14 +363,7 @@ class ONNXRuntimeWrapper {
         guard !inputNames.isEmpty, !outputNames.isEmpty else {
             throw VideoProcessingError.transcriptionFailed("无法获取模型的输入输出名称")
         }
-        
-        #if DEBUG
-        print("ONNX 模型输入要求: \(inputNames)")
-        print("ONNX 模型输出: \(outputNames)")
-        print("输入特征形状: batch=\(batchSize), sequence=\(sequenceLength), feature=\(featureDim)")
-        print("输入数据统计: 总元素数=\(flatInput.count), min=\(flatInput.min() ?? 0), max=\(flatInput.max() ?? 0), avg=\(flatInput.reduce(0, +) / Float(flatInput.count))")
-        #endif
-        
+
         // 创建所有必需的输入张量（按照模型定义的顺序）
         // 关键：必须按照模型定义的输入名称顺序创建张量，确保 inputTensors 和 inputNameStrings 的顺序完全一致
         var inputTensors: [OpaquePointer?] = []

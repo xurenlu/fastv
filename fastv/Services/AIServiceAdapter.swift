@@ -67,6 +67,10 @@ class AIServiceAdapter {
         case .ollama:
             let shouldUseChat = useChatCompletions ?? false
             path = shouldUseChat ? "/v1/chat/completions" : "/api/generate"
+        case .zhipuAI:
+            path = "/chat/completions"
+        case .miniMaxCN, .miniMaxGlobal:
+            path = "/text/chatcompletion_v2"
         case .custom:
             // 自定义协议，尝试检测
             if useChatCompletions == true {
@@ -119,8 +123,8 @@ class AIServiceAdapter {
         let usesDashScopeCompatibleMode = endpoint.contains("compatible-mode") || endpoint.contains("/chat/completions")
         
         switch profile.protocolType {
-        case .openAI, .azureOpenAI, .someIM, .openRouter:
-            // OpenAI 兼容格式
+        case .openAI, .azureOpenAI, .someIM, .openRouter, .zhipuAI:
+            // OpenAI 兼容格式（智谱 AI 使用 OpenAI 兼容接口）
             var body: [String: Any] = [
                 "model": effectiveModel,
                 "messages": messages
@@ -133,6 +137,26 @@ class AIServiceAdapter {
             }
             if let maxTokens = adjustedMaxTokens {
                 body["max_tokens"] = maxTokens
+            }
+            if let additionalParams = additionalParams {
+                body.merge(additionalParams) { (_, new) in new }
+            }
+            return body
+            
+        case .miniMaxCN, .miniMaxGlobal:
+            // MiniMax OpenAI 兼容格式，使用 max_completion_tokens
+            var body: [String: Any] = [
+                "model": effectiveModel,
+                "messages": messages
+            ]
+            if let temperature = temperature {
+                body["temperature"] = temperature
+            }
+            if let topP = topP {
+                body["top_p"] = topP
+            }
+            if let maxTokens = adjustedMaxTokens {
+                body["max_completion_tokens"] = maxTokens
             }
             if let additionalParams = additionalParams {
                 body.merge(additionalParams) { (_, new) in new }
@@ -359,8 +383,8 @@ class AIServiceAdapter {
         let dashScopeUsesCompatibleMode = endpoint.contains("compatible-mode") || endpoint.contains("/chat/completions")
         
         switch profile.protocolType {
-        case .openAI, .azureOpenAI, .someIM, .openRouter:
-            // OpenAI 格式
+        case .openAI, .azureOpenAI, .someIM, .openRouter, .zhipuAI, .miniMaxCN, .miniMaxGlobal:
+            // OpenAI 格式（智谱、MiniMax 均兼容）
             if let choices = json["choices"] as? [[String: Any]],
                let firstChoice = choices.first,
                let message = firstChoice["message"] as? [String: Any],

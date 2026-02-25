@@ -53,20 +53,11 @@ struct AudioFeatureExtractor {
         
         // 3. 应用 LFR (Low Frame Rate)
         if lfrM > 1 || lfrN > 1 {
-            #if DEBUG
-            print("应用 LFR: m=\(lfrM), n=\(lfrN), 原始维度=\(melFeatures.first?.count ?? 0), 帧数=\(melFeatures.count)")
-            #endif
             melFeatures = applyLFR(features: melFeatures, lfrM: lfrM, lfrN: lfrN)
-            #if DEBUG
-            print("LFR 完成: 新维度=\(melFeatures.first?.count ?? 0), 新帧数=\(melFeatures.count)")
-            #endif
         }
-        
+
         // 4. 应用 Global CMVN
         if let cmvnURL = cmvnURL {
-            #if DEBUG
-            print("应用 Global CMVN: \(cmvnURL.path)")
-            #endif
             let (means, vars) = try loadCMVN(from: cmvnURL)
             melFeatures = applyGlobalCMVN(features: melFeatures, means: means, vars: vars)
         }
@@ -183,22 +174,7 @@ struct AudioFeatureExtractor {
                 }
             }
         }
-        
-        #if DEBUG
-        if let firstFrame = features.first {
-            let minVal = firstFrame.min() ?? 0
-            let maxVal = firstFrame.max() ?? 0
-            let avgVal = firstFrame.reduce(0, +) / Float(firstFrame.count)
-            print("Kaldi FBank 第一帧统计: min=\(minVal), max=\(maxVal), avg=\(avgVal)")
-            
-            // 检查特征值范围是否合理（FBank 特征通常在 -50 到 50 之间）
-            if abs(minVal) > 100 || abs(maxVal) > 100 {
-                print("警告：Kaldi FBank 特征值范围异常: min=\(minVal), max=\(maxVal)")
-            }
-        }
-        print("Kaldi FBank 特征: 帧数=\(features.count), 维度=\(features.first?.count ?? 0)")
-        #endif
-        
+
         return features
     }
     
@@ -567,18 +543,10 @@ struct AudioFeatureExtractor {
         guard !means.isEmpty, !vars.isEmpty else {
             throw VideoProcessingError.transcriptionFailed("解析 CMVN 文件失败或文件为空")
         }
-        
-        #if DEBUG
-        print("加载 CMVN 成功: 维度=\(means.count)")
-        print("CMVN Means 前10个值: \(means.prefix(10))")
-        print("CMVN Means 统计: min=\(means.min() ?? 0), max=\(means.max() ?? 0), avg=\(means.reduce(0, +) / Float(means.count))")
-        print("CMVN Vars 前10个值: \(vars.prefix(10))")
-        print("CMVN Vars 统计: min=\(vars.min() ?? 0), max=\(vars.max() ?? 0), avg=\(vars.reduce(0, +) / Float(vars.count))")
-        #endif
-        
+
         return (means, vars)
     }
-    
+
     /// 应用 Global CMVN
     /// Python 逻辑: (inputs + means) * vars
     private static func applyGlobalCMVN(features: [[Float]], means: [Float], vars: [Float]) -> [[Float]] {
@@ -588,7 +556,7 @@ struct AudioFeatureExtractor {
             print("警告：CMVN 维度不匹配 (特征=\(dim), CMVN=\(means.count))，跳过 CMVN")
             return features
         }
-        
+
         var normalizedFeatures = features
         for i in 0..<features.count {
             var frame = features[i]
@@ -598,17 +566,7 @@ struct AudioFeatureExtractor {
             vDSP_vmul(frame, 1, vars, 1, &frame, 1, vDSP_Length(dim))
             normalizedFeatures[i] = frame
         }
-        
-        #if DEBUG
-        if !normalizedFeatures.isEmpty {
-            let firstFrame = normalizedFeatures[0]
-            let minVal = firstFrame.min() ?? 0
-            let maxVal = firstFrame.max() ?? 0
-            let avgVal = firstFrame.reduce(0, +) / Float(firstFrame.count)
-            print("CMVN 后第一帧统计: min=\(minVal), max=\(maxVal), avg=\(avgVal)")
-            }
-        #endif
-        
+
         return normalizedFeatures
     }
     
