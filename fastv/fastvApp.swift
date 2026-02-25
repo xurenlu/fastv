@@ -53,6 +53,7 @@ private var incrementalBatchPartition: [Range<Int>] = []       // 動態規劃�
 private var incrementalBatchRefinedTexts: [String?] = []       // 每批的轉寫結果，nil 表示未完成
 private let incrementalBatchMinSegments = 3  // 至少 3 段才觸發（2 段拼接效果提升有限）
 private let incrementalBatchMinDuration: TimeInterval = 3.0     // 每批至少 3 秒，避免過短
+private let incrementalBatchMaxDuration: TimeInterval = 6.0     // 每批最多 6 秒，避免過度合併導致效率下降
 
 /// 智能分段：靜音觸發時提取當前段落、轉寫並緩存（串行執行，不插入，鬆鍵時一次性輸出）
 /// 同時啟動二次拼接轉寫：多段音頻合併後再轉寫，準確率更高；鬆鍵時若已完成則替換零碎結果
@@ -98,8 +99,9 @@ private func performIncrementalSegmentTranscription() async {
     waveformManager.setRecording()
 }
 
-/// 動態規劃分批：每批至少 minSegments 段、至少 minDuration 秒，盡量讓每批較長以提升準確率
-/// 例如 7 段可拆成 4+3 或 7（一整批），9 段可拆成 6+3 或 9，優先讓每批盡長
+/// 動態規劃分批：每批至少 minSegments 段、至少 minDuration 秒、最多 maxDuration 秒
+/// 例如 7 段可拆成 4+3 或 7（一整批），9 段可拆成 6+3 或 9，優先讓每批盡長但不超过最大時長
+/// 避免過度合併（如先合併成10秒、後續再合併成16秒）導致轉寫效率大幅下降
 private func partitionSegmentsForBatchRefinement(_ segments: [IncrementalSegmentInfo]) -> [Range<Int>] {
     let n = segments.count
     guard n >= incrementalBatchMinSegments else { return [] }
@@ -118,7 +120,8 @@ private func partitionSegmentsForBatchRefinement(_ segments: [IncrementalSegment
         }
         var bestEnd = start + incrementalBatchMinSegments
         var bestDuration = segments[start..<bestEnd].reduce(0.0) { $0 + $1.audio.durationSeconds }
-        while bestDuration < incrementalBatchMinDuration && bestEnd < n {
+        // 若不足最小時長，繼續加段（但不超过最大時長）
+        while bestDuration < incrementalBatchMinDuration && bestEnd < n && bestDuration < incrementalBatchMaxDuration {
             bestEnd += 1
             bestDuration += segments[bestEnd - 1].audio.durationSeconds
         }
@@ -126,9 +129,14 @@ private func partitionSegmentsForBatchRefinement(_ segments: [IncrementalSegment
         if tailCount > 0 && tailCount < incrementalBatchMinSegments {
             bestEnd = n
         } else if bestEnd < n {
+            // 嘗試擴展當前批次，但同時滿足：最小時長、剩余可成批、不超过最大時長
             for end in (bestEnd + 1)...n {
                 let duration = segments[start..<end].reduce(0.0) { $0 + $1.audio.durationSeconds }
                 let tail = n - end
+                // 超過最大時長時停止擴展
+                if duration > incrementalBatchMaxDuration {
+                    break
+                }
                 if duration >= incrementalBatchMinDuration && (tail == 0 || tail >= incrementalBatchMinSegments) {
                     bestEnd = end
                 }
