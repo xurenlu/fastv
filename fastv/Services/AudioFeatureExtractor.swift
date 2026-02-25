@@ -39,16 +39,29 @@ struct AudioFeatureExtractor {
         return try processSamples(samples, cmvnURL: cmvnURL)
     }
     
+    /// 最短音频时长（秒），低于此时长会在末尾补静音以提升 ASR 识别准确率
+    private static let minimumDurationForPadding: TimeInterval = 0.5
+
     private static func processSamples(_ audioData: [Float], cmvnURL: URL?) throws -> [[Float]] {
+        // 1. 短音频静音填充：ASR 模型对极短语音识别不准，补静音到最小时长
+        var samples = audioData
+        let minSamples = Int(minimumDurationForPadding * sampleRate)
+        if samples.count > 0 && samples.count < minSamples {
+            samples.append(contentsOf: [Float](repeating: 0, count: minSamples - samples.count))
+            #if DEBUG
+            print("🎤 [AudioFeatureExtractor] 短音频填充: \(audioData.count) -> \(samples.count) 样本 (\(String(format: "%.2f", Double(audioData.count)/sampleRate))s -> \(minimumDurationForPadding)s)")
+            #endif
+        }
+
         // 2. 计算 Mel 频谱图（优先使用 Kaldi 原生实现）
         var melFeatures: [[Float]]
         do {
-            melFeatures = try computeKaldiFbankFeatures(audioData: audioData)
+            melFeatures = try computeKaldiFbankFeatures(audioData: samples)
         } catch {
             #if DEBUG
             print("Kaldi FBank 提取失败，使用 Swift 备选实现: \(error)")
             #endif
-            melFeatures = try computeMelSpectrogram(audioData: audioData)
+            melFeatures = try computeMelSpectrogram(audioData: samples)
         }
         
         // 3. 应用 LFR (Low Frame Rate)

@@ -15,6 +15,16 @@ extension Notification.Name {
     static let shortcutConfigDidChange = Notification.Name("shortcutConfigDidChange")
 }
 
+// 语音输入时长阈值（秒）
+private enum VoiceInputDurationThreshold {
+    /// 最短推荐录音时长，低于此时长提示用户「建议说长一点」
+    static let minimumRecommended: TimeInterval = 0.5
+    /// 智能分段：单段最短时长，低于此时长跳过转写
+    static let minimumIncrementalSegment: TimeInterval = 1.0
+    /// 智能分段：剩余段落最短时长（已有缓存时更严格）
+    static let minimumRemainingWhenHasCache: TimeInterval = 1.5
+}
+
 // 全局变量：记录语音输入开始时间
 private var voiceInputStartTime: Date?
 // 記錄當前語音輸入是否需要 AI 校正
@@ -39,7 +49,7 @@ private func performIncrementalSegmentTranscription() async {
     let language = TranscriptLanguage(rawValue: UserPreferences.shared.voiceInputLanguage) ?? .zh
 
     guard let result = try? await voiceService.extractCurrentSegmentWithTiming() else { return }
-    guard result.duration >= 1.0 else {
+    guard result.duration >= VoiceInputDurationThreshold.minimumIncrementalSegment else {
         print("⚠️ [fastvApp] 智能分段：段落過短(\(String(format: "%.1f", result.duration))s)，跳過")
         return
     }
@@ -615,7 +625,7 @@ struct fastvApp: App {
             incrementalTranscriptionResults = []
             
             // 轉寫剩餘段落並合併
-            let minRemainingDuration = fullText.isEmpty ? 1.0 : 1.5
+            let minRemainingDuration = fullText.isEmpty ? VoiceInputDurationThreshold.minimumIncrementalSegment : VoiceInputDurationThreshold.minimumRemainingWhenHasCache
             if let result = remainingSegmentResult, result.duration >= minRemainingDuration {
                 currentSessionIncrementalAudioSeconds += result.duration
                 let transcribeStart = CFAbsoluteTimeGetCurrent()
@@ -682,6 +692,21 @@ struct fastvApp: App {
         }
         
         // 非智能分段：整段轉寫
+        // 录音过短时提示用户，避免识别不准
+        let recordingDuration = recording.durationSeconds
+        if recordingDuration < VoiceInputDurationThreshold.minimumRecommended {
+            waveformManager.setAICorrectionDisabled()
+            let alert = NSAlert()
+            alert.messageText = NSLocalizedString("voice.recording.too.short.title", comment: "")
+            alert.informativeText = NSLocalizedString("voice.recording.too.short.message", comment: "")
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: NSLocalizedString("got.it", comment: ""))
+            alert.runModal()
+            waveformManager.hide()
+            currentVoiceInputNeedsAI = false
+            return
+        }
+
         print("🔊 [fastvApp] 开始语音转文字...")
         do {
             let languageString = preferences.voiceInputLanguage

@@ -43,6 +43,8 @@
 "transcribing" = "轉文字中...";
 "speech.model.preload.title" = "正在載入語音模型";
 "speech.model.preload.message" = "首次載入語音識別模型，請稍候…";
+"voice.recording.too.short.title" = "錄音過短";
+"voice.recording.too.short.message" = "錄音時長過短，識別可能唔準。建議至少講半秒以上。";
 
 // 設定
 "enable.voice.input" = "啟用語音輸入法";

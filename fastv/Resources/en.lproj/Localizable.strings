@@ -43,6 +43,8 @@
 "transcribing" = "Transcribing...";
 "speech.model.preload.title" = "Loading Voice Model";
 "speech.model.preload.message" = "Preparing the speech recognition model for the first time. This may take a few seconds.";
+"voice.recording.too.short.title" = "Recording Too Short";
+"voice.recording.too.short.message" = "The recording is too short for accurate recognition. Please try speaking for at least half a second.";
 
 // Settings
 "enable.voice.input" = "Enable Voice Input";

@@ -43,6 +43,8 @@
 "transcribing" = "转文字中...";
 "speech.model.preload.title" = "正在加载语音模型";
 "speech.model.preload.message" = "首次加载语音识别模型，请稍候…";
+"voice.recording.too.short.title" = "录音过短";
+"voice.recording.too.short.message" = "录音时长过短，识别可能不准确。建议至少说半秒以上。";
 
 // 设置
 "enable.voice.input" = "启用语音输入法";

@@ -43,6 +43,8 @@
 "transcribing" = "文字変換中...";
 "speech.model.preload.title" = "音声モデルを読み込み中";
 "speech.model.preload.message" = "初回の音声認識モデルの読み込み中です。しばらくお待ちください。";
+"voice.recording.too.short.title" = "録音が短すぎます";
+"voice.recording.too.short.message" = "録音が短すぎて正確な認識ができません。少なくとも0.5秒以上話してください。";
 
 // 設定
 "enable.voice.input" = "音声入力を有効にする";
