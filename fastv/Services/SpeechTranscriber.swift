@@ -127,6 +127,8 @@ struct SpeechTranscriber {
         let cmvnURL = resolveCMVNURL()
         let features = try await AudioFeatureExtractor.extractMelFeatures(from: recording, cmvnURL: cmvnURL)
         let transcript = try await performTranscription(features: features, language: language, enableCTCDeduplication: ctcDedup)
+        // 短录音单次处理完成后回收
+        autoreleasepool { }
         return transcript
     }
     
@@ -171,6 +173,9 @@ struct SpeechTranscriber {
             #if DEBUG
             print("✅ [SpeechTranscriber] 片段 \(index + 1) 转录完成: \(segmentTranscript.prefix(30))...")
             #endif
+            
+            // 每段处理完后主动回收 C/ObjC 层可能产生的 autorelease 对象，防止长录音分段时内存累积
+            autoreleasepool { }
         }
         
         // 合并结果
@@ -297,6 +302,9 @@ struct SpeechTranscriber {
             #if DEBUG
             print("✅ 片段 \(index + 1) 转录结果: \(segmentTranscript.prefix(50))...")
             #endif
+            
+            // 每段处理完后回收 C/ObjC 层 autorelease 对象，防止长音频分段时内存累积
+            autoreleasepool { }
         }
         
         // 6. 合并结果

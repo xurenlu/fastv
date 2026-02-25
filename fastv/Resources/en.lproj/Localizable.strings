@@ -71,6 +71,9 @@
 "voice.input.section" = "Voice Input";
 "voice.input.description" = "Press shortcut to start voice input, release to automatically recognize and insert text. Requires microphone and accessibility permissions.";
 "fn.key.hint" = "Tip: Press FN alone for voice input only. Press FN+Ctrl for voice input followed by AI optimization (remove filler words, add punctuation, fix typos).";
+"enable.incremental.transcription" = "Smart Segment Transcription";
+"incremental.transcription.description" = "Automatically transcribe and insert when pause is detected, no need to release shortcut";
+"silence.detection.duration" = "Pause threshold";
 
 // Statistics
 "total.duration" = "Total Duration";

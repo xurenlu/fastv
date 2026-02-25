@@ -86,6 +86,7 @@ class UserPreferences: ObservableObject {
         static let silenceDetectionDuration = "silenceDetectionDuration"
         static let silenceThreshold = "silenceThreshold"
         static let silenceRelativeThreshold = "silenceRelativeThreshold"
+        static let enableIncrementalTranscription = "enableIncrementalTranscription"
         // AI 服务配置相关（新）
         static let aiServiceProfiles = "aiServiceProfiles"
         static let aiScenarioBindings = "aiScenarioBindings"
@@ -361,6 +362,10 @@ class UserPreferences: ObservableObject {
     
     @Published var silenceRelativeThreshold: Float {
         willSet { defaults.set(newValue, forKey: Keys.silenceRelativeThreshold) }
+    }
+    
+    @Published var enableIncrementalTranscription: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.enableIncrementalTranscription) }
     }
     
     // 引导流程相关
@@ -720,6 +725,7 @@ class UserPreferences: ObservableObject {
         silenceDetectionDuration = defaults.object(forKey: Keys.silenceDetectionDuration) as? Double ?? 0.8 // 默认0.8秒
         silenceThreshold = defaults.object(forKey: Keys.silenceThreshold) as? Float ?? 0.01 // 默认0.01
         silenceRelativeThreshold = defaults.object(forKey: Keys.silenceRelativeThreshold) as? Float ?? 0.25 // 默认25%，更敏感
+        enableIncrementalTranscription = defaults.object(forKey: Keys.enableIncrementalTranscription) as? Bool ?? false
         
         // 引导流程设置，默认为未完成
         hasCompletedOnboarding = defaults.bool(forKey: Keys.hasCompletedOnboarding)

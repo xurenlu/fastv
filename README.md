@@ -1,6 +1,8 @@
-# 妙打 - 智能语音输入法
+# 妙打 (FastV) - 智能语音输入法
 
-妙打是一款 macOS 本地化语音转文字输入工具。按住快捷键说话，实时将语音转换为文字并自动输入到当前应用的输入框中。支持多语言识别，内置 AI 优化和快速纠错，识别准确、响应快速，数据本地处理，保护隐私安全。
+妙打是一款**聚焦语音输入与语音转文字**的 macOS 应用。按住快捷键说话，实时将语音转换为文字并自动输入到当前应用的输入框中。支持多语言识别，内置 AI 优化和快速纠错，识别准确、响应快速，数据本地处理，保护隐私安全。
+
+**能力暴露**：除 macOS 应用外，还提供 [STT API 服务](stt-api/README.md)，通过 HTTP 和 WebSocket 将语音转文字能力暴露给外部调用。
 
 ## ✨ 核心功能
 
@@ -108,9 +110,24 @@ open fastv.xcodeproj
    - 记录体重、血压、心率等各项指标
    - 数据自动同步到 Apple Health
 
+## 🔌 STT API 服务
+
+将语音转文字能力暴露为可调用的 API，供外部系统集成：
+
+| 接口 | 说明 |
+|------|------|
+| `POST /api/v1/transcribe` | 上传音频文件（MP3/WAV/M4A）转文字 |
+| `WS /ws/transcribe` | 流式边说边转，停顿检测自动分段 |
+
+详见 [stt-api/README.md](stt-api/README.md)。
+
+```bash
+cd stt-api && pip install -r requirements.txt && python stt_api.py --port 50002
+```
+
 ## 🛠️ 技术架构
 
-- **开发语言**：Swift 5.9+
+- **开发语言**：Swift 5.9+（macOS 应用）、Python（STT API）
 - **UI 框架**：SwiftUI
 - **音频处理**：AVFoundation, Accelerate
 - **语音识别**：SenseVoice Small 模型（本地 ONNX 推理）

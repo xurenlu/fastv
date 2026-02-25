@@ -135,8 +135,9 @@ class ONNXRuntimeWrapper {
         
         // 1. 准备内存信息
         var memoryInfo: OpaquePointer?
+        // 使用 OrtDeviceAllocator 替代 OrtArenaAllocator，避免 arena 内存池长期保留导致多次转录后内存累积
         var status = api.pointee.CreateCpuMemoryInfo(
-            OrtArenaAllocator,
+            OrtDeviceAllocator,
             OrtMemTypeDefault,
             &memoryInfo
         )
@@ -304,10 +305,10 @@ class ONNXRuntimeWrapper {
             throw VideoProcessingError.transcriptionFailed("输入数据大小不匹配: 实际=\(flatInput.count), 期望=\(expectedSize)")
         }
         
-        // 创建内存信息
+        // 创建内存信息：使用 OrtDeviceAllocator 替代 OrtArenaAllocator，推理完成后及时释放张量内存
         var memoryInfo: OpaquePointer?
         var status = api.pointee.CreateCpuMemoryInfo(
-            OrtArenaAllocator,
+            OrtDeviceAllocator,
             OrtMemTypeDefault,
             &memoryInfo
         )

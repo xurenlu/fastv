@@ -71,6 +71,9 @@
 "voice.input.section" = "语音输入法";
 "voice.input.description" = "按下快捷键开始语音输入，松开时自动识别并插入文本。需要麦克风和辅助功能权限。";
 "fn.key.hint" = "提示：单独按FN键仅进行语音输入，FN+Ctrl组合会在语音输入后自动进行AI优化（去除语气词、添加标点、修正错别字）。";
+"enable.incremental.transcription" = "智能分段转文字";
+"incremental.transcription.description" = "检测到停顿时自动转写并插入，无需松开快捷键";
+"silence.detection.duration" = "停顿阈值";
 
 // 统计
 "total.duration" = "总时长";

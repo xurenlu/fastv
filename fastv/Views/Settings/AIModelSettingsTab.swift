@@ -49,9 +49,6 @@ struct AIModelSettingsTab: View {
                         }
                     }
                 }
-                
-                // 高频词提取
-                HighFrequencyWordExtractionView()
             } header: {
                 Text("文本纠错")
             } footer: {
@@ -191,19 +188,6 @@ struct AIModelSettingsTab: View {
                     }
                 } else {
                     Text(NSLocalizedString("ai.optimization.description", comment: ""))
-                }
-            }
-            
-            // 会议记录 AI 摘要
-            Section {
-                Toggle("启用会议记录 AI 摘要", isOn: $preferences.enableMeetingSummaryAI)
-            } header: {
-                Text("会议 AI 功能")
-            } footer: {
-                if preferences.enableMeetingSummaryAI {
-                    Text("启用后，会议记录会自动使用 AI 生成摘要和待办事项。需要先配置 AI 服务。")
-                } else {
-                    Text("会议记录可以使用 AI 自动生成摘要和提取待办事项")
                 }
             }
             

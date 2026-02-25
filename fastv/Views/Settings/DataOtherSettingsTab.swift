@@ -15,15 +15,6 @@ struct DataOtherSettingsTab: View {
     
     var body: some View {
         Form {
-            // 历史记录管理
-            Section {
-                HistoryRecordManagementView()
-            } header: {
-                Text("历史记录")
-            } footer: {
-                Text("管理语音输入历史记录")
-            }
-            
             // 关于
             Section {
                 Button(action: {

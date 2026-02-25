@@ -61,3 +61,10 @@ fastv/Resources/Models/**/*.onnx
 # MicroAPP zip 包文件（不提交打包文件）
 *.microapp.zip
 examples/*.png
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+stt-api/resource/   # SenseVoice 模型缓存

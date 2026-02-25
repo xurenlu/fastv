@@ -134,6 +134,30 @@ struct QuickSettingsTab: View {
                         
                         Divider()
                         
+                        // 智能分段转文字
+                        VStack(alignment: .leading, spacing: 8) {
+                            Toggle(NSLocalizedString("enable.incremental.transcription", comment: ""), isOn: $preferences.enableIncrementalTranscription)
+                            
+                            if preferences.enableIncrementalTranscription {
+                                HStack(spacing: 8) {
+                                    Text(NSLocalizedString("silence.detection.duration", comment: ""))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Slider(value: $preferences.silenceDetectionDuration, in: 0.5...2.0, step: 0.1)
+                                    Text("\(String(format: "%.1f", preferences.silenceDetectionDuration))s")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 32, alignment: .trailing)
+                                }
+                            }
+                            
+                            Text(NSLocalizedString("incremental.transcription.description", comment: ""))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Divider()
+                        
                         // 悬浮工具条位置设置
                         Picker(NSLocalizedString("waveform.window.position", comment: ""), selection: $preferences.waveformWindowPosition) {
                             ForEach(WaveformWindowPosition.allCases, id: \.self) { position in

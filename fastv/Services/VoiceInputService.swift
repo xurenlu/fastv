@@ -504,8 +504,13 @@ class VoiceInputService: ObservableObject {
         audioLevel = 0.0
         
         let buffers: [Data] = recordingDataQueue.sync {
-            defer { self.recordedBuffers = [] }
-            return self.recordedBuffers
+            let result = self.recordedBuffers
+            // 彻底清理所有录音相关缓冲，防止内存累积
+            self.recordedBuffers = []
+            self.segmentBuffers = []
+            self.currentBufferSizeBytes = 0
+            self.currentSegmentSizeBytes = 0
+            return result
         }
         
         guard !buffers.isEmpty,

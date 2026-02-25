@@ -14,6 +14,41 @@ import AppKit
 private var voiceInputStartTime: Date?
 // 記錄當前語音輸入是否需要 AI 校正
 private var currentVoiceInputNeedsAI: Bool = false
+// 本次錄音會話是否啟用智能分段
+private var currentSessionUsesIncremental: Bool = false
+// 本次錄音會話的靜音檢測器（智能分段時使用）
+private var currentSessionSilenceDetector: SilenceDetector?
+
+/// 智能分段：靜音觸發時提取當前段落、轉寫並插入
+@MainActor
+private func performIncrementalSegmentTranscription() async {
+    let voiceService = VoiceInputService.shared
+    let preferences = UserPreferences.shared
+    let language = TranscriptLanguage(rawValue: preferences.voiceInputLanguage) ?? .zh
+    
+    guard let result = try? await voiceService.extractCurrentSegmentWithTiming() else { return }
+    guard result.duration >= 1.0 else {
+        print("⚠️ [fastvApp] 智能分段：段落過短(\(String(format: "%.1f", result.duration))s)，跳過")
+        return
+    }
+    
+    do {
+        var text = try await SpeechTranscriber.transcribe(recording: result.recording, language: language)
+        if CommonMistakeManager.shared.enableAutoCorrection {
+            text = TextCorrectionService.shared.correctText(text)
+        }
+        guard !text.isEmpty else { return }
+        
+        if preferences.useDirectTextInsertion {
+            DirectTextInsertionService.shared.insertText(text)
+        } else {
+            TextInsertionService.shared.insertText(text)
+        }
+        print("✅ [fastvApp] 智能分段插入: \(text.prefix(30))...")
+    } catch {
+        print("❌ [fastvApp] 智能分段轉寫失敗: \(error)")
+    }
+}
 
 private struct ShortcutConfig: Equatable {
     var isEnabled: Bool
@@ -352,6 +387,9 @@ struct fastvApp: App {
         voiceInputStartTime = Date()
         currentVoiceInputNeedsAI = needsAI
         
+        let preferences = UserPreferences.shared
+        currentSessionUsesIncremental = preferences.enableIncrementalTranscription
+        
         let voiceService = VoiceInputService.shared
         let waveformManager = WaveformWindowManager.shared
         
@@ -367,8 +405,27 @@ struct fastvApp: App {
             print("✅ [fastvApp] 录音已开始")
             
             // 连接音频数据回调
-            voiceService.onAudioData = { level in
-                waveformManager.updateAudioLevel(level)
+            if currentSessionUsesIncremental {
+                let silenceDetector = SilenceDetector()
+                silenceDetector.silenceThreshold = preferences.silenceThreshold
+                silenceDetector.relativeThreshold = preferences.silenceRelativeThreshold
+                silenceDetector.minimumSilenceDuration = preferences.silenceDetectionDuration
+                silenceDetector.onSilenceDetected = { _ in
+                    Task { @MainActor in
+                        await performIncrementalSegmentTranscription()
+                    }
+                }
+                currentSessionSilenceDetector = silenceDetector
+                voiceService.onAudioData = { level in
+                    waveformManager.updateAudioLevel(level)
+                    silenceDetector.processAudioLevel(level)
+                }
+                print("✅ [fastvApp] 智能分段已启用，停顿阈值: \(preferences.silenceDetectionDuration)秒")
+            } else {
+                currentSessionSilenceDetector = nil
+                voiceService.onAudioData = { level in
+                    waveformManager.updateAudioLevel(level)
+                }
             }
             print("✅ [fastvApp] 音频数据回调已连接")
         } catch VoiceInputError.microphoneInUse {
@@ -437,34 +494,69 @@ struct fastvApp: App {
         
         let voiceService = VoiceInputService.shared
         let waveformManager = WaveformWindowManager.shared
-        let history = VoiceInputHistory.shared
         
         // 立即切换到转文字状态（在停止录音之前），不使用延迟
         print("📊 [fastvApp] 立即切换到转文字状态...")
         waveformManager.setTranscribing()
         print("✅ [fastvApp] 已切换到转文字状态")
         
+        let preferences = UserPreferences.shared
+        
+        // 智能分段模式：先提取剩余段落（須在 stopRecording 之前，因 extract 要求 isRecording）
+        var remainingSegmentResult: VoiceInputService.SegmentResult?
+        if currentSessionUsesIncremental {
+            remainingSegmentResult = try? await voiceService.extractCurrentSegmentWithTiming()
+            currentSessionSilenceDetector?.reset()
+            currentSessionSilenceDetector?.onSilenceDetected = nil
+            currentSessionSilenceDetector = nil
+        }
+        
         // 停止录音
         print("🎤 [fastvApp] 停止录音...")
         guard let recording = try? await voiceService.stopRecording() else {
             print("❌ [fastvApp] 停止录音失败或返回空录音数据")
-            // 如果停止录音失败，也要隐藏窗口
             waveformManager.hide()
             return
         }
         print("✅ [fastvApp] 录音已停止，PCM字节数: \(recording.pcmData.count)")
         
-        // 语音转文字
+        // 智能分段模式：只轉寫剩餘段落，不轉寫整段（已插入的段落不再處理）
+        if currentSessionUsesIncremental {
+            if let result = remainingSegmentResult, result.duration >= 1.0 {
+                do {
+                    var text = try await SpeechTranscriber.transcribe(recording: result.recording, language: TranscriptLanguage(rawValue: preferences.voiceInputLanguage) ?? .zh)
+                    if CommonMistakeManager.shared.enableAutoCorrection {
+                        text = TextCorrectionService.shared.correctText(text)
+                    }
+                    if !text.isEmpty {
+                        if preferences.useDirectTextInsertion {
+                            DirectTextInsertionService.shared.insertText(text)
+                        } else {
+                            TextInsertionService.shared.insertText(text)
+                        }
+                        print("✅ [fastvApp] 智能分段（剩餘）插入: \(text.prefix(30))...")
+                    }
+                } catch {
+                    print("❌ [fastvApp] 智能分段剩餘轉寫失敗: \(error)")
+                }
+            }
+            waveformManager.setAICorrectionDisabled()
+            currentSessionUsesIncremental = false
+            currentVoiceInputNeedsAI = false
+            return
+        }
+        
+        // 非智能分段：整段轉寫
         print("🔊 [fastvApp] 开始语音转文字...")
         do {
-            // 获取用户设置的识别语言
-            let preferences = UserPreferences.shared
             let languageString = preferences.voiceInputLanguage
             let language = TranscriptLanguage(rawValue: languageString) ?? .zh // 如果无效，默认使用中文
             print("🌐 [fastvApp] 使用识别语言: \(languageString) (languageID: \(language.languageID))")
             
             var text = try await SpeechTranscriber.transcribe(recording: recording, language: language)
             print("✅ [fastvApp] 语音转文字成功: \(text.prefix(50))...")
+            // 转录完成后主动回收 C/ObjC 层 autorelease 对象，便于释放大块 PCM 等内存
+            autoreleasepool { }
             
             // 自动纠错（包含内置规则和用户自定义规则，毫秒级，非常快）
             let mistakeManager = CommonMistakeManager.shared
@@ -512,6 +604,8 @@ struct fastvApp: App {
                     
                     // AI修正成功：設置成功狀態（會自動在1秒後隱藏窗口）
                     waveformManager.setAICorrected()
+                    // AI 優化完成後回收可能產生的臨時對象
+                    autoreleasepool { }
                 } catch {
                     print("⚠️ [fastvApp] AI 優化失敗，使用原始文本: \(error.localizedDescription)")
                     // AI 優化失敗不影響主流程，繼續使用原始文本
@@ -553,9 +647,6 @@ struct fastvApp: App {
             // 如果AI优化启用但失败，窗口会在显示失败状态后自动隐藏
             // 如果AI优化成功，窗口会在显示成功状态1秒后自动隐藏
             
-            // 最后保存到历史记录（延迟保存，不阻塞文本插入）
-            history.add(text, duration: duration)
-            print("✅ [fastvApp] 已保存到历史记录（时长: \(String(format: "%.2f", duration))秒）")
         } catch {
             print("❌ [fastvApp] 语音转文字失败: \(error)")
             // 转文字失败时也要隐藏窗口
