@@ -35,13 +35,27 @@ private var currentSessionUsesIncremental: Bool = false
 private var currentSessionSilenceDetector: SilenceDetector?
 // 智能分段轉寫串行隊列：確保按時間順序插入，避免並發導致順序錯亂
 private var incrementalTranscriptionTask: Task<Void, Never>?
+/// 智能分段單條結果：含音頻與轉寫文本，用於二次拼接轉寫（長音頻準確率更高）
+private struct IncrementalSegmentInfo {
+    let audio: VoiceRecording
+    let transcript: String
+}
+
 // 智能分段轉寫結果緩存：邊說邊轉但不插入，鬆鍵時一次性合併輸出（利於 AI 優化整段）
-private var incrementalTranscriptionResults: [String] = []
+private var incrementalTranscriptionResults: [IncrementalSegmentInfo] = []
 // 智能分段本輪累計：語音時長、識別耗時（用於統計）
 private var currentSessionIncrementalAudioSeconds: TimeInterval = 0
 private var currentSessionIncrementalTranscriptionSeconds: TimeInterval = 0
 
+/// 二次拼接轉寫：動態規劃分批，每批至少3段、至少3秒，避免過短片段。鬆鍵時若某批已完成則替換該批零碎結果。
+private var incrementalBatchRefinementTasks: [Task<Void, Never>] = []
+private var incrementalBatchPartition: [Range<Int>] = []       // 動態規劃分批方案，如 [0..<4, 4..<7]
+private var incrementalBatchRefinedTexts: [String?] = []       // 每批的轉寫結果，nil 表示未完成
+private let incrementalBatchMinSegments = 3  // 至少 3 段才觸發（2 段拼接效果提升有限）
+private let incrementalBatchMinDuration: TimeInterval = 3.0     // 每批至少 3 秒，避免過短
+
 /// 智能分段：靜音觸發時提取當前段落、轉寫並緩存（串行執行，不插入，鬆鍵時一次性輸出）
+/// 同時啟動二次拼接轉寫：多段音頻合併後再轉寫，準確率更高；鬆鍵時若已完成則替換零碎結果
 @MainActor
 private func performIncrementalSegmentTranscription() async {
     let voiceService = VoiceInputService.shared
@@ -68,14 +82,115 @@ private func performIncrementalSegmentTranscription() async {
         }
         guard !text.isEmpty else { return }
 
-        incrementalTranscriptionResults.append(text)
+        let segmentInfo = IncrementalSegmentInfo(audio: result.recording, transcript: text)
+        incrementalTranscriptionResults.append(segmentInfo)
         print("✅ [fastvApp] 智能分段轉寫緩存: \(text.prefix(30))... (共\(incrementalTranscriptionResults.count)段)")
+
+        // 二次拼接轉寫：動態規劃分批，每批至少3段、至少2秒
+        if incrementalTranscriptionResults.count >= incrementalBatchMinSegments {
+            scheduleBatchRefinementTranscription(language: language)
+        }
     } catch {
         print("❌ [fastvApp] 智能分段轉寫失敗: \(error)")
     }
 
     // 轉寫完成，恢復錄音狀態（用戶可繼續說話）
     waveformManager.setRecording()
+}
+
+/// 動態規劃分批：每批至少 minSegments 段、至少 minDuration 秒，盡量讓每批較長以提升準確率
+/// 例如 7 段可拆成 4+3 或 7（一整批），9 段可拆成 6+3 或 9，優先讓每批盡長
+private func partitionSegmentsForBatchRefinement(_ segments: [IncrementalSegmentInfo]) -> [Range<Int>] {
+    let n = segments.count
+    guard n >= incrementalBatchMinSegments else { return [] }
+    var result: [Range<Int>] = []
+    var start = 0
+    while start < n {
+        let remaining = n - start
+        if remaining < incrementalBatchMinSegments {
+            if !result.isEmpty {
+                let last = result.removeLast()
+                result.append(last.lowerBound..<n)
+            } else {
+                result.append(start..<n)
+            }
+            break
+        }
+        var bestEnd = start + incrementalBatchMinSegments
+        var bestDuration = segments[start..<bestEnd].reduce(0.0) { $0 + $1.audio.durationSeconds }
+        while bestDuration < incrementalBatchMinDuration && bestEnd < n {
+            bestEnd += 1
+            bestDuration += segments[bestEnd - 1].audio.durationSeconds
+        }
+        let tailCount = n - bestEnd
+        if tailCount > 0 && tailCount < incrementalBatchMinSegments {
+            bestEnd = n
+        } else {
+            for end in (bestEnd + 1)...n {
+                let duration = segments[start..<end].reduce(0.0) { $0 + $1.audio.durationSeconds }
+                let tail = n - end
+                if duration >= incrementalBatchMinDuration && (tail == 0 || tail >= incrementalBatchMinSegments) {
+                    bestEnd = end
+                }
+            }
+        }
+        result.append(start..<bestEnd)
+        start = bestEnd
+    }
+    return result
+}
+
+/// 調度二次拼接轉寫：按動態規劃分批，並行轉寫各批
+@MainActor
+private func scheduleBatchRefinementTranscription(language: TranscriptLanguage) {
+    incrementalBatchRefinementTasks.forEach { $0.cancel() }
+    incrementalBatchRefinementTasks = []
+    let segments = incrementalTranscriptionResults
+    let partition = partitionSegmentsForBatchRefinement(segments)
+    guard !partition.isEmpty else { return }
+    incrementalBatchPartition = partition
+    incrementalBatchRefinedTexts = [String?](repeating: nil, count: partition.count)
+    let partDesc = partition.map { "\($0.count)段" }.joined(separator: "+")
+    print("📐 [fastvApp] 動態規劃分批: \(partDesc)")
+    for (index, range) in partition.enumerated() {
+        let batchSegments = Array(segments[range])
+        let task = Task { @MainActor in
+            let refined = await runBatchRefinementTranscription(segments: batchSegments, language: language)
+            guard !Task.isCancelled, let r = refined else { return }
+            if index < incrementalBatchRefinedTexts.count {
+                incrementalBatchRefinedTexts[index] = r
+                let duration = batchSegments.reduce(0.0) { $0 + $1.audio.durationSeconds }
+                print("✅ [fastvApp] 批次\(index+1)/\(partition.count) 二次轉寫完成(\(range.count)段, \(String(format: "%.1f", duration))s)")
+            }
+        }
+        incrementalBatchRefinementTasks.append(task)
+    }
+}
+
+/// 將多段音頻拼接後進行二次轉寫，長音頻準確率通常更高
+@MainActor
+private func runBatchRefinementTranscription(segments: [IncrementalSegmentInfo], language: TranscriptLanguage) async -> String? {
+    guard segments.count >= incrementalBatchMinSegments else { return nil }
+    let combinedPCM = segments.map { $0.audio.pcmData }.reduce(Data(), +)
+    guard !combinedPCM.isEmpty else { return nil }
+    let first = segments[0].audio
+    let combined = VoiceRecording(pcmData: combinedPCM, sampleRate: first.sampleRate, channelCount: first.channelCount)
+    do {
+        var text = try await SpeechTranscriber.transcribe(
+            recording: combined,
+            language: language,
+            cancellationCheck: { Task.isCancelled }
+        )
+        if CommonMistakeManager.shared.enableAutoCorrection {
+            text = TextCorrectionService.shared.correctText(text)
+        }
+        guard !text.isEmpty else { return nil }
+        print("✅ [fastvApp] 二次拼接轉寫完成(\(segments.count)段合併): \(text.prefix(40))...")
+        return text
+    } catch {
+        print("⚠️ [fastvApp] 二次拼接轉寫失敗: \(error)")
+        return nil
+    }
 }
 
 private struct ShortcutConfig: Equatable {
@@ -159,6 +274,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         print("🧹 [AppDelegate] 应用即将退出，清理资源")
+
+        // 优先释放麦克风，避免退出后状态栏仍显示橙色录音图标
+        if Thread.isMainThread {
+            MainActor.assumeIsolated {
+                VoiceInputService.shared.forceReleaseMicrophone()
+            }
+        } else {
+            DispatchQueue.main.sync {
+                VoiceInputService.shared.forceReleaseMicrophone()
+            }
+        }
 
         // 移除所有通知观察者
         if let observer = windowObserver {
@@ -483,6 +609,10 @@ struct fastvApp: App {
         incrementalTranscriptionResults = []
         currentSessionIncrementalAudioSeconds = 0
         currentSessionIncrementalTranscriptionSeconds = 0
+        incrementalBatchRefinementTasks.forEach { $0.cancel() }
+        incrementalBatchRefinementTasks = []
+        incrementalBatchPartition = []
+        incrementalBatchRefinedTexts = []
         
         let voiceService = VoiceInputService.shared
         let waveformManager = WaveformWindowManager.shared
@@ -598,6 +728,14 @@ struct fastvApp: App {
         
         let preferences = UserPreferences.shared
         
+        // 松开后尾缓冲：继续录音一小段时间，减少末尾内容丢失（用户可能还在说最后几个字）
+        let tailBuffer = max(0, min(1.0, preferences.voiceInputReleaseTailBufferSeconds))
+        if tailBuffer > 0 {
+            print("⏳ [fastvApp] 尾缓冲 \(String(format: "%.2f", tailBuffer)) 秒，继续录音...")
+            try? await Task.sleep(nanoseconds: UInt64(tailBuffer * 1_000_000_000))
+            print("✅ [fastvApp] 尾缓冲结束")
+        }
+        
         // 智能分段模式：先提取剩余段落（須在 stopRecording 之前，因 extract 要求 isRecording）
         var remainingSegmentResult: VoiceInputService.SegmentResult?
         if currentSessionUsesIncremental {
@@ -621,8 +759,31 @@ struct fastvApp: App {
         
         // 智能分段模式：合併緩存分段 + 剩餘段落，一次性輸出（支持 AI 優化整段）
         if currentSessionUsesIncremental {
-            var fullText = incrementalTranscriptionResults.joined()
+            // 按動態規劃分批：若某批二次轉寫已完成則替換該批零碎結果，否則用零碎結果
+            var fullText = ""
+            let segments = incrementalTranscriptionResults
+            if !incrementalBatchPartition.isEmpty && incrementalBatchPartition.count == incrementalBatchRefinedTexts.count {
+                for (i, range) in incrementalBatchPartition.enumerated() {
+                    let lo = max(0, min(range.lowerBound, segments.count))
+                    let hi = max(lo, min(range.upperBound, segments.count))
+                    if let batchText = incrementalBatchRefinedTexts[i], hi > lo {
+                        fullText += batchText
+                    } else if hi > lo {
+                        fullText += segments[lo..<hi].map { $0.transcript }.joined()
+                    }
+                }
+                let usedBatchCount = incrementalBatchRefinedTexts.compactMap { $0 }.count
+                if usedBatchCount > 0 {
+                    print("✅ [fastvApp] 使用二次拼接轉寫替換 \(usedBatchCount)/\(incrementalBatchPartition.count) 批零碎結果")
+                }
+            } else {
+                fullText = segments.map { $0.transcript }.joined()
+            }
             incrementalTranscriptionResults = []
+            incrementalBatchRefinementTasks.forEach { $0.cancel() }
+            incrementalBatchRefinementTasks = []
+            incrementalBatchPartition = []
+            incrementalBatchRefinedTexts = []
             
             // 轉寫剩餘段落並合併
             let minRemainingDuration = fullText.isEmpty ? VoiceInputDurationThreshold.minimumIncrementalSegment : VoiceInputDurationThreshold.minimumRemainingWhenHasCache

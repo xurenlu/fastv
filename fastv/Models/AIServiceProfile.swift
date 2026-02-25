@@ -139,7 +139,7 @@ enum AIProtocolType: String, Codable, CaseIterable {
         case .azureOpenAI:
             return ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
         case .dashScope:
-            return ["qwen3.5-flash", "qwen3.5-plus", "qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext"]
+            return ["qwen-flash", "qwen3.5-flash", "qwen3.5-plus", "qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext"]
         case .ollama:
             return ["gemma2:2b", "deepseek-r1:1.5b", "qwen2.5:7b", "llama3.2:3b"]
         case .claude:
@@ -221,16 +221,21 @@ enum AIProtocolType: String, Codable, CaseIterable {
 /// AI 服务使用场景
 enum AIScenario: String, Codable, CaseIterable {
     case voiceInputOptimization = "voice_input_optimization"  // 语音输入优化
-    case meetingSummary = "meeting_summary"                    // 会议摘要
+    case meetingSummary = "meeting_summary"                    // 会议摘要（已移除）
     case todoParsing = "todo_parsing"                          // Todo 解析
     case aiChat = "ai_chat"                                     // AI 聊天
     case textCorrection = "text_correction"                     // 文本纠错
     case errorDetection = "error_detection"                    // 错误检测
-    case videoAnalysis = "video_analysis"                       // 视频分析
-    case diaryAnalysis = "diary_analysis"                       // 日记分析
-    case expenseParsing = "expense_parsing"                     // 记账解析
-    case intelGeneration = "intel_generation"                   // 情报生成
-    
+    case videoAnalysis = "video_analysis"                       // 视频分析（已移除）
+    case diaryAnalysis = "diary_analysis"                       // 日记分析（已移除）
+    case expenseParsing = "expense_parsing"                     // 记账解析（已移除）
+    case intelGeneration = "intel_generation"                   // 情报生成（已移除）
+
+    /// 当前版本仍在使用的场景，仅这些场景在设置中显示 AI 配置
+    static var activeScenarios: [AIScenario] {
+        [.voiceInputOptimization, .todoParsing, .aiChat]
+    }
+
     var displayName: String {
         switch self {
         case .voiceInputOptimization:

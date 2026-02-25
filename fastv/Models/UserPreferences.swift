@@ -88,6 +88,7 @@ class UserPreferences: ObservableObject {
         static let silenceThreshold = "silenceThreshold"
         static let silenceRelativeThreshold = "silenceRelativeThreshold"
         static let enableIncrementalTranscription = "enableIncrementalTranscription"
+        static let voiceInputReleaseTailBufferSeconds = "voiceInputReleaseTailBufferSeconds"
         // AI 服务配置相关（新）
         static let aiServiceProfiles = "aiServiceProfiles"
         static let aiScenarioBindings = "aiScenarioBindings"
@@ -367,6 +368,11 @@ class UserPreferences: ObservableObject {
     
     @Published var enableIncrementalTranscription: Bool {
         willSet { defaults.set(newValue, forKey: Keys.enableIncrementalTranscription) }
+    }
+    
+    /// 松开快捷键后继续录音的尾缓冲时长（秒），用于减少末尾内容丢失，默认 0.3 秒
+    @Published var voiceInputReleaseTailBufferSeconds: Double {
+        willSet { defaults.set(newValue, forKey: Keys.voiceInputReleaseTailBufferSeconds) }
     }
     
     // 引导流程相关
@@ -737,6 +743,7 @@ class UserPreferences: ObservableObject {
         silenceThreshold = defaults.object(forKey: Keys.silenceThreshold) as? Float ?? 0.01 // 默认0.01
         silenceRelativeThreshold = defaults.object(forKey: Keys.silenceRelativeThreshold) as? Float ?? 0.25 // 默认25%，更敏感
         enableIncrementalTranscription = defaults.object(forKey: Keys.enableIncrementalTranscription) as? Bool ?? false
+        voiceInputReleaseTailBufferSeconds = defaults.object(forKey: Keys.voiceInputReleaseTailBufferSeconds) as? Double ?? 0.3
         
         // 引导流程设置，默认为未完成
         hasCompletedOnboarding = defaults.bool(forKey: Keys.hasCompletedOnboarding)

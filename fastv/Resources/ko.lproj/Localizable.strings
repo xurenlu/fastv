@@ -76,6 +76,8 @@
 "enable.incremental.transcription" = "스마트 세그먼트 전사";
 "incremental.transcription.description" = "일시 정지 시 백그라운드 전사, 단축키 해제 시 한 번에 출력. AI 최적화 지원";
 "silence.detection.duration" = "일시 정지 임계값";
+"voice.input.release.tail.buffer" = "해제 후 테일 버퍼";
+"voice.input.release.tail.buffer.description" = "단축키를 놓은 후 잠시 녹음을 계속하여 끝부분 내용 손실을 줄임 (0으로 비활성화)";
 
 // 통계
 "total.duration" = "총 시간";

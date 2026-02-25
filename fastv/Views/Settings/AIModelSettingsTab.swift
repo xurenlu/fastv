@@ -8,7 +8,7 @@
 import SwiftUI
 
 /// Tab 2: AI与模型
-/// 包含：AI服务管理、场景映射、AI文本优化、文本纠错、会议AI摘要、模型文件
+/// 包含：AI服务管理、场景映射（语音优化/Todo/聊天）、AI文本优化、文本纠错、模型文件
 struct AIModelSettingsTab: View {
     @ObservedObject var preferences = UserPreferences.shared
     
@@ -103,7 +103,7 @@ struct AIModelSettingsTab: View {
             } header: {
                 Text("场景映射")
             } footer: {
-                Text("为不同功能场景（语音优化、会议摘要、Todo、AI 聊天等）配置独立的 AI 服务和模型。")
+                Text("为不同功能场景（语音输入优化、AI Todo、AI 聊天）配置独立的 AI 服务和模型。")
             }
             
             // AI 文本优化功能

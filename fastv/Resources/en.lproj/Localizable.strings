@@ -76,6 +76,8 @@
 "enable.incremental.transcription" = "Smart Segment Transcription";
 "incremental.transcription.description" = "Transcribe in background on pause, output all at once on release. Supports AI optimization of full text";
 "silence.detection.duration" = "Pause threshold";
+"voice.input.release.tail.buffer" = "Release tail buffer";
+"voice.input.release.tail.buffer.description" = "Continue recording briefly after releasing shortcut to reduce tail content loss (0 to disable)";
 
 // Statistics
 "total.duration" = "Total Duration";
@@ -311,6 +313,9 @@
 "chat.delete.session" = "Delete conversation";
 "chat.delete.session.confirm" = "Are you sure you want to delete this conversation? This cannot be undone.";
 "chat.response.time.unit" = "s";
+"chat.thinking.mode" = "Thinking Mode";
+"chat.thinking.mode.help" = "When enabled, the model reasons before replying. Higher quality but slower. Only works with qwen3 and similar models.";
+"chat.thinking.process" = "Thinking Process";
 
 // Email
 "email.new.message" = "New Message";

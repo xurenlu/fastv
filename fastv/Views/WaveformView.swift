@@ -493,9 +493,10 @@ struct WaveformView: View {
                     ))
                     
                 case .aiCorrectionDisabled:
-                    // AI修正未启用：显示禁用图标
+                    // AI修正未启用：显示禁用图标（使用 sparkles + slash 变体，兼容旧系统）
                     HStack(spacing: 8) {
-                        Image(systemName: "sparkles.slash")
+                        Image(systemName: "sparkles")
+                            .symbolVariant(.slash)
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(.secondary)
                         

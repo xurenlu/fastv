@@ -438,6 +438,7 @@ private struct HistoryRecordRow: View {
                 }
             }
             .buttonStyle(.plain)
+            .padding(.top, 10)
             .padding(.trailing, 20)
         }
         .contentShape(Rectangle())

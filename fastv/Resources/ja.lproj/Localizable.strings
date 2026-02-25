@@ -76,6 +76,8 @@
 "enable.incremental.transcription" = "スマートセグメント転写";
 "incremental.transcription.description" = "ポーズでバックグラウンド転写、ショートカット解放時に一括出力。AI最適化対応";
 "silence.detection.duration" = "ポーズ閾値";
+"voice.input.release.tail.buffer" = "リリース後テールバッファ";
+"voice.input.release.tail.buffer.description" = "ショートカットを離した後、少し録音を続けて末尾の内容の欠落を減らす（0で無効）";
 
 // 統計
 "total.duration" = "合計時間";

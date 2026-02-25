@@ -13,7 +13,7 @@ struct AIScenarioMappingView: View {
     
     var body: some View {
         Form {
-            ForEach(AIScenario.allCases, id: \.self) { scenario in
+            ForEach(AIScenario.activeScenarios, id: \.self) { scenario in
                 ScenarioMappingRowView(scenario: scenario)
             }
         }
@@ -66,15 +66,19 @@ struct ScenarioMappingRowView: View {
                 }
             
             if !useDefault {
-                // Profile 选择
+                // Profile 选择（仅显示已配置的 AI 服务，不显示「未选择」）
                 Picker("AI 服务", selection: Binding(
-                    get: { selectedProfileId ?? UUID() },
+                    get: {
+                        selectedProfileId
+                            ?? preferences.getDefaultProfile()?.id
+                            ?? preferences.aiServiceProfiles.first?.id
+                            ?? UUID()
+                    },
                     set: { newId in
                         selectedProfileId = newId
                         updateBinding()
                     }
                 )) {
-                    Text("未选择").tag(UUID())
                     ForEach(preferences.aiServiceProfiles) { profile in
                         HStack {
                             if profile.isDefault {

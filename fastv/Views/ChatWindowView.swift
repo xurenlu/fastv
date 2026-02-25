@@ -25,6 +25,11 @@ struct ChatWindowView: View {
         preferences.aiServiceProfiles.isEmpty || preferences.getDefaultProfile() == nil
     }
 
+    /// 当前选中的模型是否支持思考模式（qwen3 系列）
+    private var modelSupportsThinking: Bool {
+        viewModel.selectedModel.lowercased().contains("qwen3")
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // 配置提示横幅 - Apple 风格：克制、可操作
@@ -169,6 +174,18 @@ struct ChatWindowView: View {
                 TextField("", value: $preferences.chatMaxTokens, format: .number)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 90)
+            }
+            // 思考模式（仅 qwen3 等支持 thinking 的模型显示）
+            if modelSupportsThinking {
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(isOn: $preferences.chatEnableThinking) {
+                        Text(NSLocalizedString("chat.thinking.mode", comment: ""))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .toggleStyle(.switch)
+                    .help(NSLocalizedString("chat.thinking.mode.help", comment: ""))
+                }
             }
             Spacer()
         }

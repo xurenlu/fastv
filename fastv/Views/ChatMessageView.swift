@@ -385,7 +385,7 @@ struct ChatMessageView: View {
                 Image(systemName: "brain.head.profile")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text("思考过程")
+                Text(NSLocalizedString("chat.thinking.process", comment: ""))
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)

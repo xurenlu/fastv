@@ -76,6 +76,8 @@
 "enable.incremental.transcription" = "智能分段轉文字";
 "incremental.transcription.description" = "檢測停頓時後台轉寫，鬆開快捷鍵時一次性輸出，支援 AI 優化整段";
 "silence.detection.duration" = "停頓閾值";
+"voice.input.release.tail.buffer" = "鬆開後尾緩衝";
+"voice.input.release.tail.buffer.description" = "鬆開快捷鍵後繼續錄音一小段時間，減少末尾內容丟失（0 為關閉）";
 
 // 統計
 "total.duration" = "總時長";

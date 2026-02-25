@@ -76,6 +76,8 @@
 "enable.incremental.transcription" = "智能分段转文字";
 "incremental.transcription.description" = "检测停顿时后台转写，松开快捷键时一次性输出，支持 AI 优化整段";
 "silence.detection.duration" = "停顿阈值";
+"voice.input.release.tail.buffer" = "松开后尾缓冲";
+"voice.input.release.tail.buffer.description" = "松开快捷键后继续录音一小段时间，减少末尾内容丢失（0 为关闭）";
 
 // 统计
 "total.duration" = "总时长";
@@ -311,6 +313,9 @@
 "chat.delete.session" = "删除会话";
 "chat.delete.session.confirm" = "确定要删除这个会话吗？此操作无法撤销。";
 "chat.response.time.unit" = "秒";
+"chat.thinking.mode" = "思考模式";
+"chat.thinking.mode.help" = "开启后模型会先进行推理再回复，质量更高但响应更慢。仅 qwen3 等支持 thinking 的模型有效。";
+"chat.thinking.process" = "思考过程";
 
 // 邮箱
 "email.new.message" = "新邮件";
