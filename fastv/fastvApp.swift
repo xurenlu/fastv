@@ -24,6 +24,7 @@ private var currentSessionSilenceDetector: SilenceDetector?
 private func performIncrementalSegmentTranscription() async {
     let voiceService = VoiceInputService.shared
     let preferences = UserPreferences.shared
+    let waveformManager = WaveformWindowManager.shared
     let language = TranscriptLanguage(rawValue: preferences.voiceInputLanguage) ?? .zh
     
     guard let result = try? await voiceService.extractCurrentSegmentWithTiming() else { return }
@@ -31,6 +32,9 @@ private func performIncrementalSegmentTranscription() async {
         print("⚠️ [fastvApp] 智能分段：段落過短(\(String(format: "%.1f", result.duration))s)，跳過")
         return
     }
+    
+    // 檢測到停頓、開始轉寫時，立即切換為轉文字中的轉圈樣式
+    waveformManager.setTranscribing()
     
     do {
         var text = try await SpeechTranscriber.transcribe(recording: result.recording, language: language)
@@ -48,6 +52,9 @@ private func performIncrementalSegmentTranscription() async {
     } catch {
         print("❌ [fastvApp] 智能分段轉寫失敗: \(error)")
     }
+    
+    // 轉寫完成，恢復錄音狀態（用戶可繼續說話）
+    waveformManager.setRecording()
 }
 
 private struct ShortcutConfig: Equatable {

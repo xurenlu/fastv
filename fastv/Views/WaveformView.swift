@@ -170,6 +170,11 @@ class WaveformWindowManager: ObservableObject {
         audioLevel = level
     }
     
+    /// 切换到录音状态（智能分段转写完成后恢复）
+    func setRecording() {
+        state = .recording
+    }
+    
     /// 切换到转文字状态
     func setTranscribing() {
         print("📊 [WaveformWindowManager] 切换到转文字状态")
