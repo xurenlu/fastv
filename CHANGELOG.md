@@ -2,6 +2,22 @@
 
 所有版本變更記錄。
 
+## [1.2.8-rc1] - 2026-02-25
+
+### 修復
+- 語音轉寫：修復智能分段動態規劃在恰好 3 段時 `Range requires lowerBound <= upperBound` 崩潰問題
+
+## [1.2.8] - 2026-02-25
+
+### 新增
+- AI Chat：支持在聊天中切换 Provider（服务商），可同时选择 Provider 和 Model
+- AI Chat：新增智谱 AI、MiniMax（国内/国际）到默认 Provider 列表
+- AI Chat：多 Provider 下的图片/附件支持（DashScope qwen-vl、智谱 glm-4v、OpenAI gpt-4o 等）
+
+### 改進
+- AI Chat：Provider 与 Model 双选择器，切换 Provider 时自动加载对应模型列表
+- AI Chat：图片/附件支持按 Provider 和模型动态判断（支持视觉的模型可上传图片）
+
 ## [1.2.7] - 2026-02-16
 
 ### 修復

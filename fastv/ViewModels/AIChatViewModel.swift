@@ -18,7 +18,9 @@ class AIChatViewModel: ObservableObject {
     @Published var isRecording: Bool = false
     @Published var isSending: Bool = false
     @Published var errorMessage: String?
+    @Published var selectedProfileId: UUID?  // 选中的 Provider
     @Published var selectedModel: String = ""
+    @Published var availableProfiles: [AIServiceProfile] = []  // 可用于聊天的 Provider 列表
     @Published var availableModels: [String] = []
     @Published var pendingAttachments: [ChatAttachment] = []  // 待发送的附件列表
     @Published var currentMessages: [ChatMessage] = []  // 当前会话的消息列表
@@ -34,6 +36,7 @@ class AIChatViewModel: ObservableObject {
     }
     
     init() {
+        loadAvailableProfiles()
         loadAvailableModels()
         
         // 监听 ChatManager 的消息变化
@@ -89,7 +92,8 @@ class AIChatViewModel: ObservableObject {
         currentSessionId = session.id
         selectedModel = session.model
         errorMessage = nil
-        loadAvailableModels()  // 刷新模型列表
+        loadAvailableProfiles()
+        loadAvailableModels()
     }
     
     /// 选择会话
@@ -97,7 +101,8 @@ class AIChatViewModel: ObservableObject {
         currentSessionId = session.id
         selectedModel = session.model.isEmpty ? getDefaultModel() : session.model
         errorMessage = nil
-        loadAvailableModels()  // 刷新模型列表，确保当前会话的模型在列表中
+        loadAvailableProfiles()
+        loadAvailableModels()
         updateCurrentMessages()
     }
     
@@ -116,22 +121,60 @@ class AIChatViewModel: ObservableObject {
         chatManager.updateSession(updated)
     }
     
-    // MARK: - Model Management
+    // MARK: - Provider & Model Management
     
-    /// 加载可用模型列表（根据 AI 聊天场景绑定的 Profile 动态加载）
-    private func loadAvailableModels() {
+    /// 当前选中的 Profile（用于发送消息）
+    var selectedProfile: AIServiceProfile? {
+        if let pid = selectedProfileId, let p = UserPreferences.shared.getProfile(id: pid) {
+            return p
+        }
         let config = UserPreferences.shared.getConfig(for: .aiChat)
-        var models = config.profile.protocolType.recommendedModels
+        return config.profile
+    }
+    
+    /// 加载可用于聊天的 Provider 列表（已配置 API Key 或 Ollama 无需 Key）
+    private func loadAvailableProfiles() {
+        let prefs = UserPreferences.shared
+        var profiles = prefs.aiServiceProfiles.filter { p in
+            !p.protocolType.requiresAPIKey || !p.apiKey.trimmingCharacters(in: .whitespaces).isEmpty
+        }
+        if profiles.isEmpty {
+            profiles = prefs.aiServiceProfiles
+        }
+        availableProfiles = profiles
         
+        // 若当前选中的 Provider 不在列表中，重置为默认或第一个
+        if let pid = selectedProfileId, !profiles.contains(where: { $0.id == pid }) {
+            selectedProfileId = prefs.getConfig(for: .aiChat).profile.id
+            if !availableProfiles.contains(where: { $0.id == selectedProfileId }) {
+                selectedProfileId = availableProfiles.first?.id
+            }
+        }
+        if selectedProfileId == nil {
+            selectedProfileId = prefs.getConfig(for: .aiChat).profile.id
+            if !availableProfiles.contains(where: { $0.id == selectedProfileId }) {
+                selectedProfileId = availableProfiles.first?.id
+            }
+        }
+    }
+    
+    /// 加载可用模型列表（根据选中的 Provider 动态加载）
+    private func loadAvailableModels() {
+        guard let profile = selectedProfile else {
+            let config = UserPreferences.shared.getConfig(for: .aiChat)
+            var models = config.profile.protocolType.recommendedModels
+            if models.isEmpty { models = ["qwen-flash", "qwen-max"] }
+            availableModels = models
+            if selectedModel.isEmpty { selectedModel = getDefaultModel() }
+            return
+        }
+        var models = profile.protocolType.recommendedModels
         if models.isEmpty {
             models = ["qwen-flash", "qwen-max", "qwen-vl-plus", "qwen-vl-max"]
         }
-        
-        // 确保当前选中的模型在列表中（支持自定义模型名）
         if !selectedModel.isEmpty && !models.contains(selectedModel) {
             models.insert(selectedModel, at: 0)
         }
-        
         availableModels = models
         if selectedModel.isEmpty {
             selectedModel = getDefaultModel()
@@ -147,9 +190,10 @@ class AIChatViewModel: ObservableObject {
         return "qwen-flash"
     }
     
-    /// 判断模型是否支持图片
+    /// 判断当前 Provider + 模型是否支持图片/多模态
     func supportsImage() -> Bool {
-        return selectedModel == "qwen-vl-plus" || selectedModel == "qwen-vl-max"
+        guard let profile = selectedProfile else { return false }
+        return profile.protocolType.supportsVision(model: selectedModel)
     }
     
     /// 判断模型是否支持附件
@@ -162,10 +206,18 @@ class AIChatViewModel: ObservableObject {
         return false  // 目前都不支持语音，留待将来
     }
     
+    /// 切换 Provider
+    func changeProfile(_ profileId: UUID) {
+        selectedProfileId = profileId
+        loadAvailableModels()
+        if !supportsAttachment() {
+            pendingAttachments.removeAll()
+        }
+    }
+    
     /// 切换模型
     func changeModel(_ model: String) {
         selectedModel = model
-        // 如果切换到不支持附件的模型，清空待发送的附件
         if !supportsAttachment() {
             pendingAttachments.removeAll()
         }
@@ -234,19 +286,20 @@ class AIChatViewModel: ObservableObject {
             apiMessages.append(chatService.convertToAPIMessage(msg))
         }
         
-        // 获取API配置
+        // 获取 API 配置：优先使用选中的 Provider
         let preferences = UserPreferences.shared
+        let profile = selectedProfile ?? preferences.getConfig(for: .aiChat).profile
         let config = preferences.getConfig(for: .aiChat)
         let model = selectedModel.isEmpty ? config.model : selectedModel
+        let timeout = config.timeout
         
         do {
             let startTime = Date()
-            // 调用AI服务
             let result = try await chatService.sendMessage(
                 messages: apiMessages,
-                profile: config.profile,
+                profile: profile,
                 model: model,
-                timeout: config.timeout,
+                timeout: timeout,
                 preferences: preferences
             )
             let responseTime = Date().timeIntervalSince(startTime)
@@ -339,7 +392,7 @@ class AIChatViewModel: ObservableObject {
             
             // 转文字
             let language = UserPreferences.shared.transcriptLanguage
-            let transcribedText = try await SpeechTranscriber.transcribe(recording: recording, language: language)
+            let transcribedText = try await SpeechTranscriber.transcribe(recording: recording, language: language, enableCTCDeduplication: nil)
             
             // 确保有会话
             if currentSessionId == nil {
@@ -384,9 +437,8 @@ class AIChatViewModel: ObservableObject {
     
     /// 选择并上传文件
     func selectAndUploadFile() {
-        // 检查模型是否支持附件
         guard supportsAttachment() else {
-            errorMessage = "当前模型不支持附件"
+            errorMessage = NSLocalizedString("chat.attachment.not.supported", comment: "")
             return
         }
         
@@ -517,6 +569,7 @@ class AIChatViewModel: ObservableObject {
         }
         
         let preferences = UserPreferences.shared
+        let profile = selectedProfile ?? preferences.getConfig(for: .aiChat).profile
         let config = preferences.getConfig(for: .aiChat)
         let model = selectedModel.isEmpty ? config.model : selectedModel
         
@@ -524,7 +577,7 @@ class AIChatViewModel: ObservableObject {
             let startTime = Date()
             let result = try await chatService.sendMessage(
                 messages: apiMessages,
-                profile: config.profile,
+                profile: profile,
                 model: model,
                 timeout: config.timeout,
                 preferences: preferences
@@ -569,15 +622,15 @@ class AIChatViewModel: ObservableObject {
         let messages = chatManager.getMessages(for: sessionId)
         guard !messages.isEmpty else { return }
         
-        // 获取API配置
         let preferences = UserPreferences.shared
+        let profile = selectedProfile ?? preferences.getConfig(for: .aiChat).profile
         let config = preferences.getConfig(for: .aiChat)
         let model = selectedModel.isEmpty ? config.model : selectedModel
         
         do {
             let title = try await chatService.generateTitle(
                 messages: messages,
-                profile: config.profile,
+                profile: profile,
                 model: model,
                 timeout: config.timeout
             )
@@ -597,15 +650,15 @@ class AIChatViewModel: ObservableObject {
         let messages = chatManager.getMessages(for: sessionId)
         guard !messages.isEmpty else { return }
         
-        // 获取API配置
         let preferences = UserPreferences.shared
+        let profile = selectedProfile ?? preferences.getConfig(for: .aiChat).profile
         let config = preferences.getConfig(for: .aiChat)
         let model = selectedModel.isEmpty ? config.model : selectedModel
         
         do {
             let summary = try await chatService.generateSummary(
                 messages: messages,
-                profile: config.profile,
+                profile: profile,
                 model: model,
                 timeout: config.timeout
             )

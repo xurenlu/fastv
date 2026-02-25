@@ -23,7 +23,9 @@ struct VoiceInputView: View {
         VStack(spacing: 0) {
             // 模型未下载提示横幅 - Apple 风格：克制、信息优先
             if !isModelDownloaded {
-                ModelDownloadBanner(onTap: { showModelDownload = true })
+                ModelDownloadBanner(onTap: {
+                    showModelDownload = true
+                })
             }
 
             // 主内容区

@@ -93,6 +93,27 @@ struct ChatWindowView: View {
     private var toolbarSection: some View {
         VStack(spacing: 0) {
             HStack(spacing: 16) {
+                // Provider 选择器
+                if !viewModel.availableProfiles.isEmpty {
+                    Picker(NSLocalizedString("chat.provider", comment: ""), selection: Binding(
+                        get: { viewModel.selectedProfileId ?? viewModel.availableProfiles.first!.id },
+                        set: { viewModel.changeProfile($0) }
+                    )) {
+                        ForEach(viewModel.availableProfiles) { profile in
+                            HStack {
+                                Image(systemName: profile.protocolType.iconName)
+                                    .foregroundStyle(.secondary)
+                                Text(profile.name)
+                            }
+                            .tag(profile.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 200)
+                    .disabled(needsConfiguration)
+                }
+                
+                // 模型选择器
                 if !viewModel.availableModels.isEmpty {
                     Picker(NSLocalizedString("chat.model", comment: ""), selection: Binding(
                         get: { viewModel.selectedModel },
@@ -105,7 +126,7 @@ struct ChatWindowView: View {
                     .pickerStyle(.menu)
                     .frame(width: 200)
                     .disabled(needsConfiguration)
-                } else {
+                } else if viewModel.availableProfiles.isEmpty {
                     Text(NSLocalizedString("chat.no.models", comment: ""))
                         .font(.subheadline)
                         .foregroundStyle(.tertiary)

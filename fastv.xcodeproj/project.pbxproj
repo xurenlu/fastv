@@ -258,6 +258,8 @@
 			);
 			mainGroup = 5C0423752ECD792D00821B50;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 5C04237F2ECD792D00821B50 /* Products */;
 			projectDirPath = "";
@@ -580,7 +582,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 1.2.6;
+				MARKETING_VERSION = "1.2.8-rc1";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
@@ -639,7 +641,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 1.2.6;
+				MARKETING_VERSION = "1.2.8-rc1";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",

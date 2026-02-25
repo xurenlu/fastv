@@ -290,7 +290,7 @@ class AITodoViewModel: ObservableObject {
             
             // 转文字
             let language = UserPreferences.shared.transcriptLanguage
-            let transcribedText = try await SpeechTranscriber.transcribe(recording: recording, language: language)
+            let transcribedText = try await SpeechTranscriber.transcribe(recording: recording, language: language, enableCTCDeduplication: nil)
             
             // 将转录文本填入输入框
             inputText = transcribedText

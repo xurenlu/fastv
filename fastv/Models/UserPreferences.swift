@@ -525,7 +525,7 @@ class UserPreferences: ObservableObject {
     @Published var huggingFaceToken: String {
         willSet { defaults.set(newValue, forKey: Keys.huggingFaceToken) }
     }
-    
+
     // MARK: - Initialization
     
     private init() {
@@ -805,10 +805,10 @@ class UserPreferences: ObservableObject {
         videoYoloModelPath = defaults.string(forKey: Keys.videoYoloModelPath) ?? ""
         videoFaceModelPath = defaults.string(forKey: Keys.videoFaceModelPath) ?? ""
         isVideoModelsDownloaded = defaults.object(forKey: Keys.isVideoModelsDownloaded) as? Bool ?? false
-        
+
         // Hugging Face Token 默认值
         huggingFaceToken = defaults.string(forKey: Keys.huggingFaceToken) ?? ""
-        
+
         // 检查模型是否已下载（在所有属性初始化之后）
         isModelDownloaded = defaults.object(forKey: Keys.isModelDownloaded) as? Bool ?? false
         // 如果标记为已下载，验证文件是否真的存在
@@ -984,6 +984,8 @@ class UserPreferences: ObservableObject {
             AIServiceProfile.createDefault(for: .ollama).with(name: "Ollama (本地)", isDefault: true),
             AIServiceProfile.createDefault(for: .openAI).with(name: "OpenAI"),
             AIServiceProfile.createDefault(for: .dashScope).with(name: "阿里云 DashScope"),
+            AIServiceProfile.createDefault(for: .zhipuAI).with(name: "智谱 AI"),
+            AIServiceProfile.createDefault(for: .miniMaxCN).with(name: "MiniMax (国内)"),
             AIServiceProfile.createDefault(for: .someIM).with(name: "Some.IM"),
             AIServiceProfile.createDefault(for: .gemini).with(name: "Google Gemini"),
             AIServiceProfile.createDefault(for: .claude).with(name: "Claude")

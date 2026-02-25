@@ -846,18 +846,36 @@ class EmailViewModel: ObservableObject {
     }
     
     /// 加载初始数据（文件夹列表和邮件列表）
+    /// 策略：cache-first，有缓存先展示，后台静默刷新
     func loadInitialData() async {
         guard let accountId = selectedAccountId,
               let account = emailStore.getAccount(id: accountId) else {
             return
         }
         
-        // 如果文件夹列表为空，尝试从服务器加载
-        let existingFolders = emailStore.getFolders(for: accountId)
+        var existingFolders = emailStore.getFolders(for: accountId)
+        // 若为空，先短暂等待 EmailStore 完成 DB 加载（避免启动时竞态）
         if existingFolders.isEmpty {
+            for _ in 0..<5 {
+                try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                existingFolders = emailStore.getFolders(for: accountId)
+                if !existingFolders.isEmpty {
+                    folders = existingFolders
+                    break
+                }
+            }
+        }
+        if existingFolders.isEmpty {
+            // 无缓存：必须从服务器加载，显示 loading
             await loadFolders(account: account)
         } else {
+            // 有缓存：立即展示，后台静默刷新（stale-while-revalidate）
+            folders = existingFolders
             await prefetchDefaultFolderIfNeeded(for: account)
+            Task.detached(priority: .background) { [weak self] in
+                guard let self = self else { return }
+                await self.loadFolders(account: account, backgroundRefresh: true)
+            }
         }
         
         if selectedFolderId != nil {
@@ -868,9 +886,12 @@ class EmailViewModel: ObservableObject {
     }
     
     /// 加载文件夹列表
-    func loadFolders(account: EmailAccount) async {
-        isLoadingFolders = true
-        errorMessage = nil
+    /// - Parameter backgroundRefresh: 为 true 时静默刷新，不显示 loading，用于 stale-while-revalidate
+    func loadFolders(account: EmailAccount, backgroundRefresh: Bool = false) async {
+        if !backgroundRefresh {
+            isLoadingFolders = true
+            errorMessage = nil
+        }
         
         do {
             // 后台获取文件夹列表,不阻塞UI
@@ -883,7 +904,14 @@ class EmailViewModel: ObservableObject {
             // 确保存在“本地已发送”文件夹，用于存放本机发出的邮件
             try await emailStore.ensureLocalSentFolder(for: account.id)
             
-            isLoadingFolders = false
+            if !backgroundRefresh {
+                isLoadingFolders = false
+            }
+            
+            // 刷新 ViewModel 的文件夹列表（后台刷新后需更新 UI）
+            if selectedAccountId == account.id {
+                self.folders = emailStore.getFolders(for: account.id)
+            }
             
             // 后台预加载默认文件夹的邮件,不阻塞UI
             Task.detached(priority: .background) { [weak self] in
@@ -897,9 +925,11 @@ class EmailViewModel: ObservableObject {
                 }
             }
         } catch {
-            errorMessage = "加载文件夹失败: \(error.localizedDescription)"
+            if !backgroundRefresh {
+                errorMessage = "加载文件夹失败: \(error.localizedDescription)"
+                isLoadingFolders = false
+            }
             print("❌ [EmailViewModel] 加载文件夹失败: \(error)")
-            isLoadingFolders = false
         }
     }
     

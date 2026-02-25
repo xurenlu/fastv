@@ -75,7 +75,7 @@ private func performIncrementalSegmentTranscription() async {
 
     let transcribeStart = CFAbsoluteTimeGetCurrent()
     do {
-        var text = try await SpeechTranscriber.transcribe(recording: result.recording, language: language)
+        var text = try await SpeechTranscriber.transcribe(recording: result.recording, language: language, enableCTCDeduplication: nil)
         currentSessionIncrementalTranscriptionSeconds += CFAbsoluteTimeGetCurrent() - transcribeStart
         if CommonMistakeManager.shared.enableAutoCorrection {
             text = TextCorrectionService.shared.correctText(text)
@@ -125,7 +125,7 @@ private func partitionSegmentsForBatchRefinement(_ segments: [IncrementalSegment
         let tailCount = n - bestEnd
         if tailCount > 0 && tailCount < incrementalBatchMinSegments {
             bestEnd = n
-        } else {
+        } else if bestEnd < n {
             for end in (bestEnd + 1)...n {
                 let duration = segments[start..<end].reduce(0.0) { $0 + $1.audio.durationSeconds }
                 let tail = n - end
@@ -179,6 +179,7 @@ private func runBatchRefinementTranscription(segments: [IncrementalSegmentInfo],
         var text = try await SpeechTranscriber.transcribe(
             recording: combined,
             language: language,
+            enableCTCDeduplication: nil,
             cancellationCheck: { Task.isCancelled }
         )
         if CommonMistakeManager.shared.enableAutoCorrection {
@@ -791,7 +792,7 @@ struct fastvApp: App {
                 currentSessionIncrementalAudioSeconds += result.duration
                 let transcribeStart = CFAbsoluteTimeGetCurrent()
                 do {
-                    var remainingText = try await SpeechTranscriber.transcribe(recording: result.recording, language: TranscriptLanguage(rawValue: preferences.voiceInputLanguage) ?? .zh)
+                    var remainingText = try await SpeechTranscriber.transcribe(recording: result.recording, language: TranscriptLanguage(rawValue: preferences.voiceInputLanguage) ?? .zh, enableCTCDeduplication: nil)
                     currentSessionIncrementalTranscriptionSeconds += CFAbsoluteTimeGetCurrent() - transcribeStart
                     if CommonMistakeManager.shared.enableAutoCorrection {
                         remainingText = TextCorrectionService.shared.correctText(remainingText)
@@ -876,7 +877,7 @@ struct fastvApp: App {
 
             let audioDuration = recording.durationSeconds
             let transcribeStart = CFAbsoluteTimeGetCurrent()
-            var text = try await SpeechTranscriber.transcribe(recording: recording, language: language)
+            var text = try await SpeechTranscriber.transcribe(recording: recording, language: language, enableCTCDeduplication: nil)
             let transcriptionDuration = CFAbsoluteTimeGetCurrent() - transcribeStart
             print("✅ [fastvApp] 语音转文字成功: \(text.prefix(50))...")
             // 转录完成后主动回收 C/ObjC 层 autorelease 对象，便于释放大块 PCM 等内存

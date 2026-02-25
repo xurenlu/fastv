@@ -131,11 +131,9 @@ struct EmailView: View {
         .onChange(of: viewModel.selectedAccountId) { _, _ in
             // 账号切换时，自动选中"所有邮件"
             viewModel.showAllMessages()
-            // 后台重新加载数据
+            // 使用 loadInitialData：有缓存先展示，无缓存再请求网络
             Task.detached(priority: .userInitiated) {
-                if let account = await viewModel.currentAccount {
-                    await viewModel.loadFolders(account: account)
-                }
+                await viewModel.loadInitialData()
             }
         }
     }

@@ -302,11 +302,13 @@
 "chat.start.conversation" = "Start a conversation";
 "chat.config.required" = "Please configure API Endpoint in Settings first (API Key optional, some local APIs like Ollama don't need it)";
 "chat.open.settings" = "Open Settings";
+"chat.provider" = "Provider";
 "chat.model" = "Model";
 "chat.no.models" = "No models available";
+"chat.attachment.not.supported" = "Current provider or model does not support images/attachments";
 "chat.parameters" = "Parameters";
 "chat.send" = "Send";
-"chat.upload.image" = "Upload image";
+"chat.upload.image" = "Upload image/attachment";
 "chat.voice.input" = "Voice input";
 "chat.voice.not.supported" = "Voice not supported yet";
 "chat.stop.recording" = "Stop recording";
@@ -389,3 +391,39 @@
 
 // Email
 "email.folder.local_sent" = "Sent (Local)";
+
+// Product Feature Introduction
+"feature.intro.skip" = "Skip";
+"feature.intro.previous" = "Previous";
+"feature.intro.next" = "Next";
+"feature.intro.start" = "Get Started";
+
+// Feature 1: Lightning Speed
+"feature.intro.speed.title" = "Lightning-Fast Transcription";
+"feature.intro.speed.description" = "Powered by local high-performance models, no internet required. Transcribe 10 seconds of audio in just 70ms - faster than real-time.";
+"feature.intro.speed.highlight" = "100x faster than real-time";
+
+// Feature 2: Dynamic Programming Accuracy
+"feature.intro.accuracy.title" = "Dynamic Programming, Fast & Accurate";
+"feature.intro.accuracy.description" = "Innovative dynamic programming segmentation strategy intelligently detects pauses and speech rate changes, delivering higher accuracy while maintaining speed.";
+"feature.intro.accuracy.highlight" = "20%+ accuracy improvement";
+
+// Feature 3: Smart Segmentation
+"feature.intro.smart.title" = "Smart Incremental Transcription";
+"feature.intro.smart.description" = "Transcribe while speaking, no need to wait for recording to end. Automatically detects speech pauses and displays results in real-time for a smoother experience.";
+"feature.intro.smart.highlight" = "Real-time response, no waiting";
+
+// Feature 4: Multi-language Support
+"feature.intro.multilang.title" = "Multi-language Support";
+"feature.intro.multilang.description" = "Supports Chinese, English, Japanese, Korean, Cantonese, and more languages with automatic language detection for global needs.";
+"feature.intro.multilang.highlight" = "Supports 6+ languages";
+
+// Splash feature introduction (simplified)
+"feature.splash.speed.subtitle" = "10s audio in just 70ms";
+"feature.splash.accuracy.subtitle" = "Dynamic programming, fast & accurate";
+"feature.splash.smart.subtitle" = "Real-time transcription";
+"feature.splash.multilang.subtitle" = "Supports 6+ languages";
+
+// Model preload hints
+"speech.model.preload.title" = "Initializing speech model...";
+"speech.model.preload.message" = "Loading model on first use, please wait";

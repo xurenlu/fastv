@@ -191,13 +191,32 @@ struct AIModelSettingsTab: View {
                 }
             }
             
-            // 模型文件信息
+            // 语音转写模型
             Section {
-                ModelFileInfoView()
+                NavigationLink {
+                    OnboardingView()
+                        .navigationTitle("模型下载")
+                        .frame(minWidth: 600, minHeight: 500)
+                } label: {
+                    HStack {
+                        Image(systemName: "arrow.down.circle")
+                        Text("下载语音转写模型")
+                        Spacer()
+                        if ModelDownloader.shared.checkModelFilesExist() {
+                            Text("已下载")
+                                .foregroundStyle(.green)
+                                .font(.caption)
+                        } else {
+                            Text("未下载")
+                                .foregroundStyle(.orange)
+                                .font(.caption)
+                        }
+                    }
+                }
             } header: {
-                Text("模型文件")
+                Text("语音转写模型")
             } footer: {
-                Text("语音识别模型文件，首次使用需要下载（约 894MB）")
+                Text("SenseVoice（阿里达摩院）- 低延迟、中文优化、10秒音频约70ms")
             }
         }
         .formStyle(.grouped)
