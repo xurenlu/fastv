@@ -38,15 +38,17 @@ struct EmailView: View {
                     .frame(minWidth: 300, idealWidth: 400, maxWidth: 550)
                     .frame(maxHeight: .infinity, alignment: .top)
             } else {
-                // 未选中邮件时的提示
-                VStack(spacing: 16) {
-                    Image(systemName: "envelope.open")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.secondary)
-                    
-                    Text("请在邮件列表中选择一封邮件")
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
+                // 未选中邮件时的提示 - Apple 风格
+                ContentUnavailableView {
+                    Label {
+                        Text(NSLocalizedString("email.select.message.hint", comment: ""))
+                            .font(.title3.weight(.medium))
+                    } icon: {
+                        Image(systemName: "envelope.open")
+                            .font(.system(size: 56))
+                            .foregroundStyle(.tertiary)
+                            .symbolRenderingMode(.hierarchical)
+                    }
                 }
                 .frame(minWidth: 300, idealWidth: 400, maxWidth: 550)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -81,27 +83,23 @@ struct EmailView: View {
                     composeWindowType = .new
                     showComposeWindow = true
                 }) {
-                    Label("新邮件", systemImage: "square.and.pencil")
+                    Label(NSLocalizedString("email.new.message", comment: ""), systemImage: "square.and.pencil")
                 }
             }
-            
+
             ToolbarItem(placement: .automatic) {
-                Button(action: {
-                    showAccountManagement = true
-                }) {
-                    Label("账号管理", systemImage: "person.crop.circle.badge.plus")
+                Button(action: { showAccountManagement = true }) {
+                    Label(NSLocalizedString("email.account.management", comment: ""), systemImage: "person.crop.circle.badge.plus")
                 }
             }
-            
+
             ToolbarItem(placement: .automatic) {
                 Button(action: {
                     if let account = viewModel.currentAccount {
-                        Task {
-                            await viewModel.syncAccount(account)
-                        }
+                        Task { await viewModel.syncAccount(account) }
                     }
                 }) {
-                    Label("同步", systemImage: "arrow.clockwise")
+                    Label(NSLocalizedString("email.sync", comment: ""), systemImage: "arrow.clockwise")
                 }
                 .disabled(viewModel.isLoading)
             }
@@ -124,8 +122,9 @@ struct EmailView: View {
             if viewModel.selectedFolderId == nil {
                 viewModel.showAllMessages()
             }
-            // 视图出现时，后台加载数据,不阻塞UI
+            // 延迟 50ms 再加载数据，让视图先完成首次渲染，避免切换时主线程被阻塞导致无响应
             Task.detached(priority: .userInitiated) {
+                try? await Task.sleep(nanoseconds: 50_000_000)
                 await viewModel.loadInitialData()
             }
         }
@@ -156,7 +155,7 @@ struct EmailView: View {
                     }
                 )
                 
-                Picker("账号", selection: accountBinding) {
+                Picker(NSLocalizedString("email.account", comment: ""), selection: accountBinding) {
                     ForEach(viewModel.accounts) { account in
                         Text(account.displayName).tag(Optional(account.id))
                     }
@@ -165,19 +164,22 @@ struct EmailView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 12)
             } else {
-                // 没有账号时的提示
-                VStack(spacing: 8) {
-                    Image(systemName: "person.crop.circle.badge.plus")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                    Text("没有邮箱账号")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Button("添加账号") {
+                // 没有账号时的提示 - Apple 风格
+                ContentUnavailableView {
+                    Label {
+                        Text(NSLocalizedString("email.no.account", comment: ""))
+                            .font(.subheadline.weight(.medium))
+                    } icon: {
+                        Image(systemName: "person.crop.circle.badge.plus")
+                            .font(.system(size: 40))
+                            .foregroundStyle(.tertiary)
+                            .symbolRenderingMode(.hierarchical)
+                    }
+                } actions: {
+                    Button(NSLocalizedString("email.add.account", comment: "")) {
                         showAccountManagement = true
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .buttonStyle(.borderedProminent)
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
@@ -190,16 +192,18 @@ struct EmailView: View {
                 folderListContent
                     .frame(maxHeight: .infinity)
             } else {
-                // 没有选择账号时的提示
-                VStack(spacing: 8) {
-                    Image(systemName: "person.crop.circle")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                    Text("请选择邮箱账号")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                ContentUnavailableView {
+                    Label {
+                        Text(NSLocalizedString("email.select.account", comment: ""))
+                            .font(.subheadline.weight(.medium))
+                    } icon: {
+                        Image(systemName: "person.crop.circle")
+                            .font(.system(size: 40))
+                            .foregroundStyle(.tertiary)
+                            .symbolRenderingMode(.hierarchical)
+                    }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding()
             }
         }
@@ -222,34 +226,37 @@ struct EmailView: View {
         }
         
         if nonEmptyFolders.isEmpty && emptyFolders.isEmpty {
-            // 文件夹列表为空时的提示
-            VStack(spacing: 8) {
-                if viewModel.isLoadingFolders {
+            if viewModel.isLoadingFolders {
+                VStack(spacing: 12) {
                     ProgressView()
-                        .scaleEffect(0.8)
-                    Text("正在加载文件夹...")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Image(systemName: "folder.badge.questionmark")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                    Text("没有文件夹")
+                        .scaleEffect(0.9)
+                    Text(NSLocalizedString("email.loading.folders", comment: ""))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Button("刷新") {
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ContentUnavailableView {
+                    Label {
+                        Text(NSLocalizedString("email.no.folders", comment: ""))
+                            .font(.subheadline.weight(.medium))
+                    } icon: {
+                        Image(systemName: "folder.badge.questionmark")
+                            .font(.system(size: 40))
+                            .foregroundStyle(.tertiary)
+                            .symbolRenderingMode(.hierarchical)
+                    }
+                } actions: {
+                    Button(NSLocalizedString("email.refresh", comment: "")) {
                         if let account = viewModel.currentAccount {
-                            Task {
-                                await viewModel.loadFolders(account: account)
-                            }
+                            Task { await viewModel.loadFolders(account: account) }
                         }
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .buttonStyle(.borderedProminent)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding()
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding()
         } else {
             let folderBinding = Binding<UUID?>(
                 get: { viewModel.selectedFolderId },
@@ -271,41 +278,38 @@ struct EmailView: View {
                     composeWindowType = .new
                     showComposeWindow = true
                 }) {
-                    HStack(spacing: 12) {
+                    HStack(spacing: 10) {
                         Image(systemName: "square.and.pencil")
-                            .foregroundStyle(.blue)
-                            .font(.system(size: 16, weight: .medium))
-                            .imageScale(.medium)
-                            .frame(width: 20)
-                        Text("写邮件")
-                            .font(.system(size: 14, weight: .medium, design: .default))
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(Color.accentColor)
+                            .symbolRenderingMode(.hierarchical)
+                            .frame(width: 22)
+                        Text(NSLocalizedString("email.write", comment: ""))
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(.primary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 8)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 
                 // "所有邮件" 选项 - 默认选中
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     Image(systemName: viewModel.selectedFolderId == nil ? "tray.fill" : "tray")
-                        .font(.system(size: 14, weight: viewModel.selectedFolderId == nil ? .semibold : .medium))
-                        .imageScale(.medium)
-                        .foregroundStyle(viewModel.selectedFolderId == nil ? Color.accentColor : Color.secondary)
-                        .frame(width: 20)
-                    Text("所有邮件")
-                        .font(.system(size: 14, weight: viewModel.selectedFolderId == nil ? .semibold : .regular, design: .default))
+                        .font(.system(size: 15, weight: viewModel.selectedFolderId == nil ? .semibold : .medium))
+                        .foregroundStyle(viewModel.selectedFolderId == nil ? Color.accentColor : .secondary)
+                        .symbolRenderingMode(.hierarchical)
+                        .frame(width: 22)
+                    Text(NSLocalizedString("email.all.messages", comment: ""))
+                        .font(.system(size: 14, weight: viewModel.selectedFolderId == nil ? .semibold : .regular))
                         .foregroundStyle(viewModel.selectedFolderId == nil ? .primary : .secondary)
                     Spacer()
-                    // 显示该账号的所有邮件总数（而不是当前显示的邮件数）
-                    if let accountId = viewModel.selectedAccountId {
-                        let totalCount = EmailStore.shared.getTotalMessageCount(for: accountId)
-                        if totalCount > 0 {
-                            Text("\(totalCount)")
-                                .font(.caption)
-                                .foregroundStyle(viewModel.selectedFolderId == nil ? .secondary : .tertiary)
-                        }
+                    // 显示该账号的所有邮件总数（使用 ViewModel 异步缓存，避免在 View body 中同步查库阻塞主线程）
+                    if viewModel.totalMessageCountForAccount > 0 {
+                        Text("\(viewModel.totalMessageCountForAccount)")
+                            .font(.caption)
+                            .foregroundStyle(viewModel.selectedFolderId == nil ? .secondary : .tertiary)
                     }
                 }
                 .padding(.vertical, 4)
@@ -321,8 +325,8 @@ struct EmailView: View {
                 
                 // 非空文件夹列表
                 if !nonEmptyFolders.isEmpty {
-                    Section(header: 
-                        Text("文件夹")
+                    Section(header:
+                        Text(NSLocalizedString("email.folders", comment: ""))
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                             .textCase(nil)
@@ -355,8 +359,9 @@ struct EmailView: View {
                                 Image(systemName: "folder")
                                     .font(.system(size: 13, weight: .medium))
                                     .foregroundStyle(.secondary)
+                                    .symbolRenderingMode(.hierarchical)
                                     .frame(width: 20)
-                                Text("空文件夹")
+                                Text(NSLocalizedString("email.empty.folders", comment: ""))
                                     .font(.system(size: 13, weight: .medium))
                                     .foregroundStyle(.secondary)
                                 Text("(\(emptyFolders.count))")
@@ -369,9 +374,9 @@ struct EmailView: View {
                     }
                 }
             }
-            .listStyle(.inset)  // 使用 inset 样式，避免 sidebar 的暗色半透明背景
-            .scrollContentBackground(.hidden)  // 隐藏默认的滚动内容背景
-            .background(Color(NSColor.controlBackgroundColor))  // 使用系统控件背景色
+            .listStyle(.inset)
+            .scrollContentBackground(.hidden)
+            .background(Color(nsColor: .controlBackgroundColor))
         }
     }
     
@@ -381,23 +386,25 @@ struct EmailView: View {
         VStack(spacing: 0) {
             // 搜索栏和多选模式切换
             VStack(spacing: 0) {
-                HStack {
+                HStack(spacing: 10) {
                     Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
-                    TextField("搜索邮件", text: $viewModel.searchText)
+                        .font(.subheadline)
+                        .foregroundStyle(.tertiary)
+                        .symbolRenderingMode(.hierarchical)
+                    TextField(NSLocalizedString("email.search", comment: ""), text: $viewModel.searchText)
                         .textFieldStyle(.plain)
-                    
-                    // 多选模式切换按钮
-                    Button(action: {
-                        viewModel.toggleMultiSelectMode()
-                    }) {
+
+                    Button(action: { viewModel.toggleMultiSelectMode() }) {
                         Image(systemName: viewModel.isMultiSelectMode ? "checkmark.circle.fill" : "checkmark.circle")
-                            .foregroundStyle(viewModel.isMultiSelectMode ? Color.blue : .secondary)
+                            .font(.body)
+                            .foregroundStyle(viewModel.isMultiSelectMode ? Color.accentColor : .secondary)
+                            .symbolRenderingMode(.hierarchical)
                     }
                     .buttonStyle(.plain)
-                    .help(viewModel.isMultiSelectMode ? "退出多选模式" : "进入多选模式")
+                    .help(viewModel.isMultiSelectMode ? NSLocalizedString("email.exit.multi.select", comment: "") : NSLocalizedString("email.multi.select", comment: ""))
                 }
-                .padding()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
                 
                 // 过滤和排序工具栏
                 HStack(spacing: 8) {
@@ -456,62 +463,57 @@ struct EmailView: View {
                 if viewModel.isMultiSelectMode {
                     Divider()
                     HStack(spacing: 12) {
-                        // 全选按钮
-                        Button(action: {
-                            viewModel.toggleSelectAll()
-                        }) {
-                            HStack(spacing: 4) {
+                        Button(action: { viewModel.toggleSelectAll() }) {
+                            HStack(spacing: 6) {
                                 Image(systemName: viewModel.selectedMessageIds.count == (viewModel.searchText.isEmpty ? viewModel.messages.count : viewModel.searchResults.count) ? "checkmark.circle.fill" : "circle")
-                                Text(viewModel.selectedMessageIds.count == (viewModel.searchText.isEmpty ? viewModel.messages.count : viewModel.searchResults.count) ? "取消全选" : "全选")
-                                    .font(.caption)
+                                    .font(.subheadline)
+                                Text(viewModel.selectedMessageIds.count == (viewModel.searchText.isEmpty ? viewModel.messages.count : viewModel.searchResults.count) ? NSLocalizedString("email.deselect.all", comment: "") : NSLocalizedString("email.select.all", comment: ""))
+                                    .font(.subheadline)
                             }
                         }
                         .buttonStyle(.plain)
-                        
+
                         Spacer()
-                        
-                        // 选中数量提示
+
                         if !viewModel.selectedMessageIds.isEmpty {
-                            Text("已选中 \(viewModel.selectedMessageIds.count) 封")
-                                .font(.caption)
+                            Text(String(format: NSLocalizedString("email.selected.count", comment: ""), viewModel.selectedMessageIds.count))
+                                .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
-                        
+
                         Spacer()
-                        
-                        // 批量归档按钮
-                        Button(action: {
-                            Task {
-                                await viewModel.archiveSelectedMessages()
-                            }
-                        }) {
-                            HStack(spacing: 4) {
+
+                        Button(action: { Task { await viewModel.archiveSelectedMessages() } }) {
+                            HStack(spacing: 6) {
                                 Image(systemName: "archivebox")
-                                Text("归档")
-                                    .font(.caption)
+                                    .font(.subheadline)
+                                    .symbolRenderingMode(.hierarchical)
+                                Text(NSLocalizedString("email.archive", comment: ""))
+                                    .font(.subheadline)
                             }
                         }
                         .buttonStyle(.plain)
                         .disabled(viewModel.selectedMessageIds.isEmpty)
-                        
-                        // 批量删除按钮
+
                         Button(action: {
-                            messageToDelete = nil // 确保是批量删除
+                            messageToDelete = nil
                             showDeleteConfirmation = true
                         }) {
-                            HStack(spacing: 4) {
+                            HStack(spacing: 6) {
                                 Image(systemName: "trash")
-                                Text("删除")
-                                    .font(.caption)
+                                    .font(.subheadline)
+                                    .symbolRenderingMode(.hierarchical)
+                                Text(NSLocalizedString("email.delete", comment: ""))
+                                    .font(.subheadline)
                             }
-                            .foregroundStyle(Color.red)
+                            .foregroundStyle(.red)
                         }
                         .buttonStyle(.plain)
                         .disabled(viewModel.selectedMessageIds.isEmpty)
                     }
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    .background(Color(NSColor.controlBackgroundColor))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.regularMaterial)
                 }
             }
             
@@ -546,7 +548,7 @@ struct EmailView: View {
                                 )
                                 .tag(message.id)
                                 .contentShape(Rectangle())
-                                .background(viewModel.selectedMessageId == message.id && !viewModel.isMultiSelectMode ? Color.accentColor.opacity(0.15) : Color.clear)
+                                .background(viewModel.selectedMessageId == message.id && !viewModel.isMultiSelectMode ? Color.accentColor.opacity(0.12) : Color.clear)
                                 .if(!viewModel.isMultiSelectMode) { view in
                                     view.onTapGesture { viewModel.selectMessage(message) }
                                 }
@@ -554,16 +556,16 @@ struct EmailView: View {
                             
                             // 底部加载区域
                             if viewModel.isLoadingMore {
-                                HStack {
+                                HStack(spacing: 10) {
                                     Spacer()
                                     ProgressView()
-                                        .scaleEffect(0.8)
-                                    Text("加载更多...")
-                                        .font(.caption)
+                                        .scaleEffect(0.85)
+                                    Text(NSLocalizedString("email.load.more", comment: ""))
+                                        .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                     Spacer()
                                 }
-                                .padding()
+                                .padding(.vertical, 16)
                             } else if viewModel.hasMoreMessages {
                                 Color.clear
                                     .frame(height: 1)
@@ -578,12 +580,12 @@ struct EmailView: View {
                             } else {
                                 HStack {
                                     Spacer()
-                                    Text("已经没有更多邮件")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                    Text(NSLocalizedString("email.no.more.messages", comment: ""))
+                                        .font(.subheadline)
+                                        .foregroundStyle(.tertiary)
                                     Spacer()
                                 }
-                                .padding(.vertical, 8)
+                                .padding(.vertical, 12)
                             }
                         }
                         .padding(.horizontal, 4)
@@ -596,19 +598,21 @@ struct EmailView: View {
     }
     
     private var emptyMessageListView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "envelope")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-            
-            Text("没有邮件")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            
-            if viewModel.selectedFolderId == nil {
-                Text("暂无邮件，稍后同步或选择文件夹")
-                    .font(.subheadline)
+        ContentUnavailableView {
+            Label {
+                Text(NSLocalizedString("email.no.messages", comment: ""))
+                    .font(.title3.weight(.medium))
+            } icon: {
+                Image(systemName: "envelope")
+                    .font(.system(size: 48))
                     .foregroundStyle(.tertiary)
+                    .symbolRenderingMode(.hierarchical)
+            }
+        } description: {
+            if viewModel.selectedFolderId == nil {
+                Text(NSLocalizedString("email.no.messages.sync.hint", comment: ""))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -623,25 +627,19 @@ struct EmailView: View {
                     // 邮件头部（带操作按钮）
                     messageHeaderWithActions(message: message)
                     
-                    // AI摘要（如果有）- 使用渐变背景和毛玻璃效果
+                    // AI摘要（如果有）- Apple 风格：克制、层次清晰
                     if let summary = message.aiSummary, !summary.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(spacing: 8) {
                                 Image(systemName: "sparkles")
-                                    .foregroundStyle(
-                                        LinearGradient(
-                                            colors: [.blue, .purple],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .font(.title3)
-                                Text("AI 摘要")
-                                    .font(.headline)
-                                    .fontWeight(.semibold)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.blue)
+                                    .symbolRenderingMode(.hierarchical)
+                                Text(NSLocalizedString("email.ai.summary", comment: ""))
+                                    .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(.primary)
                             }
-                            
+
                             Text(summary)
                                 .font(.subheadline)
                                 .foregroundStyle(.primary)
@@ -650,29 +648,10 @@ struct EmailView: View {
                                 .padding(16)
                                 .background {
                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [
-                                                    Color.blue.opacity(0.08),
-                                                    Color.purple.opacity(0.05)
-                                                ],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
+                                        .fill(Color.accentColor.opacity(0.06))
                                         .overlay {
                                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                                .stroke(
-                                                    LinearGradient(
-                                                        colors: [
-                                                            Color.blue.opacity(0.3),
-                                                            Color.purple.opacity(0.2)
-                                                        ],
-                                                        startPoint: .topLeading,
-                                                        endPoint: .bottomTrailing
-                                                    ),
-                                                    lineWidth: 1
-                                                )
+                                                .strokeBorder(Color.accentColor.opacity(0.15), lineWidth: 1)
                                         }
                                 }
                         }

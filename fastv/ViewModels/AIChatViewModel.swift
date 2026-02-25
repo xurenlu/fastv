@@ -240,6 +240,7 @@ class AIChatViewModel: ObservableObject {
         let model = selectedModel.isEmpty ? config.model : selectedModel
         
         do {
+            let startTime = Date()
             // 调用AI服务
             let result = try await chatService.sendMessage(
                 messages: apiMessages,
@@ -248,19 +249,21 @@ class AIChatViewModel: ObservableObject {
                 timeout: config.timeout,
                 preferences: preferences
             )
-            
+            let responseTime = Date().timeIntervalSince(startTime)
+
             // 更新用户消息状态
             var updatedUserMessage = userMessage
             updatedUserMessage.isSending = false
             chatManager.updateMessage(updatedUserMessage)
-            
-            // 创建AI回复消息（包含 thinking）
+
+            // 创建AI回复消息（包含 thinking 和响应耗时）
             let aiMessage = ChatMessage(
                 sessionId: sessionId,
                 role: .assistant,
                 content: result.content,
                 contentType: .text,
-                thinking: result.thinking
+                thinking: result.thinking,
+                responseTimeSeconds: responseTime
             )
             chatManager.addMessage(aiMessage)
             
@@ -518,6 +521,7 @@ class AIChatViewModel: ObservableObject {
         let model = selectedModel.isEmpty ? config.model : selectedModel
         
         do {
+            let startTime = Date()
             let result = try await chatService.sendMessage(
                 messages: apiMessages,
                 profile: config.profile,
@@ -525,13 +529,15 @@ class AIChatViewModel: ObservableObject {
                 timeout: config.timeout,
                 preferences: preferences
             )
-            
+            let responseTime = Date().timeIntervalSince(startTime)
+
             let newAIMessage = ChatMessage(
                 sessionId: sessionId,
                 role: .assistant,
                 content: result.content,
                 contentType: .text,
-                thinking: result.thinking
+                thinking: result.thinking,
+                responseTimeSeconds: responseTime
             )
             chatManager.addMessage(newAIMessage)
             

@@ -65,11 +65,19 @@ struct ChatMessageView: View {
                 }
                 
                 // 时间戳和状态
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     Text(message.formattedTime)
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
-                    
+
+                    // AI 消息：显示响应耗时（x.xxx 秒）
+                    if message.isAIMessage, let responseTime = message.formattedResponseTime {
+                        Text("\(responseTime) \(NSLocalizedString("chat.response.time.unit", comment: "秒"))")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .monospacedDigit()
+                    }
+
                     if message.isSending {
                         ProgressView()
                             .scaleEffect(0.7)

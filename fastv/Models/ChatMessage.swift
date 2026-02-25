@@ -65,7 +65,8 @@ struct ChatMessage: Identifiable, Codable, Equatable {
     var isSending: Bool  // 是否正在发送
     var sendError: String?  // 发送错误信息
     var thinking: String?  // 思考过程（仅用于 qwen3 系列模型）
-    
+    var responseTimeSeconds: TimeInterval?  // AI 响应耗时（秒），仅 AI 消息有值
+
     init(
         id: UUID = UUID(),
         sessionId: UUID,
@@ -77,7 +78,8 @@ struct ChatMessage: Identifiable, Codable, Equatable {
         updatedAt: Date = Date(),
         isSending: Bool = false,
         sendError: String? = nil,
-        thinking: String? = nil
+        thinking: String? = nil,
+        responseTimeSeconds: TimeInterval? = nil
     ) {
         self.id = id
         self.sessionId = sessionId
@@ -90,6 +92,7 @@ struct ChatMessage: Identifiable, Codable, Equatable {
         self.isSending = isSending
         self.sendError = sendError
         self.thinking = thinking
+        self.responseTimeSeconds = responseTimeSeconds
     }
     
     /// 格式化时间显示
@@ -123,6 +126,12 @@ struct ChatMessage: Identifiable, Codable, Equatable {
     /// 是否为AI消息
     var isAIMessage: Bool {
         role == .assistant
+    }
+
+    /// 格式化 AI 响应耗时显示（x.xxx 秒）
+    var formattedResponseTime: String? {
+        guard let seconds = responseTimeSeconds, seconds > 0 else { return nil }
+        return String(format: "%.3f", seconds)
     }
 }
 

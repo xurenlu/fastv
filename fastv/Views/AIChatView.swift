@@ -10,50 +10,52 @@ import SwiftUI
 struct AIChatView: View {
     @StateObject private var viewModel = AIChatViewModel()
     @ObservedObject private var chatManager = ChatManager.shared
-    
+
     var body: some View {
         HSplitView {
-            // 左侧：会话列表
+            // 左侧：会话列表 - Apple 风格侧边栏
             ChatSessionListView(viewModel: viewModel)
-                .frame(minWidth: 200, idealWidth: 250, maxWidth: 300)
-            
+                .frame(minWidth: 220, idealWidth: 260, maxWidth: 320)
+
             // 右侧：聊天窗口
             if viewModel.currentSessionId != nil {
                 ChatWindowView(viewModel: viewModel)
             } else {
-                // 空状态：提示创建新会话
+                // 空状态：优雅的引导
                 ContentUnavailableView {
                     Label {
-                        Text("开始新对话")
-                            .font(.system(size: 20, weight: .semibold))
+                        Text(NSLocalizedString("chat.start.conversation", comment: ""))
+                            .font(.title2.weight(.semibold))
                     } icon: {
-                        Image(systemName: "message.fill")
-                            .font(.system(size: 48))
-                            .foregroundStyle(.secondary.opacity(0.5))
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .font(.system(size: 56))
+                            .foregroundStyle(.secondary)
+                            .symbolRenderingMode(.hierarchical)
                     }
                 } description: {
-                    VStack(spacing: 8) {
-                        Text("点击左侧的"+"按钮创建新会话")
-                            .font(.system(size: 14))
+                    VStack(spacing: 12) {
+                        Text(NSLocalizedString("chat.click.to.create", comment: ""))
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        
-                        Button(action: {
-                            viewModel.createNewSession()
-                        }) {
-                            Label("创建新会话", systemImage: "plus.circle.fill")
+                            .multilineTextAlignment(.center)
+
+                        Button(action: { viewModel.createNewSession() }) {
+                            Label(NSLocalizedString("chat.create.new.session", comment: ""), systemImage: "plus.circle.fill")
+                                .font(.subheadline.weight(.medium))
                         }
                         .buttonStyle(.borderedProminent)
-                        .padding(.top, 8)
+                        .controlSize(.regular)
+                        .padding(.top, 4)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .navigationTitle("AI Chat")
+        .background(Color(nsColor: .windowBackgroundColor))
+        .navigationTitle(NSLocalizedString("ai.chat", comment: "AI Chat"))
     }
 }
 
 #Preview {
     AIChatView()
 }
-

@@ -290,6 +290,57 @@
 "start.recording" = "开始录音";
 "stop.recording" = "停止录音";
 "ai.process" = "AI 解析";
+
+// AI 聊天
+"ai.chat" = "AI 聊天";
+"chat.new.session" = "新建会话";
+"chat.create.new.session" = "创建新会话";
+"chat.click.to.create" = "点击左侧「新建会话」开始对话";
+"chat.empty.sessions" = "暂无会话";
+"chat.start.conversation" = "开始对话";
+"chat.config.required" = "请先在设置中配置 API Endpoint（API Key 可选，某些本地 API 如 Ollama 不需要）";
+"chat.open.settings" = "打开设置";
+"chat.model" = "模型";
+"chat.no.models" = "无可用模型";
+"chat.parameters" = "参数";
+"chat.send" = "发送";
+"chat.upload.image" = "上传图片";
+"chat.voice.input" = "语音输入";
+"chat.voice.not.supported" = "语音功能暂未支持";
+"chat.stop.recording" = "停止录音";
+"chat.delete.session" = "删除会话";
+"chat.delete.session.confirm" = "确定要删除这个会话吗？此操作无法撤销。";
+"chat.response.time.unit" = "秒";
+
+// 邮箱
+"email.new.message" = "新邮件";
+"email.account.management" = "账号管理";
+"email.sync" = "同步";
+"email.account" = "账号";
+"email.select.account" = "请选择邮箱账号";
+"email.no.account" = "没有邮箱账号";
+"email.add.account" = "添加账号";
+"email.no.folders" = "没有文件夹";
+"email.refresh" = "刷新";
+"email.loading.folders" = "正在加载文件夹...";
+"email.write" = "写邮件";
+"email.all.messages" = "所有邮件";
+"email.folders" = "文件夹";
+"email.empty.folders" = "空文件夹";
+"email.search" = "搜索邮件";
+"email.multi.select" = "进入多选模式";
+"email.exit.multi.select" = "退出多选模式";
+"email.select.all" = "全选";
+"email.deselect.all" = "取消全选";
+"email.selected.count" = "已选中 %d 封";
+"email.archive" = "归档";
+"email.delete" = "删除";
+"email.no.messages" = "没有邮件";
+"email.no.messages.sync.hint" = "暂无邮件，稍后同步或选择文件夹";
+"email.select.message.hint" = "请在邮件列表中选择一封邮件";
+"email.no.more.messages" = "已经没有更多邮件";
+"email.load.more" = "加载更多...";
+"email.ai.summary" = "AI 摘要";
 "sync.from.reminders" = "从提醒事项同步";
 "sync.from.reminders.help" = "从 macOS 提醒事项应用同步待办事项";
 "reminders.permission.denied" = "需要访问提醒事项的权限。请在系统设置 > 隐私与安全性 > 提醒事项中授权。";

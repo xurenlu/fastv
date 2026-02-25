@@ -152,6 +152,9 @@ class EmailViewModel: ObservableObject {
     private let pageSize = 200 // 每页加载200封邮件（增加数量，避免误判）
     private var loadedDateRange: Date? // 已加载的最早邮件日期
     
+    /// 当前账号的邮件总数（异步计算，避免在 View body 中同步查库阻塞主线程）
+    @Published var totalMessageCountForAccount: Int = 0
+    
     var currentAccount: EmailAccount? {
         guard let accountId = selectedAccountId else { return nil }
         return emailStore.getAccount(id: accountId)
@@ -305,6 +308,9 @@ class EmailViewModel: ObservableObject {
                     let folders = self.emailStore.getFolders(for: accountId)
                     self.folders = folders
                     
+                    // 异步刷新「所有邮件」总数，避免同步查库阻塞主线程
+                    self.refreshTotalMessageCountAsync()
+                    
                     // 如果文件夹为空，可能是 EmailStore 还在加载，稍后重试
                     if folders.isEmpty {
                         Task.detached(priority: .userInitiated) { [weak self] in
@@ -319,12 +325,14 @@ class EmailViewModel: ObservableObject {
                                     if !folders.isEmpty {
                                         self.folders = folders
                                     }
+                                    self.refreshTotalMessageCountAsync()
                                 }
                             }
                         }
                     }
                 } else {
                     self.folders = []
+                    self.totalMessageCountForAccount = 0
                 }
             }
             .store(in: &cancellables)
@@ -384,13 +392,7 @@ class EmailViewModel: ObservableObject {
             }
             .store(in: &cancellables)
         
-        // 初始化时也尝试加载(后台执行,不阻塞UI)
-        Task.detached(priority: .userInitiated) { [weak self] in
-            guard let self = self else { return }
-            // 等待一下，确保 EmailStore 已经加载完成
-            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒
-            await self.loadInitialData()
-        }
+        // 注意：loadInitialData 由 EmailView.onAppear 触发，避免 init 中重复调用导致双重加载
         
         // 启动后台同步任务：持续加载每个文件夹的更多邮件
         startBackgroundSyncTask()
@@ -622,6 +624,9 @@ class EmailViewModel: ObservableObject {
         if !preserveHasMore {
         hasMoreMessages = processedMessages.hasMore
         }
+        
+        // 异步刷新「所有邮件」总数（侧栏数字）
+        refreshTotalMessageCountAsync()
     }
     
     /// 为邮件生成去重键
@@ -779,6 +784,21 @@ class EmailViewModel: ObservableObject {
         // 加载更多时由 loadMoreMessagesFromDatabase 来决定是否还有更多
         if !preserveHasMore {
         hasMoreMessages = processedMessages.hasMore
+        }
+        
+        // 异步刷新「所有邮件」总数，避免在 View body 中同步查库阻塞主线程
+        refreshTotalMessageCountAsync()
+    }
+    
+    /// 异步刷新当前账号的邮件总数（用于侧栏「所有邮件」数字显示）
+    private func refreshTotalMessageCountAsync() {
+        guard let accountId = selectedAccountId else {
+            totalMessageCountForAccount = 0
+            return
+        }
+        Task {
+            let count = await emailStore.getTotalMessageCountAsync(for: accountId)
+            totalMessageCountForAccount = count
         }
     }
     

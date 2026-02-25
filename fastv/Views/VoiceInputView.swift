@@ -18,170 +18,40 @@ struct VoiceInputView: View {
     @State private var showClearHistoryConfirm = false
     @ObservedObject private var downloader = ModelDownloader.shared
     @State private var copiedRecordId: UUID?
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            // 模型未下载提示横幅
+            // 模型未下载提示横幅 - Apple 风格：克制、信息优先
             if !isModelDownloaded {
-                Button(action: {
-                    showModelDownload = true
-                }) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.title3)
-                            .foregroundStyle(.orange)
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(NSLocalizedString("model.not.downloaded.title", comment: ""))
-                                .font(.headline)
-                                .foregroundStyle(.primary)
-                            
-                            Text(NSLocalizedString("model.not.downloaded.message", comment: ""))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        Image(systemName: "arrow.right.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(.blue)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
-                    .frame(maxWidth: .infinity)
-                    .background {
-                        RoundedRectangle(cornerRadius: 0)
-                            .fill(Color.orange.opacity(0.1))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 0)
-                                    .strokeBorder(Color.orange.opacity(0.3), lineWidth: 1)
-                            }
-                    }
-                }
-                .buttonStyle(.plain)
-                .onHover { _ in }
+                ModelDownloadBanner(onTap: { showModelDownload = true })
             }
-            
-            // 主内容区：垂直布局 - 输入框 → 统计 → 历史记录
+
+            // 主内容区
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // 1. 顶部：测试输入框
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "lightbulb.fill")
-                                .font(.subheadline)
-                                .foregroundStyle(.orange)
-                            Text(NSLocalizedString("main.usage.hint", comment: ""))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.leading)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background {
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(Color.orange.opacity(0.1))
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(NSLocalizedString("test.input.label", comment: ""))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            TextField(NSLocalizedString("test.input.placeholder", comment: ""), text: $testInputText, axis: .vertical)
-                                .textFieldStyle(.roundedBorder)
-                                .lineLimit(2...2)
-                                .focused($isTestInputFocused)
-                                .frame(height: 50)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(NSColor.controlBackgroundColor))
-                    
-                    // 2. 统计数据（今日 / 累计 双维度）
-                    VStack(alignment: .leading, spacing: 16) {
-                        StatSection(
-                            title: NSLocalizedString("stats.today", comment: ""),
-                            characterCount: historyManager.todayCharacterCount,
-                            charactersPerMinute: historyManager.todayCharactersPerMinute,
-                            audioSeconds: historyManager.todayAudioSeconds,
-                            transcriptionSeconds: historyManager.todayTranscriptionSeconds,
-                            realtimeFactor: historyManager.todayRealtimeFactor
-                        )
-                        StatSection(
-                            title: NSLocalizedString("stats.all", comment: ""),
-                            characterCount: historyManager.totalCharacterCount,
-                            charactersPerMinute: historyManager.totalCharactersPerMinute,
-                            audioSeconds: historyManager.totalAudioSeconds,
-                            transcriptionSeconds: historyManager.totalTranscriptionSeconds,
-                            realtimeFactor: historyManager.totalRealtimeFactor
-                        )
-                        HStack(spacing: 24) {
-                            StatItem(
-                                title: NSLocalizedString("avg.characters.per.record", comment: ""),
-                                value: String(format: "%.0f", historyManager.averageCharactersPerRecord)
-                            )
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-                    
+                VStack(alignment: .leading, spacing: 24) {
+                    // 1. 测试输入区 - 核心操作区，视觉焦点
+                    TestInputSection(
+                        testInputText: $testInputText,
+                        isTestInputFocused: $isTestInputFocused
+                    )
+
+                    // 2. 统计数据 - 卡片式，信息层次清晰
+                    StatsSection(historyManager: historyManager)
+
                     // 3. 历史记录
-                    VStack(alignment: .leading, spacing: 0) {
-                        HStack {
-                            Text(NSLocalizedString("voice.input.history", comment: ""))
-                                .font(.headline)
-                            Text("(\(historyManager.totalCount) \(NSLocalizedString("records", comment: "")))")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            if !historyManager.records.isEmpty {
-                                Button(action: { showClearHistoryConfirm = true }) {
-                                    Text(NSLocalizedString("clear.all", comment: ""))
-                                        .font(.caption)
-                                }
-                                .buttonStyle(.borderless)
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        
-                        Divider()
-                        
-                        if historyManager.records.isEmpty {
-                            Text(NSLocalizedString("no.records", comment: ""))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 32)
-                        } else {
-                            VStack(alignment: .leading, spacing: 0) {
-                                ForEach(historyManager.records) { record in
-                                    HistoryRecordRow(
-                                        record: record,
-                                        isCopied: copiedRecordId == record.id,
-                                        onCopy: { copyRecord(record) },
-                                        onDelete: { historyManager.remove(record) }
-                                    )
-                                    if record.id != historyManager.records.last?.id {
-                                        Divider()
-                                            .padding(.leading, 16)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .background(Color(NSColor.controlBackgroundColor))
+                    HistorySection(
+                        historyManager: historyManager,
+                        copiedRecordId: $copiedRecordId,
+                        showClearHistoryConfirm: $showClearHistoryConfirm,
+                        onCopyRecord: copyRecord
+                    )
                 }
-                .padding(.bottom, 20)
+                .padding(24)
+                .padding(.bottom, 32)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .background(Color(nsColor: .windowBackgroundColor))
         .navigationTitle(NSLocalizedString("voice.input", comment: ""))
         .alert(NSLocalizedString("error", comment: ""), isPresented: Binding(
             get: { errorMessage != nil },
@@ -218,7 +88,7 @@ struct VoiceInputView: View {
             }
         }
     }
-    
+
     private func checkModelStatus() {
         isModelDownloaded = ModelDownloader.shared.checkModelFilesExist()
     }
@@ -234,8 +104,149 @@ struct VoiceInputView: View {
     }
 }
 
-// MARK: - 统计区块（今日/累计）
-private struct StatSection: View {
+// MARK: - 模型下载横幅（Apple 风格：克制、可点击）
+private struct ModelDownloadBanner: View {
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.blue)
+                    .symbolRenderingMode(.hierarchical)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(NSLocalizedString("model.not.downloaded.title", comment: ""))
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
+                    Text(NSLocalizedString("model.not.downloaded.message", comment: ""))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(Color.accentColor.opacity(0.08))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - 测试输入区
+private struct TestInputSection: View {
+    @Binding var testInputText: String
+    @FocusState.Binding var isTestInputFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // 提示：简洁、不喧宾夺主
+            HStack(spacing: 10) {
+                Image(systemName: "info.circle.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .symbolRenderingMode(.hierarchical)
+                Text(NSLocalizedString("main.usage.hint", comment: ""))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color(nsColor: .controlBackgroundColor))
+            )
+
+            // 输入框
+            VStack(alignment: .leading, spacing: 8) {
+                Text(NSLocalizedString("test.input.label", comment: ""))
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+
+                TextField(NSLocalizedString("test.input.placeholder", comment: ""), text: $testInputText, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .lineLimit(2...4)
+                    .focused($isTestInputFocused)
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color(nsColor: .textBackgroundColor))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .strokeBorder(Color.primary.opacity(isTestInputFocused ? 0.3 : 0.12), lineWidth: isTestInputFocused ? 1.5 : 1)
+                            )
+                    )
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(.regularMaterial)
+        )
+    }
+}
+
+// MARK: - 统计区（卡片式，Apple 风格）
+private struct StatsSection: View {
+    @ObservedObject var historyManager: VoiceInputHistoryManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // 今日 / 累计 双卡片
+            HStack(spacing: 16) {
+                VoiceInputStatCard(
+                    title: NSLocalizedString("stats.today", comment: ""),
+                    characterCount: historyManager.todayCharacterCount,
+                    charactersPerMinute: historyManager.todayCharactersPerMinute,
+                    audioSeconds: historyManager.todayAudioSeconds,
+                    transcriptionSeconds: historyManager.todayTranscriptionSeconds,
+                    realtimeFactor: historyManager.todayRealtimeFactor
+                )
+                VoiceInputStatCard(
+                    title: NSLocalizedString("stats.all", comment: ""),
+                    characterCount: historyManager.totalCharacterCount,
+                    charactersPerMinute: historyManager.totalCharactersPerMinute,
+                    audioSeconds: historyManager.totalAudioSeconds,
+                    transcriptionSeconds: historyManager.totalTranscriptionSeconds,
+                    realtimeFactor: historyManager.totalRealtimeFactor
+                )
+            }
+
+            // 平均每条
+            HStack(spacing: 8) {
+                Text(NSLocalizedString("avg.characters.per.record", comment: ""))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text(String(format: "%.0f", historyManager.averageCharactersPerRecord))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color(nsColor: .controlBackgroundColor).opacity(0.6))
+            )
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(.regularMaterial)
+        )
+    }
+}
+
+// MARK: - 统计卡片（语音输入专用，与 EmailDashboardView.StatCard 区分）
+private struct VoiceInputStatCard: View {
     let title: String
     let characterCount: Int
     let charactersPerMinute: Double?
@@ -246,29 +257,38 @@ private struct StatSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.subheadline)
-                .fontWeight(.medium)
+                .font(.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
-            HStack(spacing: 20) {
-                StatItem(title: NSLocalizedString("stats.characters", comment: ""), value: "\(characterCount)")
-                StatItem(
+
+            HStack(spacing: 16) {
+                StatItemView(
+                    title: NSLocalizedString("stats.characters", comment: ""),
+                    value: "\(characterCount)"
+                )
+                StatItemView(
                     title: NSLocalizedString("stats.chars.per.min", comment: ""),
                     value: charsPerMinDisplay
                 )
-                StatItem(
+                StatItemView(
                     title: NSLocalizedString("stats.audio.seconds", comment: ""),
                     value: formatSeconds(audioSeconds)
                 )
-                StatItem(
+                StatItemView(
                     title: NSLocalizedString("stats.transcription.seconds", comment: ""),
                     value: formatSeconds(transcriptionSeconds)
                 )
-                StatItem(
+                StatItemView(
                     title: NSLocalizedString("stats.realtime.factor", comment: ""),
                     value: realtimeFactorDisplay
                 )
             }
         }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.5))
+        )
     }
 
     private var charsPerMinDisplay: String {
@@ -301,49 +321,111 @@ private struct StatSection: View {
 }
 
 // MARK: - 统计项
-private struct StatItem: View {
+private struct StatItemView: View {
     let title: String
     let value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
             Text(value)
-                .font(.headline)
+                .font(.subheadline.weight(.medium))
                 .foregroundStyle(.primary)
         }
     }
 }
 
-// MARK: - 历史记录行
+// MARK: - 历史记录区
+private struct HistorySection: View {
+    @ObservedObject var historyManager: VoiceInputHistoryManager
+    @Binding var copiedRecordId: UUID?
+    @Binding var showClearHistoryConfirm: Bool
+    let onCopyRecord: (VoiceInputHistoryRecord) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // 标题行
+            HStack {
+                Text(NSLocalizedString("voice.input.history", comment: ""))
+                    .font(.title3.weight(.semibold))
+                Text("(\(historyManager.totalCount) \(NSLocalizedString("records", comment: "")))")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if !historyManager.records.isEmpty {
+                    Button(action: { showClearHistoryConfirm = true }) {
+                        Text(NSLocalizedString("clear.all", comment: ""))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+
+            if historyManager.records.isEmpty {
+                ContentUnavailableView {
+                    Label(NSLocalizedString("no.records", comment: ""), systemImage: "text.badge.plus")
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 48)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(historyManager.records) { record in
+                        HistoryRecordRow(
+                            record: record,
+                            isCopied: copiedRecordId == record.id,
+                            onCopy: { onCopyRecord(record) },
+                            onDelete: { historyManager.remove(record) }
+                        )
+                        if record.id != historyManager.records.last?.id {
+                            Divider()
+                                .padding(.leading, 20)
+                        }
+                    }
+                }
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(.regularMaterial)
+                )
+            }
+        }
+    }
+}
+
+// MARK: - 历史记录行（Apple 风格：清晰、可操作）
 private struct HistoryRecordRow: View {
     let record: VoiceInputHistoryRecord
     let isCopied: Bool
     let onCopy: () -> Void
     let onDelete: () -> Void
+    @State private var isHovered = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(record.text)
                     .font(.body)
                     .lineLimit(5)
                     .textSelection(.enabled)
+                    .foregroundStyle(.primary)
                 Text(record.timestamp, style: .relative)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 12)
-            .padding(.leading, 16)
+            .padding(.vertical, 14)
+            .padding(.leading, 20)
 
             Button(action: onCopy) {
                 if isCopied {
                     HStack(spacing: 4) {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(.green)
+                            .symbolRenderingMode(.hierarchical)
                         Text(NSLocalizedString("copy.success", comment: ""))
                             .font(.caption)
                             .foregroundStyle(.green)
@@ -351,18 +433,23 @@ private struct HistoryRecordRow: View {
                 } else {
                     Image(systemName: "doc.on.doc")
                         .font(.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(isHovered ? .primary : .secondary)
+                        .symbolRenderingMode(.hierarchical)
                 }
             }
             .buttonStyle(.plain)
-            .padding(.trailing, 16)
+            .padding(.trailing, 20)
+        }
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            isHovered = hovering
         }
         .contextMenu {
             Button(action: onCopy) {
-                Text(NSLocalizedString("copy", comment: ""))
+                Label(NSLocalizedString("copy", comment: ""), systemImage: "doc.on.doc")
             }
             Button(role: .destructive, action: onDelete) {
-                Text(NSLocalizedString("delete", comment: ""))
+                Label(NSLocalizedString("delete", comment: ""), systemImage: "trash")
             }
         }
     }
