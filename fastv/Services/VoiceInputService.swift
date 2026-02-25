@@ -461,8 +461,9 @@ class VoiceInputService: ObservableObject {
 
             systemAudioQueue.async {
                 // 同时检查缓冲区数量和字节大小
-                while self.systemAudioBuffers.count >= self.maxSystemAudioBuffers ||
-                      self.currentSystemAudioBytes >= self.maxSystemAudioBytes {
+                while (self.systemAudioBuffers.count >= self.maxSystemAudioBuffers ||
+                       self.currentSystemAudioBytes >= self.maxSystemAudioBytes),
+                      !self.systemAudioBuffers.isEmpty {
                     let removed = self.systemAudioBuffers.removeFirst()
                     self.currentSystemAudioBytes -= removed.count
                 }
