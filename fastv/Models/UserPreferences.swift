@@ -54,6 +54,7 @@ class UserPreferences: ObservableObject {
         static let aiSystemPrompt = "aiSystemPrompt"
         // CTC 去重相关
         static let enableCTCDeduplication = "enableCTCDeduplication"
+        static let hasMigratedCTCForceDisabled = "hasMigratedCTCForceDisabled_v1"
         // 文本插入方式
         static let useDirectTextInsertion = "useDirectTextInsertion"
         // AI错误检测相关
@@ -678,7 +679,17 @@ class UserPreferences: ObservableObject {
         aiSystemPrompt = defaults.string(forKey: Keys.aiSystemPrompt) ?? defaultSystemPrompt
         
         // CTC 去重设置，默认禁用（保留叠词和连续数字）
-        enableCTCDeduplication = defaults.object(forKey: Keys.enableCTCDeduplication) as? Bool ?? false
+        var ctcValue = defaults.object(forKey: Keys.enableCTCDeduplication) as? Bool ?? false
+        // 一次性迁移：CTC 会误删"谢谢""100"等，强制关闭以修复用户反馈
+        if !defaults.bool(forKey: Keys.hasMigratedCTCForceDisabled) {
+            if ctcValue {
+                ctcValue = false
+                defaults.set(false, forKey: Keys.enableCTCDeduplication)
+                print("🔄 [UserPreferences] CTC 去重已强制关闭（会误删谢谢、100 等）")
+            }
+            defaults.set(true, forKey: Keys.hasMigratedCTCForceDisabled)
+        }
+        enableCTCDeduplication = ctcValue
         
         // 文本插入方式，默认使用直接键盘输入（不使用剪贴板）
         useDirectTextInsertion = defaults.object(forKey: Keys.useDirectTextInsertion) as? Bool ?? true

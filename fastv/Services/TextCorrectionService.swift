@@ -55,6 +55,11 @@ class TextCorrectionService {
             ("！！", "！"),
             ("：：", "："),
             ("；；", "；"),
+            // 连续不同标点（分段边界常见）：句号+逗号、逗号+句号 等，保留语义更强的
+            ("。，", "。"),
+            ("，。", "。"),
+            ("、，", "、"),
+            ("，、", "，"),
         ]
         
         for (pattern, replacement) in punctuationPatterns {

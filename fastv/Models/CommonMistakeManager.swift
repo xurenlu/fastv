@@ -220,45 +220,42 @@ class CommonMistakeManager: ObservableObject {
     
     // MARK: - Built-in Rules
     
-    /// 初始化内置规则（仅在首次运行时）
+    /// 初始化内置规则（首次运行或从 v1 迁移时）
     private func initializeBuiltInRules() {
-        // 检查是否已经初始化过内置规则
-        let hasInitializedKey = "hasInitializedBuiltInRules_v1"
-        guard !UserDefaults.standard.bool(forKey: hasInitializedKey) else {
-            return
+        let v2Key = "hasInitializedBuiltInRules_v2"
+        let v1Key = "hasInitializedBuiltInRules_v1"
+        
+        // v2 已初始化则跳过
+        guard !UserDefaults.standard.bool(forKey: v2Key) else { return }
+        
+        // 从 v1 迁移：移除旧的内置规则，应用精简后的规则（避免过度清理叠词、数字）
+        if UserDefaults.standard.bool(forKey: v1Key) {
+            mistakes.removeAll { $0.isBuiltIn }
+            print("🔄 [CommonMistakeManager] 从 v1 迁移：已移除过度清理的重复词规则")
         }
         
-        // 获取所有内置规则
         let builtInRules = getBuiltInRules()
-        
-        // 添加到 mistakes 数组
         mistakes.append(contentsOf: builtInRules)
         
-        // 标记为已初始化
-        UserDefaults.standard.set(true, forKey: hasInitializedKey)
-        
-        // 保存
+        UserDefaults.standard.set(true, forKey: v2Key)
+        UserDefaults.standard.set(true, forKey: v1Key) // 保持兼容
         saveMistakes()
         
-        print("✅ [CommonMistakeManager] 已初始化 \(builtInRules.count) 条内置规则")
+        print("✅ [CommonMistakeManager] 已初始化 \(builtInRules.count) 条内置规则（v2 精简版）")
     }
     
     /// 获取所有内置规则
     private func getBuiltInRules() -> [CommonMistake] {
         var rules: [CommonMistake] = []
         
-        // 重复词规则
+        // 重复词规则（v2 精简：移除会误伤合理叠词的规则，如谢谢、看看、说说、我看看、100 等）
+        // 仅保留明显口吃/误识别的重复，不处理动词重叠（说说、看看、想想）、谢谢、连续数字
         let repetitionRules: [(String, String)] = [
             ("就就", "就"), ("这这", "这"), ("那那", "那"),
             ("的的", "的"), ("了了", "了"), ("在在", "在"),
             ("是是", "是"), ("有有", "有"), ("会会", "会"),
-            ("能能", "能"), ("要要", "要"), ("说说", "说"), ("做做", "做"), ("用用", "用"),
-            ("去去", "去"), ("来来", "来"), ("走走", "走"),
-            ("想想", "想"), ("听听", "听"), ("学学", "学"),
-            ("写写", "写"), ("读读", "读"), ("买买", "买"),
-            ("卖卖", "卖"), ("吃吃", "吃"), ("喝喝", "喝"),
-            ("睡睡", "睡"), ("玩玩", "玩"),
-            ("等等", "等"), ("帮帮", "帮"),
+            ("能能", "能"), ("要要", "要"),
+            ("卖卖", "卖"),
             ("对对", "对"), ("错错", "错"), ("好好", "好"),
             ("坏坏", "坏"), ("大大", "大"), ("小小", "小"),
             ("多多", "多"), ("少少", "少"), ("新新", "新"),
@@ -284,10 +281,8 @@ class CommonMistakeManager: ObservableObject {
             ("特别特别", "特别"), ("超级超级", "超级"),
             ("十分十分", "十分"), ("相当相当", "相当"),
             ("比较比较", "比较"), ("有点有点", "有点"),
-            ("看看看", "看"), ("说说说", "说"),
-            ("做做做", "做"), ("用用用", "用"),
-            ("去去去", "去"), ("来来来", "来"),
-            ("走走走", "走"), ("想想想", "想"),
+            // 已移除：说说、做做、用用、去去、来来、走走、想想、听听、学学、写写、读读、买买、吃吃、喝喝、睡睡、玩玩、等等、帮帮（会误伤"谢谢""我看看"等合理叠词）
+            // 已移除：看看看、说说说 等三连（会误伤"我看看"）
         ]
         
         for (wrong, correct) in repetitionRules {
@@ -338,12 +333,13 @@ class CommonMistakeManager: ObservableObject {
             ))
         }
         
-        // 数字规则
+        // 数字规则（仅单字重复口误，不处理阿拉伯数字如 100）
         let numberRules: [(String, String)] = [
             ("一一", "一"), ("二二", "二"), ("三三", "三"),
             ("四四", "四"), ("五五", "五"), ("六六", "六"),
             ("七七", "七"), ("八八", "八"), ("九九", "九"),
-            ("十十", "十"), ("千千", "千"), ("万万", "万"),
+            ("十十", "十"), ("千千", "千"),
+            // 已移除万万：会误伤"万万不可"等合理用法
         ]
         
         for (wrong, correct) in numberRules {
@@ -358,9 +354,9 @@ class CommonMistakeManager: ObservableObject {
             ))
         }
         
-        // 时间规则
+        // 时间规则（移除"年年"：会误伤"年年有余"等）
         let timeRules: [(String, String)] = [
-            ("年年", "年"), ("月月", "月"), ("日日", "日"),
+            ("月月", "月"), ("日日", "日"),
             ("时时", "时"), ("分分", "分"), ("秒秒", "秒"),
             ("周周", "周"), ("天天", "天"),
             ("今天今天", "今天"), ("明天明天", "明天"),

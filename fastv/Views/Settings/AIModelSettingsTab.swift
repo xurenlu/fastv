@@ -16,13 +16,13 @@ struct AIModelSettingsTab: View {
         Form {
             // 文本纠错配置
             Section {
-                // CTC 去重开关（高级设置）
+                // CTC 去重开关（强烈建议保持关闭，避免过度清理）
                 VStack(alignment: .leading, spacing: 8) {
-                    Toggle("CTC 去重（仅在出现问题时开启）", isOn: $preferences.enableCTCDeduplication)
+                    Toggle("CTC 去重（不推荐，会误删叠词和数字）", isOn: $preferences.enableCTCDeduplication)
                     
                     Text(preferences.enableCTCDeduplication 
-                        ? "⚠️ 已启用：将合并连续重复的字符，可能导致\"谢谢\"变成\"谢\"、\"100\"变成\"10\"" 
-                        : "✓ 已禁用：保留所有叠词（如\"谢谢\"）和连续数字（如\"100\"）")
+                        ? "⚠️ 已启用：会错误合并\"谢谢\"→\"谢\"、\"我看看\"→\"我看\"、\"100\"→\"10\"，建议关闭" 
+                        : "✓ 已禁用：保留叠词（谢谢、看看）和连续数字（100），推荐")
                         .font(.caption)
                         .foregroundStyle(preferences.enableCTCDeduplication ? .orange : .secondary)
                 }

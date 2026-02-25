@@ -79,21 +79,43 @@ struct SpeechTranscriber {
     /// 从内存录音转文字（用于语音输入、会议记录、直播转录）
     /// 自动检测录音时长，超过60秒自动分段处理
     /// 使用 Task.detached 确保在后台线程执行，避免阻塞主线程
-    static func transcribe(recording: VoiceRecording, language: TranscriptLanguage = .auto, enableCTCDeduplication: Bool? = nil) async throws -> String {
+    /// - Parameters:
+    ///   - cancellationCheck: 取消检查函数，定期调用以检查是否应该取消操作
+    static func transcribe(
+        recording: VoiceRecording,
+        language: TranscriptLanguage = .auto,
+        enableCTCDeduplication: Bool? = nil,
+        cancellationCheck: (() -> Bool)? = nil
+    ) async throws -> String {
         return try await Task.detached(priority: .userInitiated) {
-            try await transcribeImpl(recording: recording, language: language, enableCTCDeduplication: enableCTCDeduplication)
+            try await transcribeImpl(
+                recording: recording,
+                language: language,
+                enableCTCDeduplication: enableCTCDeduplication,
+                cancellationCheck: cancellationCheck
+            )
         }.value
     }
-    
+
     /// 转录实现（在后台线程执行）
-    private static func transcribeImpl(recording: VoiceRecording, language: TranscriptLanguage = .auto, enableCTCDeduplication: Bool? = nil) async throws -> String {
+    private static func transcribeImpl(
+        recording: VoiceRecording,
+        language: TranscriptLanguage = .auto,
+        enableCTCDeduplication: Bool? = nil,
+        cancellationCheck: (() -> Bool)? = nil
+    ) async throws -> String {
+        // 检查取消
+        if let check = cancellationCheck, check() {
+            throw NSError(domain: NSCocoaErrorDomain, code: NSUserCancelledError, userInfo: nil)
+        }
+
         guard recording.channelCount == 1 else {
             throw VideoProcessingError.transcriptionFailed("仅支持单声道录音")
         }
         guard abs(recording.sampleRate - 16000) < 1 else {
             throw VideoProcessingError.transcriptionFailed("录音采样率需为16kHz")
         }
-        
+
         // 获取 CTC 去重设置（如果未指定，从用户偏好设置中获取）
         let ctcDedup: Bool
         if let enableCTCDeduplication = enableCTCDeduplication {
@@ -101,15 +123,20 @@ struct SpeechTranscriber {
         } else {
             ctcDedup = await MainActor.run { UserPreferences.shared.enableCTCDeduplication }
         }
-        
+
+        // 检查取消
+        if let check = cancellationCheck, check() {
+            throw NSError(domain: NSCocoaErrorDomain, code: NSUserCancelledError, userInfo: nil)
+        }
+
         // 获取归一化的音频样本
         let samples = recording.normalizedSamples()
         let duration = Double(samples.count) / recording.sampleRate
-        
+
         #if DEBUG
         print("🎤 [SpeechTranscriber] 录音时长: \(String(format: "%.2f", duration))s")
         #endif
-        
+
         // 如果录音时长超过60秒，使用分段处理
         if AudioSegmenter.needsSegmentation(samples: samples, config: .realtime) {
             #if DEBUG
@@ -119,7 +146,8 @@ struct SpeechTranscriber {
                 samples: samples,
                 sampleRate: recording.sampleRate,
                 language: language,
-                enableCTCDeduplication: ctcDedup
+                enableCTCDeduplication: ctcDedup,
+                cancellationCheck: cancellationCheck
             )
         }
         
@@ -137,50 +165,65 @@ struct SpeechTranscriber {
         samples: [Float],
         sampleRate: Double,
         language: TranscriptLanguage,
-        enableCTCDeduplication: Bool
+        enableCTCDeduplication: Bool,
+        cancellationCheck: (() -> Bool)? = nil
     ) async throws -> String {
         // 使用实时配置进行分段
         let segments = AudioSegmenter.segmentAudio(samples: samples, sampleRate: sampleRate, config: .realtime)
-        
+
         #if DEBUG
         print("📊 [SpeechTranscriber] 录音分成 \(segments.count) 个片段")
         #endif
-        
+
         var transcripts: [String] = []
         let cmvnURL = resolveCMVNURL()
-        
+
         for (index, segment) in segments.enumerated() {
+            // 检查取消
+            if let check = cancellationCheck, check() {
+                print("⚠️ [SpeechTranscriber] 分段转写已取消")
+                throw NSError(domain: NSCocoaErrorDomain, code: NSUserCancelledError, userInfo: nil)
+            }
+
             #if DEBUG
             print("🎤 [SpeechTranscriber] 处理片段 \(index + 1)/\(segments.count): \(String(format: "%.2f", segment.startTime))s - \(String(format: "%.2f", segment.endTime))s")
             #endif
-            
+
             // 将 Float 样本转换为 PCM Data
             let pcmData = floatSamplesToPCMData(segment.samples)
             let segmentRecording = VoiceRecording(pcmData: pcmData, sampleRate: sampleRate, channelCount: 1)
-            
+
             // 提取特征并推理
             let features = try await AudioFeatureExtractor.extractMelFeatures(from: segmentRecording, cmvnURL: cmvnURL)
+
+            // 再次检查取消
+            if let check = cancellationCheck, check() {
+                print("⚠️ [SpeechTranscriber] 分段转写已取消")
+                throw NSError(domain: NSCocoaErrorDomain, code: NSUserCancelledError, userInfo: nil)
+            }
+
             let segmentTranscript = try await performTranscription(
                 features: features,
                 language: language,
-                enableCTCDeduplication: enableCTCDeduplication
+                enableCTCDeduplication: enableCTCDeduplication,
+                cancellationCheck: cancellationCheck
             )
-            
+
             if !segmentTranscript.isEmpty {
                 transcripts.append(segmentTranscript)
             }
-            
+
             #if DEBUG
             print("✅ [SpeechTranscriber] 片段 \(index + 1) 转录完成: \(segmentTranscript.prefix(30))...")
             #endif
-            
+
             // 每段处理完后主动回收 C/ObjC 层可能产生的 autorelease 对象，防止长录音分段时内存累积
             autoreleasepool { }
         }
-        
+
         // 合并结果
         let finalTranscript = mergeTranscripts(transcripts, language: language)
-        
+
         #if DEBUG
         print("📝 [SpeechTranscriber] 分段录音转录完成，共 \(transcripts.count) 个片段")
         #endif
@@ -348,12 +391,19 @@ struct SpeechTranscriber {
         }
         
         var audioSamples: [Float] = []
-        
+        var sampleCount = 0  // 用于定期清理
+
         while let sampleBuffer = audioOutput.copyNextSampleBuffer() {
+            // 每 100 个样本缓冲区回收一次，防止内存累积
+            sampleCount += 1
+            if sampleCount % 100 == 0 {
+                autoreleasepool { }
+            }
+
             guard let blockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer) else {
                 continue
             }
-            
+
             var length: Int = 0
             var dataPointer: UnsafeMutablePointer<Int8>? = nil
             let status = CMBlockBufferGetDataPointer(blockBuffer, atOffset: 0, lengthAtOffsetOut: nil, totalLengthOut: &length, dataPointerOut: &dataPointer)
@@ -576,41 +626,27 @@ struct SpeechTranscriber {
     ///   - features: 音频特征
     ///   - language: 语言类型
     ///   - enableCTCDeduplication: 是否启用 CTC 去重
+    ///   - cancellationCheck: 取消检查函数
     /// - Returns: 转录的文本
-    private static func performTranscription(features: [[Float]], language: TranscriptLanguage, enableCTCDeduplication: Bool = false) async throws -> String {
+    private static func performTranscription(
+        features: [[Float]],
+        language: TranscriptLanguage,
+        enableCTCDeduplication: Bool = false,
+        cancellationCheck: (() -> Bool)? = nil
+    ) async throws -> String {
+        // 检查取消
+        if let check = cancellationCheck, check() {
+            throw NSError(domain: NSCocoaErrorDomain, code: NSUserCancelledError, userInfo: nil)
+        }
+
         // 检查 tokens 文件
         guard let tokensPath = tokensPath else {
             throw VideoProcessingError.modelLoadFailed("tokens 文件未找到")
         }
-        
+
         // 加载 token 映射
         let tokenMap = try await loadTokenMap(from: tokensPath)
-        
-        #if DEBUG
-        print("使用缓存的 ONNX 模型进行推理")
-        print("输入特征数量: \(features.count) 帧, 每帧 \(features.first?.count ?? 0) 维")
-        if let firstFrame = features.first {
-            let minVal = firstFrame.min() ?? 0
-            let maxVal = firstFrame.max() ?? 0
-            let avgVal = firstFrame.reduce(0, +) / Float(firstFrame.count)
-            print("特征值范围: min=\(minVal), max=\(maxVal), avg=\(avgVal)")
-            let nonZeroCount = firstFrame.filter { abs($0) > 1e-6 }.count
-            print("非零特征数量: \(nonZeroCount)/\(firstFrame.count)")
-        }
-        var allMin: Float = Float.infinity
-        var allMax: Float = -Float.infinity
-        var totalSum: Float = 0
-        var totalCount = 0
-        for frame in features {
-            if let frameMin = frame.min() { allMin = min(allMin, frameMin) }
-            if let frameMax = frame.max() { allMax = max(allMax, frameMax) }
-            totalSum += frame.reduce(0, +)
-            totalCount += frame.count
-        }
-        let allAvg = totalCount > 0 ? totalSum / Float(totalCount) : 0
-        print("所有帧特征值范围: min=\(allMin), max=\(allMax), avg=\(allAvg)")
-        #endif
-        
+
         // 使用缓存的模型运行推理（首次调用时加载，后续复用）
         let tokenIDs = try await SpeechTranscriptionModel.shared.runInference(
             features: features,
@@ -619,7 +655,7 @@ struct SpeechTranscriber {
         )
         
         // 后处理：token 解码和文本规范化
-        let text = postprocessTokens(tokenIDs: tokenIDs, tokenMap: tokenMap)
+        let text = postprocessTokens(tokenIDs: tokenIDs, tokenMap: tokenMap, enableCTCDeduplication: enableCTCDeduplication)
         
         return text
     }
@@ -643,7 +679,8 @@ struct SpeechTranscriber {
     }
     
     /// 后处理：将 token IDs 转换为文本
-    private static func postprocessTokens(tokenIDs: [Int], tokenMap: [Int: String]) -> String {
+    /// - Parameter enableCTCDeduplication: 启用时额外清理连续不同标点（。，、，。），分段边界常见
+    private static func postprocessTokens(tokenIDs: [Int], tokenMap: [Int: String], enableCTCDeduplication: Bool = false) -> String {
         // 调试：打印原始 token IDs
         #if DEBUG
         print("原始 token IDs: \(tokenIDs.prefix(20))... (共 \(tokenIDs.count) 个)")
@@ -697,6 +734,14 @@ struct SpeechTranscriber {
         // 6. 清理多余空格
         text = text.replacingOccurrences(of: "  ", with: " ")
         text = text.trimmingCharacters(in: .whitespaces)
+        
+        // 7. 启用 CTC 去重时，清理分段边界常见的连续不同标点（。，、，。等）
+        if enableCTCDeduplication {
+            let crossPunctuationPatterns = [("。，", "。"), ("，。", "。"), ("、，", "、"), ("，、", "，")]
+            for (pattern, replacement) in crossPunctuationPatterns {
+                text = text.replacingOccurrences(of: pattern, with: replacement)
+            }
+        }
         
         #if DEBUG
         print("最终文本: '\(text)'")
