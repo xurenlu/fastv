@@ -1,0 +1,11 @@
+{
+  "id": "com.example.horoscope",
+  "name": "星座运势",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": [
+    "chat"
+  ],
+  "minPlatformVersion": "1.0"
+}

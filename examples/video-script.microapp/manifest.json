@@ -1,0 +1,11 @@
+{
+  "id": "com.example.video-script",
+  "name": "视频脚本",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": [
+    "chat"
+  ],
+  "minPlatformVersion": "1.0"
+}

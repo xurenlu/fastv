@@ -48,6 +48,7 @@ std::string GetDateTimeStr() {
   return os.str();
 }
 
+__attribute__((unused))
 static bool LocateSymbolRange(const std::string &trace_name, std::size_t *begin,
                               std::size_t *end) {
   // Find the first '_' with leading ' ' or '('.

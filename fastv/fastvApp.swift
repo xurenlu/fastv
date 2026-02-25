@@ -10,20 +10,190 @@ import AVFoundation
 import Combine
 import AppKit
 
+// 自定义通知名称
+extension Notification.Name {
+    static let shortcutConfigDidChange = Notification.Name("shortcutConfigDidChange")
+}
+
 // 全局变量：记录语音输入开始时间
 private var voiceInputStartTime: Date?
+// 記錄當前語音輸入是否需要 AI 校正
+private var currentVoiceInputNeedsAI: Bool = false
+// 本次錄音會話是否啟用智能分段
+private var currentSessionUsesIncremental: Bool = false
+// 本次錄音會話的靜音檢測器（智能分段時使用）
+private var currentSessionSilenceDetector: SilenceDetector?
+// 智能分段轉寫串行隊列：確保按時間順序插入，避免並發導致順序錯亂
+private var incrementalTranscriptionTask: Task<Void, Never>?
+// 智能分段轉寫結果緩存：邊說邊轉但不插入，鬆鍵時一次性合併輸出（利於 AI 優化整段）
+private var incrementalTranscriptionResults: [String] = []
+// 智能分段本輪累計：語音時長、識別耗時（用於統計）
+private var currentSessionIncrementalAudioSeconds: TimeInterval = 0
+private var currentSessionIncrementalTranscriptionSeconds: TimeInterval = 0
+
+/// 智能分段：靜音觸發時提取當前段落、轉寫並緩存（串行執行，不插入，鬆鍵時一次性輸出）
+@MainActor
+private func performIncrementalSegmentTranscription() async {
+    let voiceService = VoiceInputService.shared
+    let waveformManager = WaveformWindowManager.shared
+    let language = TranscriptLanguage(rawValue: UserPreferences.shared.voiceInputLanguage) ?? .zh
+
+    guard let result = try? await voiceService.extractCurrentSegmentWithTiming() else { return }
+    guard result.duration >= 1.0 else {
+        print("⚠️ [fastvApp] 智能分段：段落過短(\(String(format: "%.1f", result.duration))s)，跳過")
+        return
+    }
+
+    currentSessionIncrementalAudioSeconds += result.duration
+
+    // 檢測到停頓、開始轉寫時，立即切換為轉文字中的轉圈樣式
+    waveformManager.setTranscribing()
+
+    let transcribeStart = CFAbsoluteTimeGetCurrent()
+    do {
+        var text = try await SpeechTranscriber.transcribe(recording: result.recording, language: language)
+        currentSessionIncrementalTranscriptionSeconds += CFAbsoluteTimeGetCurrent() - transcribeStart
+        if CommonMistakeManager.shared.enableAutoCorrection {
+            text = TextCorrectionService.shared.correctText(text)
+        }
+        guard !text.isEmpty else { return }
+
+        incrementalTranscriptionResults.append(text)
+        print("✅ [fastvApp] 智能分段轉寫緩存: \(text.prefix(30))... (共\(incrementalTranscriptionResults.count)段)")
+    } catch {
+        print("❌ [fastvApp] 智能分段轉寫失敗: \(error)")
+    }
+
+    // 轉寫完成，恢復錄音狀態（用戶可繼續說話）
+    waveformManager.setRecording()
+}
+
+private struct ShortcutConfig: Equatable {
+    var isEnabled: Bool
+    var keyCode: UInt16
+    var modifiers: NSEvent.ModifierFlags
+}
+
+private var lastShortcutConfig: ShortcutConfig?
 
 /// 应用代理，用于监听应用退出事件
 class AppDelegate: NSObject, NSApplicationDelegate {
+    // 保存观察者引用，用于清理
+    private var windowObserver: NSObjectProtocol?
+    private var userDefaultsObserver: NSObjectProtocol?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // 应用启动完成后，初始化状态栏
+        print("📱 [AppDelegate] 应用启动完成，初始化状态栏")
+        StatusBarManager.shared.show()
+
+        // 设置应用不自动退出（关闭窗口时保留在后台）
+        NSApplication.shared.setActivationPolicy(.regular)
+
+        // 设置窗口标题为多语言的 APP 名称
+        DispatchQueue.main.async {
+            self.setWindowTitle()
+        }
+
+        // 延迟设置，确保 fastvApp 已初始化
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.setupNotificationObservers()
+        }
+    }
+
+    /// 设置通知观察者（由 AppDelegate 统一管理）
+    private func setupNotificationObservers() {
+        // 监听 UserDefaults 变化
+        userDefaultsObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            // 延迟一下，确保 UserPreferences 已经更新
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                Task { @MainActor in
+                    self.notifyShortcutConfigChange()
+                }
+            }
+        }
+    }
+
+    /// 通知快捷键配置已变化（通过通知中心传递给 fastvApp）
+    private func notifyShortcutConfigChange() {
+        NotificationCenter.default.post(name: .shortcutConfigDidChange, object: nil)
+    }
+
+    /// 设置窗口标题为多语言的 APP 名称
+    private func setWindowTitle() {
+        // 获取多语言的 APP 名称（使用本地化字符串）
+        let appName = NSLocalizedString("app.name", comment: "应用名称")
+
+        // 设置所有窗口的标题
+        for window in NSApplication.shared.windows {
+            window.title = appName
+        }
+
+        // 监听新窗口创建，自动设置标题（保存引用以便清理）
+        windowObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self else { return }
+            if let window = notification.object as? NSWindow {
+                window.title = NSLocalizedString("app.name", comment: "应用名称")
+            }
+        }
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
-        print("🧹 [AppDelegate] 应用即将退出，清理波形窗口")
+        print("🧹 [AppDelegate] 应用即将退出，清理资源")
+
+        // 移除所有通知观察者
+        if let observer = windowObserver {
+            NotificationCenter.default.removeObserver(observer)
+            windowObserver = nil
+        }
+        if let observer = userDefaultsObserver {
+            NotificationCenter.default.removeObserver(observer)
+            userDefaultsObserver = nil
+        }
+
         WaveformWindowManager.shared.cleanup()
+        StatusBarManager.shared.cleanup()
+    }
+
+    deinit {
+        // 确保观察者被清理
+        if let observer = windowObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = userDefaultsObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
     
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        // 当最后一个窗口关闭时，清理波形窗口
-        print("🧹 [AppDelegate] 最后一个窗口关闭，清理波形窗口")
-        WaveformWindowManager.shared.cleanup()
+        // 当最后一个窗口关闭时，不退出应用，而是隐藏窗口并保留在系统托盘
+        print("📱 [AppDelegate] 最后一个窗口关闭，隐藏窗口并保留在系统托盘")
+        // 隐藏所有窗口
+        NSApplication.shared.windows.forEach { window in
+            window.orderOut(nil)
+        }
+        // 不退出应用
+        return false
+    }
+    
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        // 当用户点击 Dock 图标时，显示主窗口
+        if !flag {
+            // 如果没有可见窗口，显示主窗口
+            if let window = NSApplication.shared.windows.first {
+                window.makeKeyAndOrderFront(nil)
+                NSApplication.shared.activate(ignoringOtherApps: true)
+            }
+        }
         return true
     }
 }
@@ -35,19 +205,42 @@ struct fastvApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(appState)
-                .onAppear {
-                    // 应用启动时，先清理可能遗留的工具条窗口（兜底方案）
-                    Task { @MainActor in
-                        print("🧹 [fastvApp] 应用启动，清理可能遗留的工具条窗口")
-                        WaveformWindowManager.shared.cleanup()
-                        
-                        // 延迟初始化，确保窗口已显示
-                        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
-                        setupVoiceInput()
-                    }
+            ZStack {
+                ContentView()
+                    .environmentObject(appState)
+                
+                // 语音模型预加载启动屏（仅当已完成引导且有模型文件时显示）
+                if UserPreferences.shared.hasCompletedOnboarding {
+                    SpeechModelPreloadSplashView(preloadManager: SpeechModelPreloadManager.shared)
                 }
+            }
+            .onAppear {
+                // 应用启动时预加载语音模型（若有模型文件），首次语音输入即可直接使用
+                SpeechModelPreloadManager.shared.startPreloadIfNeeded()
+
+                // 启动内存监控（仅在 Debug 模式下）
+                #if DEBUG
+                MemoryMonitor.shared.startMonitoring(interval: 10.0)
+                #endif
+
+                // 应用启动时，先清理可能遗留的工具条窗口（兜底方案）
+                Task { @MainActor in
+                    print("🧹 [fastvApp] 应用启动，清理可能遗留的工具条窗口")
+                    WaveformWindowManager.shared.cleanup()
+
+                    // 确保状态栏已初始化
+                    StatusBarManager.shared.show()
+
+                    // 设置窗口标题为多语言的 APP 名称
+                    if let window = NSApplication.shared.windows.first {
+                        window.title = NSLocalizedString("app.name", comment: "应用名称")
+                    }
+
+                    // 延迟初始化，确保窗口已显示
+                    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
+                    setupVoiceInput()
+                }
+            }
         }
         .windowStyle(.automatic)
         .defaultSize(width: 800, height: 600)
@@ -81,7 +274,8 @@ struct fastvApp: App {
             } else {
                 print("⚠️ [fastvApp] 辅助功能权限未授权，请求权限...")
                 print("💡 [fastvApp] 提示：系统将弹出权限请求对话框，请点击'打开系统偏好设置'")
-                print("💡 [fastvApp] 然后在'系统设置 > 隐私与安全性 > 辅助功能'中找到 fastv 并勾选")
+                let appName = NSLocalizedString("app.name", comment: "")
+                print("💡 [fastvApp] 然后在'系统设置 > 隐私与安全性 > 辅助功能'中找到 \(appName) 并勾选")
                 TextInsertionService.requestAccessibilityPermission()
             }
         }
@@ -91,36 +285,34 @@ struct fastvApp: App {
             try? await Task.sleep(nanoseconds: 1_000_000_000) // 1秒延迟
             setupGlobalShortcut()
         }
-        
-        // 监听设置变化
-        NotificationCenter.default.addObserver(
-            forName: UserDefaults.didChangeNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            // 延迟一下，确保 UserPreferences 已经更新
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                // 由于 fastvApp 是 struct，不需要 weak self
-                // 直接调用全局函数或通过 shared 实例访问
+
+        // 监听设置变化（由 AppDelegate 转发）
+        setupShortcutConfigObserver()
+    }
+
+    /// 监听快捷键配置变化
+    private func setupShortcutConfigObserver() {
+        NotificationCenter.default.publisher(for: .shortcutConfigDidChange)
+            .debounce(for: .milliseconds(100), scheduler: DispatchQueue.main)
+            .sink { _ in
                 Task { @MainActor in
-                    // 重新设置快捷键
-                    let preferences = UserPreferences.shared
-                    if preferences.enableVoiceInput {
-                        GlobalShortcutMonitor.shared.startMonitoring(
-                            keyCode: preferences.voiceInputShortcutKeyCode,
-                            modifiers: preferences.voiceInputShortcutModifiers
-                        )
-                    } else {
-                        GlobalShortcutMonitor.shared.stopMonitoring()
-                    }
+                    self.applyShortcutConfigIfNeeded(reason: "shortcutConfigDidChange")
                 }
             }
-        }
+            .store(in: &cancellables)
     }
+
+    // Combine cancellables 用于管理订阅
+    @State private var cancellables = Set<AnyCancellable>()
     
     private func requestMicrophonePermission() {
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
         print("🎤 [fastvApp] 当前麦克风权限状态: \(status.rawValue) - \(microphoneStatusDescription(status))")
+        
+        // 添加 Bundle ID 诊断信息
+        if let bundleId = Bundle.main.bundleIdentifier {
+            print("🔍 [fastvApp] Bundle ID: \(bundleId)")
+        }
         
         switch status {
         case .notDetermined:
@@ -136,7 +328,10 @@ struct fastvApp: App {
                         print("💡 [fastvApp] 现在可以使用语音输入功能了")
                 } else {
                         print("❌ [fastvApp] 用户拒绝了麦克风权限")
-                        print("💡 [fastvApp] 如需使用语音输入，请在'系统设置 > 隐私与安全性 > 麦克风'中手动授权 fastv")
+                        print("💡 [fastvApp] 如需使用语音输入，请在'系统设置 > 隐私与安全性 > 麦克风'中手动授权应用")
+                        if let bundleId = Bundle.main.bundleIdentifier {
+                            print("💡 [fastvApp] 请确保系统设置中授权的是 Bundle ID: \(bundleId)")
+                        }
                         
                         // 显示提示对话框
                         self.showMicrophonePermissionDeniedAlert()
@@ -145,9 +340,14 @@ struct fastvApp: App {
             }
         case .authorized:
             print("✅ [fastvApp] 麦克风权限已授权")
+            // 权限已授权，不需要再次请求
         case .denied, .restricted:
             print("⚠️ [fastvApp] 麦克风权限被拒绝或受限")
-            print("💡 [fastvApp] 提示：请在'系统设置 > 隐私与安全性 > 麦克风'中找到 fastv 并勾选")
+            print("💡 [fastvApp] 提示：请在'系统设置 > 隐私与安全性 > 麦克风'中找到应用并勾选")
+            if let bundleId = Bundle.main.bundleIdentifier {
+                print("💡 [fastvApp] 请确保系统设置中授权的是 Bundle ID: \(bundleId)")
+                print("💡 [fastvApp] 如果系统设置中显示的是不同的应用名称，可能是 Bundle ID 不匹配")
+            }
             
             // 显示提示对话框
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
@@ -176,11 +376,11 @@ struct fastvApp: App {
     @MainActor
     private func showMicrophonePermissionDeniedAlert() {
         let alert = NSAlert()
-        alert.messageText = "需要麦克风权限"
-        alert.informativeText = "语音输入功能需要访问麦克风。\n\n请按以下步骤授权：\n1. 打开\"系统设置\"\n2. 进入\"隐私与安全性\" > \"麦克风\"\n3. 找到 fastv 并勾选\n4. 重启应用"
+        alert.messageText = NSLocalizedString("microphone.permission.required", comment: "")
+        alert.informativeText = NSLocalizedString("microphone.permission.description", comment: "")
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "打开系统设置")
-        alert.addButton(withTitle: "稍后")
+        alert.addButton(withTitle: NSLocalizedString("open.system.settings", comment: ""))
+        alert.addButton(withTitle: NSLocalizedString("later", comment: ""))
         
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
@@ -200,55 +400,85 @@ struct fastvApp: App {
             return
         }
         
-        print("🔧 [fastvApp] 开始设置全局快捷键")
+        print("🔧 [fastvApp] 開始設置全局快捷鍵")
         
         let preferences = UserPreferences.shared
         
-        print("🔧 [fastvApp] 语音输入设置: enableVoiceInput=\(preferences.enableVoiceInput), keyCode=\(preferences.voiceInputShortcutKeyCode), modifiers=\(preferences.voiceInputShortcutModifiers.rawValue)")
+        print("🔧 [fastvApp] 語音輸入設置:")
+        print("  - 啟用: \(preferences.enableVoiceInput)")
+        print("  - 主快捷鍵: keyCode=\(preferences.voiceInputShortcutKeyCode), modifiers=\(preferences.voiceInputShortcutModifiers.rawValue)")
+        print("  - AI校正快捷鍵: keyCode=\(preferences.voiceInputWithAIShortcutKeyCode), modifiers=\(preferences.voiceInputWithAIShortcutModifiers.rawValue)")
         
-        // 如果未启用语音输入，停止监听
-        guard preferences.enableVoiceInput else {
-            print("ℹ️ [fastvApp] 语音输入未启用，停止快捷键监听")
-            GlobalShortcutMonitor.shared.stopMonitoring()
-            return
-        }
-        
-        // 设置快捷键监听回调
-        print("🔧 [fastvApp] 设置快捷键回调函数")
-        GlobalShortcutMonitor.shared.onShortcutPressed = {
-            print("🎯 [fastvApp] onShortcutPressed 回调被触发")
+        // 設置快捷鍵監聽回調（使用新版帶類型的回調）
+        print("🔧 [fastvApp] 設置快捷鍵回調函數")
+        GlobalShortcutMonitor.shared.onShortcutPressedWithType = { shortcutType in
+            print("🎯 [fastvApp] onShortcutPressed 回調被觸發（類型: \(shortcutType)）")
             Task { @MainActor in
-                await handleShortcutPressed()
+                await handleShortcutPressed(shortcutType: shortcutType)
             }
         }
         
-        GlobalShortcutMonitor.shared.onShortcutReleased = {
-            print("🎯 [fastvApp] onShortcutReleased 回调被触发")
+        GlobalShortcutMonitor.shared.onShortcutReleasedWithType = { shortcutType in
+            print("🎯 [fastvApp] onShortcutReleased 回調被觸發（類型: \(shortcutType)）")
             Task { @MainActor in
-                await handleShortcutReleased()
+                await handleShortcutReleased(shortcutType: shortcutType)
             }
         }
         
-        // 开始监听
-        print("🔧 [fastvApp] 调用 startMonitoring 开始监听快捷键")
-        GlobalShortcutMonitor.shared.startMonitoring(
-            keyCode: preferences.voiceInputShortcutKeyCode,
-            modifiers: preferences.voiceInputShortcutModifiers
-        )
+        applyShortcutConfigIfNeeded(reason: "initial setup")
     }
     
     @MainActor
-    private func handleShortcutPressed() async {
-        print("🎤 [fastvApp] handleShortcutPressed: 开始处理快捷键按下事件")
+    private func applyShortcutConfigIfNeeded(reason: String) {
+        let preferences = UserPreferences.shared
+        let newConfig = ShortcutConfig(
+            isEnabled: preferences.enableVoiceInput,
+            keyCode: preferences.voiceInputShortcutKeyCode,
+            modifiers: preferences.voiceInputShortcutModifiers
+        )
         
-        // 记录开始时间
+        if newConfig == lastShortcutConfig {
+            print("ℹ️ [fastvApp] 快捷鍵配置未變化（原因: \(reason)），跳過重新註冊")
+            return
+        }
+        
+        lastShortcutConfig = newConfig
+        
+        if newConfig.isEnabled {
+            print("🔧 [fastvApp] 快捷鍵配置已更新（原因: \(reason)），重新註冊監聽")
+            // 傳遞雙快捷鍵配置
+            GlobalShortcutMonitor.shared.startMonitoring(
+                keyCode: newConfig.keyCode,
+                modifiers: newConfig.modifiers,
+                secondaryKeyCode: preferences.voiceInputWithAIShortcutKeyCode,
+                secondaryModifiers: preferences.voiceInputWithAIShortcutModifiers
+            )
+        } else {
+            print("ℹ️ [fastvApp] 語音輸入已禁用（原因: \(reason)），停止快捷鍵監聽")
+            GlobalShortcutMonitor.shared.stopMonitoring()
+        }
+    }
+    
+    @MainActor
+    private func handleShortcutPressed(shortcutType: ShortcutType = .voiceInput) async {
+        let needsAI = shortcutType == .voiceInputWithAI
+        print("🎤 [fastvApp] handleShortcutPressed: 開始處理快捷鍵按下事件（類型: \(shortcutType), 需要AI: \(needsAI)）")
+        
+        // 記錄開始時間和是否需要 AI
         voiceInputStartTime = Date()
+        currentVoiceInputNeedsAI = needsAI
+        
+        let preferences = UserPreferences.shared
+        currentSessionUsesIncremental = preferences.enableIncrementalTranscription
+        incrementalTranscriptionResults = []
+        currentSessionIncrementalAudioSeconds = 0
+        currentSessionIncrementalTranscriptionSeconds = 0
         
         let voiceService = VoiceInputService.shared
         let waveformManager = WaveformWindowManager.shared
         
         // 先显示波形窗口（即使录音失败也要显示）
-        print("📊 [fastvApp] 显示波形窗口...")
+        print("📊 [fastvApp] 顯示波形窗口...")
         waveformManager.show()
         print("✅ [fastvApp] 波形窗口已显示")
         
@@ -259,8 +489,29 @@ struct fastvApp: App {
             print("✅ [fastvApp] 录音已开始")
             
             // 连接音频数据回调
-            voiceService.onAudioData = { level in
-                waveformManager.updateAudioLevel(level)
+            if currentSessionUsesIncremental {
+                let silenceDetector = SilenceDetector()
+                silenceDetector.silenceThreshold = preferences.silenceThreshold
+                silenceDetector.relativeThreshold = preferences.silenceRelativeThreshold
+                silenceDetector.minimumSilenceDuration = preferences.silenceDetectionDuration
+                silenceDetector.onSilenceDetected = { _ in
+                    let previousTask = incrementalTranscriptionTask
+                    incrementalTranscriptionTask = Task { @MainActor in
+                        await previousTask?.value  // 等待上一段完成，保證按時間順序插入
+                        await performIncrementalSegmentTranscription()
+                    }
+                }
+                currentSessionSilenceDetector = silenceDetector
+                voiceService.onAudioData = { level in
+                    waveformManager.updateAudioLevel(level)
+                    silenceDetector.processAudioLevel(level)
+                }
+                print("✅ [fastvApp] 智能分段已启用，停顿阈值: \(preferences.silenceDetectionDuration)秒")
+            } else {
+                currentSessionSilenceDetector = nil
+                voiceService.onAudioData = { level in
+                    waveformManager.updateAudioLevel(level)
+                }
             }
             print("✅ [fastvApp] 音频数据回调已连接")
         } catch VoiceInputError.microphoneInUse {
@@ -285,10 +536,10 @@ struct fastvApp: App {
     @MainActor
     private func showMicrophoneInUseAlert() {
         let alert = NSAlert()
-        alert.messageText = "麦克风正在使用中"
-        alert.informativeText = "麦克风正被其他应用使用（如闪电说）。\n\n解决方法：\n1. 关闭其他语音输入应用\n2. 或使用不同的快捷键避免冲突\n3. 或在其他应用不录音时使用本应用"
+        alert.messageText = NSLocalizedString("microphone.in.use", comment: "")
+        alert.informativeText = NSLocalizedString("microphone.in.use.description", comment: "")
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "知道了")
+        alert.addButton(withTitle: NSLocalizedString("got.it", comment: ""))
         alert.runModal()
     }
     
@@ -296,11 +547,11 @@ struct fastvApp: App {
     @MainActor
     private func showMicrophonePermissionAlert() {
         let alert = NSAlert()
-        alert.messageText = "需要麦克风权限"
-        alert.informativeText = "语音输入功能需要访问麦克风。\n\n请按以下步骤授权：\n1. 打开\"系统设置\"\n2. 进入\"隐私与安全性\" > \"麦克风\"\n3. 找到 fastv 并勾选\n4. 重新尝试语音输入"
+        alert.messageText = NSLocalizedString("microphone.permission.required", comment: "")
+        alert.informativeText = NSLocalizedString("microphone.permission.description", comment: "")
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "打开系统设置")
-        alert.addButton(withTitle: "稍后")
+        alert.addButton(withTitle: NSLocalizedString("open.system.settings", comment: ""))
+        alert.addButton(withTitle: NSLocalizedString("later", comment: ""))
         
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
@@ -312,8 +563,9 @@ struct fastvApp: App {
     }
     
     @MainActor
-    private func handleShortcutReleased() async {
-        print("🎤 [fastvApp] handleShortcutReleased: 开始处理快捷键释放事件")
+    private func handleShortcutReleased(shortcutType: ShortcutType = .voiceInput) async {
+        let needsAI = currentVoiceInputNeedsAI || shortcutType == .voiceInputWithAI
+        print("🎤 [fastvApp] handleShortcutReleased: 開始處理快捷鍵釋放事件（類型: \(shortcutType), 需要AI: \(needsAI)）")
         
         // 计算持续时间
         let duration: Double
@@ -328,82 +580,255 @@ struct fastvApp: App {
         
         let voiceService = VoiceInputService.shared
         let waveformManager = WaveformWindowManager.shared
-        let textInsertion = TextInsertionService.shared
-        let history = VoiceInputHistory.shared
         
-        // 立即切换到转文字状态（在停止录音之前）
+        // 立即切换到转文字状态（在停止录音之前），不使用延迟
         print("📊 [fastvApp] 立即切换到转文字状态...")
         waveformManager.setTranscribing()
         print("✅ [fastvApp] 已切换到转文字状态")
         
-        // 确保UI更新完成
-        try? await Task.sleep(nanoseconds: 50_000_000) // 50ms，让动画开始
+        let preferences = UserPreferences.shared
+        
+        // 智能分段模式：先提取剩余段落（須在 stopRecording 之前，因 extract 要求 isRecording）
+        var remainingSegmentResult: VoiceInputService.SegmentResult?
+        if currentSessionUsesIncremental {
+            // 先等待進行中的分段轉寫完成，再提取剩餘段落，保證插入順序
+            await incrementalTranscriptionTask?.value
+            incrementalTranscriptionTask = nil
+            remainingSegmentResult = try? await voiceService.extractCurrentSegmentWithTiming()
+            currentSessionSilenceDetector?.reset()
+            currentSessionSilenceDetector?.onSilenceDetected = nil
+            currentSessionSilenceDetector = nil
+        }
         
         // 停止录音
         print("🎤 [fastvApp] 停止录音...")
         guard let recording = try? await voiceService.stopRecording() else {
             print("❌ [fastvApp] 停止录音失败或返回空录音数据")
-            // 如果停止录音失败，也要隐藏窗口
             waveformManager.hide()
             return
         }
         print("✅ [fastvApp] 录音已停止，PCM字节数: \(recording.pcmData.count)")
         
-        // 语音转文字
+        // 智能分段模式：合併緩存分段 + 剩餘段落，一次性輸出（支持 AI 優化整段）
+        if currentSessionUsesIncremental {
+            var fullText = incrementalTranscriptionResults.joined()
+            incrementalTranscriptionResults = []
+            
+            // 轉寫剩餘段落並合併
+            let minRemainingDuration = fullText.isEmpty ? 1.0 : 1.5
+            if let result = remainingSegmentResult, result.duration >= minRemainingDuration {
+                currentSessionIncrementalAudioSeconds += result.duration
+                let transcribeStart = CFAbsoluteTimeGetCurrent()
+                do {
+                    var remainingText = try await SpeechTranscriber.transcribe(recording: result.recording, language: TranscriptLanguage(rawValue: preferences.voiceInputLanguage) ?? .zh)
+                    currentSessionIncrementalTranscriptionSeconds += CFAbsoluteTimeGetCurrent() - transcribeStart
+                    if CommonMistakeManager.shared.enableAutoCorrection {
+                        remainingText = TextCorrectionService.shared.correctText(remainingText)
+                    }
+                    if !remainingText.isEmpty {
+                        fullText += remainingText
+                    }
+                } catch {
+                    print("❌ [fastvApp] 智能分段剩餘轉寫失敗: \(error)")
+                }
+            }
+            
+            guard !fullText.isEmpty else {
+                waveformManager.setAICorrectionDisabled()
+                currentSessionUsesIncremental = false
+                currentVoiceInputNeedsAI = false
+                return
+            }
+            
+            // 與非智能分段共用後續流程：糾錯、AI 優化、插入
+            var text = fullText
+            let mistakeManager = CommonMistakeManager.shared
+            if mistakeManager.enableAutoCorrection {
+                text = TextCorrectionService.shared.correctText(text)
+            }
+            
+            let shouldDoAI = needsAI && isAIServiceConfigured()
+            if shouldDoAI {
+                waveformManager.setAICorrecting()
+                do {
+                    text = try await OllamaService.shared.optimizeTranscript(
+                        text: text,
+                        scenario: .voiceInputOptimization,
+                        systemPrompt: preferences.aiSystemPrompt,
+                        useMistakes: true,
+                        useHighFrequencyWords: true
+                    )
+                    waveformManager.setAICorrected()
+                } catch {
+                    print("⚠️ [fastvApp] AI 優化失敗，使用原始文本: \(error.localizedDescription)")
+                    waveformManager.setAICorrectionFailed()
+                }
+            } else {
+                waveformManager.setAICorrectionDisabled()
+            }
+            
+            if preferences.useDirectTextInsertion {
+                DirectTextInsertionService.shared.insertText(text)
+            } else {
+                TextInsertionService.shared.insertText(text)
+            }
+            let audioSec = currentSessionIncrementalAudioSeconds > 0 ? currentSessionIncrementalAudioSeconds : nil
+            let transSec = currentSessionIncrementalTranscriptionSeconds > 0 ? currentSessionIncrementalTranscriptionSeconds : nil
+            VoiceInputHistoryManager.shared.add(text: text, audioDurationSeconds: audioSec, transcriptionDurationSeconds: transSec)
+            print("✅ [fastvApp] 智能分段一次性插入: \(text.prefix(50))...")
+            currentSessionUsesIncremental = false
+            currentVoiceInputNeedsAI = false
+            return
+        }
+        
+        // 非智能分段：整段轉寫
         print("🔊 [fastvApp] 开始语音转文字...")
         do {
-            var text = try await SpeechTranscriber.transcribe(recording: recording)
+            let languageString = preferences.voiceInputLanguage
+            let language = TranscriptLanguage(rawValue: languageString) ?? .zh // 如果无效，默认使用中文
+            print("🌐 [fastvApp] 使用识别语言: \(languageString) (languageID: \(language.languageID))")
+
+            let audioDuration = recording.durationSeconds
+            let transcribeStart = CFAbsoluteTimeGetCurrent()
+            var text = try await SpeechTranscriber.transcribe(recording: recording, language: language)
+            let transcriptionDuration = CFAbsoluteTimeGetCurrent() - transcribeStart
             print("✅ [fastvApp] 语音转文字成功: \(text.prefix(50))...")
+            // 转录完成后主动回收 C/ObjC 层 autorelease 对象，便于释放大块 PCM 等内存
+            autoreleasepool { }
             
-            // AI 优化（如果启用）
-            let preferences = UserPreferences.shared
-            if preferences.enableAIOptimization {
-                print("🤖 [fastvApp] AI 优化已启用，开始优化文本（超时: \(preferences.aiTimeout)秒）...")
+            // 自动纠错（包含内置规则和用户自定义规则，毫秒级，非常快）
+            let mistakeManager = CommonMistakeManager.shared
+            if mistakeManager.enableAutoCorrection {
+                let correctionStartTime = Date()
+                let originalText = text
+                text = TextCorrectionService.shared.correctText(text)
+                if text != originalText {
+                    let correctionDuration = Date().timeIntervalSince(correctionStartTime) * 1000
+                    print("✅ [fastvApp] 自动纠错完成，耗时: \(String(format: "%.2f", correctionDuration))毫秒")
+                    print("📝 [fastvApp] 修正前: \(originalText.prefix(50))...")
+                    print("📝 [fastvApp] 修正后: \(text.prefix(50))...")
+                }
+            }
+            
+            // AI 優化（根據快捷鍵類型決定）
+            // - FN：純語音輸入，不進行 AI 校正
+            // - FN+Control：語音輸入 + AI 校正
+            // 注意：即使用戶按了 AI 校正快捷鍵，如果 AI 服務未配置也不會進行校正
+            let shouldDoAI = needsAI && isAIServiceConfigured()
+            
+            if needsAI && !shouldDoAI {
+                print("⚠️ [fastvApp] 用戶按下了 AI 校正快捷鍵，但 AI 服務未配置，跳過 AI 校正")
+            }
+            
+            if shouldDoAI {
+                print("🤖 [fastvApp] AI 優化已觸發（通過快捷鍵），開始優化文本（超時: \(preferences.aiTimeout)秒）...")
+                // 設置AI修正中狀態
+                waveformManager.setAICorrecting()
+                
                 let aiStartTime = Date()
                 do {
                     let optimizedText = try await OllamaService.shared.optimizeTranscript(
                         text: text,
-                        endpoint: preferences.aiAPIEndpoint,
-                        model: preferences.aiModel,
-                        apiToken: preferences.aiAPIToken.isEmpty ? nil : preferences.aiAPIToken,
-                        timeout: preferences.aiTimeout,
-                        systemPrompt: preferences.aiSystemPrompt
+                        scenario: .voiceInputOptimization,
+                        systemPrompt: preferences.aiSystemPrompt,
+                        useMistakes: true,
+                        useHighFrequencyWords: true
                     )
                     let aiDuration = Date().timeIntervalSince(aiStartTime)
-                    print("✅ [fastvApp] AI 优化完成，耗时: \(String(format: "%.2f", aiDuration))秒")
+                    print("✅ [fastvApp] AI 優化完成，耗時: \(String(format: "%.2f", aiDuration))秒")
                     print("📝 [fastvApp] 原文: \(text.prefix(50))...")
-                    print("📝 [fastvApp] 优化后: \(optimizedText.prefix(50))...")
+                    print("📝 [fastvApp] 優化後: \(optimizedText.prefix(50))...")
                     text = optimizedText
+                    
+                    // AI修正成功：設置成功狀態（會自動在1秒後隱藏窗口）
+                    waveformManager.setAICorrected()
+                    // AI 優化完成後回收可能產生的臨時對象
+                    autoreleasepool { }
                 } catch {
-                    print("⚠️ [fastvApp] AI 优化失败，使用原始文本: \(error.localizedDescription)")
-                    // AI 优化失败不影响主流程，继续使用原始文本
+                    print("⚠️ [fastvApp] AI 優化失敗，使用原始文本: \(error.localizedDescription)")
+                    // AI 優化失敗不影響主流程，繼續使用原始文本
+                    // AI修正失敗：設置失敗狀態（會自動在0.8秒後隱藏窗口）
+                    waveformManager.setAICorrectionFailed()
                 }
             } else {
-                print("ℹ️ [fastvApp] AI 优化未启用，使用原始文本")
+                if needsAI {
+                    print("ℹ️ [fastvApp] AI 服務未配置，跳過 AI 優化")
+                } else {
+                    print("ℹ️ [fastvApp] 使用純語音輸入模式（FN鍵），不進行 AI 優化")
+                }
+                // AI修正未啟用：設置未啟用狀態（會自動在0.8秒後隱藏窗口）
+                waveformManager.setAICorrectionDisabled()
             }
             
-            // 保存到历史记录（包含时长）
-            history.add(text, duration: duration)
-            print("✅ [fastvApp] 已保存到历史记录（时长: \(String(format: "%.2f", duration))秒）")
-            
-            // 插入到当前输入框（只有当文本不为空时才插入）
+            // 先插入文本（优先保证用户体验）
             if !text.isEmpty {
-                print("📝 [fastvApp] 插入文本到当前输入框...")
-                textInsertion.insertText(text)
+                // 根据设置选择文本插入方式
+                if preferences.useDirectTextInsertion {
+                    // 使用直接键盘输入，不依赖剪贴板，避免插入错误内容
+                    print("📝 [fastvApp] 直接插入文本到当前输入框（不使用剪贴板）...")
+                    DirectTextInsertionService.shared.insertText(text)
+                } else {
+                    // 使用剪贴板 + Cmd+V 方式（旧方式，作为备选）
+                    print("📝 [fastvApp] 通过剪贴板插入文本...")
+                    TextInsertionService.shared.insertText(text)
+                }
+                VoiceInputHistoryManager.shared.add(
+                    text: text,
+                    audioDurationSeconds: audioDuration > 0 ? audioDuration : nil,
+                    transcriptionDurationSeconds: transcriptionDuration > 0 ? transcriptionDuration : nil
+                )
                 print("✅ [fastvApp] 文本已插入")
             } else {
                 print("ℹ️ [fastvApp] 识别结果为空，跳过文本插入")
             }
             
-            // 转文字完成后，隐藏波形窗口
-            print("📊 [fastvApp] 转文字完成，隐藏波形窗口...")
-            waveformManager.hide()
-            print("✅ [fastvApp] 波形窗口已隐藏")
+            // 注意：波形窗口的隐藏由AI修正状态方法自动处理
+            // - AI修正成功：setAICorrected() 会在1秒后自动隐藏
+            // - AI修正失败：setAICorrectionFailed() 会在0.8秒后自动隐藏
+            // - AI修正未启用：setAICorrectionDisabled() 会在0.8秒后自动隐藏
+            // 如果AI优化未启用，窗口会在显示未启用状态后自动隐藏
+            // 如果AI优化启用但失败，窗口会在显示失败状态后自动隐藏
+            // 如果AI优化成功，窗口会在显示成功状态1秒后自动隐藏
+            
         } catch {
             print("❌ [fastvApp] 语音转文字失败: \(error)")
             // 转文字失败时也要隐藏窗口
             waveformManager.hide()
         }
+        
+        // 重置狀態
+        currentVoiceInputNeedsAI = false
+    }
+    
+    /// 檢查 AI 服務是否已配置
+    @MainActor
+    private func isAIServiceConfigured() -> Bool {
+        let preferences = UserPreferences.shared
+        
+        // 檢查是否有可用的 AI 服務配置
+        // 1. 檢查是否有默認 Profile
+        if let defaultProfile = preferences.getDefaultProfile() {
+            // 2. 檢查 endpoint 和 model 是否已設置
+            let hasEndpoint = !defaultProfile.endpoint.isEmpty
+            let hasModel = !defaultProfile.defaultModel.isEmpty
+            
+            if hasEndpoint && hasModel {
+                print("✅ [fastvApp] AI 服務已配置: \(defaultProfile.name) (\(defaultProfile.defaultModel))")
+                return true
+            }
+        }
+        
+        // 3. 向後兼容：檢查舊版配置
+        let hasLegacyEndpoint = !preferences.aiAPIEndpoint.isEmpty
+        let hasLegacyModel = !preferences.aiModel.isEmpty
+        
+        if hasLegacyEndpoint && hasLegacyModel {
+            print("✅ [fastvApp] AI 服務已配置（舊版配置）: \(preferences.aiAPIEndpoint) (\(preferences.aiModel))")
+            return true
+        }
+        
+        print("⚠️ [fastvApp] AI 服務未配置")
+        return false
     }
 }
 

@@ -1,0 +1,11 @@
+{
+  "id": "com.example.shopping-list",
+  "name": "购物清单",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": [
+    "chat"
+  ],
+  "minPlatformVersion": "1.0"
+}

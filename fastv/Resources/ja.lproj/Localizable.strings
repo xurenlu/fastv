@@ -1,0 +1,274 @@
+/* 
+  Localizable.strings
+  音速入力
+
+  日本語
+*/
+
+// 一般
+"app.name" = "智響（ちきょう / Chikyō）";
+"ok" = "OK";
+"cancel" = "キャンセル";
+"save" = "保存";
+"delete" = "削除";
+"copy" = "コピー";
+"settings" = "設定";
+"help" = "ヘルプ";
+"error" = "エラー";
+"history" = "履歴";
+"copied" = "コピーしました";
+"more.options" = "その他のオプション";
+"not.set" = "未設定";
+"clear" = "クリア";
+"clear.all" = "すべてクリア";
+"clear.all.confirm.title" = "すべての記録をクリアすることを確認";
+"clear.all.confirm.message" = "この操作により、すべての履歴記録が削除され、元に戻すことはできません。\n\n続行してもよろしいですか？";
+"test.input.label" = "テスト入力フィールド";
+"test.input.placeholder" = "ここでショートカットキーを押して音声入力をテスト";
+"main.usage.hint" = "💡 ヒント：このアプリが実行中の場合、他のアプリのテキストフィールドでショートカットキーを押して音声入力を使用できます！";
+"model.not.downloaded.title" = "モデルファイルがダウンロードされていません";
+"model.not.downloaded.message" = "ここをクリックしてモデルファイルをダウンロードし、音声入力機能を使用";
+"records" = "件の記録";
+
+// 音声入力
+"voice.input" = "音声入力";
+"voice.input.history" = "履歴";
+"no.records" = "記録なし";
+"press.shortcut.to.start" = "ショートカットを押して音声入力を開始";
+"press.shortcut.to.speak" = "ショートカットを押して話す";
+"to.speak" = "話す";
+"press.and.hold.to.speak" = "押して話し、離して終了";
+"press.and.hold" = "押して話す:";
+"enable.voice.input.in.settings" = "設定で音声入力を有効にしてください";
+"transcribing" = "文字変換中...";
+"speech.model.preload.title" = "音声モデルを読み込み中";
+"speech.model.preload.message" = "初回の音声認識モデルの読み込み中です。しばらくお待ちください。";
+
+// 設定
+"enable.voice.input" = "音声入力を有効にする";
+"global.shortcut" = "グローバルショートカット";
+"current.shortcut" = "現在のショートカット:";
+"click.to.capture.shortcut" = "クリックしてショートカットを記録";
+"press.to.capture.shortcut" = "ショートカットを押してください...";
+"set.shortcut" = "ショートカットを設定";
+"language" = "言語";
+"recognition.language" = "認識言語";
+"default.language" = "デフォルト言語";
+"auto.detect" = "自動検出";
+"auto.detect.hint" = "ヒント：自動検出が不正確な場合は、より良い認識のために言語を明示的に選択することをお勧めします";
+"chinese" = "中国語";
+"english" = "英語";
+"cantonese" = "広東語";
+"japanese" = "日本語";
+"korean" = "韓国語";
+"waveform.window.position" = "ツールバー位置";
+"waveform.window.size" = "ツールバーサイズ";
+"waveform.window.color" = "ツールバー色";
+"permission.test" = "権限テスト";
+"test.microphone.permission" = "マイク権限をテスト";
+"test.show.toolbar" = "ツールバー表示をテスト";
+"cleanup.toolbar.window" = "ツールバーウィンドウをクリーンアップ";
+"voice.input.section" = "音声入力";
+"voice.input.description" = "ショートカットを押して音声入力を開始し、離すと自動的に認識してテキストを挿入します。マイクとアクセシビリティの権限が必要です。";
+"fn.key.hint" = "ヒント：FNキーのみで音声入力のみ。FN+Ctrlで音声入力後にAI最適化（フィラー語の削除、句読点の追加、誤字修正）が行われます。";
+"enable.incremental.transcription" = "スマートセグメント転写";
+"incremental.transcription.description" = "ポーズでバックグラウンド転写、ショートカット解放時に一括出力。AI最適化対応";
+"silence.detection.duration" = "ポーズ閾値";
+
+// 統計
+"total.duration" = "合計時間";
+"total.characters" = "合計文字数";
+"today.characters" = "今日";
+"avg.characters.per.record" = "1件あたり平均";
+"copy.success" = "コピーしました";
+"characters.per.minute" = "文字/分";
+"minutes" = "分";
+"hours" = "時間";
+"characters" = "文字";
+"key" = "キー";
+"minute" = "分";
+"seconds.short" = "秒";
+"stats.today" = "今日";
+"stats.all" = "累計";
+"stats.characters" = "文字数";
+"stats.chars.per.min" = "文字/分";
+"stats.audio.seconds" = "音声";
+"stats.transcription.seconds" = "転写";
+"stats.realtime.factor" = "RTF";
+"stats.realtime.factor.unit" = "倍";
+
+// オンボーディング
+"onboarding.welcome" = "智響（ちきょう / Chikyō）へようこそ";
+"onboarding.set.shortcut.title" = "ショートカットを設定";
+"onboarding.set.shortcut.description" = "音声入力を開始するグローバルショートカットを設定してください";
+"onboarding.select.language.title" = "デフォルト言語を選択";
+"onboarding.select.language.description" = "最もよく使用する音声入力言語を選択してください。設定でいつでも変更できます。";
+"onboarding.download.model.title" = "モデルファイルをダウンロード";
+"onboarding.download.model.description" = "初回使用時は音声認識モデルファイルのダウンロードが必要です";
+"onboarding.model.size.warning" = "モデルファイルは大きい（894MB）ため、しばらくお待ちください";
+"onboarding.model.other.files" = "その他の設定ファイルは組み込みリソースを使用します";
+"onboarding.downloading" = "ダウンロード中";
+"onboarding.download.complete" = "ダウンロード完了";
+"onboarding.start.download" = "ダウンロードを開始";
+"onboarding.previous" = "前へ";
+"onboarding.next" = "次へ";
+"onboarding.skip" = "スキップ";
+"onboarding.complete" = "完了";
+"onboarding.model.ready" = "モデルファイル準備完了";
+"onboarding.usage.guide.title" = "使用開始";
+"onboarding.usage.guide.description" = "設定が完了しました！これで他のアプリケーションのテキストフィールドで音声入力を使用できます。";
+"onboarding.usage.guide.highlight" = "💡 重要なヒント：このアプリが実行中の場合、このアプリ内だけでなく、より重要なのは、他のアプリのテキストフィールドでショートカットキーを押すだけで話してテキストを入力できることです！";
+"onboarding.usage.guide.chinese" = "中国語のテキストフィールドでショートカットキーを押して話すと、システムが自動的に中国語を認識してテキストを挿入します。";
+"onboarding.usage.guide.english" = "英語のテキストフィールドでショートカットキーを押して話すと、システムが自動的に英語を認識してテキストを挿入します。";
+"onboarding.usage.guide.cantonese" = "広東語のテキストフィールドでショートカットキーを押して話すと、システムが自動的に広東語を認識してテキストを挿入します。";
+"onboarding.usage.guide.japanese" = "日本語のテキストフィールドでショートカットキーを押して話すと、システムが自動的に日本語を認識してテキストを挿入します。";
+"onboarding.usage.guide.korean" = "韓国語のテキストフィールドでショートカットキーを押して話すと、システムが自動的に韓国語を認識してテキストを挿入します。";
+"onboarding.usage.guide.auto" = "任意のテキストフィールドでショートカットキーを押して話すと、システムが自動的に言語を検出してテキストを挿入します。";
+"onboarding.ai.config.title" = "AI最適化の設定";
+"onboarding.ai.config.description" = "AIサービスを設定して、音声入力をよりスマートに";
+"onboarding.ai.config.recommended" = "おすすめ";
+"onboarding.ai.config.select.service" = "AIサービスを選択";
+"onboarding.ai.config.api.key" = "API Key";
+"onboarding.ai.config.api.key.placeholder" = "API Keyを入力してください";
+"onboarding.ai.config.apply.link" = "API Keyを申請";
+"onboarding.ai.config.skip.hint" = "スキップ可能、後で設定で設定できます";
+"onboarding.ai.config.benefit" = "AI最適化により、自動的にフィラー語を削除し、句読点を追加し、誤字を修正して、音声入力をより正確にします";
+
+// ショートカットキャプチャウィンドウ
+"shortcut.capture.title" = "ショートカットを設定";
+"shortcut.capture.description" = "設定したいショートカットの組み合わせを押してください";
+"shortcut.capture.current" = "現在のショートカット:";
+"shortcut.capture.not.set" = "未設定";
+"shortcut.capture.hint" = "ヒント：FNキーまたはFN+Controlキーの使用を推奨します。";
+"shortcut.capture.stop" = "キャプチャを停止（設定するショートカットを押す）";
+"shortcut.capture.click" = "クリックしてショートカットを設定";
+"shortcut.capture.press.hint" = "設定するショートカットを押してください（FNキー対応）";
+
+// 言語選択
+"select.language" = "言語を選択";
+"language.description" = "これがデフォルトの音声入力言語になります。";
+
+// モデルダウンロード
+"model.download.status.preparing" = "ダウンロード準備中...";
+"model.download.status.downloading" = "%@をダウンロード中... %d%%";
+"model.download.status.processing" = "ファイル処理中...";
+"model.download.status.complete" = "%@ダウンロード完了";
+"model.download.status.failed" = "%@のダウンロードに失敗しました: %@";
+"model.download.status.all.complete" = "ダウンロード完了";
+"model.download.cancel" = "ダウンロードをキャンセル";
+"model.download.error" = "エラー: %@";
+"model.download.error.invalid.url" = "無効なURL";
+"model.download.error.temp.file.not.found" = "一時ダウンロードファイルが見つかりません";
+"model.download.error.404" = "ファイルが見つかりません (404)";
+"model.download.error.500" = "サーバーエラー (500)";
+"model.download.error.403" = "アクセス禁止 (403)";
+"model.download.error.http" = "HTTPエラー %d";
+"model.download.error.timeout" = "ダウンロードタイムアウト、ネットワーク接続を確認してください";
+"model.download.error.no.internet" = "ネットワーク接続に失敗しました、ネットワーク設定を確認してください";
+"model.download.error.connection.lost" = "ネットワーク接続が中断されました";
+"model.download.error.cannot.connect" = "サーバーに接続できません";
+"model.download.error.file.too.small" = "ダウンロードしたファイルサイズが異常です（%@ MBのみ）。ダウンロードが失敗したか、ファイルが破損している可能性があります。再度ダウンロードしてください";
+"model.download.error.file.size.mismatch" = "ファイルサイズが一致しません：実際 %@ MB、期待値 %@ MB。再度ダウンロードしてください";
+"model.download.error.cannot.get.file.size" = "ファイルサイズを取得できません。ダウンロードが失敗した可能性があります";
+"model.download.already.exists" = "%@は既に存在します。スキップします";
+"model.download.url.label" = "ダウンロードURL:";
+"model.download.edit.url" = "URLを編集";
+"model.download.url.placeholder" = "モデルダウンロードURLを入力してください";
+
+// ウェルカムページ
+"welcome.title" = "智響（ちきょう / Chikyō）へようこそ";
+"welcome.subtitle" = "スマート音声入力";
+"welcome.feature.global.shortcut" = "グローバルショートカット";
+"welcome.feature.global.shortcut.desc" = "ショートカットを設定して、どのアプリケーションのテキストフィールドでもショートカットを押して話してテキストを入力";
+"welcome.feature.global.shortcut.highlight" = "💡 このアプリが実行中の場合、他のアプリのテキストフィールドでショートカットキーを押して音声入力を使用できます！";
+"welcome.feature.real.time" = "リアルタイム音声認識";
+"welcome.feature.real.time.desc" = "ローカルAIモデルを使用して、音声を迅速かつ正確にテキストに変換";
+"welcome.feature.ai.optimization" = "AIスマート最適化";
+"welcome.feature.ai.optimization.desc" = "フィラー語を自動削除、句読点を追加、誤字を修正";
+"welcome.feature.multilanguage" = "多言語サポート";
+"welcome.feature.multilanguage.desc" = "中国語、英語、日本語など複数の言語をサポート";
+"welcome.start.using" = "使用開始";
+
+// 権限関連
+"microphone.permission.required" = "マイク権限が必要です";
+"microphone.permission.description" = "音声入力機能にはマイクへのアクセスが必要です。\n\n次の手順に従ってください：\n1. \"システム設定\"を開く\n2. \"プライバシーとセキュリティ\" > \"マイク\"に移動\n3. 智響（ちきょう / Chikyō）を見つけてチェック\n4. アプリを再起動";
+"open.system.settings" = "システム設定を開く";
+"later" = "後で";
+"microphone.in.use" = "マイク使用中";
+"microphone.in.use.description" = "マイクは他のアプリ（例：Lightning Talk）で使用されています。\n\n解決方法：\n1. 他の音声入力アプリを閉じる\n2. または異なるショートカットを使用して競合を回避\n3. または他のアプリが録音していないときにこのアプリを使用";
+"got.it" = "了解しました";
+
+// キー名
+"key.left.control" = "左Control";
+"key.fn" = "FN";
+"key.space" = "Space";
+"key.return" = "Return";
+"key.esc" = "Esc";
+
+// AI最適化設定
+"ai.optimization.enable" = "AIテキスト最適化を有効にする";
+"ai.optimization.section" = "AIテキスト最適化";
+"ai.optimization.description" = "有効にすると、認識されたテキストがAIによって最適化され、フィラー語の削除、句読点の追加、誤字修正が行われます。";
+"ai.optimization.description.detail" = "デフォルトはローカルのOllamaサービス（http://127.0.0.1:11434）を使用しますが、他の互換性のあるAPIエンドポイントに設定することもできます。";
+"ai.shortcut.usage.hint" = "重要：AI最適化を有効にしても、AI修正機能をトリガーするには特定のショートカットキーの組み合わせを押す必要があります。";
+"ai.shortcut.normal" = "通常の音声入力：";
+"ai.shortcut.with.ai" = "AI最適化音声入力：";
+"ai.api.endpoint" = "APIエンドポイント";
+"ai.model.name" = "モデル名";
+"ai.model.example" = "例: gemma2:2b";
+"ai.api.token" = "APIトークン（オプション）";
+"ai.api.token.placeholder" = "空欄の場合は使用しない";
+"ai.timeout" = "タイムアウト";
+"ai.timeout.seconds" = "秒";
+"ai.timeout.hint" = "推奨：ローカルモデルは2-5秒、リモートAPIは10-30秒";
+"ai.system.prompt" = "システムプロンプト";
+"ai.system.prompt.reset" = "デフォルトに戻す";
+"ai.system.prompt.reset.help" = "デフォルトのシステムプロンプトに戻す";
+"ai.system.prompt.hint" = "カスタムシステムプロンプトでAI最適化の動作を制御できます。{text}プレースホルダーで元のテキストを表します（オプション）。";
+"ai.test.connection" = "接続をテスト";
+"ai.test.connection.help" = "Ollama APIへの接続をテスト";
+"ai.fetch.models" = "モデルリストを取得";
+"ai.fetch.models.help" = "Ollamaからダウンロード済みモデルを取得し、ダウンロード可能なモデルを表示";
+"ai.ollama.models.downloaded" = "ダウンロード済み";
+"ai.ollama.models.available" = "ダウンロード可能（↓をタップでダウンロード）";
+"ai.test.optimization" = "テキスト最適化をテスト";
+"ai.test.optimization.help" = "テストテキストを送信してAI最適化機能を検証";
+"settings.title" = "設定";
+"settings.done" = "完了";
+
+// 権限関連Alert
+"permission.test.trigger" = "権限リクエストをトリガー";
+"permission.test.description" = "システム権限ダイアログをトリガーするためにマイクへのアクセスを試みます。\n\n権限ダイアログが表示されたら、「許可」をクリックしてください。";
+"permission.request.title" = "マイク権限をリクエスト";
+"permission.request.description" = "システムが権限リクエストダイアログを表示します。\n\n智響（ちきょう / Chikyō）がマイクにアクセスできるように「許可」をクリックしてください。";
+"permission.granted.title" = "✅ マイク権限が付与されました";
+"permission.granted.description" = "マイク権限の付与に成功しました！\n\nこれで音声入力機能を使用できます。";
+"permission.already.granted.title" = "✅ マイク権限が付与されました";
+"permission.already.granted.description" = "すでにマイク権限が付与されています。\n\n音声入力機能を直接使用できます。";
+"permission.denied.title" = "⚠️ マイク権限が拒否されました";
+"permission.denied.description" = "音声入力機能にはマイク権限が必要です。\n\n次の手順で手動で権限を付与してください：\n1. \"システム設定\"を開く\n2. \"プライバシーとセキュリティ\" > \"マイク\"に移動\n3. 智響（ちきょう / Chikyō）を見つけてチェック";
+"continue" = "続ける";
+"great" = "素晴らしい";
+
+// AIテスト関連Alert
+"ai.connection.success.title" = "✅ 接続成功";
+"ai.connection.success.description" = "Ollama APIへの接続に成功しました！\n\nエンドポイント: %@";
+"ai.connection.failed.title" = "❌ 接続失敗";
+"ai.connection.failed.description" = "Ollama APIに接続できません。\n\nエラー: %@\n\n以下を確認してください：\n1. Ollamaが実行中ですか？\n2. APIエンドポイントアドレスは正しいですか？\n3. APIトークンを使用している場合、その有効性を確認してください";
+"ai.models.list.title" = "📋 利用可能なモデルリスト";
+"ai.models.list.empty" = "モデルが見つかりませんでした。\n\nまず 'ollama pull' コマンドを使用してモデルをダウンロードしてください。";
+"ai.models.list.found" = "%d個の利用可能なモデルが見つかりました：\n\n• %@\n\nモデル名を上記の\"モデル名\"フィールドにコピーできます。";
+"ai.test.success.title" = "✅ テスト成功";
+"ai.test.success.description" = "AI最適化機能が正常に動作しています！\n\n元のテキスト：\n%@\n\n最適化後：\n%@\n\n所要時間：%@ 秒";
+
+// について
+"about" = "について";
+"about.title" = "%@ について";
+"about.developer" = "開発者";
+"about.developer.name" = "黄滚";
+"about.developer.name.en" = "rocky.x";
+"about.website" = "個人ホームページ";
+"about.website.url" = "83d.me";
+"about.version" = "バージョン";
+"about.copyright" = "著作権";
+"show.app" = "%@ を表示";

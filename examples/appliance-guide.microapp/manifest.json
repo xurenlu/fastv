@@ -1,0 +1,12 @@
+{
+  "id": "com.example.appliance-guide",
+  "name": "家电说明书",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": [
+    "vision",
+    "chat"
+  ],
+  "minPlatformVersion": "1.0"
+}

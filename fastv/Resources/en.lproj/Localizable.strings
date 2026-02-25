@@ -1,0 +1,333 @@
+/* 
+  Localizable.strings
+  typecho
+
+  English
+*/
+
+// General
+"app.name" = "row1";
+"ok" = "OK";
+"cancel" = "Cancel";
+"save" = "Save";
+"delete" = "Delete";
+"copy" = "Copy";
+"settings" = "Settings";
+"help" = "Help";
+"error" = "Error";
+"history" = "History";
+"copied" = "Copied";
+"more.options" = "More Options";
+"not.set" = "Not Set";
+"clear" = "Clear";
+"clear.all" = "Clear All";
+"clear.all.confirm.title" = "Confirm Clear All";
+"clear.all.confirm.message" = "This will delete all history records and cannot be undone.\n\nAre you sure you want to continue?";
+"test.input.label" = "Test Input Field";
+"test.input.placeholder" = "Press shortcut key here to test voice input";
+"main.usage.hint" = "💡 Tip: While this app is running, you can press the shortcut key in any other app's text field to use voice input!";
+"model.not.downloaded.title" = "Model File Not Downloaded";
+"model.not.downloaded.message" = "Click here to download the model file to use voice input";
+"records" = "records";
+
+// Voice Input
+"voice.input" = "Voice Input";
+"voice.input.history" = "History";
+"no.records" = "No Records";
+"press.shortcut.to.start" = "Press shortcut to start voice input";
+"press.shortcut.to.speak" = "Press shortcut to speak";
+"to.speak" = "to speak";
+"press.and.hold.to.speak" = "Press and hold to speak, release to end";
+"press.and.hold" = "Press and Hold:";
+"enable.voice.input.in.settings" = "Please enable voice input in settings";
+"transcribing" = "Transcribing...";
+"speech.model.preload.title" = "Loading Voice Model";
+"speech.model.preload.message" = "Preparing the speech recognition model for the first time. This may take a few seconds.";
+
+// Settings
+"enable.voice.input" = "Enable Voice Input";
+"global.shortcut" = "Global Shortcut";
+"current.shortcut" = "Current Shortcut:";
+"click.to.capture.shortcut" = "Click to Capture Shortcut";
+"press.to.capture.shortcut" = "Press shortcut...";
+"set.shortcut" = "Set Shortcut";
+"language" = "Language";
+"recognition.language" = "Recognition Language";
+"default.language" = "Default Language";
+"auto.detect" = "Auto Detect";
+"auto.detect.hint" = "Tip: If auto detection is inaccurate, we recommend explicitly selecting the language for better recognition";
+"chinese" = "Chinese";
+"english" = "English";
+"cantonese" = "Cantonese";
+"japanese" = "Japanese";
+"korean" = "Korean";
+"waveform.window.position" = "Toolbar Position";
+"waveform.window.size" = "Toolbar Size";
+"waveform.window.color" = "Toolbar Color";
+"permission.test" = "Permission Test";
+"test.microphone.permission" = "Test Microphone Permission";
+"test.show.toolbar" = "Test Show Toolbar";
+"cleanup.toolbar.window" = "Cleanup Toolbar Window";
+"voice.input.section" = "Voice Input";
+"voice.input.description" = "Press shortcut to start voice input, release to automatically recognize and insert text. Requires microphone and accessibility permissions.";
+"fn.key.hint" = "Tip: Press FN alone for voice input only. Press FN+Ctrl for voice input followed by AI optimization (remove filler words, add punctuation, fix typos).";
+"enable.incremental.transcription" = "Smart Segment Transcription";
+"incremental.transcription.description" = "Transcribe in background on pause, output all at once on release. Supports AI optimization of full text";
+"silence.detection.duration" = "Pause threshold";
+
+// Statistics
+"total.duration" = "Total Duration";
+"total.characters" = "Total Characters";
+"today.characters" = "Today";
+"avg.characters.per.record" = "Avg per record";
+"copy.success" = "Copied";
+"characters.per.minute" = "chars/min";
+"minutes" = "min";
+"hours" = "hours";
+"characters" = "chars";
+"key" = "Key";
+"minute" = "min";
+"seconds.short" = "s";
+"stats.today" = "Today";
+"stats.all" = "All";
+"stats.characters" = "Chars";
+"stats.chars.per.min" = "Chars/min";
+"stats.audio.seconds" = "Audio";
+"stats.transcription.seconds" = "Transcribe";
+"stats.realtime.factor" = "RTF";
+"stats.realtime.factor.unit" = "x";
+
+// Onboarding
+"onboarding.welcome" = "Welcome to row1";
+"onboarding.set.shortcut.title" = "Set Shortcut";
+"onboarding.set.shortcut.description" = "Please set a global shortcut to start voice input";
+"onboarding.select.language.title" = "Select Default Language";
+"onboarding.select.language.description" = "Select your most commonly used voice input language. You can change it anytime in settings.";
+"onboarding.download.model.title" = "Download Model";
+"onboarding.download.model.description" = "First-time use requires downloading the voice recognition model file";
+"onboarding.model.size.warning" = "Model file is large (894MB), please be patient";
+"onboarding.model.other.files" = "Other configuration files will use built-in resources";
+"onboarding.downloading" = "Downloading";
+"onboarding.download.complete" = "Download Complete";
+"onboarding.start.download" = "Start Download";
+"onboarding.previous" = "Previous";
+"onboarding.next" = "Next";
+"onboarding.skip" = "Skip";
+"onboarding.complete" = "Complete";
+"onboarding.model.ready" = "Model File Ready";
+"onboarding.usage.guide.title" = "Get Started";
+"onboarding.usage.guide.description" = "Setup complete! You can now use voice input in other applications' text fields.";
+"onboarding.usage.guide.highlight" = "💡 Important: While this app is running, you can not only use it within this app, but more importantly, you can press the shortcut key in any other app's text field to speak and input text!";
+"onboarding.usage.guide.chinese" = "Press the shortcut key in a Chinese text field to speak, and the system will automatically recognize Chinese and insert text.";
+"onboarding.usage.guide.english" = "Press the shortcut key in an English text field to speak, and the system will automatically recognize English and insert text.";
+"onboarding.usage.guide.cantonese" = "Press the shortcut key in a Cantonese text field to speak, and the system will automatically recognize Cantonese and insert text.";
+"onboarding.usage.guide.japanese" = "Press the shortcut key in a Japanese text field to speak, and the system will automatically recognize Japanese and insert text.";
+"onboarding.usage.guide.korean" = "Press the shortcut key in a Korean text field to speak, and the system will automatically recognize Korean and insert text.";
+"onboarding.usage.guide.auto" = "Press the shortcut key in any text field to speak, and the system will automatically detect the language and insert text.";
+"onboarding.ai.config.title" = "Configure AI Optimization";
+"onboarding.ai.config.description" = "Configure AI service to make voice input smarter";
+"onboarding.ai.config.recommended" = "Recommended";
+"onboarding.ai.config.select.service" = "Select AI Service";
+"onboarding.ai.config.api.key" = "API Key";
+"onboarding.ai.config.api.key.placeholder" = "Enter API Key";
+"onboarding.ai.config.apply.link" = "Apply for API Key";
+"onboarding.ai.config.skip.hint" = "Can be skipped, configure later in Settings";
+"onboarding.ai.config.benefit" = "AI optimization can automatically remove filler words, add punctuation, and correct typos to make voice input more accurate";
+
+// Shortcut Capture Window
+"shortcut.capture.title" = "Set Shortcut";
+"shortcut.capture.description" = "Please press the shortcut combination you want to set";
+"shortcut.capture.current" = "Current Shortcut:";
+"shortcut.capture.not.set" = "Not Set";
+"shortcut.capture.hint" = "Tip: Recommended to use FN key or FN+Control key.";
+"shortcut.capture.stop" = "Stop Capturing (Press shortcut to set)";
+"shortcut.capture.click" = "Click to Set Shortcut";
+"shortcut.capture.press.hint" = "Please press the shortcut to set (FN key supported)";
+
+// Language Selection
+"select.language" = "Select Language";
+"language.description" = "This will be your default voice input language.";
+
+// Model Download
+"model.download.status.preparing" = "Preparing download...";
+"model.download.status.downloading" = "Downloading %@... %d%%";
+"model.download.status.processing" = "Processing file...";
+"model.download.status.complete" = "%@ download complete";
+"model.download.status.failed" = "Download %@ failed: %@";
+"model.download.status.all.complete" = "Download Complete";
+"model.download.cancel" = "Cancel Download";
+"model.download.error" = "Error: %@";
+"model.download.error.invalid.url" = "Invalid URL";
+"model.download.error.temp.file.not.found" = "Temporary download file not found";
+"model.download.error.404" = "File not found (404)";
+"model.download.error.500" = "Server error (500)";
+"model.download.error.403" = "Forbidden (403)";
+"model.download.error.http" = "HTTP error %d";
+"model.download.error.timeout" = "Download timeout, please check your network connection";
+"model.download.error.no.internet" = "Network connection failed, please check your network settings";
+"model.download.error.connection.lost" = "Network connection interrupted";
+"model.download.error.cannot.connect" = "Cannot connect to server";
+"model.download.error.file.too.small" = "Downloaded file size is abnormal (only %@ MB), download may have failed or file is corrupted, please download again";
+"model.download.error.file.size.mismatch" = "File size mismatch: actual %@ MB, expected %@ MB, please download again";
+"model.download.error.cannot.get.file.size" = "Cannot get file size, download may have failed";
+"model.download.already.exists" = "%@ already exists, skipping";
+"model.download.url.label" = "Download URL:";
+"model.download.edit.url" = "Edit URL";
+"model.download.url.placeholder" = "Enter model download URL";
+
+// Welcome Page
+"welcome.title" = "Welcome to row1";
+"welcome.subtitle" = "Smart Voice Input";
+"welcome.feature.global.shortcut" = "Global Shortcut";
+"welcome.feature.global.shortcut.desc" = "Set shortcuts to press in any app's text field to speak and input text";
+"welcome.feature.global.shortcut.highlight" = "💡 While this app is running, you can press the shortcut key in any other app's text field to use voice input!";
+"welcome.feature.real.time" = "Real-time Voice Recognition";
+"welcome.feature.real.time.desc" = "Use local AI models to quickly and accurately convert speech to text";
+"welcome.feature.ai.optimization" = "AI Smart Optimization";
+"welcome.feature.ai.optimization.desc" = "Automatically remove filler words, add punctuation, and fix typos";
+"welcome.feature.multilanguage" = "Multi-language Support";
+"welcome.feature.multilanguage.desc" = "Supports Chinese, English, Japanese and other languages";
+"welcome.start.using" = "Start Using";
+
+// Permissions
+"microphone.permission.required" = "Microphone Permission Required";
+"microphone.permission.description" = "Voice input requires microphone access.\n\nPlease follow these steps:\n1. Open \"System Settings\"\n2. Go to \"Privacy & Security\" > \"Microphone\"\n3. Find row1 and check it\n4. Restart the app";
+"open.system.settings" = "Open System Settings";
+"later" = "Later";
+"microphone.in.use" = "Microphone In Use";
+"microphone.in.use.description" = "Microphone is being used by another app (e.g., Lightning Talk).\n\nSolutions:\n1. Close other voice input apps\n2. Or use different shortcuts to avoid conflicts\n3. Or use this app when other apps are not recording";
+"got.it" = "Got It";
+
+// Key Names
+"key.left.control" = "Left Control";
+"key.fn" = "FN";
+"key.space" = "Space";
+"key.return" = "Return";
+"key.esc" = "Esc";
+
+// AI Optimization Settings
+"ai.optimization.enable" = "Enable AI Text Optimization";
+"ai.optimization.section" = "AI Text Optimization";
+"ai.optimization.description" = "When enabled, recognized text will be optimized by AI to remove filler words, add punctuation, and fix typos.";
+"ai.optimization.description.detail" = "Default uses local Ollama service (http://127.0.0.1:11434), can also be configured to other compatible API endpoints.";
+"ai.shortcut.usage.hint" = "Important: Even with AI optimization enabled, you need to press a specific shortcut combination to trigger AI correction.";
+"ai.shortcut.normal" = "Normal Voice Input:";
+"ai.shortcut.with.ai" = "AI-Optimized Voice Input:";
+"ai.api.endpoint" = "API Endpoint";
+"ai.model.name" = "Model Name";
+"ai.model.example" = "e.g.: gemma2:2b";
+"ai.api.token" = "API Token (Optional)";
+"ai.api.token.placeholder" = "Leave empty to not use";
+"ai.timeout" = "Timeout";
+"ai.timeout.seconds" = "seconds";
+"ai.timeout.hint" = "Recommended: 2-5 seconds for local models, 10-30 seconds for remote APIs";
+"ai.system.prompt" = "System Prompt";
+"ai.system.prompt.reset" = "Reset to Default";
+"ai.system.prompt.reset.help" = "Reset to default system prompt";
+"ai.system.prompt.hint" = "Custom system prompt can control AI optimization behavior. Use {text} placeholder for original text (optional).";
+"ai.test.connection" = "Test Connection";
+"ai.test.connection.help" = "Test connection to Ollama API";
+"ai.fetch.models" = "Fetch Model List";
+"ai.fetch.models.help" = "Fetch downloaded models from Ollama and show available models to download";
+"ai.ollama.models.downloaded" = "Downloaded";
+"ai.ollama.models.available" = "Available (tap ↓ to download)";
+"ai.test.optimization" = "Test Text Optimization";
+"ai.test.optimization.help" = "Send test text to verify AI optimization functionality";
+"settings.title" = "Settings";
+"settings.done" = "Done";
+
+// Permission Alerts
+"permission.test.trigger" = "Trigger Permission Request";
+"permission.test.description" = "Will attempt to access microphone to trigger system permission dialog.\n\nIf permission dialog appears, please click \"Allow\".";
+"permission.request.title" = "Request Microphone Permission";
+"permission.request.description" = "System will show permission request dialog.\n\nPlease click \"Allow\" to authorize row1 to access microphone.";
+"permission.granted.title" = "✅ Microphone Permission Granted";
+"permission.granted.description" = "You have successfully granted microphone permission!\n\nYou can now use voice input feature.";
+"permission.already.granted.title" = "✅ Microphone Permission Granted";
+"permission.already.granted.description" = "You have already granted microphone permission.\n\nYou can use voice input feature directly.";
+"permission.denied.title" = "⚠️ Microphone Permission Denied";
+"permission.denied.description" = "Voice input requires microphone permission.\n\nPlease follow these steps to manually authorize:\n1. Open \"System Settings\"\n2. Go to \"Privacy & Security\" > \"Microphone\"\n3. Find row1 and check it";
+"continue" = "Continue";
+"great" = "Great";
+
+// AI Test Alerts
+"ai.connection.success.title" = "✅ Connection Successful";
+"ai.connection.success.description" = "Successfully connected to Ollama API!\n\nEndpoint: %@";
+"ai.connection.failed.title" = "❌ Connection Failed";
+"ai.connection.failed.description" = "Unable to connect to Ollama API.\n\nError: %@\n\nPlease check:\n1. Is Ollama running?\n2. Is API endpoint address correct?\n3. If using API Token, verify its validity";
+"ai.models.list.title" = "📋 Available Model List";
+"ai.models.list.empty" = "No models found.\n\nPlease use 'ollama pull' command to download models first.";
+"ai.models.list.found" = "Found %d available models:\n\n• %@\n\nYou can copy model names to the \"Model Name\" field above.";
+"ai.test.success.title" = "✅ Test Successful";
+"ai.test.success.description" = "AI optimization is working correctly!\n\nOriginal Text:\n%@\n\nOptimized:\n%@\n\nDuration: %@ seconds";
+
+// AI Todo
+"ai.todo" = "AI Todo";
+"ai.todo.section" = "AI Todo";
+"ai.todo.description" = "Configure AI Todo API endpoint and model. Leave blank to use AI optimization settings.";
+"ai.todo.endpoint" = "API Endpoint";
+"ai.todo.model" = "Model Name";
+"ai.todo.timeout" = "Timeout";
+"ai.todo.input.hint" = "💡 Tip: You can type text directly or use voice input";
+"ai.todo.input.placeholder" = "Enter todo or speak...";
+"ai.todo.empty" = "No todos";
+"ai.todo.empty.description" = "Add todos using text or voice input";
+"ai.todo.active" = "Active Todos";
+"ai.todo.archived" = "Archived";
+"todo.priority.important.urgent" = "Important & Urgent";
+"todo.priority.important.not.urgent" = "Important & Not Urgent";
+"todo.priority.not.important.urgent" = "Not Important & Urgent";
+"todo.priority.not.important.not.urgent" = "Not Important & Not Urgent";
+"mark.as.completed" = "Mark as Completed";
+"mark.as.pending" = "Mark as Pending";
+"archive" = "Archive";
+"restore" = "Restore";
+"add.due.date" = "Add Due Date";
+"due.date" = "Due Date";
+"include.time" = "Include Time";
+"start.recording" = "Start Recording";
+"stop.recording" = "Stop Recording";
+"ai.process" = "AI Process";
+"sync.from.reminders" = "Sync from Reminders";
+"sync.from.reminders.help" = "Sync todos from macOS Reminders app";
+"reminders.permission.denied" = "Reminders access required. Please authorize in System Settings > Privacy & Security > Reminders.";
+"sync.success" = "Successfully synced %d todos";
+"sync.success.with.skipped" = "Successfully synced %d todos, skipped %d existing";
+"sync.all.existed" = "All %d todos already exist, no sync needed";
+"sync.no.new.items" = "No new todos to sync";
+"today" = "Today";
+"tomorrow" = "Tomorrow";
+"today.at.time" = "Today at %@";
+"tomorrow.at.time" = "Tomorrow at %@";
+
+// Todo View Modes
+"todo.view.mode.list" = "List View";
+"todo.view.mode.quadrant" = "Quadrant View";
+"todo.view.mode.list.desc" = "All todos displayed as a list";
+"todo.view.mode.quadrant.desc" = "Organized by importance and urgency";
+
+// Quadrants
+"todo.quadrant.important.urgent" = "Important & Urgent";
+"todo.quadrant.important.urgent.desc" = "Do First";
+"todo.quadrant.important.not.urgent" = "Important & Not Urgent";
+"todo.quadrant.important.not.urgent.desc" = "Schedule";
+"todo.quadrant.not.important.urgent" = "Not Important & Urgent";
+"todo.quadrant.not.important.urgent.desc" = "Delegate";
+"todo.quadrant.not.important.not.urgent" = "Not Important & Not Urgent";
+"todo.quadrant.not.important.not.urgent.desc" = "Eliminate";
+"todo.quadrant.empty" = "No tasks";
+
+// About
+"about" = "About";
+"about.title" = "About %@";
+"about.developer" = "Developer";
+"about.developer.name" = "Huang Gun";
+"about.developer.name.en" = "rocky.x";
+"about.website" = "Website";
+"about.website.url" = "83d.me";
+"about.version" = "Version";
+"about.copyright" = "Copyright";
+"show.app" = "Show %@";
+
+// Email
+"email.folder.local_sent" = "Sent (Local)";

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>名片生成助手</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- html2canvas for converting HTML to image -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <div class="container">
+      <h1>💼 名片生成助手</h1>
+      <p class="subtitle">填写信息，AI 自动生成多种精美名片样式</p>
+      
+      <div class="main-content">
+        <!-- 左侧：信息输入区域 -->
+        <div class="input-section">
+          <h2>📝 填写信息</h2>
+          
+          <div class="form-group">
+            <label for="name">姓名 *</label>
+            <input type="text" id="name" placeholder="请输入您的姓名">
+          </div>
+          
+          <div class="form-group">
+            <label for="position">职位</label>
+            <input type="text" id="position" placeholder="如：产品经理">
+          </div>
+          
+          <div class="form-group">
+            <label for="company">公司名称 *</label>
+            <input type="text" id="company" placeholder="请输入公司名称">
+          </div>
+          
+          <div class="form-group">
+            <label for="phone">电话</label>
+            <input type="text" id="phone" placeholder="如：138-0000-0000">
+          </div>
+          
+          <div class="form-group">
+            <label for="email">邮箱</label>
+            <input type="email" id="email" placeholder="如：name@example.com">
+          </div>
+          
+          <div class="form-group">
+            <label for="address">地址</label>
+            <input type="text" id="address" placeholder="如：北京市朝阳区xxx">
+          </div>
+          
+          <div class="form-group">
+            <label for="website">网站</label>
+            <input type="text" id="website" placeholder="如：www.example.com">
+          </div>
+          
+          <div class="form-group">
+            <label for="logo-upload">公司 Logo (可选)</label>
+            <div class="logo-upload-area">
+              <input type="file" id="logo-upload" accept="image/*" style="display: none;">
+              <button type="button" id="logo-btn" class="btn btn-secondary">选择 Logo</button>
+              <span id="logo-name" class="logo-name"></span>
+              <button type="button" id="remove-logo-btn" class="btn-remove" style="display: none;">✕</button>
+            </div>
+            <img id="logo-preview" style="display: none; max-width: 100px; margin-top: 10px; border-radius: 4px;">
+          </div>
+          
+          <div class="action-buttons" style="margin-top: 24px;">
+            <button id="generate-btn" class="btn btn-primary btn-large" disabled>🎨 AI 生成名片</button>
+            <button id="reset-btn" class="btn btn-secondary">重置</button>
+          </div>
+        </div>
+        
+        <!-- 右侧：名片预览区域 -->
+        <div class="preview-section">
+          <h2>👁️ AI 生成的名片</h2>
+          
+          <div id="cards-container" class="cards-container">
+            <div class="cards-placeholder">
+              <p>👈 填写左侧信息后，点击「AI 生成名片」</p>
+              <p style="margin-top: 8px; font-size: 14px;">AI 将为您生成 3 种不同风格的名片</p>
+            </div>
+          </div>
+          
+          <div class="preview-actions" id="preview-actions" style="display: none;">
+            <button id="refresh-btn" class="btn btn-secondary">🔄 换一批</button>
+            <p style="text-align: center; margin-top: 12px; font-size: 12px; color: #718096;">
+              💡 点击名片可下载为 PNG 图片
+            </p>
+          </div>
+          
+          <div id="loading-indicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p>AI 正在设计名片...</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 版本号显示 -->
+      <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0; color: #718096; font-size: 12px;">
+        <p>版本 v3.1.0</p>
+        <p style="margin-top: 4px;">✨ AI 智能生成不同风格名片 | 点击下载 | 换一批功能</p>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

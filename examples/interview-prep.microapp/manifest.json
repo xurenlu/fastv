@@ -1,0 +1,11 @@
+{
+  "id": "com.example.interview-prep",
+  "name": "面试准备",
+  "version": "1.2.1",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": [
+    "chat"
+  ],
+  "minPlatformVersion": "1.0"
+}

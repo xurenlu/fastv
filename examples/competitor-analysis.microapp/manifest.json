@@ -1,0 +1,11 @@
+{
+  "id": "com.example.competitor-analysis",
+  "name": "竞品分析",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": [
+    "chat"
+  ],
+  "minPlatformVersion": "1.0"
+}

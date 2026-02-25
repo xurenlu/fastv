@@ -1,0 +1,341 @@
+//
+//  EmailDatabase.swift
+//  fastv
+//
+//  Created by rocky on 2025/01/XX.
+//
+
+import Foundation
+import GRDB
+
+/// 邮箱数据库管理器
+class EmailDatabase {
+    static let shared = EmailDatabase()
+    
+    private var dbQueue: DatabaseQueue?
+    private let dbPath: String
+    
+    private init() {
+        // 数据库文件路径
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let dbDirectory = appSupport.appendingPathComponent("fastv/Email")
+        
+        // 创建目录（如果不存在）
+        try? FileManager.default.createDirectory(at: dbDirectory, withIntermediateDirectories: true)
+        
+        dbPath = dbDirectory.appendingPathComponent("email.db").path
+        
+        // 初始化数据库
+        do {
+            dbQueue = try DatabaseQueue(path: dbPath)
+            try setupDatabase()
+        } catch {
+            print("❌ [EmailDatabase] 初始化数据库失败: \(error)")
+        }
+    }
+    
+    /// 设置数据库表结构
+    private func setupDatabase() throws {
+        guard let dbQueue = dbQueue else { return }
+        
+        try dbQueue.write { db in
+            // 创建账号表
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS email_accounts (
+                    id TEXT PRIMARY KEY,
+                    email_address TEXT NOT NULL,
+                    display_name TEXT,
+                    service_type TEXT NOT NULL,
+                    imap_host TEXT NOT NULL,
+                    imap_port INTEGER NOT NULL,
+                    imap_encryption TEXT NOT NULL,
+                    smtp_host TEXT NOT NULL,
+                    smtp_port INTEGER NOT NULL,
+                    smtp_encryption TEXT NOT NULL,
+                    is_enabled INTEGER NOT NULL DEFAULT 1,
+                    is_default INTEGER NOT NULL DEFAULT 0,
+                    last_sync_date REAL,
+                    connection_status TEXT NOT NULL DEFAULT 'disconnected',
+                    password_keychain_identifier TEXT,
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL
+                )
+            """)
+            
+            // 创建文件夹表
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS email_folders (
+                    id TEXT PRIMARY KEY,
+                    account_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    type TEXT NOT NULL,
+                    path TEXT NOT NULL,
+                    unread_count INTEGER NOT NULL DEFAULT 0,
+                    total_count INTEGER NOT NULL DEFAULT 0,
+                    last_sync_date REAL,
+                    FOREIGN KEY(account_id) REFERENCES email_accounts(id) ON DELETE CASCADE
+                )
+            """)
+            
+            // 创建邮件表
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS email_messages (
+                    id TEXT PRIMARY KEY,
+                    account_id TEXT NOT NULL,
+                    folder_id TEXT,
+                    uid INTEGER,
+                    message_id TEXT,
+                    thread_id TEXT,
+                    subject TEXT NOT NULL,
+                    from_name TEXT,
+                    from_email TEXT NOT NULL,
+                    to_contacts TEXT,
+                    cc_contacts TEXT,
+                    bcc_contacts TEXT,
+                    reply_to_contacts TEXT,
+                    text_body TEXT,
+                    html_body TEXT,
+                    preview TEXT,
+                    date REAL NOT NULL,
+                    received_date REAL,
+                    is_read INTEGER NOT NULL DEFAULT 0,
+                    is_starred INTEGER NOT NULL DEFAULT 0,
+                    is_important INTEGER NOT NULL DEFAULT 0,
+                    is_no_reply INTEGER NOT NULL DEFAULT 0,
+                    has_attachments INTEGER NOT NULL DEFAULT 0,
+                    is_spam INTEGER NOT NULL DEFAULT 0,
+                    is_deleted INTEGER NOT NULL DEFAULT 0,
+                    contains_remote_resources INTEGER NOT NULL DEFAULT 0,
+                    tags TEXT,
+                    ai_tags TEXT,
+                    ai_summary TEXT,
+                    ai_priority TEXT,
+                    synced_at REAL NOT NULL,
+                    updated_at REAL NOT NULL,
+                    is_body_loaded INTEGER NOT NULL DEFAULT 0,
+                    body_cached_at REAL,
+                    is_draft INTEGER NOT NULL DEFAULT 0,
+                    FOREIGN KEY(account_id) REFERENCES email_accounts(id) ON DELETE CASCADE,
+                    FOREIGN KEY(folder_id) REFERENCES email_folders(id) ON DELETE SET NULL
+                )
+            """)
+            
+            // 迁移：添加新字段（如果表已存在）
+            try migrateDatabase(db: db)
+            
+            // 创建附件表
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS email_attachments (
+                    id TEXT PRIMARY KEY,
+                    message_id TEXT NOT NULL,
+                    filename TEXT NOT NULL,
+                    mime_type TEXT NOT NULL,
+                    size INTEGER NOT NULL DEFAULT 0,
+                    content_id TEXT,
+                    is_inline INTEGER NOT NULL DEFAULT 0,
+                    local_path TEXT,
+                    FOREIGN KEY(message_id) REFERENCES email_messages(id) ON DELETE CASCADE
+                )
+            """)
+            
+            // 创建签名表
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS email_signatures (
+                    id TEXT PRIMARY KEY,
+                    account_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    is_html INTEGER NOT NULL DEFAULT 0,
+                    is_default INTEGER NOT NULL DEFAULT 0,
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL,
+                    FOREIGN KEY(account_id) REFERENCES email_accounts(id) ON DELETE CASCADE
+                )
+            """)
+            
+            // 创建线程表
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS email_threads (
+                    id TEXT PRIMARY KEY,
+                    account_id TEXT NOT NULL,
+                    subject TEXT,
+                    message_id TEXT,
+                    root_message_id TEXT,
+                    participant_emails TEXT,
+                    message_count INTEGER NOT NULL DEFAULT 0,
+                    unread_count INTEGER NOT NULL DEFAULT 0,
+                    last_message_date REAL NOT NULL,
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL,
+                    FOREIGN KEY(account_id) REFERENCES email_accounts(id) ON DELETE CASCADE
+                )
+            """)
+            
+            // 创建规则表
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS email_rules (
+                    id TEXT PRIMARY KEY,
+                    account_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    conditions TEXT NOT NULL,
+                    actions TEXT NOT NULL,
+                    is_enabled INTEGER NOT NULL DEFAULT 1,
+                    lua_code TEXT,
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL,
+                    FOREIGN KEY(account_id) REFERENCES email_accounts(id) ON DELETE CASCADE
+                )
+            """)
+            
+            // 创建索引
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_messages_account_folder ON email_messages(account_id, folder_id)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_messages_date ON email_messages(date DESC)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_messages_thread ON email_messages(thread_id)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_messages_uid ON email_messages(account_id, folder_id, uid)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_folders_account ON email_folders(account_id)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_signatures_account ON email_signatures(account_id)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_threads_account ON email_threads(account_id)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_threads_message_id ON email_threads(message_id)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_threads_root_message_id ON email_threads(root_message_id)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_rules_account ON email_rules(account_id)")
+        }
+    }
+    
+    /// 数据库迁移：添加新字段
+    private func migrateDatabase(db: Database) throws {
+        guard try db.tableExists("email_messages") else { return }
+        
+        // 检查列是否存在（通过尝试查询来判断）
+        let columns = try db.columns(in: "email_messages")
+        let columnNames = Set(columns.map { $0.name })
+        
+        // 添加 is_spam 字段
+        if !columnNames.contains("is_spam") {
+            try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN is_spam INTEGER NOT NULL DEFAULT 0")
+        }
+        
+        // 添加 is_deleted 字段
+        if !columnNames.contains("is_deleted") {
+            try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0")
+        }
+        
+        // 添加 contains_remote_resources 字段
+        if !columnNames.contains("contains_remote_resources") {
+            try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN contains_remote_resources INTEGER NOT NULL DEFAULT 0")
+        }
+        
+        // 添加 body_cached_at 字段（正文缓存时间）
+        if !columnNames.contains("body_cached_at") {
+            try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN body_cached_at REAL")
+        }
+        
+        // 添加 rule_applied_at 字段（规则应用时间）
+        if !columnNames.contains("rule_applied_at") {
+            try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN rule_applied_at REAL")
+        }
+        
+        // 添加 has_been_replied 字段（是否已回复）
+        if !columnNames.contains("has_been_replied") {
+            try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN has_been_replied INTEGER NOT NULL DEFAULT 0")
+        }
+        
+        // 添加 is_draft 字段（是否为草稿）
+        if !columnNames.contains("is_draft") {
+            try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN is_draft INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+    
+    /// 获取数据库队列（用于异步操作）
+    func getQueue() -> DatabaseQueue? {
+        return dbQueue
+    }
+    
+    /// 执行写入操作(同步)
+    func write<T>(_ block: @escaping (Database) throws -> T) throws -> T {
+        guard let dbQueue = dbQueue else {
+            throw EmailDatabaseError.notInitialized
+        }
+        return try dbQueue.write(block)
+    }
+    
+    /// 执行写入操作(异步,不阻塞调用线程)
+    func asyncWrite<T: Sendable>(_ block: @escaping @Sendable (Database) throws -> T) async throws -> T {
+        guard let dbQueue = dbQueue else {
+            throw EmailDatabaseError.notInitialized
+        }
+        // 使用 Task.detached 确保在后台线程执行
+        // 使用 .userInitiated 优先级避免优先级反转（当主线程 await 时）
+        return try await Task.detached(priority: .userInitiated) {
+            try dbQueue.write(block)
+        }.value
+    }
+    
+    /// 执行读取操作(同步)
+    func read<T>(_ block: @escaping (Database) throws -> T) throws -> T {
+        guard let dbQueue = dbQueue else {
+            throw EmailDatabaseError.notInitialized
+        }
+        return try dbQueue.read(block)
+    }
+    
+    /// 执行读取操作(异步,不阻塞调用线程)
+    func asyncRead<T: Sendable>(_ block: @escaping @Sendable (Database) throws -> T) async throws -> T {
+        guard let dbQueue = dbQueue else {
+            throw EmailDatabaseError.notInitialized
+        }
+        // 使用 Task.detached 确保在后台线程执行
+        // 使用 .userInitiated 优先级避免优先级反转（当主线程 await 时）
+        return try await Task.detached(priority: .userInitiated) {
+            try dbQueue.read(block)
+        }.value
+    }
+    
+    // MARK: - 后台优化
+    
+    /// 后台执行 SQLite 文件优化（不阻塞主线程，适合空闲时调用）
+    /// - 执行 PRAGMA optimize 更新统计信息，利于查询计划器
+    /// - 执行 VACUUM 回收删除产生的空闲页并整理文件（较耗时，会短暂占用写锁）
+    /// - 建议由调用方节流，例如每天最多执行一次 VACUUM
+    func optimizeInBackground(includeVacuum: Bool = true) {
+        guard dbQueue != nil else { return }
+        Task.detached(priority: .background) { [weak self] in
+            guard let self = self else { return }
+            do {
+                // 1. PRAGMA optimize：轻量，更新各表统计信息
+                try await self.asyncWrite { db in
+                    try db.execute(sql: "PRAGMA optimize")
+                }
+                print("✅ [EmailDatabase] PRAGMA optimize 完成")
+                
+                if includeVacuum {
+                    // 2. VACUUM：重建库文件、回收空间、整理碎片（会占用写锁一段时间）
+                    try await self.asyncWrite { db in
+                        try db.execute(sql: "VACUUM")
+                    }
+                    print("✅ [EmailDatabase] VACUUM 完成")
+                }
+            } catch {
+                print("⚠️ [EmailDatabase] 后台优化失败: \(error)")
+            }
+        }
+    }
+}
+
+enum EmailDatabaseError: Error {
+    case notInitialized
+    case invalidData
+    
+    var localizedDescription: String {
+        switch self {
+        case .notInitialized:
+            return "数据库未初始化"
+        case .invalidData:
+            return "无效的数据"
+        }
+    }
+}
+
+// MARK: - GRDB Codable支持
+// 注意：EmailAccount, EmailFolder, EmailMessage 等类型已经在定义时声明了 Codable
+// 这里不需要再次声明，Swift 会自动合成 Codable 实现
+

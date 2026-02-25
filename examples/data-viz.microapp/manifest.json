@@ -1,0 +1,11 @@
+{
+  "id": "com.example.data-viz",
+  "name": "数据可视化建议",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": [
+    "chat"
+  ],
+  "minPlatformVersion": "1.0"
+}

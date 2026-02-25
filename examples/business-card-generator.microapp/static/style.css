@@ -1,0 +1,302 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+h1 {
+  font-size: 32px;
+  color: #2d3748;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.subtitle {
+  text-align: center;
+  color: #718096;
+  margin-bottom: 32px;
+  font-size: 16px;
+}
+
+.main-content {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 40px;
+  margin-top: 32px;
+}
+
+.input-section h2,
+.preview-section h2 {
+  font-size: 20px;
+  color: #2d3748;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: 6px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="email"]:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.logo-upload-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-name {
+  flex: 1;
+  font-size: 13px;
+  color: #718096;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-remove {
+  background: #e53e3e;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btn-remove:hover {
+  background: #c53030;
+}
+
+.preview-section {
+  min-height: 500px;
+}
+
+/* 名片容器 */
+.cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  min-height: 320px;
+  padding: 20px;
+  background: #f7fafc;
+  border-radius: 12px;
+}
+
+.cards-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 300px;
+  color: #a0aec0;
+  text-align: center;
+}
+
+.cards-placeholder p {
+  font-size: 16px;
+}
+
+/* 名片卡片 */
+.card-wrapper {
+  position: relative;
+  transition: transform 0.2s;
+  margin-top: 30px;
+  margin-bottom: 50px;
+}
+
+.card-wrapper:hover {
+  transform: translateY(-4px);
+}
+
+.generated-card {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  transition: box-shadow 0.2s;
+}
+
+.generated-card:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+.style-label {
+  position: absolute;
+  top: -28px;
+  left: 0;
+  font-size: 12px;
+  color: #667eea;
+  font-weight: 600;
+  background: #f0f4ff;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.card-download-btn {
+  position: absolute;
+  bottom: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.card-wrapper:hover .card-download-btn {
+  opacity: 1;
+}
+
+.card-download-btn:hover {
+  background: #5568d3;
+}
+
+.card-error .generated-card {
+  border: 2px dashed #ccc;
+}
+
+/* 加载指示器 */
+.loading-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  color: #718096;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 按钮样式 */
+.action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-large {
+  padding: 14px 28px;
+  font-size: 16px;
+  flex: 1;
+}
+
+.btn-primary {
+  background: #667eea;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #5568d3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #cbd5e0;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.preview-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.preview-actions .btn {
+  min-width: 150px;
+}
+
+/* 响应式设计 */
+@media (max-width: 1000px) {
+  .main-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .cards-container {
+    flex-direction: column;
+    align-items: center;
+  }
+}

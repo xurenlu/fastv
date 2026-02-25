@@ -1,0 +1,10 @@
+{
+  "id": "com.example.english-coach",
+  "name": "英语口语教练",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": ["chat"],
+  "minPlatformVersion": "1.0"
+}
+

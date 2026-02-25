@@ -53,20 +53,11 @@ struct AudioFeatureExtractor {
         
         // 3. 应用 LFR (Low Frame Rate)
         if lfrM > 1 || lfrN > 1 {
-            #if DEBUG
-            print("应用 LFR: m=\(lfrM), n=\(lfrN), 原始维度=\(melFeatures.first?.count ?? 0), 帧数=\(melFeatures.count)")
-            #endif
             melFeatures = applyLFR(features: melFeatures, lfrM: lfrM, lfrN: lfrN)
-            #if DEBUG
-            print("LFR 完成: 新维度=\(melFeatures.first?.count ?? 0), 新帧数=\(melFeatures.count)")
-            #endif
         }
-        
+
         // 4. 应用 Global CMVN
         if let cmvnURL = cmvnURL {
-            #if DEBUG
-            print("应用 Global CMVN: \(cmvnURL.path)")
-            #endif
             let (means, vars) = try loadCMVN(from: cmvnURL)
             melFeatures = applyGlobalCMVN(features: melFeatures, means: means, vars: vars)
         }
@@ -76,7 +67,7 @@ struct AudioFeatureExtractor {
     
     /// 加载音频数据
     private static func loadAudioData(from audioURL: URL) async throws -> [Float] {
-        let asset = AVAsset(url: audioURL)
+        let asset = AVURLAsset(url: audioURL)
         
         guard let audioTrack = try await asset.loadTracks(withMediaType: .audio).first else {
             throw VideoProcessingError.noAudioTrack
@@ -183,22 +174,7 @@ struct AudioFeatureExtractor {
                 }
             }
         }
-        
-        #if DEBUG
-        if let firstFrame = features.first {
-            let minVal = firstFrame.min() ?? 0
-            let maxVal = firstFrame.max() ?? 0
-            let avgVal = firstFrame.reduce(0, +) / Float(firstFrame.count)
-            print("Kaldi FBank 第一帧统计: min=\(minVal), max=\(maxVal), avg=\(avgVal)")
-            
-            // 检查特征值范围是否合理（FBank 特征通常在 -50 到 50 之间）
-            if abs(minVal) > 100 || abs(maxVal) > 100 {
-                print("警告：Kaldi FBank 特征值范围异常: min=\(minVal), max=\(maxVal)")
-            }
-        }
-        print("Kaldi FBank 特征: 帧数=\(features.count), 维度=\(features.first?.count ?? 0)")
-        #endif
-        
+
         return features
     }
     
@@ -303,38 +279,47 @@ struct AudioFeatureExtractor {
             // 将输入数据打包到 splitComplex (Even-Odd Split)
             inputBuffer.withUnsafeBufferPointer { inputPtr in
                 inputPtr.baseAddress!.withMemoryRebound(to: DSPComplex.self, capacity: fftSize/2) { complexPtr in
-                    var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
-                    vDSP_ctoz(complexPtr, 2, &splitComplex, 1, vDSP_Length(fftSize/2))
+                    realParts.withUnsafeMutableBufferPointer { realBuffer in
+                        imagParts.withUnsafeMutableBufferPointer { imagBuffer in
+                            var splitComplex = DSPSplitComplex(realp: realBuffer.baseAddress!, imagp: imagBuffer.baseAddress!)
+                            vDSP_ctoz(complexPtr, 2, &splitComplex, 1, vDSP_Length(fftSize/2))
+                        }
+                    }
                 }
             }
             
-            // 执行实数 FFT
-            var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
-            vDSP_fft_zrip(fftSetup, &splitComplex, 1, log2n, FFTDirection(FFT_FORWARD))
-            
-            // 缩放结果 (vDSP_fft_zrip 结果放大了 2 倍)
-            var scale: Float = 0.5
-            vDSP_vsmul(splitComplex.realp, 1, &scale, splitComplex.realp, 1, vDSP_Length(fftSize/2))
-            vDSP_vsmul(splitComplex.imagp, 1, &scale, splitComplex.imagp, 1, vDSP_Length(fftSize/2))
-            
-            // 计算功率谱
-            // 结果是对称的，我们只需要前 fftSize/2 + 1 个点
+            // 计算功率谱（在闭包外部定义）
             var powerSpectrum = [Float](repeating: 0, count: fftSize/2 + 1)
+            var melSpectrum = [Float](repeating: 0, count: nMelBands)
+            var logResult = [Float](repeating: 0, count: nMelBands)
             
-            // 处理 DC 和 Nyquist
-            let dc = splitComplex.realp[0]
-            let nyquist = splitComplex.imagp[0]
-            powerSpectrum[0] = dc * dc
-            powerSpectrum[fftSize/2] = nyquist * nyquist
-            
-            // 处理其他频率分量
-            splitComplex.imagp[0] = 0 // 重置 Nyquist 位置为 0 以便批量计算
-            
-            var tempSpectrum = [Float](repeating: 0, count: fftSize/2)
-            vDSP_zvmags(&splitComplex, 1, &tempSpectrum, 1, vDSP_Length(fftSize/2))
-            
-            for i in 1..<fftSize/2 {
-                powerSpectrum[i] = tempSpectrum[i]
+            // 执行实数 FFT
+            realParts.withUnsafeMutableBufferPointer { realBuffer in
+                imagParts.withUnsafeMutableBufferPointer { imagBuffer in
+                    var splitComplex = DSPSplitComplex(realp: realBuffer.baseAddress!, imagp: imagBuffer.baseAddress!)
+                    vDSP_fft_zrip(fftSetup, &splitComplex, 1, log2n, FFTDirection(FFT_FORWARD))
+                    
+                    // 缩放结果 (vDSP_fft_zrip 结果放大了 2 倍)
+                    var scale: Float = 0.5
+                    vDSP_vsmul(splitComplex.realp, 1, &scale, splitComplex.realp, 1, vDSP_Length(fftSize/2))
+                    vDSP_vsmul(splitComplex.imagp, 1, &scale, splitComplex.imagp, 1, vDSP_Length(fftSize/2))
+                    
+                    // 处理 DC 和 Nyquist
+                    let dc = splitComplex.realp[0]
+                    let nyquist = splitComplex.imagp[0]
+                    powerSpectrum[0] = dc * dc
+                    powerSpectrum[fftSize/2] = nyquist * nyquist
+                    
+                    // 处理其他频率分量
+                    splitComplex.imagp[0] = 0 // 重置 Nyquist 位置为 0 以便批量计算
+                    
+                    var tempSpectrum = [Float](repeating: 0, count: fftSize/2)
+                    vDSP_zvmags(&splitComplex, 1, &tempSpectrum, 1, vDSP_Length(fftSize/2))
+                    
+                    for i in 1..<fftSize/2 {
+                        powerSpectrum[i] = tempSpectrum[i]
+                    }
+                }
             }
             
             vDSP_destroy_fftsetup(fftSetup)
@@ -352,7 +337,6 @@ struct AudioFeatureExtractor {
             
             // 应用 Mel 滤波器组
             // 滤波器长度通常是 fftSize / 2 + 1
-            var melSpectrum = [Float](repeating: 0, count: nMelBands)
             for (i, filter) in melFilters.enumerated() {
                 var sum: Float = 0
                 // 注意：这里使用前 fftSize / 2 + 1 个点
@@ -381,7 +365,7 @@ struct AudioFeatureExtractor {
             // 使用自然对数 (ln)
             var count = Int32(nMelBands)
             var input = logMelSpectrum
-            var logResult = logMelSpectrum
+            logResult = logMelSpectrum
             vvlogf(&logResult, &input, &count)
             
             // 注意：不再乘以 10。Kaldi Fbank 输出通常是自然对数能量，不是 dB (10*log10)
@@ -559,18 +543,10 @@ struct AudioFeatureExtractor {
         guard !means.isEmpty, !vars.isEmpty else {
             throw VideoProcessingError.transcriptionFailed("解析 CMVN 文件失败或文件为空")
         }
-        
-        #if DEBUG
-        print("加载 CMVN 成功: 维度=\(means.count)")
-        print("CMVN Means 前10个值: \(means.prefix(10))")
-        print("CMVN Means 统计: min=\(means.min() ?? 0), max=\(means.max() ?? 0), avg=\(means.reduce(0, +) / Float(means.count))")
-        print("CMVN Vars 前10个值: \(vars.prefix(10))")
-        print("CMVN Vars 统计: min=\(vars.min() ?? 0), max=\(vars.max() ?? 0), avg=\(vars.reduce(0, +) / Float(vars.count))")
-        #endif
-        
+
         return (means, vars)
     }
-    
+
     /// 应用 Global CMVN
     /// Python 逻辑: (inputs + means) * vars
     private static func applyGlobalCMVN(features: [[Float]], means: [Float], vars: [Float]) -> [[Float]] {
@@ -580,7 +556,7 @@ struct AudioFeatureExtractor {
             print("警告：CMVN 维度不匹配 (特征=\(dim), CMVN=\(means.count))，跳过 CMVN")
             return features
         }
-        
+
         var normalizedFeatures = features
         for i in 0..<features.count {
             var frame = features[i]
@@ -590,17 +566,7 @@ struct AudioFeatureExtractor {
             vDSP_vmul(frame, 1, vars, 1, &frame, 1, vDSP_Length(dim))
             normalizedFeatures[i] = frame
         }
-        
-        #if DEBUG
-        if !normalizedFeatures.isEmpty {
-            let firstFrame = normalizedFeatures[0]
-            let minVal = firstFrame.min() ?? 0
-            let maxVal = firstFrame.max() ?? 0
-            let avgVal = firstFrame.reduce(0, +) / Float(firstFrame.count)
-            print("CMVN 后第一帧统计: min=\(minVal), max=\(maxVal), avg=\(avgVal)")
-            }
-        #endif
-        
+
         return normalizedFeatures
     }
     

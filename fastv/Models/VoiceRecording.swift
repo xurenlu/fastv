@@ -12,7 +12,15 @@ struct VoiceRecording {
     let pcmData: Data
     let sampleRate: Double
     let channelCount: Int
-    
+
+    /// 音频时长（秒）
+    var durationSeconds: TimeInterval {
+        guard sampleRate > 0, channelCount > 0 else { return 0 }
+        let bytesPerSample = MemoryLayout<Int16>.size
+        let totalSamples = pcmData.count / bytesPerSample
+        return Double(totalSamples) / (sampleRate * Double(channelCount))
+    }
+
     func normalizedSamples() -> [Float] {
         guard !pcmData.isEmpty else { return [] }
         let sampleCount = pcmData.count / MemoryLayout<Int16>.size

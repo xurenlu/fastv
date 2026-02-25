@@ -1,0 +1,11 @@
+{
+  "id": "com.example.weekly-report",
+  "name": "周报月报助手",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": [
+    "chat"
+  ],
+  "minPlatformVersion": "1.0"
+}

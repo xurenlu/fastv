@@ -1,0 +1,333 @@
+/* 
+  Localizable.strings
+  妙打
+
+  中文简体
+*/
+
+// 通用
+"app.name" = "若一智能助手";
+"ok" = "确定";
+"cancel" = "取消";
+"save" = "保存";
+"delete" = "删除";
+"copy" = "复制";
+"settings" = "设置";
+"help" = "帮助";
+"error" = "错误";
+"history" = "历史记录";
+"copied" = "已复制";
+"more.options" = "更多选项";
+"not.set" = "未设置";
+"clear" = "清空";
+"clear.all" = "清空所有";
+"clear.all.confirm.title" = "确认清空所有记录";
+"clear.all.confirm.message" = "此操作将删除所有历史记录，且无法恢复。\n\n确定要继续吗？";
+"test.input.label" = "测试输入框";
+"test.input.placeholder" = "在此处按快捷键测试语音输入";
+"main.usage.hint" = "💡 提示：本应用运行时，可以在任何其他应用的输入框中按下快捷键进行语音输入！";
+"model.not.downloaded.title" = "模型文件未下载";
+"model.not.downloaded.message" = "点击此处下载模型文件以使用语音输入功能";
+"records" = "条记录";
+
+// 语音输入
+"voice.input" = "语音输入";
+"voice.input.history" = "历史记录";
+"no.records" = "暂无记录";
+"press.shortcut.to.start" = "按下快捷键开始语音输入";
+"press.shortcut.to.speak" = "按下快捷键开始说话";
+"to.speak" = "开始说话";
+"press.and.hold.to.speak" = "按住开始说话,松开后结束";
+"press.and.hold" = "按着说:";
+"enable.voice.input.in.settings" = "请在设置中启用语音输入法功能";
+"transcribing" = "转文字中...";
+"speech.model.preload.title" = "正在加载语音模型";
+"speech.model.preload.message" = "首次加载语音识别模型，请稍候…";
+
+// 设置
+"enable.voice.input" = "启用语音输入法";
+"global.shortcut" = "全局快捷键";
+"current.shortcut" = "当前快捷键:";
+"click.to.capture.shortcut" = "点击录制快捷键";
+"press.to.capture.shortcut" = "请按下快捷键...";
+"set.shortcut" = "设置快捷键";
+"language" = "语言";
+"recognition.language" = "识别语言";
+"default.language" = "默认语言";
+"auto.detect" = "自动检测";
+"auto.detect.hint" = "提示：如果自动检测不准确，建议明确选择对应的语言以获得更好的识别效果";
+"chinese" = "中文";
+"english" = "英文";
+"cantonese" = "粤语";
+"japanese" = "日语";
+"korean" = "韩语";
+"waveform.window.position" = "悬浮工具条位置";
+"waveform.window.size" = "悬浮工具条大小";
+"waveform.window.color" = "悬浮工具条颜色";
+"permission.test" = "权限测试";
+"test.microphone.permission" = "测试麦克风权限";
+"test.show.toolbar" = "测试显示工具条";
+"cleanup.toolbar.window" = "清理工具条窗口";
+"voice.input.section" = "语音输入法";
+"voice.input.description" = "按下快捷键开始语音输入，松开时自动识别并插入文本。需要麦克风和辅助功能权限。";
+"fn.key.hint" = "提示：单独按FN键仅进行语音输入，FN+Ctrl组合会在语音输入后自动进行AI优化（去除语气词、添加标点、修正错别字）。";
+"enable.incremental.transcription" = "智能分段转文字";
+"incremental.transcription.description" = "检测停顿时后台转写，松开快捷键时一次性输出，支持 AI 优化整段";
+"silence.detection.duration" = "停顿阈值";
+
+// 统计
+"total.duration" = "总时长";
+"total.characters" = "总字数";
+"today.characters" = "今日字数";
+"avg.characters.per.record" = "平均每条";
+"copy.success" = "已复制成功";
+"characters.per.minute" = "字/分";
+"minutes" = "分";
+"hours" = "小时";
+"characters" = "字";
+"key" = "键";
+"minute" = "分";
+"seconds.short" = "秒";
+"stats.today" = "今日";
+"stats.all" = "累计";
+"stats.characters" = "字数";
+"stats.chars.per.min" = "字/分";
+"stats.audio.seconds" = "识别语音";
+"stats.transcription.seconds" = "识别耗时";
+"stats.realtime.factor" = "实时率";
+"stats.realtime.factor.unit" = "倍";
+
+// 引导流程
+"onboarding.welcome" = "欢迎使用 若一智能助手";
+"onboarding.set.shortcut.title" = "设置快捷键";
+"onboarding.set.shortcut.description" = "请设置一个全局快捷键来启动语音输入";
+"onboarding.select.language.title" = "选择默认语言";
+"onboarding.select.language.description" = "选择您最常用的语音输入语言。您可以在设置中随时更改。";
+"onboarding.download.model.title" = "下载模型文件";
+"onboarding.download.model.description" = "首次使用需要下载语音识别模型文件";
+"onboarding.model.size.warning" = "模型文件较大（894MB），请耐心等待";
+"onboarding.model.other.files" = "其他配置文件将使用内置资源";
+"onboarding.downloading" = "正在下载";
+"onboarding.download.complete" = "下载完成";
+"onboarding.start.download" = "开始下载";
+"onboarding.previous" = "上一步";
+"onboarding.next" = "下一步";
+"onboarding.skip" = "跳过";
+"onboarding.complete" = "完成";
+"onboarding.model.ready" = "模型文件已就绪";
+"onboarding.usage.guide.title" = "开始使用";
+"onboarding.usage.guide.description" = "设置已完成！现在您可以在其他应用的输入框中使用语音输入功能了。";
+"onboarding.usage.guide.highlight" = "💡 重要提示：本应用运行时，不仅可以在本应用内使用，更重要的是可以在任何其他应用的输入框中，按下快捷键即可说话输入文字！";
+"onboarding.usage.guide.chinese" = "请在中文输入框中按快捷键说话，系统会自动识别中文并插入文本。";
+"onboarding.usage.guide.english" = "请在英文输入框中按快捷键说话，系统会自动识别英文并插入文本。";
+"onboarding.usage.guide.cantonese" = "请在粤语输入框中按快捷键说话，系统会自动识别粤语并插入文本。";
+"onboarding.usage.guide.japanese" = "请在日文输入框中按快捷键说话，系统会自动识别日文并插入文本。";
+"onboarding.usage.guide.korean" = "请在韩文输入框中按快捷键说话，系统会自动识别韩文并插入文本。";
+"onboarding.usage.guide.auto" = "可以在任何输入框中按快捷键说话，系统会自动检测语言并插入文本。";
+"onboarding.ai.config.title" = "配置AI智能优化";
+"onboarding.ai.config.description" = "配置AI服务，让语音输入更智能";
+"onboarding.ai.config.recommended" = "推荐";
+"onboarding.ai.config.select.service" = "选择AI服务";
+"onboarding.ai.config.api.key" = "API Key";
+"onboarding.ai.config.api.key.placeholder" = "请输入API Key";
+"onboarding.ai.config.apply.link" = "申请API Key";
+"onboarding.ai.config.skip.hint" = "可跳过，稍后可在设置中配置";
+"onboarding.ai.config.benefit" = "AI优化可以自动去除口头禅、添加标点符号、修正错别字，让语音输入更准确";
+
+// 快捷键设置窗口
+"shortcut.capture.title" = "设置快捷键";
+"shortcut.capture.description" = "请按下您想要设置的快捷键组合";
+"shortcut.capture.current" = "当前快捷键:";
+"shortcut.capture.not.set" = "未设置";
+"shortcut.capture.hint" = "提示：建议使用FN键或FN+Control键。";
+"shortcut.capture.stop" = "停止捕获（按下要设置的快捷键）";
+"shortcut.capture.click" = "点击设置快捷键";
+"shortcut.capture.press.hint" = "请按下要设置的快捷键（支持FN键）";
+
+// 语言选择
+"select.language" = "选择语言";
+"language.description" = "这将是您语音输入的默认语言。";
+
+// 模型下载
+"model.download.status.preparing" = "准备下载...";
+"model.download.status.downloading" = "正在下载 %@... %d%%";
+"model.download.status.processing" = "正在处理文件...";
+"model.download.status.complete" = "%@ 下载完成";
+"model.download.status.failed" = "下载 %@ 失败: %@";
+"model.download.status.all.complete" = "下载完成";
+"model.download.cancel" = "取消下载";
+"model.download.error" = "错误: %@";
+"model.download.error.invalid.url" = "无效的URL";
+"model.download.error.temp.file.not.found" = "临时下载文件不存在";
+"model.download.error.404" = "文件未找到 (404)";
+"model.download.error.500" = "服务器错误 (500)";
+"model.download.error.403" = "禁止访问 (403)";
+"model.download.error.http" = "HTTP错误 %d";
+"model.download.error.timeout" = "下载超时，请检查网络连接";
+"model.download.error.no.internet" = "网络连接失败，请检查网络设置";
+"model.download.error.connection.lost" = "网络连接中断";
+"model.download.error.cannot.connect" = "无法连接到服务器";
+"model.download.error.file.too.small" = "下载的文件大小异常（仅 %@ MB），可能是下载失败或文件损坏，请重新下载";
+"model.download.error.file.size.mismatch" = "文件大小不匹配：实际 %@ MB，期望 %@ MB，请重新下载";
+"model.download.error.cannot.get.file.size" = "无法获取文件大小，下载可能失败";
+"model.download.already.exists" = "%@ 已存在，跳过";
+"model.download.url.label" = "下载地址:";
+"model.download.edit.url" = "修改地址";
+"model.download.url.placeholder" = "请输入模型下载地址";
+
+// 欢迎页面
+"welcome.title" = "欢迎使用 若一智能助手";
+"welcome.subtitle" = "智能语音输入法";
+"welcome.feature.global.shortcut" = "全局快捷键";
+"welcome.feature.global.shortcut.desc" = "设置快捷键，在任何应用的输入框中按下快捷键即可说话输入文字";
+"welcome.feature.global.shortcut.highlight" = "💡 本应用运行时，可以在任何其他应用的输入框中按下快捷键进行语音输入！";
+"welcome.feature.real.time" = "实时语音识别";
+"welcome.feature.real.time.desc" = "使用本地AI模型，快速准确地将语音转换为文字";
+"welcome.feature.ai.optimization" = "AI智能优化";
+"welcome.feature.ai.optimization.desc" = "自动去除语气词、添加标点符号、修正错别字";
+"welcome.feature.multilanguage" = "多语言支持";
+"welcome.feature.multilanguage.desc" = "支持中文、英文、日语等多种语言";
+"welcome.start.using" = "开始使用";
+
+// 权限相关
+"microphone.permission.required" = "需要麦克风权限";
+"microphone.permission.description" = "语音输入功能需要访问麦克风。\n\n请按以下步骤授权：\n1. 打开\"系统设置\"\n2. 进入\"隐私与安全性\" > \"麦克风\"\n3. 找到 若一智能助手 并勾选\n4. 重启应用";
+"open.system.settings" = "打开系统设置";
+"later" = "稍后";
+"microphone.in.use" = "麦克风正在使用中";
+"microphone.in.use.description" = "麦克风正被其他应用使用（如闪电说）。\n\n解决方法：\n1. 关闭其他语音输入应用\n2. 或使用不同的快捷键避免冲突\n3. 或在其他应用不录音时使用本应用";
+"got.it" = "知道了";
+
+// 按键名称
+"key.left.control" = "左Control";
+"key.fn" = "FN";
+"key.space" = "Space";
+"key.return" = "Return";
+"key.esc" = "Esc";
+
+// AI 优化设置
+"ai.optimization.enable" = "启用 AI 文本优化";
+"ai.optimization.section" = "AI 文本优化";
+"ai.optimization.description" = "启用后，语音识别完成的文本会通过 AI 进行优化，去除口头禅、添加标点符号、修正错别字。";
+"ai.optimization.description.detail" = "默认使用本机的 Ollama 服务（http://127.0.0.1:11434），也可以配置为其他兼容的 API 端点。";
+"ai.shortcut.usage.hint" = "重要：即使启用了 AI 优化，也需要按特定快捷键组合才能触发 AI 纠正功能。";
+"ai.shortcut.normal" = "普通语音输入：";
+"ai.shortcut.with.ai" = "AI 优化语音输入：";
+"ai.api.endpoint" = "API 端点";
+"ai.model.name" = "模型名称";
+"ai.model.example" = "例如: gemma2:2b";
+"ai.api.token" = "API Token（可选）";
+"ai.api.token.placeholder" = "留空表示不使用";
+"ai.timeout" = "超时时间";
+"ai.timeout.seconds" = "秒";
+"ai.timeout.hint" = "建议本地模型使用 2-5 秒，远程 API 使用 10-30 秒";
+"ai.system.prompt" = "系统提示词";
+"ai.system.prompt.reset" = "恢复默认";
+"ai.system.prompt.reset.help" = "恢复默认的系统提示词";
+"ai.system.prompt.hint" = "自定义系统提示词可以控制 AI 的优化行为。提示词中可以使用 {text} 占位符表示原始文本（可选）。";
+"ai.test.connection" = "测试连接";
+"ai.test.connection.help" = "测试与 Ollama API 的连接";
+"ai.fetch.models" = "获取模型列表";
+"ai.fetch.models.help" = "从 Ollama 获取已下载的模型列表，并显示可下载的推荐模型";
+"ai.ollama.models.downloaded" = "已下载";
+"ai.ollama.models.available" = "可下载（点击右侧 ↓ 下载）";
+"ai.test.optimization" = "测试文本优化";
+"ai.test.optimization.help" = "发送测试文本，验证 AI 优化功能是否正常工作";
+"settings.title" = "设置";
+"settings.done" = "完成";
+
+// 权限相关Alert
+"permission.test.trigger" = "尝试触发权限请求";
+"permission.test.description" = "即将尝试访问麦克风以触发系统权限对话框。\n\n如果弹出权限对话框，请点击\"允许\"。";
+"permission.request.title" = "请求麦克风权限";
+"permission.request.description" = "系统将弹出权限请求对话框。\n\n请点击\"允许\"以授权 若一智能助手 访问麦克风。";
+"permission.granted.title" = "✅ 麦克风权限已授权";
+"permission.granted.description" = "您已成功授权麦克风权限！\n\n现在可以使用语音输入功能了。";
+"permission.already.granted.title" = "✅ 麦克风权限已授权";
+"permission.already.granted.description" = "您已经授权了麦克风权限。\n\n可以直接使用语音输入功能。";
+"permission.denied.title" = "⚠️ 麦克风权限被拒绝";
+"permission.denied.description" = "语音输入功能需要麦克风权限。\n\n请按以下步骤手动授权：\n1. 打开\"系统设置\"\n2. 进入\"隐私与安全性\" > \"麦克风\"\n3. 找到 若一智能助手 并勾选";
+"continue" = "继续";
+"great" = "太好了";
+
+// AI测试相关Alert
+"ai.connection.success.title" = "✅ 连接成功";
+"ai.connection.success.description" = "成功连接到 AI API！\n\n端点: %@";
+"ai.connection.failed.title" = "❌ 连接失败";
+"ai.connection.failed.description" = "无法连接到 AI API。\n\n错误信息: %@\n\n请检查：\n1. API 服务是否正在运行（如 Ollama）\n2. API 端点地址是否正确\n3. 如果使用了 API Token，请确认其有效性\n4. 网络连接是否正常";
+"ai.models.list.title" = "📋 可用模型列表";
+"ai.models.list.empty" = "未找到任何模型。\n\n请先使用 'ollama pull' 命令下载模型。";
+"ai.models.list.found" = "找到 %d 个可用模型：\n\n• %@\n\n您可以将模型名称复制到上方的\"模型名称\"字段中。";
+"ai.test.success.title" = "✅ 测试成功";
+"ai.test.success.description" = "AI 优化功能正常工作！\n\n原始文本：\n%@\n\n优化后：\n%@\n\n耗时：%@ 秒";
+
+// AI Todo
+"ai.todo" = "AI Todo";
+"ai.todo.section" = "AI Todo";
+"ai.todo.description" = "配置 AI Todo 功能使用的模型和端点。留空则使用 AI 优化设置。";
+"ai.todo.endpoint" = "API 端点";
+"ai.todo.model" = "模型名称";
+"ai.todo.timeout" = "超时时间";
+"ai.todo.input.hint" = "💡 提示：可以直接输入文字，或使用语音输入";
+"ai.todo.input.placeholder" = "输入待办事项或语音说话...";
+"ai.todo.empty" = "暂无待办事项";
+"ai.todo.empty.description" = "可以通过文字或语音添加待办事项";
+"ai.todo.active" = "待办事项";
+"ai.todo.archived" = "已归档";
+"todo.priority.important.urgent" = "重要且紧急";
+"todo.priority.important.not.urgent" = "重要但不紧急";
+"todo.priority.not.important.urgent" = "不重要但紧急";
+"todo.priority.not.important.not.urgent" = "不重要且不紧急";
+"mark.as.completed" = "标记为已完成";
+"mark.as.pending" = "标记为待完成";
+"archive" = "归档";
+"restore" = "恢复";
+"add.due.date" = "添加截止时间";
+"due.date" = "截止时间";
+"include.time" = "包含时间";
+"start.recording" = "开始录音";
+"stop.recording" = "停止录音";
+"ai.process" = "AI 解析";
+"sync.from.reminders" = "从提醒事项同步";
+"sync.from.reminders.help" = "从 macOS 提醒事项应用同步待办事项";
+"reminders.permission.denied" = "需要访问提醒事项的权限。请在系统设置 > 隐私与安全性 > 提醒事项中授权。";
+"sync.success" = "成功同步 %d 个待办事项";
+"sync.success.with.skipped" = "成功同步 %d 个待办事项，跳过 %d 个已存在的";
+"sync.all.existed" = "所有 %d 个待办事项已存在，无需同步";
+"sync.no.new.items" = "没有新的待办事项需要同步";
+"today" = "今天";
+"tomorrow" = "明天";
+"today.at.time" = "今天 %@";
+"tomorrow.at.time" = "明天 %@";
+
+// Todo 视图模式
+"todo.view.mode.list" = "列表模式";
+"todo.view.mode.quadrant" = "四象限模式";
+"todo.view.mode.list.desc" = "所有待办事项按列表显示";
+"todo.view.mode.quadrant.desc" = "按重要性和紧急性分为四个象限";
+
+// 四象限
+"todo.quadrant.important.urgent" = "重要且紧急";
+"todo.quadrant.important.urgent.desc" = "立即执行";
+"todo.quadrant.important.not.urgent" = "重要但不紧急";
+"todo.quadrant.important.not.urgent.desc" = "计划安排";
+"todo.quadrant.not.important.urgent" = "不重要但紧急";
+"todo.quadrant.not.important.urgent.desc" = "委托他人";
+"todo.quadrant.not.important.not.urgent" = "不重要且不紧急";
+"todo.quadrant.not.important.not.urgent.desc" = "尽量少做";
+"todo.quadrant.empty" = "暂无任务";
+
+// 关于
+"about" = "关于";
+"about.title" = "关于 %@";
+"about.developer" = "开发者";
+"about.developer.name" = "黄滚";
+"about.developer.name.en" = "rocky.x";
+"about.website" = "个人主页";
+"about.website.url" = "83d.me";
+"about.version" = "版本";
+"about.copyright" = "版权所有";
+"show.app" = "显示 %@";
+
+// 邮箱
+"email.folder.local_sent" = "已发送(本地)";

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>合同审查助手</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div class="container">
+      <h1>⚖️ 合同审查助手</h1>
+      <p class="subtitle">上传合同文档，智能识别关键条款并给出专业建议</p>
+      
+      <div id="image-container" class="image-container">
+        <img id="preview" src="" alt="预览" style="display:none;">
+        <div id="placeholder" class="placeholder">
+          <div class="placeholder-icon">📄</div>
+          <p>点击下方按钮选择合同图片</p>
+          <p style="font-size: 12px; color: #a0aec0; margin-top: 8px;">支持多页合同，可逐页上传</p>
+        </div>
+      </div>
+      
+      <div class="actions">
+        <button id="pick-btn" class="btn btn-primary">选择合同图片</button>
+        <button id="review-btn" class="btn btn-secondary" disabled>审查合同</button>
+      </div>
+      
+      <div id="result" class="result"></div>
+      
+      <div id="review-section" style="display:none;">
+        <div id="review-content" class="review-content"></div>
+        <button id="suggest-btn" class="btn btn-primary">获取修改建议</button>
+        <div id="suggestions" class="suggestions"></div>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
+

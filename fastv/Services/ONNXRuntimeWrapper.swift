@@ -34,7 +34,7 @@ class ONNXRuntimeWrapper {
         
         // 创建环境
         var env: OpaquePointer?
-        let logid = "fastv".cString(using: .utf8)
+        let logid = "typecho".cString(using: .utf8)
         let status = api.pointee.CreateEnv(
             ORT_LOGGING_LEVEL_WARNING,
             logid,
@@ -79,6 +79,25 @@ class ONNXRuntimeWrapper {
             }
         }
         
+        // 性能优化：设置多线程
+        let numThreads = max(4, ProcessInfo.processInfo.activeProcessorCount)
+        status = api.pointee.SetIntraOpNumThreads(sessionOptions, Int32(numThreads))
+        if status != nil {
+            let errorMsg = getErrorMessage(from: status, api: api)
+            api.pointee.ReleaseStatus(status)
+            print("⚠️ 设置线程数失败: \(errorMsg)")
+        } else {
+            print("✅ ONNX Runtime 使用 \(numThreads) 个线程")
+        }
+        
+        // 设置图优化级别
+        status = api.pointee.SetSessionGraphOptimizationLevel(sessionOptions, ORT_ENABLE_ALL)
+        if status != nil {
+            let errorMsg = getErrorMessage(from: status, api: api)
+            api.pointee.ReleaseStatus(status)
+            print("⚠️ 设置图优化级别失败: \(errorMsg)")
+        }
+        
         // 创建会话
         // 在 macOS 上，ORTCHAR_T 是 char，所以直接使用 path
         var session: OpaquePointer?
@@ -99,7 +118,146 @@ class ONNXRuntimeWrapper {
         self.session = session
     }
     
-    func runInference(input: [[[Float]]], language: TranscriptLanguage = .auto) throws -> [Int] {
+    /// 运行图像推理（通用 4D 张量输入）
+    /// - Parameters:
+    ///   - inputData: 展平的输入数据 (Float32)
+    ///   - inputShape: 输入形状 [N, C, H, W]
+    ///   - outputShape: 期望的输出形状 [N, C, H, W]
+    /// - Returns: 展平的输出数据
+    func runImageInference(inputData: [Float], inputShape: [Int], outputShape: [Int]) throws -> [Float] {
+        guard let api = api else {
+            throw VideoProcessingError.modelLoadFailed("API 未初始化")
+        }
+        
+        guard let session = session else {
+            throw VideoProcessingError.modelLoadFailed("会话未创建，请先加载模型")
+        }
+        
+        // 1. 准备内存信息
+        var memoryInfo: OpaquePointer?
+        // 使用 OrtDeviceAllocator 替代 OrtArenaAllocator，避免 arena 内存池长期保留导致多次转录后内存累积
+        var status = api.pointee.CreateCpuMemoryInfo(
+            OrtDeviceAllocator,
+            OrtMemTypeDefault,
+            &memoryInfo
+        )
+        
+        if status != nil {
+            let errorMsg = getErrorMessage(from: status, api: api)
+            api.pointee.ReleaseStatus(status)
+            throw VideoProcessingError.transcriptionFailed("无法创建内存信息: \(errorMsg)")
+        }
+        defer { if let info = memoryInfo { api.pointee.ReleaseMemoryInfo(info) } }
+        
+        // 2. 创建输入张量
+        let inputShapeInt64 = inputShape.map { Int64($0) }
+        var inputTensor: OpaquePointer?
+        
+        // 创建可变的数据副本
+        var inputDataCopy = inputData
+        
+        status = inputDataCopy.withUnsafeMutableBytes { bytes -> OpaquePointer? in
+            return api.pointee.CreateTensorWithDataAsOrtValue(
+                memoryInfo,
+                bytes.baseAddress!,
+                inputData.count * MemoryLayout<Float>.size,
+                inputShapeInt64,
+                inputShapeInt64.count,
+                ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT,
+                &inputTensor
+            )
+        }
+        
+        if status != nil {
+            let errorMsg = getErrorMessage(from: status, api: api)
+            api.pointee.ReleaseStatus(status)
+            throw VideoProcessingError.transcriptionFailed("无法创建输入张量: \(errorMsg)")
+        }
+        defer { if let tensor = inputTensor { api.pointee.ReleaseValue(tensor) } }
+        
+        // 3. 准备输入/输出名称
+        // 注意：这里假设模型只有一个输入和一个输出，或者我们使用默认名称
+        // 为了通用性，应该从会话中获取名称，但简化起见，我们尝试使用硬编码或获取索引0
+        
+        // 获取输入名称
+        var inputName: UnsafeMutablePointer<CChar>?
+        var allocator: UnsafeMutablePointer<OrtAllocator>?
+        api.pointee.GetAllocatorWithDefaultOptions(&allocator)
+        
+        status = api.pointee.SessionGetInputName(session, 0, allocator, &inputName)
+        if status != nil {
+            // 如果获取失败，尝试使用常见名称
+            let errorMsg = getErrorMessage(from: status, api: api)
+            print("警告: 无法获取输入名称: \(errorMsg)")
+            api.pointee.ReleaseStatus(status)
+        }
+        
+        // 获取输出名称
+        var outputName: UnsafeMutablePointer<CChar>?
+        status = api.pointee.SessionGetOutputName(session, 0, allocator, &outputName)
+        if status != nil {
+            let errorMsg = getErrorMessage(from: status, api: api)
+            print("警告: 无法获取输出名称: \(errorMsg)")
+            api.pointee.ReleaseStatus(status)
+        }
+        
+        let inputNameStr = inputName != nil ? String(cString: inputName!) : "input_1"
+        let outputNameStr = outputName != nil ? String(cString: outputName!) : "output_1"
+        
+        // 4. 运行推理
+        var outputTensor: OpaquePointer?
+        let inputNames = [inputNameStr]
+        let outputNames = [outputNameStr]
+        
+        // 创建 C 字符串指针数组
+        let inputNameCStrings = inputNames.map { $0.cString(using: .utf8)! }
+        let outputNameCStrings = outputNames.map { $0.cString(using: .utf8)! }
+        
+        // 需要构建指针数组
+        var inputTensors = [inputTensor]
+        
+        // 使用 withExtendedLifetime 确保字符串在整个调用期间有效
+        let runStatus = withExtendedLifetime((inputNameCStrings, outputNameCStrings)) {
+            // 创建指向 C 字符串指针的指针数组
+            var inputNamePtrs: [UnsafePointer<CChar>?] = inputNameCStrings.map { UnsafePointer($0) }
+            var outputNamePtrs: [UnsafePointer<CChar>?] = outputNameCStrings.map { UnsafePointer($0) }
+            
+            return api.pointee.Run(
+                session,
+                nil, // run options
+                &inputNamePtrs,
+                inputTensors.withUnsafeBufferPointer { $0.baseAddress },
+                1, // input count
+                &outputNamePtrs,
+                1, // output count
+                &outputTensor
+            )
+        }
+        
+        if runStatus != nil {
+            let errorMsg = getErrorMessage(from: runStatus, api: api)
+            api.pointee.ReleaseStatus(runStatus)
+            throw VideoProcessingError.transcriptionFailed("推理运行失败: \(errorMsg)")
+        }
+        defer { if let tensor = outputTensor { api.pointee.ReleaseValue(tensor) } }
+        
+        // 5. 获取输出数据
+        var outputDataPtr: UnsafeMutableRawPointer?
+        status = api.pointee.GetTensorMutableData(outputTensor, &outputDataPtr)
+        
+        if status != nil {
+            let errorMsg = getErrorMessage(from: status, api: api)
+            api.pointee.ReleaseStatus(status)
+            throw VideoProcessingError.transcriptionFailed("无法获取输出数据: \(errorMsg)")
+        }
+        
+        // 复制数据到 Swift 数组
+        let count = outputShape.reduce(1, *)
+        let outputBuffer = outputDataPtr!.bindMemory(to: Float.self, capacity: count)
+        return Array(UnsafeBufferPointer(start: outputBuffer, count: count))
+    }
+    
+    func runInference(input: [[[Float]]], language: TranscriptLanguage = .auto, enableCTCDeduplication: Bool = false) throws -> [Int] {
         guard let api = api else {
             throw VideoProcessingError.modelLoadFailed("API 未初始化")
         }
@@ -147,10 +305,10 @@ class ONNXRuntimeWrapper {
             throw VideoProcessingError.transcriptionFailed("输入数据大小不匹配: 实际=\(flatInput.count), 期望=\(expectedSize)")
         }
         
-        // 创建内存信息
+        // 创建内存信息：使用 OrtDeviceAllocator 替代 OrtArenaAllocator，推理完成后及时释放张量内存
         var memoryInfo: OpaquePointer?
         var status = api.pointee.CreateCpuMemoryInfo(
-            OrtArenaAllocator,
+            OrtDeviceAllocator,
             OrtMemTypeDefault,
             &memoryInfo
         )
@@ -205,19 +363,14 @@ class ONNXRuntimeWrapper {
         guard !inputNames.isEmpty, !outputNames.isEmpty else {
             throw VideoProcessingError.transcriptionFailed("无法获取模型的输入输出名称")
         }
-        
-        #if DEBUG
-        print("ONNX 模型输入要求: \(inputNames)")
-        print("ONNX 模型输出: \(outputNames)")
-        print("输入特征形状: batch=\(batchSize), sequence=\(sequenceLength), feature=\(featureDim)")
-        print("输入数据统计: 总元素数=\(flatInput.count), min=\(flatInput.min() ?? 0), max=\(flatInput.max() ?? 0), avg=\(flatInput.reduce(0, +) / Float(flatInput.count))")
-        #endif
-        
+
         // 创建所有必需的输入张量（按照模型定义的顺序）
+        // 关键：必须按照模型定义的输入名称顺序创建张量，确保 inputTensors 和 inputNameStrings 的顺序完全一致
         var inputTensors: [OpaquePointer?] = []
         var inputNameStrings: [String] = []
         
         // 按照模型定义的顺序创建输入：speech, speech_lengths, language, textnorm
+        // 注意：ONNX Runtime 的 Run API 使用名称匹配，所以顺序不重要，但为了调试方便，我们按照固定顺序创建
         // 1. speech 输入（主要音频特征）
         if let tensor = inputTensor {
             inputTensors.append(tensor)
@@ -254,7 +407,6 @@ class ONNXRuntimeWrapper {
         
         if let tensor = speechLengthsTensor {
             inputTensors.append(tensor)
-            // 确保使用正确的输入名称
             if let index = inputNames.firstIndex(of: "speech_lengths") {
                 inputNameStrings.append(inputNames[index])
             } else if inputNames.count > 1 {
@@ -263,19 +415,10 @@ class ONNXRuntimeWrapper {
         }
         
         // 3. language 输入（语言标识）
-        // Python 示例使用字符串 "zh"，但 ONNX 模型底层可能期望整数
-        // 根据 Python 代码：language="zh" 表示中文
-        // 注意：需要根据模型实际要求调整，可能是整数映射或字符串
-        var languageTensor: OpaquePointer?
-        
-        // 检查模型是否有 language 输入
         // SenseVoice lid_dict: {"auto": 0, "zh": 3, "en": 4, "yue": 7, "ja": 11, "ko": 12, "nospeech": 13}
-        // 根据错误信息，模型期望的范围是 [-16, 15]，但 3 在这个范围内，应该可以
-        // 使用用户选择的语言ID
-        var languageDataValue: Int32 = language.languageID
-        if inputNames.contains(where: { $0.contains("language") || $0 == "language" }) {
-            // 尝试整数类型（ONNX 模型通常使用整数）
-            let languageData: [Int32] = [languageDataValue] // 3 = 中文 (zh)
+        var languageTensor: OpaquePointer?
+        let languageDataValue: Int32 = language.languageID
+        let languageData: [Int32] = [languageDataValue]
         languageData.withUnsafeBufferPointer { buffer in
             let shape: [Int64] = [batchSize]
             var tensor: OpaquePointer?
@@ -289,17 +432,16 @@ class ONNXRuntimeWrapper {
                 &tensor
             )
             if status != nil {
-                    let errorMsg = getErrorMessage(from: status, api: api)
+                let errorMsg = getErrorMessage(from: status, api: api)
                 api.pointee.ReleaseStatus(status)
-                    #if DEBUG
-                    print("警告：创建 language 张量失败: \(errorMsg)")
-                    #endif
+                #if DEBUG
+                print("警告：创建 language 张量失败: \(errorMsg)")
+                #endif
             } else {
                 languageTensor = tensor
-                    #if DEBUG
-                    print("成功创建 language 张量，值=\(languageData[0])")
-                    #endif
-                }
+                #if DEBUG
+                print("成功创建 language 张量，值=\(languageData[0])")
+                #endif
             }
         }
         
@@ -312,18 +454,15 @@ class ONNXRuntimeWrapper {
             } else if inputNames.count > 2 {
                 inputNameStrings.append(inputNames[2])
             }
-            
             #if DEBUG
-            print("language 参数: \(languageDataValue) (中文)")
+            print("language 参数: \(languageDataValue)")
             #endif
         }
         
         // 4. textnorm 输入（文本规范化）
-        // C# 代码: textnormDict = { "withitn": 14, "woitn": 15 }
-        // C# 示例使用: textnormId = 15 (woitn)
-        // Python 示例：use_itn=False，对应 textnorm="woitn" -> 15
+        // textnormDict = { "withitn": 14, "woitn": 15 }
         var textnormTensor: OpaquePointer?
-        let textnormDataValue: Int32 = 15 // 15 = woitn (without ITN，对应 use_itn=False)
+        let textnormDataValue: Int32 = 14 // 14 = withitn (with ITN，包含标点符号)
         let textnormData: [Int32] = [textnormDataValue]
         textnormData.withUnsafeBufferPointer { buffer in
             let shape: [Int64] = [batchSize]
@@ -381,15 +520,12 @@ class ONNXRuntimeWrapper {
         #endif
         
         defer {
-            // 清理额外的输入张量
-            if let tensor = speechLengthsTensor {
-                api.pointee.ReleaseValue(tensor)
-            }
-            if let tensor = languageTensor {
-                api.pointee.ReleaseValue(tensor)
-            }
-            if let tensor = textnormTensor {
-                api.pointee.ReleaseValue(tensor)
+            // 清理额外的输入张量（除了 speech 张量，它会在上面的 defer 中释放）
+            // 释放所有不是 inputTensor 的张量
+            for tensor in inputTensors {
+                if let tensor = tensor, tensor != inputTensor {
+                    api.pointee.ReleaseValue(tensor)
+                }
             }
         }
         
@@ -428,9 +564,23 @@ class ONNXRuntimeWrapper {
         // 使用 withCString 确保字符串生命周期
         var currentStatus: OrtStatusPtr?
         
-        // 为每个输入名称创建 C 字符串（使用 cString 返回的指针在整个函数调用期间有效）
+        // 为每个输入名称创建 C 字符串（使用 withCString 确保生命周期）
+        var inputNamePtrs: [UnsafePointer<CChar>?] = []
+        
+        // 使用 withExtendedLifetime 确保所有字符串在整个函数调用期间有效
         let inputNameCStrings = inputNameStrings.map { $0.cString(using: .utf8)! }
-        var inputNamePtrs: [UnsafePointer<CChar>?] = inputNameCStrings.map { UnsafePointer($0) }
+        inputNamePtrs = inputNameCStrings.map { UnsafePointer($0) }
+        
+        #if DEBUG
+        // 验证输入顺序一致性
+        print("验证输入顺序一致性:")
+        for (index, (name, tensor)) in zip(inputNameStrings, inputTensors).enumerated() {
+            print("  输入[\(index)]: name=\(name), tensor=\(tensor != nil ? "有效" : "nil")")
+        }
+        #endif
+        
+        print("🔄 开始 ONNX 推理... (输入: \(sequenceLength) 帧，这可能需要一些时间)")
+        let inferenceStartTime = CFAbsoluteTimeGetCurrent()
         
         // 准备输出名称 C 字符串
         let ctcLogitsCString = ctcLogitsOutputName.cString(using: .utf8)!
@@ -472,6 +622,10 @@ class ONNXRuntimeWrapper {
         
         status = currentStatus
         
+        let inferenceEndTime = CFAbsoluteTimeGetCurrent()
+        let inferenceDuration = inferenceEndTime - inferenceStartTime
+        print("✅ ONNX 推理完成，耗时: \(String(format: "%.2f", inferenceDuration)) 秒")
+        
         if status != nil {
             let errorMsg = getErrorMessage(from: status, api: api)
             api.pointee.ReleaseStatus(status)
@@ -493,7 +647,7 @@ class ONNXRuntimeWrapper {
         }
         
         // 从 CTC logits 解码 token IDs
-        let tokenIDs = try decodeCTCLogits(from: ctcLogits, actualLength: actualSequenceLength, api: api)
+        let tokenIDs = try decodeCTCLogits(from: ctcLogits, actualLength: actualSequenceLength, api: api, enableDeduplication: enableCTCDeduplication)
         
         #if DEBUG
         print("ONNX Runtime CTC 解码后的 token IDs: \(tokenIDs.prefix(20))... (共 \(tokenIDs.count) 个)")
@@ -558,7 +712,7 @@ class ONNXRuntimeWrapper {
     /// 1. 对每个时间步执行 argmax 获取最可能的 token
     /// 2. 移除 blank token（通常是 0）
     /// 3. 移除连续重复的 token（CTC 去重）
-    private func decodeCTCLogits(from outputValue: OpaquePointer, actualLength: Int?, api: UnsafePointer<OrtApi>) throws -> [Int] {
+    private func decodeCTCLogits(from outputValue: OpaquePointer, actualLength: Int?, api: UnsafePointer<OrtApi>, enableDeduplication: Bool = false) throws -> [Int] {
         // 获取张量信息
         var tensorInfo: OpaquePointer?
         var status = api.pointee.GetTensorTypeAndShape(outputValue, &tensorInfo)
@@ -681,21 +835,30 @@ class ONNXRuntimeWrapper {
         print("非 0 token 数量: \(tokenIDs.count)")
         #endif
         
-        // CTC 去重：移除连续重复的 token
-        var deduplicatedTokens: [Int] = []
-        var prevToken: Int? = nil
-        for token in tokenIDs {
-            if token != prevToken {
-                deduplicatedTokens.append(token)
-                prevToken = token
+        // CTC 去重：移除连续重复的 token（可选）
+        // 注意：禁用去重可以保留叠词（如"谢谢"）和连续数字（如"100"中的"00"）
+        if enableDeduplication {
+            var deduplicatedTokens: [Int] = []
+            var prevToken: Int? = nil
+            for token in tokenIDs {
+                if token != prevToken {
+                    deduplicatedTokens.append(token)
+                    prevToken = token
+                }
             }
+            
+            #if DEBUG
+            print("CTC 去重后 token 数量: \(deduplicatedTokens.count)")
+            #endif
+            
+            return deduplicatedTokens
+        } else {
+            #if DEBUG
+            print("CTC 去重已禁用，保留所有 token")
+            #endif
+            
+            return tokenIDs
         }
-        
-        #if DEBUG
-        print("CTC 去重后 token 数量: \(deduplicatedTokens.count)")
-        #endif
-        
-        return deduplicatedTokens
     }
     
     private func extractTokenIDs(from outputValue: OpaquePointer, api: UnsafePointer<OrtApi>) throws -> [Int] {
@@ -786,7 +949,7 @@ class ONNXRuntimeWrapper {
             
             // 假设形状为 [batch_size, sequence_length, vocab_size]
             // 对于 batch_size=1，跳过第一个维度
-            let batchSize = dims.count > 0 ? Int(dims[0]) : 1
+            _ = dims.count > 0 ? Int(dims[0]) : 1
             let sequenceLength = dims.count > 1 ? Int(dims[1]) : Int(elementCount)
             let vocabSize = dims.count > 2 ? Int(dims[2]) : 1
             

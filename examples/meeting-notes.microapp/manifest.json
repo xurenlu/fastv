@@ -1,0 +1,11 @@
+{
+  "id": "com.example.meeting-notes",
+  "name": "会议纪要生成",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": [
+    "chat"
+  ],
+  "minPlatformVersion": "1.0"
+}

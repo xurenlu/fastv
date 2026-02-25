@@ -1,0 +1,24 @@
+PODS:
+  - GRDB.swift (6.25.0):
+    - GRDB.swift/standard (= 6.25.0)
+  - GRDB.swift/standard (6.25.0)
+
+DEPENDENCIES:
+  - GRDB.swift (from `https://github.com/groue/GRDB.swift.git`, tag `v6.25.0`)
+
+EXTERNAL SOURCES:
+  GRDB.swift:
+    :git: https://github.com/groue/GRDB.swift.git
+    :tag: v6.25.0
+
+CHECKOUT OPTIONS:
+  GRDB.swift:
+    :git: https://github.com/groue/GRDB.swift.git
+    :tag: v6.25.0
+
+SPEC CHECKSUMS:
+  GRDB.swift: 2ee97ea12ab9c0f2e6f62376a9f814e30ec28ed0
+
+PODFILE CHECKSUM: 6ccf9ebaf1c46d8e51b490073be7369db1ed90fc
+
+COCOAPODS: 1.16.2

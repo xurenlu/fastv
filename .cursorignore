@@ -1,0 +1,56 @@
+# Xcode 构建产物
+DerivedData/
+build/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xccheckout
+*.moved-aside
+*.hmap
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Carthage
+Carthage/Build/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Python 虚拟环境
+venv/
+venv_llama/
+__pycache__/
+*.pyc
+
+# 系统文件
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+
+# 编译产物
+*.a
+*.dSYM
+*.ipa
+*.dSYM.zip
+
+# 备份文件
+*.backup
+*.swp
+*.swo
+*~
+
+# 临时文件
+*.tmp
+*.temp
+
+# ONNX 模型文件（如果很大）
+*.onnx
+
+# 第三方库源码（如果不需要索引）
+ThirdParty/libetpan/
+

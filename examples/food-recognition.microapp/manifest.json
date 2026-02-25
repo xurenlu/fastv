@@ -1,0 +1,10 @@
+{
+  "id": "com.example.food-recognition",
+  "name": "美食识别助手",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": ["vision", "chat"],
+  "minPlatformVersion": "1.0"
+}
+

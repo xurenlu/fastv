@@ -9,6 +9,7 @@ import AppKit
 import Foundation
 import ImageIO
 import CoreGraphics
+import UniformTypeIdentifiers
 
 struct ImageSaver {
     /// 保存图片到指定路径
@@ -148,9 +149,9 @@ enum ImageFormat: String, CaseIterable {
     var utType: CFString {
         switch self {
         case .png:
-            return kUTTypePNG
+            return UTType.png.identifier as CFString
         case .jpg:
-            return kUTTypeJPEG
+            return UTType.jpeg.identifier as CFString
         }
     }
     

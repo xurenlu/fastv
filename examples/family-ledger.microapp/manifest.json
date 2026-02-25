@@ -1,0 +1,12 @@
+{
+  "id": "com.example.family-ledger",
+  "name": "家庭账本",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": [
+    "vision",
+    "chat"
+  ],
+  "minPlatformVersion": "1.0"
+}

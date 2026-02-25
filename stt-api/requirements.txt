@@ -1,0 +1,13 @@
+# STT API 服务依赖
+# 语音识别：SenseVoice ONNX（与 macOS 应用同源模型）
+sensevoice-onnx>=0.1.0
+
+# Web 框架
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+websockets>=12.0
+
+# 音频处理：格式转换（MP3/WAV/M4A -> 16kHz mono）
+pydub>=0.25.1
+soundfile>=0.12.0

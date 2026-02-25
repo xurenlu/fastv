@@ -1,0 +1,10 @@
+{
+  "id": "com.example.plant-care",
+  "name": "植物养护助手",
+  "version": "1.0.0",
+  "entry": "static/index.html",
+  "icon": "icon.png",
+  "permissions": ["vision", "chat"],
+  "minPlatformVersion": "1.0"
+}
+

@@ -11,8 +11,12 @@ import Combine
 
 /// 波形窗口状态
 enum WaveformWindowState {
-    case recording      // 录音中
-    case transcribing   // 转文字中
+    case recording           // 录音中
+    case transcribing       // 转文字中
+    case aiCorrecting       // AI修正中
+    case aiCorrected        // AI修正成功
+    case aiCorrectionFailed // AI修正失败
+    case aiCorrectionDisabled // AI修正未启用
 }
 
 /// 波形显示器窗口管理器
@@ -72,10 +76,15 @@ class WaveformWindowManager: ObservableObject {
         window.contentView = hostingView
         window.backgroundColor = .clear
         window.isOpaque = false
-        window.level = .statusBar  // 改为statusBar级别，比floating更高
-        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]  // 添加fullScreenAuxiliary
+        // 使用 screenSaver 级别 (1000)，确保在全屏应用上方显示
+        // 这是 macOS 中最高的标准窗口层级之一，可以覆盖全屏应用
+        window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.maximumWindow)))
+        // 关键：fullScreenAuxiliary 允许窗口在全屏空间中显示
+        // canJoinAllSpaces 让窗口在所有桌面空间中可见
+        // stationary 防止窗口随空间切换而移动
+        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
         window.ignoresMouseEvents = true
-        window.hasShadow = true
+        window.hasShadow = false  // 去掉窗口阴影，避免黑框效果
         window.isReleasedWhenClosed = false  // 重要：防止窗口被自动释放
         window.hidesOnDeactivate = false  // 防止失去焦点时隐藏
         
@@ -161,13 +170,59 @@ class WaveformWindowManager: ObservableObject {
         audioLevel = level
     }
     
+    /// 切换到录音状态（智能分段转写完成后恢复）
+    func setRecording() {
+        state = .recording
+    }
+    
     /// 切换到转文字状态
     func setTranscribing() {
         print("📊 [WaveformWindowManager] 切换到转文字状态")
-        // 使用动画立即切换状态
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            state = .transcribing
-            audioLevel = 0.0
+        // 立即切换状态，不使用动画延迟，确保用户感觉不到停顿
+        state = .transcribing
+        audioLevel = 0.0
+    }
+    
+    /// 设置AI修正状态
+    func setAICorrecting() {
+        print("📊 [WaveformWindowManager] 设置AI修正中状态")
+        state = .aiCorrecting
+        audioLevel = 0.0
+    }
+    
+    /// 设置AI修正成功状态（会自动在1秒后隐藏）
+    func setAICorrected() {
+        print("📊 [WaveformWindowManager] 设置AI修正成功状态")
+        state = .aiCorrected
+        audioLevel = 0.0
+        
+        // 1秒后自动隐藏窗口
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.hide()
+        }
+    }
+    
+    /// 设置AI修正失败状态（会自动在0.8秒后隐藏）
+    func setAICorrectionFailed() {
+        print("📊 [WaveformWindowManager] 设置AI修正失败状态")
+        state = .aiCorrectionFailed
+        audioLevel = 0.0
+        
+        // 0.8秒后自动隐藏窗口
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            self?.hide()
+        }
+    }
+    
+    /// 设置AI修正未启用状态（会自动在0.8秒后隐藏）
+    func setAICorrectionDisabled() {
+        print("📊 [WaveformWindowManager] 设置AI修正未启用状态")
+        state = .aiCorrectionDisabled
+        audioLevel = 0.0
+        
+        // 0.8秒后自动隐藏窗口
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            self?.hide()
         }
     }
     
@@ -203,16 +258,23 @@ class WaveformWindowManager: ObservableObject {
     
     /// 计算窗口位置
     private func calculateWindowFrame() -> NSRect {
-        guard let screen = NSScreen.main else {
+        // 优先获取当前活跃的屏幕（用户正在使用的屏幕）
+        // 在全屏模式下，NSScreen.main 可能不是用户实际使用的屏幕
+        let screen = NSScreen.main ?? NSScreen.screens.first
+        guard let screen = screen else {
             let size = UserPreferences.shared.waveformWindowStyle.size
             return NSRect(x: 0, y: 0, width: size.width, height: size.height)
         }
         
-        let screenFrame = screen.visibleFrame
+        // 在全屏模式下使用 frame 而不是 visibleFrame
+        // visibleFrame 会排除菜单栏和 Dock，但在全屏模式下可能不准确
+        // 使用 frame 确保我们获得完整的屏幕尺寸
+        let screenFrame = screen.frame
         let windowSize = UserPreferences.shared.waveformWindowStyle.size
         let windowWidth: CGFloat = windowSize.width
         let windowHeight: CGFloat = windowSize.height
-        let margin: CGFloat = 20
+        // 在全屏模式下使用更大的边距，避免被全屏应用的边缘遮挡
+        let margin: CGFloat = 40
         
         // 获取用户设置的位置
         let position = UserPreferences.shared.waveformWindowPosition
@@ -255,6 +317,7 @@ class WindowDelegate: NSObject, NSWindowDelegate {
         print("📊 [WindowDelegate] 窗口即将关闭")
     }
     
+    @objc(windowDidClose:)
     func windowDidClose(_ notification: Notification) {
         print("📊 [WindowDelegate] 窗口已关闭")
     }
@@ -273,31 +336,23 @@ struct WaveformView: View {
         let style = UserPreferences.shared.waveformWindowStyle
         let colorStyle = UserPreferences.shared.waveformWindowColorStyle
         let size = style.size
-        let accentColor = colorStyle.adaptiveColor(for: colorScheme)
+        let colorConfig = colorStyle.colorConfig(for: colorScheme)
+        let barColor = colorConfig.barColor
         let state = manager.state
         
         ZStack {
-            // 优化后的毛玻璃背景 - 更精致的层次
-            RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .background {
-                    // 更细腻的背景色 - 根据深浅模式调整
-                    RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
-                        .fill(colorScheme == .dark ? 
-                              Color.black.opacity(0.2) : 
-                              Color.white.opacity(0.3))
-                }
-                .overlay {
-                    // 更精致的边框 - 单色半透明
-                    RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
-                        .strokeBorder(
-                            Color.white.opacity(colorScheme == .dark ? 0.15 : 0.25),
-                            lineWidth: 1
-                        )
-                }
-                // 更轻盈的阴影 - 符合苹果设计规范
-                .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
-                .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 1)
+            // 背景 - 根据配置使用毛玻璃效果或纯色
+            if colorConfig.useMaterial {
+                RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .background {
+                        RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
+                            .fill(colorConfig.backgroundColor.opacity(colorConfig.backgroundOpacity))
+                    }
+            } else {
+                RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
+                    .fill(colorConfig.backgroundColor.opacity(colorConfig.backgroundOpacity))
+            }
             
             // 根据状态显示不同内容 - 使用动画过渡
             Group {
@@ -311,9 +366,9 @@ struct WaveformView: View {
                                     // 更丰富的渐变层次
                                     LinearGradient(
                                         colors: [
-                                            accentColor.opacity(0.9),
-                                            accentColor.opacity(0.7),
-                                            accentColor.opacity(0.5)
+                                            barColor.opacity(0.9),
+                                            barColor.opacity(0.7),
+                                            barColor.opacity(0.5)
                                         ],
                                         startPoint: .top,
                                         endPoint: .bottom
@@ -321,7 +376,7 @@ struct WaveformView: View {
                                 )
                                 .frame(width: style.barWidth, height: bars[index] * style.maxBarHeight)
                                 // 添加微妙的发光效果
-                                .shadow(color: accentColor.opacity(0.3), radius: 2, x: 0, y: 0)
+                                .shadow(color: barColor.opacity(0.3), radius: 2, x: 0, y: 0)
                         }
                     }
                     .padding(.horizontal, style.horizontalPadding)
@@ -329,7 +384,7 @@ struct WaveformView: View {
                     .onAppear {
                         animateBars()
                     }
-                    .onChange(of: manager.audioLevel) { newLevel in
+                    .onChange(of: manager.audioLevel) { _, newLevel in
                         updateBars(with: newLevel)
                     }
                     // 更自然的过渡效果
@@ -338,13 +393,13 @@ struct WaveformView: View {
                         removal: .scale(scale: 1.05).combined(with: .opacity)
                     ))
                     
-                case .transcribing:
-                    // 转文字中：显示旋转加载动画 - 更流畅的动画
+                case .transcribing, .aiCorrecting:
+                    // 转文字中或AI修正中：显示旋转加载动画 - 更流畅的动画
                     VStack(spacing: 6) {
                         ZStack {
                             // 背景圆环 - 更细腻
                             Circle()
-                                .stroke(accentColor.opacity(0.25), lineWidth: 2.5)
+                                .stroke(barColor.opacity(0.25), lineWidth: 2.5)
                                 .frame(width: style.spinnerSize, height: style.spinnerSize)
                             
                             // 旋转的渐变圆环 - 更丰富的渐变
@@ -353,11 +408,11 @@ struct WaveformView: View {
                                 .stroke(
                                     AngularGradient(
                                         gradient: Gradient(colors: [
-                                            accentColor.opacity(1.0),
-                                            accentColor.opacity(0.85),
-                                            accentColor.opacity(0.6),
-                                            accentColor.opacity(0.35),
-                                            accentColor.opacity(0.15)
+                                            barColor.opacity(1.0),
+                                            barColor.opacity(0.85),
+                                            barColor.opacity(0.6),
+                                            barColor.opacity(0.35),
+                                            barColor.opacity(0.15)
                                         ]),
                                         center: .center,
                                         startAngle: .degrees(0),
@@ -368,18 +423,25 @@ struct WaveformView: View {
                                 .frame(width: style.spinnerSize, height: style.spinnerSize)
                                 .rotationEffect(.degrees(rotationAngle))
                                 // 添加微妙的发光效果
-                                .shadow(color: accentColor.opacity(0.45), radius: 4, x: 0, y: 0)
+                                .shadow(color: barColor.opacity(0.45), radius: 4, x: 0, y: 0)
                             
                             // 额外的高光层，增强存在感
                             Circle()
                                 .trim(from: 0.0, to: 0.35)
-                                .stroke(accentColor.opacity(0.5), lineWidth: 1.2)
+                                .stroke(barColor.opacity(0.5), lineWidth: 1.2)
                                 .frame(width: style.spinnerSize + 4, height: style.spinnerSize + 4)
                                 .blur(radius: 1.5)
                                 .opacity(0.8)
                         }
                         .onAppear {
+                            // 立即启动转圈动画，不等待
                             startTranscribingAnimation()
+                        }
+                        .onChange(of: state) { _, newState in
+                            // 当状态切换到转文字或AI修正时，立即启动动画
+                            if newState == .transcribing || newState == .aiCorrecting {
+                                startTranscribingAnimation()
+                            }
                         }
                     }
                     .padding(.horizontal, style.horizontalPadding)
@@ -389,10 +451,69 @@ struct WaveformView: View {
                         insertion: .scale(scale: 1.05),
                         removal: .scale(scale: 0.85).combined(with: .opacity)
                     ))
+                    
+                case .aiCorrected:
+                    // AI修正成功：显示成功图标和提示
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.green)
+                        
+                        if style != .compact {
+                            Text("AI已优化")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(.primary)
+                        }
+                    }
+                    .padding(.horizontal, style.horizontalPadding)
+                    .padding(.vertical, style.verticalPadding)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.9).combined(with: .opacity),
+                        removal: .scale(scale: 1.1).combined(with: .opacity)
+                    ))
+                    
+                case .aiCorrectionFailed:
+                    // AI修正失败：显示失败图标
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.orange)
+                        
+                        if style != .compact {
+                            Text("AI优化失败")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, style.horizontalPadding)
+                    .padding(.vertical, style.verticalPadding)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.9).combined(with: .opacity),
+                        removal: .scale(scale: 1.1).combined(with: .opacity)
+                    ))
+                    
+                case .aiCorrectionDisabled:
+                    // AI修正未启用：显示禁用图标
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles.slash")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                        
+                        if style != .compact {
+                            Text("AI未启用")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, style.horizontalPadding)
+                    .padding(.vertical, style.verticalPadding)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.9).combined(with: .opacity),
+                        removal: .scale(scale: 1.1).combined(with: .opacity)
+                    ))
                 }
             }
-            // 更流畅的弹簧动画 - 符合苹果设计规范
-            .animation(.spring(response: 0.35, dampingFraction: 0.75, blendDuration: 0.1), value: state)
+            // 不使用动画延迟，确保状态切换立即生效
             .id(state) // 强制在状态改变时重新创建视图，确保动画立即切换
         }
         .frame(width: size.width, height: size.height)
@@ -451,13 +572,14 @@ struct WaveformView: View {
     }
     
     private func startTranscribingAnimation() {
+        // 立即重置角度并启动动画，不等待
         rotationAngle = 0
-        // 使用缓入缓出的旋转动画，更有"呼吸感"
-        withAnimation(
-            .timingCurve(0.4, 0.0, 0.2, 1.0, duration: 1.2)
-            .repeatForever(autoreverses: false)
-        ) {
-            rotationAngle = 360
+        
+        // 使用线性动画确保连续旋转，立即开始
+        DispatchQueue.main.async {
+            withAnimation(.linear(duration: 1.2).repeatForever(autoreverses: false)) {
+                self.rotationAngle = 360
+            }
         }
     }
 }

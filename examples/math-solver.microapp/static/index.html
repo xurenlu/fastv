@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数学解题助手</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div class="container">
+      <h1>📐 数学解题助手</h1>
+      <p class="subtitle">拍照数学题目，获取详细解题步骤和知识点讲解</p>
+      
+      <div id="image-container" class="image-container">
+        <img id="preview" src="" alt="预览" style="display:none;">
+        <div id="placeholder" class="placeholder">
+          <div class="placeholder-icon">📷</div>
+          <p>点击下方按钮选择数学题目图片</p>
+          <p style="font-size: 12px; color: #a0aec0; margin-top: 8px;">图片将自动上传到云存储</p>
+        </div>
+      </div>
+      
+      <div class="actions">
+        <button id="pick-btn" class="btn btn-primary">选择题目图片</button>
+        <button id="solve-btn" class="btn btn-secondary" disabled>解题</button>
+      </div>
+      
+      <div id="result" class="result"></div>
+      
+      <div id="solution-section" style="display:none;">
+        <button id="explain-btn" class="btn btn-primary">获取详细讲解</button>
+        <div id="solution-content" class="solution-content"></div>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
+
