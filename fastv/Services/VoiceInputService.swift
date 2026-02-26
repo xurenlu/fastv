@@ -117,6 +117,62 @@ class VoiceInputService: ObservableObject {
         }
     }
     
+    /// 配置 AVAudioSession 以优化蓝牙设备支持
+    /// 蓝牙设备（如 AirPods、其他蓝牙耳机）需要特定的会话配置才能稳定工作
+    private func configureAudioSessionForBluetooth() {
+        #if os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        do {
+            // 设置为录音和播放模式，允许蓝牙输入和输出
+            try session.setCategory(
+                .playAndRecord,
+                mode: .voiceChat,
+                options: [.allowBluetooth, .allowBluetoothA2DP, .mixWithOthers]
+            )
+
+            // 设置首选采样率（蓝牙设备通常使用 16kHz）
+            try session.setPreferredSampleRate(16000)
+
+            // 设置首选 IO 缓冲区时长
+            // 对于实时对话，较长的缓冲区可以减少蓝牙丢帧，但会增加延迟
+            // 0.02 秒 = 20ms，在延迟和稳定性之间取得平衡
+            try session.setPreferredIOBufferDuration(0.02)
+
+            // 激活会话
+            try session.setActive(true)
+
+            print("✅ [VoiceInputService] AVAudioSession 配置成功:")
+            print("   - Category: \(session.category.rawValue)")
+            print("   - Mode: \(session.mode.rawValue)")
+            print("   - Sample Rate: \(session.sampleRate) Hz")
+            print("   - IO Buffer Duration: \(session.ioBufferDuration) 秒")
+            print("   - Input Available: \(session.isInputAvailable)")
+            if let inputRoute = session.currentRoute.inputs.first {
+                print("   - Input Route: \(inputRoute.portName) (type: \(inputRoute.portType.rawValue))")
+            }
+        } catch {
+            print("⚠️ [VoiceInputService] AVAudioSession 配置失败: \(error)")
+            // 配置失败不影响继续录音，使用系统默认设置
+        }
+        #else
+        // macOS 不使用 AVAudioSession，使用 AVAudioEngine 即可
+        print("ℹ️ [VoiceInputService] macOS 平台，跳过 AVAudioSession 配置")
+        #endif
+    }
+
+    /// 停用 AVAudioSession（iOS 上）
+    private func deactivateAudioSession() {
+        #if os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setActive(false)
+            print("✅ [VoiceInputService] AVAudioSession 已停用")
+        } catch {
+            print("⚠️ [VoiceInputService] AVAudioSession 停用失败: \(error)")
+        }
+        #endif
+    }
+
     /// 获取 BlackHole 设备 ID
     nonisolated private func getBlackHoleDeviceID() -> AudioDeviceID? {
         var propertyAddress = AudioObjectPropertyAddress(
@@ -183,12 +239,15 @@ class VoiceInputService: ObservableObject {
     /// 开始录音（同时录制麦克风和系统音频）
     func startRecording() throws {
         print("🎤 [VoiceInputService] startRecording() 被调用，当前 isRecording=\(isRecording)")
-        
+
         guard !isRecording else {
             print("ℹ️ [VoiceInputService] 已在录音中，跳过")
             return
         }
-        
+
+        // 配置 AVAudioSession 以优化蓝牙设备支持
+        configureAudioSessionForBluetooth()
+
         // 检查麦克风权限
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
         print("🎤 [VoiceInputService] 麦克风权限状态: \(status.rawValue) (\(statusDescription(status)))")
@@ -251,7 +310,16 @@ class VoiceInputService: ObservableObject {
         recordingOriginalFormat = format
 
         // 安装 tap 来捕获麦克风音频
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, time in
+        // 对于蓝牙设备，使用更大的缓冲区可以减少丢帧
+        // 4096 帧在 48kHz 下约 85ms，在 16kHz 下约 256ms
+        let bufferSize: AVAudioFrameCount
+        if format.sampleRate >= 44100 {
+            bufferSize = 4096  // 高采样率下约 85-93ms
+        } else {
+            bufferSize = 2048  // 低采样率下约 128ms
+        }
+        print("🎤 [VoiceInputService] 使用缓冲区大小: \(bufferSize) 帧 (约 \(Double(bufferSize) / format.sampleRate * 1000)ms)")
+        inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: format) { [weak self] buffer, time in
             guard let self = self else { return }
             self.processMicrophoneBuffer(buffer)
         }
@@ -430,7 +498,14 @@ class VoiceInputService: ObservableObject {
         print("✅ [VoiceInputService] 系统音频输入格式: \(sysFormat)")
 
         // 安装 tap 来捕获系统音频
-        sysInputNode.installTap(onBus: 0, bufferSize: 1024, format: sysFormat) { [weak self] buffer, time in
+        // 使用与麦克风相同的缓冲区大小策略
+        let sysBufferSize: AVAudioFrameCount
+        if sysFormat.sampleRate >= 44100 {
+            sysBufferSize = 4096
+        } else {
+            sysBufferSize = 2048
+        }
+        sysInputNode.installTap(onBus: 0, bufferSize: sysBufferSize, format: sysFormat) { [weak self] buffer, time in
             guard let self = self else { return }
             self.processSystemAudioBuffer(buffer)
         }
@@ -558,6 +633,11 @@ class VoiceInputService: ObservableObject {
             self.systemAudioBuffers = []
             self.currentSystemAudioBytes = 0
         }
+
+        // 停用 AVAudioSession（iOS 上）
+        #if os(iOS)
+        deactivateAudioSession()
+        #endif
 
         // 清空回調，避免循環引用
         onAudioData = nil
