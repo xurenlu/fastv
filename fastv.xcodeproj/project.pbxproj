@@ -597,6 +597,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/fastv/Services/ONNXRuntimeBridge.h";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+				SCRIPTING_DEFINITION_FILE = "fastv/fastv.sdef";
 			};
 			name = Debug;
 		};
@@ -656,6 +657,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/fastv/Services/ONNXRuntimeBridge.h";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+				SCRIPTING_DEFINITION_FILE = "fastv/fastv.sdef";
 			};
 			name = Release;
 		};

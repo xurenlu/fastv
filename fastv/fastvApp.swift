@@ -216,10 +216,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var windowObserver: NSObjectProtocol?
     private var userDefaultsObserver: NSObjectProtocol?
 
+    // AppleScript 支持
+    private var scriptingAppInstance: FastVScriptingApplication?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 应用启动完成后，初始化状态栏
         print("📱 [AppDelegate] 应用启动完成，初始化状态栏")
         StatusBarManager.shared.show()
+
+        // 初始化 AppleScript 支持
+        setupAppleScriptSupport()
 
         // 设置应用不自动退出（关闭窗口时保留在后台）
         NSApplication.shared.setActivationPolicy(.regular)
@@ -233,6 +239,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.setupNotificationObservers()
         }
+    }
+
+    /// 初始化 AppleScript 支持
+    private func setupAppleScriptSupport() {
+        print("📜 [AppDelegate] 初始化 AppleScript 支持...")
+
+        // 创建 AppleScript 应用实例
+        scriptingAppInstance = FastVScriptingApplication()
+
+        // 设置 AppleScript 事件委托
+        NSAppleEventManager.shared().setEventHandler(
+            self,
+            andSelector: #selector(handleAppleEvent(_:replyEvent:)),
+            forEventClass: AEEventClass(kCoreEventClass),
+            andEventID: AEEventID(kAEOpenDocuments)
+        )
+
+        print("✅ [AppDelegate] AppleScript 支持已启用")
+    }
+
+    /// 处理 AppleScript 事件
+    @objc private func handleAppleEvent(_ event: NSAppleEventDescriptor, replyEvent: NSAppleEventDescriptor) {
+        print("📜 [AppDelegate] 收到 AppleScript 事件")
+
+        // 这里可以处理特定的 AppleScript 事件
+        // 大部分命令将通过 .sdef 定义的接口直接处理
     }
 
     /// 设置通知观察者（由 AppDelegate 统一管理）
