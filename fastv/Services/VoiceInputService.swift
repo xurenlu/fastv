@@ -236,6 +236,86 @@ class VoiceInputService: ObservableObject {
         return nil
     }
     
+    /// 检测当前音频输入设备是否为蓝牙设备
+    private func isBluetoothDevice() -> Bool {
+        #if os(macOS)
+        var propertyAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        var dataSize: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(
+            AudioObjectID(kAudioObjectSystemObject),
+            &propertyAddress,
+            0,
+            nil,
+            &dataSize
+        ) == noErr else { return false }
+
+        let deviceCount = Int(dataSize) / MemoryLayout<AudioDeviceID>.size
+        var deviceIDs = [AudioDeviceID](repeating: 0, count: deviceCount)
+
+        guard AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &propertyAddress,
+            0,
+            nil,
+            &dataSize,
+            &deviceIDs
+        ) == noErr else { return false }
+
+        // 获取当前输入设备
+        var inputDeviceID = AudioDeviceID()
+        var inputDeviceSize = UInt32(MemoryLayout<AudioDeviceID>.size)
+        var inputDeviceAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        guard AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &inputDeviceAddress,
+            0,
+            nil,
+            &inputDeviceSize,
+            &inputDeviceID
+        ) == noErr else { return false }
+
+        // 检查当前输入设备是否为蓝牙设备
+        var transportAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyTransportType,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        var transportType = UInt32()
+        var transportSize = UInt32(MemoryLayout<UInt32>.size)
+
+        guard AudioObjectGetPropertyData(
+            inputDeviceID,
+            &transportAddress,
+            0,
+            nil,
+            &transportSize,
+            &transportType
+        ) == noErr else { return false }
+
+        // kAudioDeviceTransportTypeBluetooth = 0x0004
+        // kAudioDeviceTransportTypeBluetoothLE = 0x0012
+        return transportType == 0x0004 || transportType == 0x0012
+        #else
+        // iOS: 通过 AVAudioSession 检查
+        let session = AVAudioSession.sharedInstance()
+        guard let route = session.currentRoute.inputs.first else { return false }
+        return route.portType == .bluetoothA2DP ||
+               route.portType == .bluetoothHFP ||
+               route.portType == .bluetoothLE
+        #endif
+    }
+
     /// 开始录音（同时录制麦克风和系统音频）
     func startRecording() throws {
         print("🎤 [VoiceInputService] startRecording() 被调用，当前 isRecording=\(isRecording)")
@@ -310,15 +390,20 @@ class VoiceInputService: ObservableObject {
         recordingOriginalFormat = format
 
         // 安装 tap 来捕获麦克风音频
-        // 对于蓝牙设备，使用更大的缓冲区可以减少丢帧
-        // 4096 帧在 48kHz 下约 85ms，在 16kHz 下约 256ms
+        // 检测是否为蓝牙设备，使用更大的缓冲区以减少丢帧
+        let isBluetooth = isBluetoothDevice()
         let bufferSize: AVAudioFrameCount
-        if format.sampleRate >= 44100 {
+        if isBluetooth {
+            // 蓝牙设备需要更大的缓冲区来减少丢帧和卡顿
+            // 8192 帧在 48kHz 下约 170ms，在 16kHz 下约 512ms
+            bufferSize = 8192
+            print("🎤 [VoiceInputService] 检测到蓝牙设备，使用更大的缓冲区")
+        } else if format.sampleRate >= 44100 {
             bufferSize = 4096  // 高采样率下约 85-93ms
         } else {
             bufferSize = 2048  // 低采样率下约 128ms
         }
-        print("🎤 [VoiceInputService] 使用缓冲区大小: \(bufferSize) 帧 (约 \(Double(bufferSize) / format.sampleRate * 1000)ms)")
+        print("🎤 [VoiceInputService] 使用缓冲区大小: \(bufferSize) 帧 (约 \(Double(bufferSize) / format.sampleRate * 1000)ms), 蓝牙: \(isBluetooth)")
         inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: format) { [weak self] buffer, time in
             guard let self = self else { return }
             self.processMicrophoneBuffer(buffer)
@@ -498,9 +583,12 @@ class VoiceInputService: ObservableObject {
         print("✅ [VoiceInputService] 系统音频输入格式: \(sysFormat)")
 
         // 安装 tap 来捕获系统音频
-        // 使用与麦克风相同的缓冲区大小策略
+        // 使用与麦克风相同的缓冲区大小策略（包括蓝牙检测）
+        let isBluetooth = isBluetoothDevice()
         let sysBufferSize: AVAudioFrameCount
-        if sysFormat.sampleRate >= 44100 {
+        if isBluetooth {
+            sysBufferSize = 8192
+        } else if sysFormat.sampleRate >= 44100 {
             sysBufferSize = 4096
         } else {
             sysBufferSize = 2048

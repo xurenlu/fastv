@@ -414,7 +414,7 @@ private struct HistoryRecordRow: View {
                     .lineLimit(5)
                     .textSelection(.enabled)
                     .foregroundStyle(.primary)
-                Text(record.timestamp, style: .relative)
+                Text(record.timestamp, format: .dateTime.month().day().hour().minute())
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }

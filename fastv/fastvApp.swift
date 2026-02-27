@@ -216,6 +216,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var windowObserver: NSObjectProtocol?
     private var userDefaultsObserver: NSObjectProtocol?
     private var settingsShortcutObserver: Any?
+    private var appIsActiveObserver: NSObjectProtocol?
 
     // AppleScript 支持
     private var scriptingAppInstance: FastVScriptingApplication?
@@ -293,6 +294,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// 设置通知观察者（由 AppDelegate 统一管理）
     private func setupNotificationObservers() {
+        // 监听应用激活/失活状态变化（用于降低后台 CPU 占用）
+        appIsActiveObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            let isAppActive = NSApplication.shared.isActive
+            if !isAppActive {
+                print("⏸️ [AppDelegate] 应用进入后台，暂停非必要活动")
+                self.pauseBackgroundActivities()
+            } else {
+                print("▶️ [AppDelegate] 应用进入前台，恢复活动")
+                self.resumeBackgroundActivities()
+            }
+        }
+
         // 监听 UserDefaults 变化
         userDefaultsObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
@@ -312,6 +330,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// 通知快捷键配置已变化（通过通知中心传递给 fastvApp）
     private func notifyShortcutConfigChange() {
         NotificationCenter.default.post(name: .shortcutConfigDidChange, object: nil)
+    }
+
+    /// 暂停后台活动以降低 CPU 占用
+    private func pauseBackgroundActivities() {
+        // 暂停内存监控（如果正在运行）
+        #if DEBUG
+        MemoryMonitor.shared.stopMonitoring()
+        #endif
+
+        // 隐藏波形窗口（如果正在显示）
+        WaveformWindowManager.shared.cleanup()
+
+        // 如果正在录音，可以考虑是否要停止
+        // 这里我们保持录音状态，因为用户可能在后台使用语音输入
+    }
+
+    /// 恢复后台活动
+    private func resumeBackgroundActivities() {
+        // 恢复内存监控（仅在 Debug 模式）
+        #if DEBUG
+        MemoryMonitor.shared.startMonitoring()
+        #endif
     }
 
     /// 设置窗口标题为多语言的 APP 名称
@@ -360,6 +400,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             NotificationCenter.default.removeObserver(observer)
             userDefaultsObserver = nil
         }
+        if let observer = appIsActiveObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+            appIsActiveObserver = nil
+        }
 
         WaveformWindowManager.shared.cleanup()
         StatusBarManager.shared.cleanup()
@@ -372,6 +416,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if let observer = userDefaultsObserver {
             NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = appIsActiveObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
         }
     }
     
@@ -612,17 +659,16 @@ struct fastvApp: App {
         
         // 設置快捷鍵監聽回調（使用新版帶類型的回調）
         print("🔧 [fastvApp] 設置快捷鍵回調函數")
-        GlobalShortcutMonitor.shared.onShortcutPressedWithType = { shortcutType in
+        GlobalShortcutMonitor.shared.onShortcutPressedWithType = { [weak self] shortcutType in
             print("🎯 [fastvApp] onShortcutPressed 回調被觸發（類型: \(shortcutType)）")
-            Task { @MainActor in
-                await handleShortcutPressed(shortcutType: shortcutType)
-            }
+            // 立即开始关键操作，不等待 Task 调度
+            self?.handleShortcutPressedImmediate(shortcutType: shortcutType)
         }
-        
-        GlobalShortcutMonitor.shared.onShortcutReleasedWithType = { shortcutType in
+
+        GlobalShortcutMonitor.shared.onShortcutReleasedWithType = { [weak self] shortcutType in
             print("🎯 [fastvApp] onShortcutReleased 回調被觸發（類型: \(shortcutType)）")
             Task { @MainActor in
-                await handleShortcutReleased(shortcutType: shortcutType)
+                await self?.handleShortcutReleased(shortcutType: shortcutType)
             }
         }
         
@@ -659,7 +705,93 @@ struct fastvApp: App {
             GlobalShortcutMonitor.shared.stopMonitoring()
         }
     }
-    
+
+    /// 快捷键按下立即响应（同步路径，最小化延迟）
+    /// 执行关键操作：显示波形窗口、启动录音
+    private func handleShortcutPressedImmediate(shortcutType: ShortcutType = .voiceInput) {
+        // 确保在主线程执行
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async {
+                self.handleShortcutPressedImmediate(shortcutType: shortcutType)
+            }
+            return
+        }
+
+        let needsAI = shortcutType == .voiceInputWithAI
+        print("🎤 [fastvApp] handleShortcutPressedImmediate: 立即响应快捷鍵（類型: \(shortcutType), 需要AI: \(needsAI)）")
+
+        // 記錄開始時間和是否需要 AI
+        voiceInputStartTime = Date()
+        currentVoiceInputNeedsAI = needsAI
+
+        let preferences = UserPreferences.shared
+        currentSessionUsesIncremental = preferences.enableIncrementalTranscription
+        incrementalTranscriptionResults = []
+        currentSessionIncrementalAudioSeconds = 0
+        currentSessionIncrementalTranscriptionSeconds = 0
+        incrementalBatchRefinementTasks.forEach { $0.cancel() }
+        incrementalBatchRefinementTasks = []
+        incrementalBatchPartition = []
+        incrementalBatchRefinedTexts = []
+
+        let voiceService = VoiceInputService.shared
+        let waveformManager = WaveformWindowManager.shared
+
+        // 关键操作1: 立即显示波形窗口
+        print("📊 [fastvApp] 顯示波形窗口...")
+        waveformManager.show()
+        print("✅ [fastvApp] 波形窗口已显示")
+
+        // 关键操作2: 立即开始录音（这是最关键的操作，必须同步执行）
+        do {
+            print("🎤 [fastvApp] 尝试开始录音...")
+            try voiceService.startRecording()
+            print("✅ [fastvApp] 录音已开始")
+
+            // 连接音频数据回调
+            if currentSessionUsesIncremental {
+                let silenceDetector = SilenceDetector()
+                silenceDetector.silenceThreshold = preferences.silenceThreshold
+                silenceDetector.relativeThreshold = preferences.silenceRelativeThreshold
+                silenceDetector.minimumSilenceDuration = preferences.silenceDetectionDuration
+                silenceDetector.onSilenceDetected = { _ in
+                    let previousTask = incrementalTranscriptionTask
+                    incrementalTranscriptionTask = Task { @MainActor in
+                        await previousTask?.value
+                        await performIncrementalSegmentTranscription()
+                    }
+                }
+                currentSessionSilenceDetector = silenceDetector
+                voiceService.onAudioData = { level in
+                    waveformManager.updateAudioLevel(level)
+                    silenceDetector.processAudioLevel(level)
+                }
+                print("✅ [fastvApp] 智能分段已启用，停顿阈值: \(preferences.silenceDetectionDuration)秒")
+            } else {
+                currentSessionSilenceDetector = nil
+                voiceService.onAudioData = { level in
+                    waveformManager.updateAudioLevel(level)
+                }
+            }
+            print("✅ [fastvApp] 音频数据回调已连接")
+        } catch VoiceInputError.microphoneInUse {
+            print("❌ [fastvApp] 麦克风被占用（可能是闪电说或其他应用）")
+            waveformManager.hide()
+            Task { @MainActor in
+                showMicrophoneInUseAlert()
+            }
+        } catch VoiceInputError.microphonePermissionDenied {
+            print("❌ [fastvApp] 麦克风权限被拒绝")
+            waveformManager.hide()
+            Task { @MainActor in
+                showMicrophonePermissionAlert()
+            }
+        } catch {
+            print("❌ [fastvApp] 开始录音失败: \(error)")
+            waveformManager.hide()
+        }
+    }
+
     @MainActor
     private func handleShortcutPressed(shortcutType: ShortcutType = .voiceInput) async {
         let needsAI = shortcutType == .voiceInputWithAI
