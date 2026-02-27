@@ -658,17 +658,18 @@ struct fastvApp: App {
         print("  - AI校正快捷鍵: keyCode=\(preferences.voiceInputWithAIShortcutKeyCode), modifiers=\(preferences.voiceInputWithAIShortcutModifiers.rawValue)")
         
         // 設置快捷鍵監聽回調（使用新版帶類型的回調）
+        // 注意：fastvApp 是 struct，不能使用 [weak self]，但因为是值类型，不会产生循环引用
         print("🔧 [fastvApp] 設置快捷鍵回調函數")
-        GlobalShortcutMonitor.shared.onShortcutPressedWithType = { [weak self] shortcutType in
+        GlobalShortcutMonitor.shared.onShortcutPressedWithType = { shortcutType in
             print("🎯 [fastvApp] onShortcutPressed 回調被觸發（類型: \(shortcutType)）")
             // 立即开始关键操作，不等待 Task 调度
-            self?.handleShortcutPressedImmediate(shortcutType: shortcutType)
+            handleShortcutPressedImmediate(shortcutType: shortcutType)
         }
 
-        GlobalShortcutMonitor.shared.onShortcutReleasedWithType = { [weak self] shortcutType in
+        GlobalShortcutMonitor.shared.onShortcutReleasedWithType = { shortcutType in
             print("🎯 [fastvApp] onShortcutReleased 回調被觸發（類型: \(shortcutType)）")
             Task { @MainActor in
-                await self?.handleShortcutReleased(shortcutType: shortcutType)
+                await handleShortcutReleased(shortcutType: shortcutType)
             }
         }
         
