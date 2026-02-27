@@ -46,8 +46,13 @@ struct SpeechTranscriber {
         return Bundle.main.url(forResource: "config", withExtension: "yaml")
     }
     
-    // 缓存 token 映射
-    private static var tokenMap: [Int: String]?
+    // 缓存 token 映射（使用 NSCache 自动管理内存）
+    private static var tokenCache: NSCache<NSNumber, NSString> = {
+        let cache = NSCache<NSNumber, NSString>()
+        cache.countLimit = 10000  // 限制缓存条目数
+        cache.totalCostLimit = 10 * 1024 * 1024  // 限制总大小为 10MB
+        return cache
+    }()
     
     // am.mvn 文件从 Bundle 中读取（随 app 提供）
     private static func resolveCMVNURL() -> URL? {
@@ -662,20 +667,26 @@ struct SpeechTranscriber {
     
     /// 加载 token 映射表
     private static func loadTokenMap(from url: URL) async throws -> [Int: String] {
-        if let cached = tokenMap {
-            return cached
-        }
-        
+        // 首先检查缓存
         let data = try Data(contentsOf: url)
         let tokens = try JSONDecoder().decode([String].self, from: data)
-        
+
         var map: [Int: String] = [:]
         for (index, token) in tokens.enumerated() {
             map[index] = token
+            // 存入 NSCache
+            tokenCache.setObject(token as NSString, forKey: NSNumber(value: index))
         }
-        
-        tokenMap = map
+
         return map
+    }
+
+    /// 清除 token 缓存（用于释放内存）
+    static func clearTokenCache() {
+        tokenCache.removeAllObjects()
+        #if DEBUG
+        print("🧹 [SpeechTranscriber] Token 缓存已清除")
+        #endif
     }
     
     /// 后处理：将 token IDs 转换为文本

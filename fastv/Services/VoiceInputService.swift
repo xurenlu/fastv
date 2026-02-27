@@ -55,14 +55,14 @@ class VoiceInputService: ObservableObject {
     var onConvertedAudioData: ((Data) -> Void)?
     
     // 缓冲区大小限制（防止内存泄漏）
-    // 按照 48kHz * 4字节/样本 * 60秒 ≈ 11.5MB，限制为 50MB
-    private let maxBufferSizeBytes = 50 * 1024 * 1024
+    // 按照 48kHz * 4字节/样本 * 30秒 ≈ 5.8MB，限制为 10MB（降低内存占用）
+    private let maxBufferSizeBytes = 10 * 1024 * 1024
     private var currentBufferSizeBytes = 0
     private var currentSegmentSizeBytes = 0
 
     // 系统音频缓冲区限制（防止内存问题）
-    private let maxSystemAudioBuffers = 100
-    private let maxSystemAudioBytes = 10 * 1024 * 1024  // 10MB
+    private let maxSystemAudioBuffers = 50  // 减半
+    private let maxSystemAudioBytes = 3 * 1024 * 1024  // 3MB（降低）
     nonisolated(unsafe) private var currentSystemAudioBytes = 0
     
     private init() {

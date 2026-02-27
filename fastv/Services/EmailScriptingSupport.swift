@@ -21,12 +21,8 @@ class FastVScriptingApplication: NSObject {
     /// 获取所有邮件账户
     @objc(accounts)
     func getAccounts() -> [FastVAccountScripting] {
-        Task { @MainActor in
-            let accounts = await EmailStore.shared.getAccounts()
-            return accounts.map { FastVAccountScripting(account: $0) }
-        }
         // 同步返回已加载的账户
-        return []
+        return EmailStore.shared.accounts.map { FastVAccountScripting(account: $0) }
     }
 
     /// 获取默认账户
@@ -42,7 +38,19 @@ class FastVScriptingApplication: NSObject {
     @objc(setDefaultAccount:)
     func setDefaultAccount(_ account: FastVAccountScripting) {
         Task { @MainActor in
-            await EmailStore.shared.setDefaultAccount(accountId: account.accountId)
+            guard var targetAccount = EmailStore.shared.getAccount(id: account.accountId) else {
+                return
+            }
+            // 先将所有账号设为非默认
+            for var acc in EmailStore.shared.accounts {
+                if acc.isDefault {
+                    acc.isDefault = false
+                    try? await EmailStore.shared.updateAccount(acc)
+                }
+            }
+            // 设置目标账号为默认
+            targetAccount.isDefault = true
+            try? await EmailStore.shared.updateAccount(targetAccount)
         }
     }
 
@@ -71,10 +79,9 @@ class FastVScriptingApplication: NSObject {
         Task { @MainActor in
             do {
                 // 获取所有启用的账户
-                let accounts = await EmailStore.shared.getAccounts()
-                let enabledAccounts = accounts.filter { $0.isEnabled }
+                let accounts = EmailStore.shared.accounts.filter { $0.isEnabled }
 
-                guard let account = enabledAccounts.first else {
+                guard let account = accounts.first else {
                     print("⚠️ [AppleScript] 没有可用的邮件账户")
                     return
                 }
@@ -82,11 +89,11 @@ class FastVScriptingApplication: NSObject {
                 // 获取文件夹
                 var targetFolder: EmailFolder?
                 if let folderName = folder {
-                    let folders = await EmailStore.shared.getFolders(for: account.id)
+                    let folders = EmailStore.shared.getFolders(for: account.id)
                     targetFolder = folders.first { $0.name.uppercased() == folderName.uppercased() || $0.type.rawValue.uppercased() == folderName.uppercased() }
                 } else {
                     // 默认使用收件箱
-                    let folders = await EmailStore.shared.getFolders(for: account.id)
+                    let folders = EmailStore.shared.getFolders(for: account.id)
                     targetFolder = folders.first { $0.type == .inbox }
                 }
 
@@ -149,7 +156,7 @@ class FastVScriptingApplication: NSObject {
         Task { @MainActor in
             do {
                 // 获取默认账户
-                let accounts = await EmailStore.shared.getAccounts()
+                let accounts = EmailStore.shared.accounts
                 guard let account = accounts.first(where: { $0.isDefault }) ?? accounts.first else {
                     print("⚠️ [AppleScript] 没有可用的邮件账户")
                     return
@@ -225,11 +232,10 @@ class FastVScriptingApplication: NSObject {
 
         Task { @MainActor in
             do {
-                let accounts = await EmailStore.shared.getAccounts()
-                let enabledAccounts = accounts.filter { $0.isEnabled }
+                let accounts = EmailStore.shared.accounts.filter { $0.isEnabled }
 
-                for account in enabledAccounts {
-                    let folders = await EmailStore.shared.getFolders(for: account.id)
+                for account in accounts {
+                    let folders = EmailStore.shared.getFolders(for: account.id)
 
                     for folderObj in folders {
                         if let folderName = folder {
@@ -267,13 +273,13 @@ class FastVScriptingApplication: NSObject {
 
         Task { @MainActor in
             do {
-                let accounts = await EmailStore.shared.getAccounts()
+                let accounts = EmailStore.shared.accounts
                 guard let account = accounts.first(where: { $0.isDefault }) ?? accounts.first else {
                     semaphore.signal()
                     return
                 }
 
-                let folders = await EmailStore.shared.getFolders(for: account.id)
+                let folders = EmailStore.shared.getFolders(for: account.id)
                 let targetFolder: EmailFolder?
 
                 if let folderName = folder {
@@ -288,7 +294,7 @@ class FastVScriptingApplication: NSObject {
                     return
                 }
 
-                let messages = await EmailStore.shared.getMessages(folderId: folder.id, limit: count, offset: 0)
+                let messages = EmailStore.shared.getMessages(for: folder.id, limit: count, offset: 0)
                 resultMessages = messages
 
                 semaphore.signal()
@@ -298,7 +304,9 @@ class FastVScriptingApplication: NSObject {
 
         _ = semaphore.wait(timeout: .now() + 10)
 
-        return resultMessages.map { FastVMessageScripting(message: $0, account: EmailStore.shared.getDefaultAccountSync()!, folder: EmailFolder()) } as NSArray
+        let account = EmailStore.shared.getDefaultAccountSync()!
+        let mockFolder = EmailFolder(id: UUID(), accountId: account.id, name: "Inbox", type: .inbox)
+        return resultMessages.map { FastVMessageScripting(message: $0, account: account, folder: mockFolder) } as NSArray
     }
 
     /// 获取未读邮件
@@ -311,13 +319,13 @@ class FastVScriptingApplication: NSObject {
 
         Task { @MainActor in
             do {
-                let accounts = await EmailStore.shared.getAccounts()
+                let accounts = EmailStore.shared.accounts
                 guard let account = accounts.first(where: { $0.isDefault }) ?? accounts.first else {
                     semaphore.signal()
                     return
                 }
 
-                let folders = await EmailStore.shared.getFolders(for: account.id)
+                let folders = EmailStore.shared.getFolders(for: account.id)
                 let targetFolder: EmailFolder?
 
                 if let folderName = folder {
@@ -332,7 +340,7 @@ class FastVScriptingApplication: NSObject {
                 }
 
                 let limit = count > 0 ? count : 100
-                var messages = await EmailStore.shared.getMessages(folderId: folder.id, limit: limit, offset: 0)
+                var messages = EmailStore.shared.getMessages(for: folder.id, limit: limit, offset: 0)
                 messages = messages.filter { !$0.isRead }
 
                 if count > 0 {
@@ -347,7 +355,9 @@ class FastVScriptingApplication: NSObject {
 
         _ = semaphore.wait(timeout: .now() + 10)
 
-        return resultMessages.map { FastVMessageScripting(message: $0, account: EmailStore.shared.getDefaultAccountSync()!, folder: EmailFolder()) } as NSArray
+        let account = EmailStore.shared.getDefaultAccountSync()!
+        let mockFolder = EmailFolder(id: UUID(), accountId: account.id, name: "Inbox", type: .inbox)
+        return resultMessages.map { FastVMessageScripting(message: $0, account: account, folder: mockFolder) } as NSArray
     }
 
     /// 获取草稿列表
@@ -360,7 +370,7 @@ class FastVScriptingApplication: NSObject {
 
         Task { @MainActor in
             do {
-                let accounts = await EmailStore.shared.getAccounts()
+                let accounts = EmailStore.shared.accounts
                 guard let account = accounts.first else {
                     semaphore.signal()
                     return
@@ -376,7 +386,9 @@ class FastVScriptingApplication: NSObject {
 
         _ = semaphore.wait(timeout: .now() + 10)
 
-        return resultMessages.map { FastVMessageScripting(message: $0, account: EmailStore.shared.getDefaultAccountSync()!, folder: EmailFolder()) } as NSArray
+        let account = EmailStore.shared.getDefaultAccountSync()!
+        let mockFolder = EmailFolder(id: UUID(), accountId: account.id, name: "Drafts", type: .drafts)
+        return resultMessages.map { FastVMessageScripting(message: $0, account: account, folder: mockFolder) } as NSArray
     }
 
     /// 搜索邮件
@@ -389,17 +401,17 @@ class FastVScriptingApplication: NSObject {
 
         Task { @MainActor in
             do {
-                let accounts = await EmailStore.shared.getAccounts()
+                let accounts = EmailStore.shared.accounts
                 guard let account = accounts.first(where: { $0.isDefault }) ?? accounts.first else {
                     semaphore.signal()
                     return
                 }
 
-                let folders = await EmailStore.shared.getFolders(for: account.id)
+                let folders = EmailStore.shared.getFolders(for: account.id)
                 let foldersToSearch = inFolder == nil ? folders : folders.filter { $0.name.uppercased() == inFolder!.uppercased() || $0.type.rawValue.uppercased() == inFolder!.uppercased() }
 
                 for folder in foldersToSearch {
-                    var messages = await EmailStore.shared.getMessages(folderId: folder.id, limit: 100, offset: 0)
+                    var messages = EmailStore.shared.getMessages(for: folder.id, limit: 100, offset: 0)
 
                     // 搜索过滤
                     messages = messages.filter { message in
@@ -428,7 +440,9 @@ class FastVScriptingApplication: NSObject {
 
         _ = semaphore.wait(timeout: .now() + 10)
 
-        return resultMessages.map { FastVMessageScripting(message: $0, account: EmailStore.shared.getDefaultAccountSync()!, folder: EmailFolder()) } as NSArray
+        let account = EmailStore.shared.getDefaultAccountSync()!
+        let mockFolder = EmailFolder(id: UUID(), accountId: account.id, name: "Inbox", type: .inbox)
+        return resultMessages.map { FastVMessageScripting(message: $0, account: account, folder: mockFolder) } as NSArray
     }
 
     /// 获取带有指定标签的邮件
@@ -441,16 +455,16 @@ class FastVScriptingApplication: NSObject {
 
         Task { @MainActor in
             do {
-                let accounts = await EmailStore.shared.getAccounts()
+                let accounts = EmailStore.shared.accounts
                 guard let account = accounts.first else {
                     semaphore.signal()
                     return
                 }
 
-                let folders = await EmailStore.shared.getFolders(for: account.id)
+                let folders = EmailStore.shared.getFolders(for: account.id)
 
                 for folder in folders {
-                    var messages = await EmailStore.shared.getMessages(folderId: folder.id, limit: 100, offset: 0)
+                    var messages = EmailStore.shared.getMessages(for: folder.id, limit: 100, offset: 0)
                     messages = messages.filter { $0.tags.contains(tag) }
                     resultMessages.append(contentsOf: messages)
 
@@ -467,7 +481,9 @@ class FastVScriptingApplication: NSObject {
 
         _ = semaphore.wait(timeout: .now() + 10)
 
-        return resultMessages.map { FastVMessageScripting(message: $0, account: EmailStore.shared.getDefaultAccountSync()!, folder: EmailFolder()) } as NSArray
+        let account = EmailStore.shared.getDefaultAccountSync()!
+        let mockFolder = EmailFolder(id: UUID(), accountId: account.id, name: "Inbox", type: .inbox)
+        return resultMessages.map { FastVMessageScripting(message: $0, account: account, folder: mockFolder) } as NSArray
     }
 
     // MARK: - 辅助方法
@@ -491,7 +507,7 @@ class FastVScriptingApplication: NSObject {
     }
 
     private func mimeTypeForFile(at path: String) -> String {
-        let extension = URL(fileURLWithPath: path).pathExtension.lowercased()
+        let fileExtension = URL(fileURLWithPath: path).pathExtension.lowercased()
         let mimeTypes: [String: String] = [
             "pdf": "application/pdf",
             "jpg": "image/jpeg",
@@ -506,7 +522,7 @@ class FastVScriptingApplication: NSObject {
             "xls": "application/vnd.ms-excel",
             "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         ]
-        return mimeTypes[extension] ?? "application/octet-stream"
+        return mimeTypes[fileExtension] ?? "application/octet-stream"
     }
 }
 
@@ -519,7 +535,7 @@ extension EmailStore {
         let semaphore = DispatchSemaphore(value: 0)
 
         Task { @MainActor in
-            result = await getDefaultAccount()
+            result = getDefaultAccount()
             semaphore.signal()
         }
 
@@ -527,37 +543,14 @@ extension EmailStore {
         return result
     }
 
-    /// 同步获取账户列表（用于 AppleScript）
-    func getAccountsSync() -> [EmailAccount] {
-        var result: [EmailAccount] = []
-        let semaphore = DispatchSemaphore(value: 0)
-
-        Task { @MainActor in
-            result = await getAccounts()
-            semaphore.signal()
-        }
-
-        _ = semaphore.wait(timeout: .now() + 5)
-        return result
-    }
-
     /// 同步获取文件夹列表（用于 AppleScript）
     func getFoldersSync(for accountId: UUID) -> [EmailFolder] {
-        var result: [EmailFolder] = []
-        let semaphore = DispatchSemaphore(value: 0)
-
-        Task { @MainActor in
-            result = await getFolders(for: accountId)
-            semaphore.signal()
-        }
-
-        _ = semaphore.wait(timeout: .now() + 5)
-        return result
+        return getFolders(for: accountId)
     }
 
     /// 同步获取草稿文件夹
     func getDraftsFolder(for accountId: UUID) async -> EmailFolder? {
-        let folders = await getFolders(for: accountId)
+        let folders = getFolders(for: accountId)
         return folders.first { $0.type == .drafts }
     }
 }

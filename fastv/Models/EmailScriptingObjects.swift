@@ -61,7 +61,19 @@ class FastVAccountScripting: NSObject {
     @objc(setIsDefault:)
     func setIsDefault(_ value: Bool) {
         Task { @MainActor in
-            await EmailStore.shared.setDefaultAccount(accountId: _account.id)
+            if value {
+                // 先将所有账号设为非默认
+                for var acc in EmailStore.shared.accounts {
+                    if acc.isDefault {
+                        acc.isDefault = false
+                        try? await EmailStore.shared.updateAccount(acc)
+                    }
+                }
+                // 设置当前账号为默认
+                var updatedAccount = _account
+                updatedAccount.isDefault = true
+                try? await EmailStore.shared.updateAccount(updatedAccount)
+            }
         }
     }
 
@@ -153,8 +165,8 @@ class FastVFolderScripting: NSObject {
 
         Task { @MainActor in
             do {
-                messages = try await EmailStore.shared.getMessages(
-                    folderId: _folder.id,
+                messages = EmailStore.shared.getMessages(
+                    for: _folder.id,
                     limit: 100,
                     offset: 0
                 )
@@ -394,7 +406,7 @@ class FastVMessageScripting: NSObject {
         }
     }
 
-    @objc(replyTo:body:htmlBody:replyAll:send:)
+    @objc(body:htmlBody:replyAll:send:)
     func handleReply(
         body: String,
         htmlBody: String? = nil,

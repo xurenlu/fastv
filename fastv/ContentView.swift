@@ -120,6 +120,9 @@ struct ContentView: View {
                     SettingsView()
                         .frame(minWidth: 800, idealWidth: 900, maxWidth: 1000, minHeight: 600, idealHeight: 700, maxHeight: 800)
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .openSettings)) { _ in
+                    showSettings = true
+                }
                 .id(selectedSidebarItem)
             }
             .frame(minWidth: 720, minHeight: 520)
@@ -132,6 +135,12 @@ struct ContentView: View {
             }
         }
     }
+}
+
+// MARK: - Notifications
+
+extension Notification.Name {
+    static let openSettings = Notification.Name("openSettings")
 }
 
 #Preview {

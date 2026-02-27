@@ -11,7 +11,15 @@ import SwiftUI
 /// 包含：AI服务管理、场景映射（语音优化/Todo/聊天）、AI文本优化、文本纠错、模型文件
 struct AIModelSettingsTab: View {
     @ObservedObject var preferences = UserPreferences.shared
-    
+
+    // 缓存计算结果，避免每次渲染都重新计算
+    @State private var totalRulesCount = 0
+    @State private var builtInRulesCount = 0
+    @State private var customRulesCount = 0
+    @State private var modelExists = false
+    @State private var aiServiceCount = 0
+    @State private var scenarioBindingCount = 0
+
     var body: some View {
         Form {
             // 文本纠错配置
@@ -19,16 +27,16 @@ struct AIModelSettingsTab: View {
                 // CTC 去重开关（强烈建议保持关闭，避免过度清理）
                 VStack(alignment: .leading, spacing: 8) {
                     Toggle("CTC 去重（不推荐，会误删叠词和数字）", isOn: $preferences.enableCTCDeduplication)
-                    
-                    Text(preferences.enableCTCDeduplication 
-                        ? "⚠️ 已启用：会错误合并\"谢谢\"→\"谢\"、\"我看看\"→\"我看\"、\"100\"→\"10\"，建议关闭" 
+
+                    Text(preferences.enableCTCDeduplication
+                        ? "⚠️ 已启用：会错误合并\"谢谢\"→\"谢\"、\"我看看\"→\"我看\"、\"100\"→\"10\"，建议关闭"
                         : "✓ 已禁用：保留叠词（谢谢、看看）和连续数字（100），推荐")
                         .font(.caption)
                         .foregroundStyle(preferences.enableCTCDeduplication ? .orange : .secondary)
                 }
-                
+
                 Divider()
-                
+
                 // 纠错规则管理入口
                 NavigationLink {
                     CommonMistakeManagementView()
@@ -40,10 +48,10 @@ struct AIModelSettingsTab: View {
                         Text("纠错规则管理")
                         Spacer()
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text("\(CommonMistakeManager.shared.totalCount()) 条规则")
+                            Text("\(totalRulesCount) 条规则")
                                 .foregroundStyle(.secondary)
                                 .font(.caption)
-                            Text("内置 \(CommonMistakeManager.shared.builtInRulesCount()) + 自定义 \(CommonMistakeManager.shared.customRulesCount())")
+                            Text("内置 \(builtInRulesCount) + 自定义 \(customRulesCount)")
                                 .foregroundStyle(.secondary)
                                 .font(.system(size: 10))
                         }
@@ -54,7 +62,7 @@ struct AIModelSettingsTab: View {
             } footer: {
                 Text("纠错规则包含内置规则（重复词、填充词等）和自定义规则。在纠错规则管理界面可以启用/禁用内置规则，或添加个人常错词。纠错速度极快（毫秒级），无需等待。")
             }
-            
+
             // AI 服务管理
             Section {
                 NavigationLink {
@@ -66,7 +74,7 @@ struct AIModelSettingsTab: View {
                         Image(systemName: "server.rack")
                         Text("管理 AI 服务")
                         Spacer()
-                        Text("\(preferences.aiServiceProfiles.count) 个服务")
+                        Text("\(aiServiceCount) 个服务")
                             .foregroundStyle(.secondary)
                             .font(.caption)
                     }
@@ -76,7 +84,7 @@ struct AIModelSettingsTab: View {
             } footer: {
                 Text("管理多个 AI 服务配置，支持 OpenAI、DashScope、智谱 AI、MiniMax（国内/国际）、Ollama、Claude、Some.IM、Gemini、OpenRouter 及自定义中转站等协议。")
             }
-            
+
             // AI 场景映射
             Section {
                 NavigationLink {
@@ -88,9 +96,8 @@ struct AIModelSettingsTab: View {
                         Image(systemName: "slider.horizontal.3")
                         Text("场景配置")
                         Spacer()
-                        let bindingCount = preferences.aiScenarioBindings.count
-                        if bindingCount > 0 {
-                            Text("\(bindingCount) 个自定义配置")
+                        if scenarioBindingCount > 0 {
+                            Text("\(scenarioBindingCount) 个自定义配置")
                                 .foregroundStyle(.secondary)
                                 .font(.caption)
                         } else {
@@ -105,11 +112,11 @@ struct AIModelSettingsTab: View {
             } footer: {
                 Text("为不同功能场景（语音输入优化、AI Todo、AI 聊天）配置独立的 AI 服务和模型。")
             }
-            
+
             // AI 文本优化功能
             Section {
                 Toggle(NSLocalizedString("ai.optimization.enable", comment: ""), isOn: $preferences.enableAIOptimization)
-                
+
                 if preferences.enableAIOptimization {
                     // 系统提示词设置
                     VStack(alignment: .leading, spacing: 8) {
@@ -117,9 +124,9 @@ struct AIModelSettingsTab: View {
                             Text(NSLocalizedString("ai.system.prompt", comment: ""))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                            
+
                             Spacer()
-                            
+
                             Button(action: {
                                 resetSystemPrompt()
                             }) {
@@ -130,7 +137,7 @@ struct AIModelSettingsTab: View {
                             .controlSize(.small)
                             .help(NSLocalizedString("ai.system.prompt.reset.help", comment: ""))
                         }
-                        
+
                         ScrollView {
                             TextEditor(text: $preferences.aiSystemPrompt)
                                 .font(.system(size: 12, design: .monospaced))
@@ -144,19 +151,19 @@ struct AIModelSettingsTab: View {
                             RoundedRectangle(cornerRadius: 6)
                                 .strokeBorder(Color.secondary.opacity(0.3), lineWidth: 1)
                         }
-                        
+
                         HStack(spacing: 4) {
                             Image(systemName: "info.circle")
                                 .font(.caption)
                                 .foregroundStyle(.blue)
-                            
+
                             Text(NSLocalizedString("ai.system.prompt.hint", comment: ""))
                                 .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
                         }
                     }
                     .padding(.leading, 20)
-                    
+
                     // 测试优化按钮
                     HStack {
                         Button(action: {
@@ -180,7 +187,7 @@ struct AIModelSettingsTab: View {
                 if preferences.enableAIOptimization {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(NSLocalizedString("ai.optimization.description", comment: ""))
-                        
+
                         Text(NSLocalizedString("ai.optimization.description.detail", comment: ""))
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
@@ -190,7 +197,7 @@ struct AIModelSettingsTab: View {
                     Text(NSLocalizedString("ai.optimization.description", comment: ""))
                 }
             }
-            
+
             // 语音转写模型
             Section {
                 NavigationLink {
@@ -202,7 +209,7 @@ struct AIModelSettingsTab: View {
                         Image(systemName: "arrow.down.circle")
                         Text("下载语音转写模型")
                         Spacer()
-                        if ModelDownloader.shared.checkModelFilesExist() {
+                        if modelExists {
                             Text("已下载")
                                 .foregroundStyle(.green)
                                 .font(.caption)
@@ -220,10 +227,23 @@ struct AIModelSettingsTab: View {
             }
         }
         .formStyle(.grouped)
+        .onAppear {
+            updateCachedValues()
+        }
     }
-    
+
     // MARK: - Helper Methods
-    
+
+    /// 更新缓存的值（只在视图出现时调用一次）
+    private func updateCachedValues() {
+        totalRulesCount = CommonMistakeManager.shared.totalCount()
+        builtInRulesCount = CommonMistakeManager.shared.builtInRulesCount()
+        customRulesCount = CommonMistakeManager.shared.customRulesCount()
+        modelExists = ModelDownloader.shared.checkModelFilesExist()
+        aiServiceCount = preferences.aiServiceProfiles.count
+        scenarioBindingCount = preferences.aiScenarioBindings.count
+    }
+
     /// 恢复默认系统提示词
     private func resetSystemPrompt() {
         let defaultSystemPrompt = """

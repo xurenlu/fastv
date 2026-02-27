@@ -14,15 +14,15 @@ struct SettingsView: View {
     @ObservedObject var preferences = UserPreferences.shared
     @Environment(\.dismiss) private var dismiss
     @State private var selectedTab: SettingsTab = .quick
-    
+
     enum SettingsTab: String, CaseIterable, Identifiable {
         case quick = "快速配置"
         case aiModel = "AI与模型"
         case email = "邮箱"
         case data = "数据与其他"
-        
+
         var id: String { rawValue }
-        
+
         var icon: String {
             switch self {
             case .quick: return "bolt.fill"
@@ -32,7 +32,7 @@ struct SettingsView: View {
             }
         }
     }
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -41,23 +41,12 @@ struct SettingsView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
                     .padding(.bottom, 12)
-                
+
                 Divider()
-                
-                // 内容区域
+
+                // 内容区域 - 使用 @ViewBuilder 和 id 保持视图状态
                 ScrollView {
-                    Group {
-                        switch selectedTab {
-                        case .quick:
-                            QuickSettingsTab()
-                        case .aiModel:
-                            AIModelSettingsTab()
-                        case .email:
-                            EmailSettingsTab()
-                        case .data:
-                            DataOtherSettingsTab()
-                        }
-                    }
+                    tabContent
                 }
             }
             .navigationTitle(NSLocalizedString("settings.title", comment: ""))
@@ -84,6 +73,24 @@ struct SettingsView: View {
             .frame(minWidth: 640, minHeight: 580)
         }
     }
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case .quick:
+            QuickSettingsTab()
+                .id("quick")
+        case .aiModel:
+            AIModelSettingsTab()
+                .id("aiModel")
+        case .email:
+            EmailSettingsTab()
+                .id("email")
+        case .data:
+            DataOtherSettingsTab()
+                .id("data")
+        }
+    }
 }
 
 // MARK: - Tab Bar
@@ -91,7 +98,7 @@ struct SettingsView: View {
 struct TabBar: View {
     @Binding var selectedTab: SettingsView.SettingsTab
     @Namespace private var animation
-    
+
     var body: some View {
         HStack(spacing: 0) {
             ForEach(SettingsView.SettingsTab.allCases) { tab in
@@ -100,7 +107,8 @@ struct TabBar: View {
                     isSelected: selectedTab == tab,
                     namespace: animation
                 ) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    // 使用更轻量的动画
+                    withAnimation(.linear(duration: 0.15)) {
                         selectedTab = tab
                     }
                 }
@@ -117,7 +125,7 @@ struct TabBarItem: View {
     let isSelected: Bool
     let namespace: Namespace.ID
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {

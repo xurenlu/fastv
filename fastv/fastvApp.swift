@@ -215,6 +215,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // 保存观察者引用，用于清理
     private var windowObserver: NSObjectProtocol?
     private var userDefaultsObserver: NSObjectProtocol?
+    private var settingsShortcutObserver: Any?
 
     // AppleScript 支持
     private var scriptingAppInstance: FastVScriptingApplication?
@@ -230,6 +231,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 设置应用不自动退出（关闭窗口时保留在后台）
         NSApplication.shared.setActivationPolicy(.regular)
 
+        // 设置 Cmd+, 快捷键打开设置窗口
+        setupSettingsShortcut()
+
         // 设置窗口标题为多语言的 APP 名称
         DispatchQueue.main.async {
             self.setWindowTitle()
@@ -239,6 +243,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.setupNotificationObservers()
         }
+    }
+
+    /// 设置 Cmd+, 快捷键打开设置窗口
+    private func setupSettingsShortcut() {
+        // 监听按键事件
+        settingsShortcutObserver = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
+            // 检查是否是 Cmd+, (Command + ,)
+            if event.modifierFlags.contains(.command) && event.characters == "," {
+                self.openSettingsWindow()
+                return nil // 消费事件，防止继续传递
+            }
+            return event
+        }
+        print("⌨️ [AppDelegate] Cmd+, 快捷键已设置")
+    }
+
+    /// 打开设置窗口
+    @objc private func openSettingsWindow() {
+        // 发送通知打开设置窗口
+        NotificationCenter.default.post(name: .openSettings, object: nil)
     }
 
     /// 初始化 AppleScript 支持
@@ -397,7 +421,7 @@ struct fastvApp: App {
 
                 // 启动内存监控（仅在 Debug 模式下）
                 #if DEBUG
-                MemoryMonitor.shared.startMonitoring(interval: 10.0)
+                MemoryMonitor.shared.startMonitoring()
                 #endif
 
                 // 应用启动时，先清理可能遗留的工具条窗口（兜底方案）

@@ -8,13 +8,36 @@
 import SwiftUI
 
 /// Tab 4: 数据与其他
-/// 包含：历史记录管理、权限测试、支持与推荐
+/// 包含：内存监控、历史记录管理、权限测试、支持与推荐
 struct DataOtherSettingsTab: View {
     @ObservedObject var preferences = UserPreferences.shared
     @State private var showAbout = false
-    
+    @State private var showMemoryMonitor = false
+
     var body: some View {
         Form {
+            // 内存监控
+            Section {
+                Button(action: {
+                    showMemoryMonitor = true
+                }) {
+                    HStack {
+                        Image(systemName: "chart.line.uptrend.xyaxis.circle.fill")
+                            .foregroundStyle(.blue)
+                        Text("内存监控")
+                        Spacer()
+                        Text(MemoryMonitor.shared.getMemoryUsageString())
+                            .foregroundStyle(.secondary)
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+            } header: {
+                Text("性能监控")
+            }
+
             // 关于
             Section {
                 Button(action: {
@@ -103,6 +126,10 @@ struct DataOtherSettingsTab: View {
         .formStyle(.grouped)
         .sheet(isPresented: $showAbout) {
             AboutView()
+        }
+        .sheet(isPresented: $showMemoryMonitor) {
+            MonitorChartView()
+                .frame(minWidth: 600, minHeight: 500)
         }
     }
 }

@@ -2,178 +2,430 @@
 //  MemoryMonitor.swift
 //  fastv
 //
-//  Created on 2025/12/07.
+//  内存监控服务 - 分层记录内存使用历史
 //
 
 import Foundation
 import Dispatch
 import Darwin
+import Combine
+
+/// 内存记录数据点
+struct MemoryRecord: Identifiable, Codable {
+    let id: UUID
+    let timestamp: Date
+    let memoryMB: Double
+    let recordedAt: RecordGranularity
+
+    enum RecordGranularity: String, Codable {
+        case perMinute = "minute"      // 最近1小时：每分钟
+        case per5Minutes = "5minutes"  // 1小时-5天：每5分钟
+        case perHour = "hour"          // 超过5天：每小时
+    }
+
+    init(timestamp: Date, memoryMB: Double, recordedAt: RecordGranularity) {
+        self.id = UUID()
+        self.timestamp = timestamp
+        self.memoryMB = memoryMB
+        self.recordedAt = recordedAt
+    }
+}
+
+/// 内存统计摘要
+struct MemorySummary {
+    let currentMB: Double
+    let hourAvgMB: Double
+    let hourMaxMB: Double
+    let dayAvgMB: Double
+    let dayMaxMB: Double
+    let allMaxMB: Double
+    let trend: MemoryTrend
+    let recordCount: Int
+
+    var currentFormatted: String {
+        "\(Int(currentMB)) MB"
+    }
+
+    var hourAvgFormatted: String {
+        "\(Int(hourAvgMB)) MB"
+    }
+
+    var hourMaxFormatted: String {
+        "\(Int(hourMaxMB)) MB"
+    }
+
+    var trendDescription: String {
+        switch trend {
+        case .stable:
+            return "稳定"
+        case .rising(let percent):
+            return "↑ \(Int(percent))%"
+        case .falling(let percent):
+            return "↓ \(Int(percent))%"
+        }
+    }
+}
+
+/// 内存趋势
+enum MemoryTrend {
+    case stable
+    case rising(Double)  // 上升百分比
+    case falling(Double) // 下降百分比
+}
 
 /// 内存监控服务
-/// 用于监控应用内存使用情况，在内存压力时记录日志并建议清理
-class MemoryMonitor {
+@MainActor
+class MemoryMonitor: ObservableObject {
     static let shared = MemoryMonitor()
 
-    private init() {}
+    // MARK: - Published Properties
+
+    @Published private(set) var currentMemoryMB: Double = 0
+    @Published private(set) var memoryHistory: [MemoryRecord] = []
+    @Published private(set) var isMonitoring = false
+
+    // MARK: - Constants
+
+    // 时间阈值
+    private let oneHourInterval: TimeInterval = 60 * 60           // 1小时
+    private let fiveDaysInterval: TimeInterval = 5 * 24 * 60 * 60 // 5天
+
+    // 采样间隔
+    private let perMinuteInterval: TimeInterval = 60               // 每分钟
+    private let per5MinutesInterval: TimeInterval = 5 * 60         // 每5分钟
+    private let perHourInterval: TimeInterval = 60 * 60           // 每小时
+
+    // 最大记录数量（防止无限增长）
+    private let maxPerMinuteRecords = 60        // 1小时 × 60分钟
+    private let maxPer5MinutesRecords = 1152    // (5天 - 1小时) / 5分钟 = 1152
+    private let maxPerHourRecords = 720         // 保留最近30天的小时数据
 
     // 内存压力阈值（MB）
-    private let warningThreshold: UInt64 = 500   // 500MB 警告
-    private let criticalThreshold: UInt64 = 800  // 800MB 严重警告
-    private let dangerThreshold: UInt64 = 1200   // 1.2GB 危险
+    private let warningThreshold: UInt64 = 2048   // 2GB 警告
+    private let criticalThreshold: UInt64 = 4096  // 4GB 严重警告
+    private let dangerThreshold: UInt64 = 6144    // 6GB 危险
 
-    // 监控定时器
-    private var monitorTimer: DispatchSourceTimer?
+    // MARK: - Private Properties
 
-    /// 开始监控内存使用
-    func startMonitoring(interval: TimeInterval = 5.0) {
-        guard monitorTimer == nil else { return }
+    private var monitorTimer: Timer?
+    private let saveKey = "memoryMonitorData"
 
-        let queue = DispatchQueue(label: "com.fastv.memoryMonitor")
-        monitorTimer = DispatchSource.makeTimerSource(queue: queue)
+    // MARK: - Init
 
-        monitorTimer?.schedule(deadline: .now() + interval, repeating: interval)
+    private init() {
+        loadFromDisk()
+        startMonitoring()
+    }
 
-        monitorTimer?.setEventHandler { [weak self] in
-            self?.checkMemoryUsage()
-        }
+    deinit {
+        // 在 deinit 中直接清理定时器（不调用 MainActor 方法）
+        monitorTimer?.invalidate()
+        monitorTimer = nil
+    }
 
-        monitorTimer?.resume()
+    // MARK: - Public Methods
 
-        print("📊 [MemoryMonitor] 内存监控已启动")
+    /// 开始监控
+    func startMonitoring() {
+        guard !isMonitoring else { return }
+
+        isMonitoring = true
+        updateMemory()
+
+        // 立即检查并清理过期数据
+        cleanupExpiredRecords()
+
+        // 创建定时器，根据当前数据量决定采样频率
+        scheduleNextSample()
+
+        print("✅ [MemoryMonitor] 内存监控已启动")
     }
 
     /// 停止监控
     func stopMonitoring() {
-        monitorTimer?.cancel()
+        isMonitoring = false
+        monitorTimer?.invalidate()
         monitorTimer = nil
-        print("📊 [MemoryMonitor] 内存监控已停止")
+
+        saveToDisk()
+        print("⏸️ [MemoryMonitor] 内存监控已停止")
     }
 
-    /// 检查当前内存使用情况
-    func checkMemoryUsage() {
-        let memoryInfo = getMemoryUsage()
-        let usedMB = memoryInfo.used / 1024 / 1024
-        let systemFreeMB = getSystemFreeMemoryMB()
-
-        #if DEBUG
-        if usedMB > warningThreshold {
-            // used=本进程驻留内存；systemFree=系统空闲内存（来自 host_statistics64）
-            let freeStr = systemFreeMB.map { "系统可用: \($0)MB" } ?? "本进程占用"
-            print("⚠️ [MemoryMonitor] 内存使用: \(usedMB)MB (\(freeStr))")
-
-            if usedMB > criticalThreshold {
-                print("🚨 [MemoryMonitor] 内存使用严重: \(usedMB)MB")
-                print("💡 建议: 清理缓存、释放不需要的资源")
-            }
-
-            if usedMB > dangerThreshold {
-                print("🔴 [MemoryMonitor] 内存使用危险: \(usedMB)MB")
-                print("💡 建议: 立即释放资源，重启应用")
-            }
-        }
-        #endif
+    /// 立即记录一次内存使用
+    func recordNow() {
+        updateMemory()
+        saveToDisk()
     }
 
-    /// 获取系统空闲内存（MB），来自 host_statistics64，失败时返回 nil
-    private func getSystemFreeMemoryMB() -> UInt64? {
-        var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
-        var stats = vm_statistics64_data_t()
-        let host = mach_host_self()
-        let kerr = withUnsafeMutablePointer(to: &stats) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-                host_statistics64(host, HOST_VM_INFO64, $0, &count)
-            }
-        }
-        guard kerr == KERN_SUCCESS else { return nil }
-        // free_count + inactive_count 约等于可回收/可用内存（页大小通常 16KB）
-        let pageSize = UInt64(vm_kernel_page_size)
-        let freeBytes = (UInt64(stats.free_count) + UInt64(stats.inactive_count)) * pageSize
-        return freeBytes / 1024 / 1024
+    /// 获取指定时间范围的内存记录
+    func getRecords(from startDate: Date, to endDate: Date) -> [MemoryRecord] {
+        return memoryHistory.filter { record in
+            record.timestamp >= startDate && record.timestamp <= endDate
+        }.sorted { $0.timestamp < $1.timestamp }
     }
 
-    /// 获取当前内存使用信息
-    func getMemoryUsage() -> (used: UInt64, free: UInt64, total: UInt64) {
-        var info = mach_task_basic_info()
-        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
+    /// 获取最近N分钟的记录
+    func getRecentMinutes(_ count: Int) -> [MemoryRecord] {
+        let cutoff = Date().addingTimeInterval(-TimeInterval(count) * 60)
+        return memoryHistory.filter { $0.timestamp >= cutoff && $0.recordedAt == .perMinute }
+            .sorted { $0.timestamp < $1.timestamp }
+    }
 
-        let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
-                task_info(mach_task_self_,
-                         task_flavor_t(MACH_TASK_BASIC_INFO),
-                         $0,
-                         &count)
-            }
-        }
+    /// 获取最近N小时的记录
+    func getRecentHours(_ count: Int) -> [MemoryRecord] {
+        let cutoff = Date().addingTimeInterval(-TimeInterval(count) * 60 * 60)
+        return memoryHistory.filter { $0.timestamp >= cutoff }
+            .sorted { $0.timestamp < $1.timestamp }
+    }
 
-        if kerr == KERN_SUCCESS {
-            return (used: info.resident_size, free: 0, total: info.resident_size)
-        } else {
-            return (used: 0, free: 0, total: 0)
-        }
+    /// 获取内存统计摘要
+    func getMemorySummary() -> MemorySummary {
+        let now = Date()
+        let oneHourAgo = now.addingTimeInterval(-oneHourInterval)
+        let recentDay = now.addingTimeInterval(-24 * 60 * 60)
+
+        let recentHour = getRecords(from: oneHourAgo, to: now)
+        let recentDayRecords = getRecords(from: recentDay, to: now)
+        let allRecords = memoryHistory
+
+        let currentMB = currentMemoryMB
+        let hourAvg = recentHour.isEmpty ? 0 : recentHour.map { $0.memoryMB }.reduce(0, +) / Double(recentHour.count)
+        let hourMax = recentHour.map { $0.memoryMB }.max() ?? 0
+        let dayAvg = recentDayRecords.isEmpty ? 0 : recentDayRecords.map { $0.memoryMB }.reduce(0, +) / Double(recentDayRecords.count)
+        let dayMax = recentDayRecords.map { $0.memoryMB }.max() ?? 0
+        let allMax = allRecords.map { $0.memoryMB }.max() ?? 0
+
+        // 计算趋势（最近1小时）
+        let trend = calculateTrend(recentHour)
+
+        return MemorySummary(
+            currentMB: currentMB,
+            hourAvgMB: hourAvg,
+            hourMaxMB: hourMax,
+            dayAvgMB: dayAvg,
+            dayMaxMB: dayMax,
+            allMaxMB: allMax,
+            trend: trend,
+            recordCount: allRecords.count
+        )
+    }
+
+    /// 清除所有记录
+    func clearAllRecords() {
+        memoryHistory.removeAll()
+        saveToDisk()
+        print("🗑️ [MemoryMonitor] 已清除所有记录")
     }
 
     /// 获取格式化的内存使用字符串
     func getMemoryUsageString() -> String {
-        let memoryInfo = getMemoryUsage()
-        let usedMB = memoryInfo.used / 1024 / 1024
-        return "\(usedMB)MB"
+        return "\(Int(currentMemoryMB)) MB"
     }
 
-    /// 强制垃圾回收（释放可释放的内存）
-    func forceGarbageCollection() {
-        autoreleasepool {
-            // 触发 autorelease pool 清理
+    // MARK: - Private Methods
+
+    private func scheduleNextSample() {
+        monitorTimer?.invalidate()
+
+        // 根据最旧的记录决定采样间隔
+        let now = Date()
+        let oneHourAgo = now.addingTimeInterval(-oneHourInterval)
+        let fiveDaysAgo = now.addingTimeInterval(-fiveDaysInterval)
+
+        // 检查是否有"每分钟"粒度的记录在1小时内
+        let hasRecentMinuteRecord = memoryHistory.contains { record in
+            record.recordedAt == .perMinute && record.timestamp > oneHourAgo
         }
 
-        // 在 macOS 上无法手动触发 Swift 的垃圾回收
-        // 但可以通过创建和释放大对象来促进内存回收
-        let _ = Data(repeating: 0, count: 1024 * 1024)  // 1MB
-        print("🧹 [MemoryMonitor] 已尝试释放内存")
-    }
-
-    deinit {
-        stopMonitoring()
-    }
-}
-
-// MARK: - 内存使用统计信息
-extension MemoryMonitor {
-    struct MemoryStats {
-        let usedMemory: UInt64      // 已使用内存（字节）
-        let freeMemory: UInt64      // 可用内存（字节）
-        let totalMemory: UInt64     // 总内存（字节）
-        let usagePercentage: Double // 使用百分比
-
-        var usedMB: UInt64 {
-            return usedMemory / 1024 / 1024
+        // 检查是否有"每5分钟"粒度的记录在5天内
+        let hasRecent5MinRecord = memoryHistory.contains { record in
+            record.recordedAt == .per5Minutes && record.timestamp > fiveDaysAgo
         }
 
-        var freeMB: UInt64 {
-            return freeMemory / 1024 / 1024
+        let interval: TimeInterval
+        if hasRecentMinuteRecord {
+            interval = perMinuteInterval
+        } else if hasRecent5MinRecord {
+            interval = per5MinutesInterval
+        } else {
+            interval = perHourInterval
         }
 
-        var totalMB: UInt64 {
-            return totalMemory / 1024 / 1024
+        monitorTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
+            self?.updateMemory()
+            self?.scheduleNextSample()
         }
     }
 
-    /// 获取详细的内存统计信息（简化版本，避免不兼容的字段）
-    func getDetailedStats() -> MemoryStats? {
-        // host_basic_info 不包含 free_count 字段，使用简化版本
-        let memoryInfo = getMemoryUsage()
+    private func updateMemory() {
+        let memoryMB = getCurrentMemoryUsage()
+        currentMemoryMB = memoryMB
 
-        // 估算可用内存（基于经验值）
-        let estimatedFree = max(0, Int64(8 * 1024 * 1024 * 1024) - Int64(memoryInfo.used))
+        let now = Date()
+        let oneHourAgo = now.addingTimeInterval(-oneHourInterval)
+        let fiveDaysAgo = now.addingTimeInterval(-fiveDaysInterval)
 
-        let total: UInt64 = 8 * 1024 * 1024 * 1024  // 假设 8GB 总内存
-        let used = memoryInfo.used
-        let percentage = Double(used) / Double(total) * 100
+        // 决定记录粒度
+        let granularity: MemoryRecord.RecordGranularity
+        let perMinuteCount = memoryHistory.filter { $0.recordedAt == .perMinute }.count
+        let per5MinCount = memoryHistory.filter { $0.recordedAt == .per5Minutes }.count
 
-        return MemoryStats(
-            usedMemory: used,
-            freeMemory: UInt64(max(0, estimatedFree)),
-            totalMemory: total,
-            usagePercentage: percentage
-        )
+        if perMinuteCount < maxPerMinuteRecords {
+            // 最近1小时：每分钟记录
+            granularity = .perMinute
+        } else if per5MinCount < maxPer5MinutesRecords {
+            // 1小时-5天：每5分钟记录
+            granularity = .per5Minutes
+        } else {
+            // 超过5天：每小时记录
+            granularity = .perHour
+        }
+
+        let record = MemoryRecord(timestamp: now, memoryMB: memoryMB, recordedAt: granularity)
+        memoryHistory.append(record)
+
+        // 清理过期数据和超出限制的数据
+        cleanupAndCompactRecords()
+
+        // 检查内存压力
+        checkMemoryPressure(memoryMB)
+
+        // 定期保存到磁盘（每10次更新保存一次）
+        if memoryHistory.count % 10 == 0 {
+            saveToDisk()
+        }
+
+        #if DEBUG
+        print("📊 [MemoryMonitor] 内存: \(String(format: "%.1f", memoryMB)) MB | 粒度: \(granularity.rawValue) | 记录数: \(memoryHistory.count)")
+        #endif
+    }
+
+    private func checkMemoryPressure(_ memoryMB: Double) {
+        let memoryUInt = UInt64(memoryMB * 1024 * 1024)
+
+        if memoryUInt > dangerThreshold {
+            print("🔴 [MemoryMonitor] 内存危险: \(Int(memoryMB))MB - 建议立即重启")
+        } else if memoryUInt > criticalThreshold {
+            print("🚨 [MemoryMonitor] 内存严重: \(Int(memoryMB))MB - 建议释放资源")
+        } else if memoryUInt > warningThreshold {
+            print("⚠️ [MemoryMonitor] 内存警告: \(Int(memoryMB))MB")
+        }
+    }
+
+    private func cleanupAndCompactRecords() {
+        let now = Date()
+        var recordsToKeep: Set<UUID> = []
+
+        // 1. 保留最近1小时的每分钟记录（最多60条）
+        let oneHourAgo = now.addingTimeInterval(-oneHourInterval)
+        let perMinuteRecords = memoryHistory.filter { $0.recordedAt == .perMinute && $0.timestamp > oneHourAgo }
+            .sorted { $0.timestamp > $1.timestamp }
+            .prefix(maxPerMinuteRecords)
+        perMinuteRecords.forEach { recordsToKeep.insert($0.id) }
+
+        // 2. 保留1小时到5天的每5分钟记录（最多1152条）
+        let fiveDaysAgo = now.addingTimeInterval(-fiveDaysInterval)
+        let per5MinRecords = memoryHistory.filter {
+            $0.recordedAt == .per5Minutes && $0.timestamp > fiveDaysAgo && $0.timestamp <= oneHourAgo
+        }.sorted { $0.timestamp > $1.timestamp }
+         .prefix(maxPer5MinutesRecords)
+        per5MinRecords.forEach { recordsToKeep.insert($0.id) }
+
+        // 3. 保留超过5天的小时记录（最多720条，即30天）
+        let perHourRecords = memoryHistory.filter {
+            $0.recordedAt == .perHour && $0.timestamp <= fiveDaysAgo
+        }.sorted { $0.timestamp > $1.timestamp }
+         .prefix(maxPerHourRecords)
+        perHourRecords.forEach { recordsToKeep.insert($0.id) }
+
+        // 4. 保留最近的每分钟记录（填补空缺）
+        let recentPerMinute = memoryHistory.filter { $0.recordedAt == .perMinute }
+            .sorted { $0.timestamp > $1.timestamp }
+            .prefix(60)
+        recentPerMinute.forEach { recordsToKeep.insert($0.id) }
+
+        // 应用过滤
+        memoryHistory = memoryHistory.filter { recordsToKeep.contains($0.id) }
+            .sorted { $0.timestamp < $1.timestamp }
+    }
+
+    private func cleanupExpiredRecords() {
+        let now = Date()
+        let thirtyDaysAgo = now.addingTimeInterval(-30 * 24 * 60 * 60)
+
+        // 删除超过30天的记录
+        memoryHistory = memoryHistory.filter { $0.timestamp > thirtyDaysAgo }
+    }
+
+    private func getCurrentMemoryUsage() -> Double {
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
+
+        let result = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+            }
+        }
+
+        if result == KERN_SUCCESS {
+            return Double(info.resident_size) / 1024 / 1024  // 转换为 MB
+        }
+        return 0
+    }
+
+    private func calculateTrend(_ records: [MemoryRecord]) -> MemoryTrend {
+        guard records.count >= 2 else { return .stable }
+
+        let recent = records.suffix(10)
+        let firstHalf = recent.prefix(recent.count / 2)
+        let secondHalf = recent.dropFirst(recent.count / 2)
+
+        let firstAvg = firstHalf.map { $0.memoryMB }.reduce(0, +) / Double(firstHalf.count)
+        let secondAvg = secondHalf.map { $0.memoryMB }.reduce(0, +) / Double(secondHalf.count)
+
+        let changePercent = (secondAvg - firstAvg) / firstAvg * 100
+
+        if changePercent > 10 {
+            return .rising(changePercent)
+        } else if changePercent < -10 {
+            return .falling(-changePercent)
+        } else {
+            return .stable
+        }
+    }
+
+    // MARK: - Persistence
+
+    private func saveToDisk() {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self else { return }
+            do {
+                let encoder = JSONEncoder()
+                encoder.dateEncodingStrategy = .iso8601
+                let data = try encoder.encode(self.memoryHistory)
+                UserDefaults.standard.set(data, forKey: self.saveKey)
+            } catch {
+                print("❌ [MemoryMonitor] 保存失败: \(error)")
+            }
+        }
+    }
+
+    private func loadFromDisk() {
+        guard let data = UserDefaults.standard.data(forKey: saveKey) else { return }
+
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            memoryHistory = try decoder.decode([MemoryRecord].self, from: data)
+            currentMemoryMB = getCurrentMemoryUsage()
+
+            // 清理过期数据
+            cleanupAndCompactRecords()
+
+            print("✅ [MemoryMonitor] 已加载 \(memoryHistory.count) 条记录")
+        } catch {
+            print("❌ [MemoryMonitor] 加载失败: \(error)")
+            memoryHistory = []
+        }
     }
 }
