@@ -125,7 +125,7 @@ struct MeetingRecordView: View {
                     Spacer()
 
                     Text(formatDuration(service.recordingDuration))
-                        .font(.monospaced(.body))
+                        .font(.system(.body, design: .monospaced))
                         .foregroundStyle(.secondary)
                 } else {
                     Image(systemName: "mic.circle.fill")
@@ -302,7 +302,7 @@ struct MeetingRecordRow: View {
         .padding(.vertical, 6)
         .contentShape(Rectangle())
         .onHover { hovering in
-            isHovered = hovered
+            isHovered = hovering
         }
         .background {
             if isHovered {
@@ -360,7 +360,6 @@ struct MeetingRecordDetailView: View {
             .padding(24)
         }
         .navigationTitle(record.isRecording ? "录音中" : "记录详情")
-        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if !record.isRecording {
@@ -496,7 +495,7 @@ struct MeetingRecordDetailView: View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(.accentColor.opacity(0.3), lineWidth: hasAIResults ? 2 : 0)
+                .stroke(Color.accentColor.opacity(0.3), lineWidth: hasAIResults ? 2 : 0)
         }
     }
 
