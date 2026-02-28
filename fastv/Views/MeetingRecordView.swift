@@ -193,7 +193,7 @@ struct MeetingRecordView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(.accentColor)
+                        .background(Color.accentColor)
                         .foregroundStyle(.white)
                         .cornerRadius(10)
                     }
