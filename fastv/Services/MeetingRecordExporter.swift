@@ -7,6 +7,7 @@
 
 import Foundation
 import AppKit
+import UniformTypeIdentifiers
 
 /// 会议记录导出服务
 struct MeetingRecordExporter {
@@ -58,6 +59,16 @@ struct MeetingRecordExporter {
         case .html:
             exportAsHTML(record)
         }
+    }
+
+    // MARK: - 辅助方法
+
+    private static func formatCurrentDate() -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        formatter.timeStyle = .short
+        formatter.locale = Locale(identifier: "zh_CN")
+        return formatter.string(from: Date())
     }
 
     // MARK: - TXT 格式
@@ -113,7 +124,7 @@ struct MeetingRecordExporter {
         }
 
         lines.append("========================================")
-        lines.append("导出时间: \(Date().formatted(date: .long, time: .short))")
+        lines.append("导出时间: \(formatCurrentDate())")
         lines.append("由 fastv 生成")
         lines.append("========================================")
 
@@ -172,7 +183,7 @@ struct MeetingRecordExporter {
         // 导出信息
         lines.append("---")
         lines.append("")
-        lines.append("*导出时间: \(Date().formatted(date: .long, time: .short)) | 由 fastv 生成*")
+        lines.append("*导出时间: \(formatCurrentDate()) | 由 fastv 生成*")
 
         return lines.joined(separator: "\n")
     }
@@ -348,7 +359,7 @@ struct MeetingRecordExporter {
         html += """
                 </div>
                 <div class="footer">
-                    导出时间: \(Date().formatted(date: .long, time: .short)) | 由 fastv 生成
+                    导出时间: \(formatCurrentDate()) | 由 fastv 生成
                 </div>
             </div>
         </body>
@@ -361,7 +372,7 @@ struct MeetingRecordExporter {
     // MARK: - PDF 格式
 
     private static func exportAsPDF(_ record: MeetingRecord) {
-        // 使用 NSAttributedString + NSPrintOperation 导出 PDF
+        // 使用 NSAttributedString + NSTextView 导出 PDF
         let title = record.title.isEmpty ? "会议记录" : record.title
         let fullText = record.correctedText.isEmpty ? record.originalText : record.correctedText
 
@@ -436,7 +447,7 @@ struct MeetingRecordExporter {
             .font: NSFont.systemFont(ofSize: 10),
             .foregroundColor: NSColor.tertiaryLabelColor
         ]
-        attrString.append(NSAttributedString(string: "导出时间: \(Date().formatted(date: .long, time: .short)) | 由 fastv 生成", attributes: footerAttr))
+        attrString.append(NSAttributedString(string: "导出时间: \(formatCurrentDate()) | 由 fastv 生成", attributes: footerAttr))
 
         // 保存对话框
         let savePanel = NSSavePanel()
@@ -451,14 +462,6 @@ struct MeetingRecordExporter {
     }
 
     private static func savePDF(attrString: NSAttributedString, to url: URL) {
-        let printInfo = NSPrintInfo.shared
-        printInfo.horizontalPagination = .auto
-        printInfo.verticalPagination = .auto
-        printInfo.leftMargin = 40
-        printInfo.rightMargin = 40
-        printInfo.topMargin = 40
-        printInfo.bottomMargin = 40
-
         let view = NSTextView()
         view.textStorage?.setAttributedString(attrString)
         view.isEditable = false
@@ -470,9 +473,6 @@ struct MeetingRecordExporter {
             options: [.usesLineFragmentOrigin, .usesFontLeading]
         ).size
         view.frame = NSRect(origin: .zero, size: NSSize(width: 680, height: max(size.height + 100, 600)))
-
-        let printOperation = NSPrintOperation(view: view, printInfo: printInfo)
-        printOperation.showsPrintPanel = false
 
         // 保存到 PDF
         let pdfData = view.dataWithPDF(inside: view.bounds)
