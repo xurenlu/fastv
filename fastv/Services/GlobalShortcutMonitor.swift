@@ -50,9 +50,14 @@ class GlobalShortcutMonitor {
     
     // FN键相关状态
     private var fnKeyReleaseTimer: Timer?
+    private var fnKeySafetyTimer: Timer? // 安全定时器：防止释放检测失败导致录音无限继续
     private var lastFNKeyEventTime: Date?
     private var hasOtherKeyPressedWithFN = false // 标记FN键按下时是否按下了其他键
     private var isCtrlPressedWithFN = false // 标记FN键按下时是否同时按下了Ctrl键
+
+    // FN键安全超时时间（秒）：如果在此时间内没有检测到释放，自动触发释放
+    // 设置为 5 分钟，避免正常录音被中断，同时防止无限录音
+    private let fnKeySafetyTimeout: TimeInterval = 300.0
     
     private init() {}
     
@@ -155,6 +160,8 @@ class GlobalShortcutMonitor {
         hasOtherKeyPressed = false
         fnKeyReleaseTimer?.invalidate()
         fnKeyReleaseTimer = nil
+        fnKeySafetyTimer?.invalidate()
+        fnKeySafetyTimer = nil
         lastFNKeyEventTime = nil
         hasOtherKeyPressedWithFN = false
     }
@@ -279,11 +286,11 @@ class GlobalShortcutMonitor {
         let monitoredModifiers: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
         let eventModifiers = event.modifierFlags.intersection(monitoredModifiers)
         let hasFunctionFlag = event.modifierFlags.contains(.function)
-        
+
         // 严格检查FN键：必须同时满足keyCode匹配和function标志位
         let isFNKeyByCode = event.keyCode == 0x3F
         let isFNKey = isFNKeyByCode && hasFunctionFlag
-        
+
         switch event.type {
         case .flagsChanged:
             // 对于flagsChanged事件，主要依赖function标志位的变化
@@ -293,16 +300,16 @@ class GlobalShortcutMonitor {
                 triggerFNRelease()
                 return
             }
-            
+
             // 只有当function标志位存在时才处理
             guard hasFunctionFlag else {
                 return
             }
-            
+
             // 检查是否按下了Ctrl键
             let hasCtrl = eventModifiers.contains(.control)
             isCtrlPressedWithFN = hasCtrl
-            
+
             // 判斷觸發的是哪種快捷鍵
             // 1. 如果主快捷鍵是 FN（無修飾鍵），次快捷鍵是 FN+Control
             // 2. 根據當前的 Ctrl 狀態決定類型
@@ -323,7 +330,7 @@ class GlobalShortcutMonitor {
                 // 不匹配任何快捷鍵
                 return
             }
-            
+
             print("🔑 [GlobalShortcutMonitor] FN鍵 flagsChanged: keyCode=\(event.keyCode), Ctrl=\(hasCtrl), 類型=\(detectedType)")
 
             if !isKeyPressed {
@@ -332,6 +339,15 @@ class GlobalShortcutMonitor {
                 hasOtherKeyPressedWithFN = false
                 currentShortcutType = detectedType
                 lastFNKeyEventTime = Date()
+
+                // 启动安全定时器：防止释放检测失败导致录音无限继续
+                // 如果在超时时间内没有检测到释放，自动触发释放
+                fnKeySafetyTimer?.invalidate()
+                fnKeySafetyTimer = Timer.scheduledTimer(withTimeInterval: fnKeySafetyTimeout, repeats: false) { [weak self] _ in
+                    guard let self = self, self.isKeyPressed else { return }
+                    print("⏰ [GlobalShortcutMonitor] FN键安全超时（\(self.fnKeySafetyTimeout)秒），自动触发释放")
+                    self.triggerFNRelease()
+                }
 
                 // 立即触发回调，减少延迟（防止首字丢失）
                 // 设置取消定时器：如果在50ms内检测到其他按键，标记为误触
@@ -360,7 +376,7 @@ class GlobalShortcutMonitor {
                 }
                 lastFNKeyEventTime = Date()
             }
-            
+
         case .keyDown:
             // 如果FN键按下后，又按了其他键，标记为"按了其他键"
             if isKeyPressed && !isFNKey {
@@ -380,6 +396,15 @@ class GlobalShortcutMonitor {
                 isKeyPressed = true
                 hasOtherKeyPressedWithFN = false
                 currentShortcutType = .voiceInput
+
+                // 启动安全定时器
+                fnKeySafetyTimer?.invalidate()
+                fnKeySafetyTimer = Timer.scheduledTimer(withTimeInterval: fnKeySafetyTimeout, repeats: false) { [weak self] _ in
+                    guard let self = self, self.isKeyPressed else { return }
+                    print("⏰ [GlobalShortcutMonitor] FN键安全超时（\(self.fnKeySafetyTimeout)秒），自动触发释放")
+                    self.triggerFNRelease()
+                }
+
                 // 同步调用回调，减少延迟
                 if let callback = onShortcutPressedWithType {
                     callback(.voiceInput)
@@ -387,24 +412,31 @@ class GlobalShortcutMonitor {
                     onShortcutPressed?()
                 }
             }
-            
+
         case .keyUp:
-            // 对于keyUp事件，必须同时满足keyCode和function标志位
-            guard isFNKey else { return }
-            if isKeyPressed {
-                print("✅ [GlobalShortcutMonitor] FN键释放（keyUp）！触发 onShortcutReleased")
+            // 备用释放检测：放宽 keyUp 检测条件
+            // 某些键盘驱动在松开 FN 键时可能不发送 function 标志，只匹配 keyCode
+            let isFNKeyByCodeOnly = event.keyCode == 0x3F
+
+            // 优先使用严格检查（带 function 标志），如果失败则使用备用检查（仅 keyCode）
+            let shouldTriggerRelease = (isFNKey && isKeyPressed) || (isFNKeyByCodeOnly && isKeyPressed && !hasFunctionFlag)
+
+            if shouldTriggerRelease {
+                print("✅ [GlobalShortcutMonitor] FN键释放（keyUp，isFNKey=\(isFNKey), isFNKeyByCodeOnly=\(isFNKeyByCodeOnly), hasFunctionFlag=\(hasFunctionFlag)）！触发 onShortcutReleased")
                 triggerFNRelease()
             }
-            
+
         default:
             break
         }
     }
     
     private func triggerFNRelease() {
-        // 取消定时器
+        // 取消所有定时器（包括误触检测定时器和安全定时器）
         fnKeyReleaseTimer?.invalidate()
         fnKeyReleaseTimer = nil
+        fnKeySafetyTimer?.invalidate()
+        fnKeySafetyTimer = nil
 
         // 只有在没有按其他键的情况下才触发释放事件
         if !hasOtherKeyPressedWithFN {
