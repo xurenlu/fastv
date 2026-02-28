@@ -41,7 +41,7 @@ struct MeetingRecordExporter {
             switch self {
             case .pdf: return .pdf
             case .txt: return .plainText
-            case .markdown: return .markdownText
+            case .markdown: return UTType(filenameExtension: "md") ?? .plainText
             case .html: return .html
             }
         }
@@ -135,7 +135,8 @@ struct MeetingRecordExporter {
 
     private static func exportAsMarkdown(_ record: MeetingRecord) {
         let content = generateMarkdownContent(record)
-        savePanel(content: content, fileName: "\(sanitizeFileName(record.title)).md", utType: .markdownText)
+        let mdType = UTType(filenameExtension: "md") ?? .plainText
+        savePanel(content: content, fileName: "\(sanitizeFileName(record.title)).md", utType: mdType)
     }
 
     private static func generateMarkdownContent(_ record: MeetingRecord) -> String {
