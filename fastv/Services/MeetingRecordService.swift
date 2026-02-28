@@ -41,7 +41,7 @@ class MeetingRecordService: ObservableObject {
 
     private init() {
         // 获取文档目录
-        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomain)
+        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
         documentsURL = paths[0].appendingPathComponent("MeetingRecords", isDirectory: true)
         recordsFileURL = documentsURL.appendingPathComponent("records.json")
 
