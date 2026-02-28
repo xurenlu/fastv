@@ -368,8 +368,22 @@ struct MeetingRecordDetailView: View {
                         Button("复制全文") {
                             copyFullText()
                         }
-                        Button("导出为文本文件") {
-                            exportAsTextFile()
+
+                        Divider()
+
+                        Menu("导出为") {
+                            Button("PDF 文档") {
+                                MeetingRecordExporter.export(record, format: .pdf)
+                            }
+                            Button("纯文本 (.txt)") {
+                                MeetingRecordExporter.export(record, format: .txt)
+                            }
+                            Button("Markdown (.md)") {
+                                MeetingRecordExporter.export(record, format: .markdown)
+                            }
+                            Button("网页 (.html)") {
+                                MeetingRecordExporter.export(record, format: .html)
+                            }
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -599,19 +613,6 @@ struct MeetingRecordDetailView: View {
         let text = record.correctedText.isEmpty ? record.originalText : record.correctedText
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
-    }
-
-    private func exportAsTextFile() {
-        let text = record.correctedText.isEmpty ? record.originalText : record.correctedText
-        let savePanel = NSSavePanel()
-        savePanel.nameFieldStringValue = "\(record.title).txt"
-        savePanel.allowedContentTypes = [.plainText]
-
-        savePanel.begin { response in
-            if response == .OK, let url = savePanel.url {
-                try? text.write(to: url, atomically: true, encoding: .utf8)
-            }
-        }
     }
 
     private func generateSummary() async {
