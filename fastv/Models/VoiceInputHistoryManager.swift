@@ -15,7 +15,7 @@ class VoiceInputHistoryManager: ObservableObject {
 
     @Published private(set) var records: [VoiceInputHistoryRecord] = []
 
-    private let maxRecords = 500
+    private let maxRecords = 100
     private let storageKey = "voiceInputHistoryRecords"
 
     private init() {

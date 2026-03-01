@@ -53,6 +53,7 @@ private var incrementalBatchPartition: [Range<Int>] = []       // 動態規劃�
 private var incrementalBatchRefinedTexts: [String?] = []       // 每批的轉寫結果，nil 表示未完成
 private let incrementalBatchMinSegments = 3  // 至少 3 段才觸發（2 段拼接效果提升有限）
 private let incrementalBatchMinDuration: TimeInterval = 3.0     // 每批至少 3 秒，避免過短
+private let incrementalBatchMaxDuration: TimeInterval = 6.0     // 每批最多 6 秒，避免過度合併導致效率下降
 
 /// 智能分段：靜音觸發時提取當前段落、轉寫並緩存（串行執行，不插入，鬆鍵時一次性輸出）
 /// 同時啟動二次拼接轉寫：多段音頻合併後再轉寫，準確率更高；鬆鍵時若已完成則替換零碎結果
@@ -98,8 +99,9 @@ private func performIncrementalSegmentTranscription() async {
     waveformManager.setRecording()
 }
 
-/// 動態規劃分批：每批至少 minSegments 段、至少 minDuration 秒，盡量讓每批較長以提升準確率
-/// 例如 7 段可拆成 4+3 或 7（一整批），9 段可拆成 6+3 或 9，優先讓每批盡長
+/// 動態規劃分批：每批至少 minSegments 段、至少 minDuration 秒、最多 maxDuration 秒
+/// 例如 7 段可拆成 4+3 或 7（一整批），9 段可拆成 6+3 或 9，優先讓每批盡長但不超过最大時長
+/// 避免過度合併（如先合併成10秒、後續再合併成16秒）導致轉寫效率大幅下降
 private func partitionSegmentsForBatchRefinement(_ segments: [IncrementalSegmentInfo]) -> [Range<Int>] {
     let n = segments.count
     guard n >= incrementalBatchMinSegments else { return [] }
@@ -118,7 +120,8 @@ private func partitionSegmentsForBatchRefinement(_ segments: [IncrementalSegment
         }
         var bestEnd = start + incrementalBatchMinSegments
         var bestDuration = segments[start..<bestEnd].reduce(0.0) { $0 + $1.audio.durationSeconds }
-        while bestDuration < incrementalBatchMinDuration && bestEnd < n {
+        // 若不足最小時長，繼續加段（但不超过最大時長）
+        while bestDuration < incrementalBatchMinDuration && bestEnd < n && bestDuration < incrementalBatchMaxDuration {
             bestEnd += 1
             bestDuration += segments[bestEnd - 1].audio.durationSeconds
         }
@@ -126,9 +129,14 @@ private func partitionSegmentsForBatchRefinement(_ segments: [IncrementalSegment
         if tailCount > 0 && tailCount < incrementalBatchMinSegments {
             bestEnd = n
         } else if bestEnd < n {
+            // 嘗試擴展當前批次，但同時滿足：最小時長、剩余可成批、不超过最大時長
             for end in (bestEnd + 1)...n {
                 let duration = segments[start..<end].reduce(0.0) { $0 + $1.audio.durationSeconds }
                 let tail = n - end
+                // 超過最大時長時停止擴展
+                if duration > incrementalBatchMaxDuration {
+                    break
+                }
                 if duration >= incrementalBatchMinDuration && (tail == 0 || tail >= incrementalBatchMinSegments) {
                     bestEnd = end
                 }
@@ -207,14 +215,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // 保存观察者引用，用于清理
     private var windowObserver: NSObjectProtocol?
     private var userDefaultsObserver: NSObjectProtocol?
+    private var settingsShortcutObserver: Any?
+    private var appIsActiveObserver: NSObjectProtocol?
+
+    // AppleScript 支持
+    private var scriptingAppInstance: FastVScriptingApplication?
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // 一次性清除已保存的窗口状态，解决「侧边栏被持久化为折叠」导致看不到菜单的问题
+        flushSavedSidebarStateIfNeeded()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 应用启动完成后，初始化状态栏
         print("📱 [AppDelegate] 应用启动完成，初始化状态栏")
         StatusBarManager.shared.show()
 
+        // 初始化 AppleScript 支持
+        setupAppleScriptSupport()
+
         // 设置应用不自动退出（关闭窗口时保留在后台）
         NSApplication.shared.setActivationPolicy(.regular)
+
+        // 设置 Cmd+, 快捷键打开设置窗口
+        setupSettingsShortcut()
 
         // 设置窗口标题为多语言的 APP 名称
         DispatchQueue.main.async {
@@ -227,8 +251,88 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// 设置 Cmd+, 快捷键打开设置窗口
+    private func setupSettingsShortcut() {
+        // 监听按键事件
+        settingsShortcutObserver = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
+            // 检查是否是 Cmd+, (Command + ,)
+            if event.modifierFlags.contains(.command) && event.characters == "," {
+                self.openSettingsWindow()
+                return nil // 消费事件，防止继续传递
+            }
+            return event
+        }
+        print("⌨️ [AppDelegate] Cmd+, 快捷键已设置")
+    }
+
+    /// 一次性清除已保存的窗口状态（含侧边栏折叠状态），解决 macOS 恢复「折叠」导致看不到菜单
+    private func flushSavedSidebarStateIfNeeded() {
+        let key = "sidebarStateFlush_v1"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        guard let libURL = try? FileManager.default.url(for: .libraryDirectory, in: .userDomainMask, appropriateFor: nil, create: false) else { return }
+        let bundleId = Bundle.main.bundleIdentifier ?? "fastv"
+        let windowsPlist = libURL
+            .appendingPathComponent("Saved Application State", isDirectory: true)
+            .appendingPathComponent("\(bundleId).savedState", isDirectory: true)
+            .appendingPathComponent("windows.plist", isDirectory: false)
+        if FileManager.default.fileExists(atPath: windowsPlist.path) {
+            try? FileManager.default.removeItem(at: windowsPlist)
+            print("🧹 [AppDelegate] 已清除窗口保存状态，解决侧边栏折叠持久化问题")
+        }
+        UserDefaults.standard.set(true, forKey: key)
+    }
+
+    /// 打开设置窗口
+    @objc private func openSettingsWindow() {
+        // 发送通知打开设置窗口
+        NotificationCenter.default.post(name: .openSettings, object: nil)
+    }
+
+    /// 初始化 AppleScript 支持
+    private func setupAppleScriptSupport() {
+        print("📜 [AppDelegate] 初始化 AppleScript 支持...")
+
+        // 创建 AppleScript 应用实例
+        scriptingAppInstance = FastVScriptingApplication()
+
+        // 设置 AppleScript 事件委托
+        NSAppleEventManager.shared().setEventHandler(
+            self,
+            andSelector: #selector(handleAppleEvent(_:replyEvent:)),
+            forEventClass: AEEventClass(kCoreEventClass),
+            andEventID: AEEventID(kAEOpenDocuments)
+        )
+
+        print("✅ [AppDelegate] AppleScript 支持已启用")
+    }
+
+    /// 处理 AppleScript 事件
+    @objc private func handleAppleEvent(_ event: NSAppleEventDescriptor, replyEvent: NSAppleEventDescriptor) {
+        print("📜 [AppDelegate] 收到 AppleScript 事件")
+
+        // 这里可以处理特定的 AppleScript 事件
+        // 大部分命令将通过 .sdef 定义的接口直接处理
+    }
+
     /// 设置通知观察者（由 AppDelegate 统一管理）
     private func setupNotificationObservers() {
+        // 监听应用激活/失活状态变化（用于降低后台 CPU 占用）
+        appIsActiveObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            let isAppActive = NSApplication.shared.isActive
+            if !isAppActive {
+                print("⏸️ [AppDelegate] 应用进入后台，暂停非必要活动")
+                self.pauseBackgroundActivities()
+            } else {
+                print("▶️ [AppDelegate] 应用进入前台，恢复活动")
+                self.resumeBackgroundActivities()
+            }
+        }
+
         // 监听 UserDefaults 变化
         userDefaultsObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
@@ -248,6 +352,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// 通知快捷键配置已变化（通过通知中心传递给 fastvApp）
     private func notifyShortcutConfigChange() {
         NotificationCenter.default.post(name: .shortcutConfigDidChange, object: nil)
+    }
+
+    /// 暂停后台活动以降低 CPU 占用
+    private func pauseBackgroundActivities() {
+        // 暂停内存监控（如果正在运行）
+        #if DEBUG
+        MemoryMonitor.shared.stopMonitoring()
+        #endif
+
+        // 隐藏波形窗口（如果正在显示）
+        WaveformWindowManager.shared.cleanup()
+
+        // 如果正在录音，可以考虑是否要停止
+        // 这里我们保持录音状态，因为用户可能在后台使用语音输入
+    }
+
+    /// 恢复后台活动
+    private func resumeBackgroundActivities() {
+        // 恢复内存监控（仅在 Debug 模式）
+        #if DEBUG
+        MemoryMonitor.shared.startMonitoring()
+        #endif
     }
 
     /// 设置窗口标题为多语言的 APP 名称
@@ -296,6 +422,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             NotificationCenter.default.removeObserver(observer)
             userDefaultsObserver = nil
         }
+        if let observer = appIsActiveObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+            appIsActiveObserver = nil
+        }
 
         WaveformWindowManager.shared.cleanup()
         StatusBarManager.shared.cleanup()
@@ -308,6 +438,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if let observer = userDefaultsObserver {
             NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = appIsActiveObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
         }
     }
     
@@ -357,7 +490,7 @@ struct fastvApp: App {
 
                 // 启动内存监控（仅在 Debug 模式下）
                 #if DEBUG
-                MemoryMonitor.shared.startMonitoring(interval: 10.0)
+                MemoryMonitor.shared.startMonitoring()
                 #endif
 
                 // 应用启动时，先清理可能遗留的工具条窗口（兜底方案）
@@ -547,14 +680,14 @@ struct fastvApp: App {
         print("  - AI校正快捷鍵: keyCode=\(preferences.voiceInputWithAIShortcutKeyCode), modifiers=\(preferences.voiceInputWithAIShortcutModifiers.rawValue)")
         
         // 設置快捷鍵監聽回調（使用新版帶類型的回調）
+        // 注意：fastvApp 是 struct，不能使用 [weak self]，但因为是值类型，不会产生循环引用
         print("🔧 [fastvApp] 設置快捷鍵回調函數")
         GlobalShortcutMonitor.shared.onShortcutPressedWithType = { shortcutType in
             print("🎯 [fastvApp] onShortcutPressed 回調被觸發（類型: \(shortcutType)）")
-            Task { @MainActor in
-                await handleShortcutPressed(shortcutType: shortcutType)
-            }
+            // 立即开始关键操作，不等待 Task 调度
+            handleShortcutPressedImmediate(shortcutType: shortcutType)
         }
-        
+
         GlobalShortcutMonitor.shared.onShortcutReleasedWithType = { shortcutType in
             print("🎯 [fastvApp] onShortcutReleased 回調被觸發（類型: \(shortcutType)）")
             Task { @MainActor in
@@ -595,7 +728,93 @@ struct fastvApp: App {
             GlobalShortcutMonitor.shared.stopMonitoring()
         }
     }
-    
+
+    /// 快捷键按下立即响应（同步路径，最小化延迟）
+    /// 执行关键操作：显示波形窗口、启动录音
+    private func handleShortcutPressedImmediate(shortcutType: ShortcutType = .voiceInput) {
+        // 确保在主线程执行
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async {
+                self.handleShortcutPressedImmediate(shortcutType: shortcutType)
+            }
+            return
+        }
+
+        let needsAI = shortcutType == .voiceInputWithAI
+        print("🎤 [fastvApp] handleShortcutPressedImmediate: 立即响应快捷鍵（類型: \(shortcutType), 需要AI: \(needsAI)）")
+
+        // 記錄開始時間和是否需要 AI
+        voiceInputStartTime = Date()
+        currentVoiceInputNeedsAI = needsAI
+
+        let preferences = UserPreferences.shared
+        currentSessionUsesIncremental = preferences.enableIncrementalTranscription
+        incrementalTranscriptionResults = []
+        currentSessionIncrementalAudioSeconds = 0
+        currentSessionIncrementalTranscriptionSeconds = 0
+        incrementalBatchRefinementTasks.forEach { $0.cancel() }
+        incrementalBatchRefinementTasks = []
+        incrementalBatchPartition = []
+        incrementalBatchRefinedTexts = []
+
+        let voiceService = VoiceInputService.shared
+        let waveformManager = WaveformWindowManager.shared
+
+        // 关键操作1: 立即显示波形窗口
+        print("📊 [fastvApp] 顯示波形窗口...")
+        waveformManager.show()
+        print("✅ [fastvApp] 波形窗口已显示")
+
+        // 关键操作2: 立即开始录音（这是最关键的操作，必须同步执行）
+        do {
+            print("🎤 [fastvApp] 尝试开始录音...")
+            try voiceService.startRecording()
+            print("✅ [fastvApp] 录音已开始")
+
+            // 连接音频数据回调
+            if currentSessionUsesIncremental {
+                let silenceDetector = SilenceDetector()
+                silenceDetector.silenceThreshold = preferences.silenceThreshold
+                silenceDetector.relativeThreshold = preferences.silenceRelativeThreshold
+                silenceDetector.minimumSilenceDuration = preferences.silenceDetectionDuration
+                silenceDetector.onSilenceDetected = { _ in
+                    let previousTask = incrementalTranscriptionTask
+                    incrementalTranscriptionTask = Task { @MainActor in
+                        await previousTask?.value
+                        await performIncrementalSegmentTranscription()
+                    }
+                }
+                currentSessionSilenceDetector = silenceDetector
+                voiceService.onAudioData = { level in
+                    waveformManager.updateAudioLevel(level)
+                    silenceDetector.processAudioLevel(level)
+                }
+                print("✅ [fastvApp] 智能分段已启用，停顿阈值: \(preferences.silenceDetectionDuration)秒")
+            } else {
+                currentSessionSilenceDetector = nil
+                voiceService.onAudioData = { level in
+                    waveformManager.updateAudioLevel(level)
+                }
+            }
+            print("✅ [fastvApp] 音频数据回调已连接")
+        } catch VoiceInputError.microphoneInUse {
+            print("❌ [fastvApp] 麦克风被占用（可能是闪电说或其他应用）")
+            waveformManager.hide()
+            Task { @MainActor in
+                showMicrophoneInUseAlert()
+            }
+        } catch VoiceInputError.microphonePermissionDenied {
+            print("❌ [fastvApp] 麦克风权限被拒绝")
+            waveformManager.hide()
+            Task { @MainActor in
+                showMicrophonePermissionAlert()
+            }
+        } catch {
+            print("❌ [fastvApp] 开始录音失败: \(error)")
+            waveformManager.hide()
+        }
+    }
+
     @MainActor
     private func handleShortcutPressed(shortcutType: ShortcutType = .voiceInput) async {
         let needsAI = shortcutType == .voiceInputWithAI

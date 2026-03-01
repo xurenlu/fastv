@@ -634,9 +634,15 @@ class ONNXRuntimeWrapper {
         
         // 成功
         guard let ctcLogitsOutput = outputValues.first, let ctcLogits = ctcLogitsOutput else {
+            // 清理输出张量
+            for tensor in outputValues {
+                if let tensor = tensor {
+                    api.pointee.ReleaseValue(tensor)
+                }
+            }
             throw VideoProcessingError.transcriptionFailed("无法获取 ctc_logits 输出结果")
         }
-        
+
         // 获取 encoder_out_lens（实际序列长度）
         var actualSequenceLength: Int? = nil
         if outputValues.count > 1, let encoderOutLensOutput = outputValues[1] {
@@ -645,14 +651,23 @@ class ONNXRuntimeWrapper {
             print("encoder_out_lens: \(actualSequenceLength ?? -1)")
             #endif
         }
-        
+
         // 从 CTC logits 解码 token IDs
         let tokenIDs = try decodeCTCLogits(from: ctcLogits, actualLength: actualSequenceLength, api: api, enableDeduplication: enableCTCDeduplication)
-        
+
         #if DEBUG
         print("ONNX Runtime CTC 解码后的 token IDs: \(tokenIDs.prefix(20))... (共 \(tokenIDs.count) 个)")
         #endif
-        
+
+        // ⚠️ 关键修复：释放输出张量，这是严重的内存泄漏点！
+        // CTC logits 张量可能非常大（sequence_length × vocab_size × 4 字节）
+        // 每次推理后必须释放，否则会累积导致内存暴涨
+        for tensor in outputValues {
+            if let tensor = tensor {
+                api.pointee.ReleaseValue(tensor)
+            }
+        }
+
         return tokenIDs
     }
     

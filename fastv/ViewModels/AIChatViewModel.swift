@@ -649,12 +649,12 @@ class AIChatViewModel: ObservableObject {
     private func generateSessionSummary(sessionId: UUID) async {
         let messages = chatManager.getMessages(for: sessionId)
         guard !messages.isEmpty else { return }
-        
+
         let preferences = UserPreferences.shared
         let profile = selectedProfile ?? preferences.getConfig(for: .aiChat).profile
         let config = preferences.getConfig(for: .aiChat)
         let model = selectedModel.isEmpty ? config.model : selectedModel
-        
+
         do {
             let summary = try await chatService.generateSummary(
                 messages: messages,
@@ -662,7 +662,7 @@ class AIChatViewModel: ObservableObject {
                 model: model,
                 timeout: config.timeout
             )
-            
+
             // 更新会话总结
             chatManager.updateSessionSummary(sessionId, summary: summary)
             print("✅ [AIChatViewModel] 会话总结生成成功")
@@ -670,6 +670,22 @@ class AIChatViewModel: ObservableObject {
             print("❌ [AIChatViewModel] 生成会话总结失败: \(error.localizedDescription)")
             // 总结生成失败不影响正常使用，静默处理
         }
+    }
+
+    /// 清理资源（在视图销毁时调用）
+    /// 由于 @MainActor 类的 deinit 可能在主线程上执行，这里提供一个显式的清理方法
+    func cleanup() {
+        cancellables.removeAll()
+        #if DEBUG
+        print("🧹 [AIChatViewModel] 已清理 Combine 订阅")
+        #endif
+    }
+
+    deinit {
+        cancellables.removeAll()
+        #if DEBUG
+        print("🧹 [AIChatViewModel] deinit - 已清理所有订阅")
+        #endif
     }
 }
 

@@ -91,7 +91,7 @@ class EmailViewModel: ObservableObject {
     
     // 防抖机制：避免短时间内多次排序
     private var updateMessagesTask: Task<Void, Never>?
-    private let updateDebounceInterval: TimeInterval = 0.05 // 50ms防抖
+    private let updateDebounceInterval: TimeInterval = 0.5 // 500ms防抖（降低CPU占用）
     
     @Published var accounts: [EmailAccount] = []
     @Published var folders: [EmailFolder] = []
@@ -174,12 +174,12 @@ class EmailViewModel: ObservableObject {
         // 加载设置
         showAttachments = preferences.emailShowAttachments
         showImages = preferences.emailShowImages
-        
+
         // 订阅 EmailStore 的账号变化
         emailStore.$accounts
             .receive(on: DispatchQueue.main)
             .assign(to: &$accounts)
-        
+
         // 订阅 EmailStore 的文件夹变化
         emailStore.$folders
             .receive(on: DispatchQueue.main)
@@ -192,34 +192,37 @@ class EmailViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
-        
+
         // 订阅 EmailStore 的邮件变化（使用防抖机制避免重复排序）
         emailStore.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self = self else { return }
-                
+
                 // 取消之前的更新任务
                 self.updateMessagesTask?.cancel()
-                
+
                 // 创建新的防抖任务
                 self.updateMessagesTask = Task { [weak self] in
                     guard let self = self else { return }
-                    
+
                     // 等待防抖间隔
                     try? await Task.sleep(nanoseconds: UInt64(self.updateDebounceInterval * 1_000_000_000))
-                    
+
                     // 检查是否被取消
                     guard !Task.isCancelled else {
                         print("🚫 [EmailViewModel] 更新任务被取消（防抖）")
                         return
                     }
-                    
+
                     print("🔄 [EmailViewModel] 执行防抖后的邮件列表更新")
                     await self.updateMessagesFromStore()
                 }
             }
             .store(in: &cancellables)
+
+        // ⚠️ 禁用后台同步任务 - 会导致高 CPU 占用
+        // startBackgroundSyncTask()
         
         // 监听过滤/排序模式变化，重新应用过滤和排序
         Publishers.CombineLatest($filterMode, $sortMode)

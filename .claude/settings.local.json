@@ -6,7 +6,13 @@
       "Bash(git checkout:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(find:*)",
+      "Bash(git tag:*)",
+      "Bash(swiftc:*)",
+      "Bash(ls:*)",
+      "Bash(git check-ignore:*)"
     ],
     "deny": [],
     "ask": []

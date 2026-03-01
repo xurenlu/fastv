@@ -1,0 +1,647 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE dictionary SYSTEM "file://localhost/System/Library/DTDs/sdef.dtd">
+
+<!--
+    fastv.sdef
+    妙打 (FastV) AppleScript 脚本定义文件
+
+    支持 AI 应用通过 AppleScript 访问邮件功能
+-->
+
+<dictionary title="FastV Scripting Terminology">
+
+    <!--
+        === 术语定义 ===
+        定义 AppleScript 命令、类、属性和枚举的术语
+    -->
+    <terminology>
+
+        <!-- === 核心命令 === -->
+
+        <command name="get mail messages" code="FVstGetM" description="获取邮件列表">
+            <direct-parameter type="specifier" description="邮件的 specifier (如 every mail message of account ...)">
+                <cocoa class="NSSpecifier"/>
+            </direct-parameter>
+            <parameter name="limit" code="FVlm" type="integer" optional="yes" description="限制返回的邮件数量">
+                <cocoa key="limit"/>
+            </parameter>
+            <parameter name="folder" code="FVfl" type="text" optional="yes" description="文件夹名称 (如 INBOX, Sent)">
+                <cocoa key="folder"/>
+            </parameter>
+            <parameter name="unread only" code="FVur" type="boolean" optional="yes" description="仅获取未读邮件">
+                <cocoa key="unreadOnly"/>
+            </parameter>
+            <parameter name="since" code="FVsn" type="date" optional="yes" description="获取指定日期之后的邮件">
+                <cocoa key="since"/>
+            </parameter>
+            <parameter name="search" code="FVsr" type="text" optional="yes" description="搜索关键词">
+                <cocoa key="search"/>
+            </parameter>
+            <result type="list of mail message" description="邮件列表"/>
+        </command>
+
+        <command name="send mail" code="FVstSend" description="发送邮件">
+            <direct-parameter type="mail message" description="要发送的邮件对象"/>
+            <parameter name="account" code="FVac" type="account" optional="yes" description="发送账户 (默认使用默认账户)">
+                <cocoa key="account"/>
+            </parameter>
+            <result type="boolean" description="发送是否成功"/>
+        </command>
+
+        <command name="create mail" code="FVstCrt" description="创建邮件草稿">
+            <parameter name="to" code="FVto" type="text" description="收件人邮箱地址">
+                <cocoa key="to"/>
+            </parameter>
+            <parameter name="subject" code="FVsu" type="text" description="邮件主题">
+                <cocoa key="subject"/>
+            </parameter>
+            <parameter name="body" code="FVbd" type="text" optional="yes" description="邮件正文">
+                <cocoa key="body"/>
+            </parameter>
+            <parameter name="html body" code="FVhb" type="text" optional="yes" description="HTML 邮件正文">
+                <cocoa key="htmlBody"/>
+            </parameter>
+            <parameter name="cc" code="FVcc" type="text" optional="yes" description="抄送地址">
+                <cocoa key="cc"/>
+            </parameter>
+            <parameter name="bcc" code="FVbc" type="text" optional="yes" description="密送地址">
+                <cocoa key="bcc"/>
+            </parameter>
+            <parameter name="attachments" code="FVat" type="list of text" optional="yes" description="附件文件路径列表">
+                <cocoa key="attachments"/>
+            </parameter>
+            <parameter name="save as draft" code="FVsd" type="boolean" optional="yes" description="保存为草稿（不发送）">
+                <cocoa key="saveAsDraft"/>
+            </parameter>
+            <result type="mail message" description="创建的邮件对象"/>
+        </command>
+
+        <command name="reply to mail" code="FVstRep" description="回复邮件">
+            <direct-parameter type="mail message" description="要回复的邮件"/>
+            <parameter name="body" code="FVbd" type="text" description="回复正文">
+                <cocoa key="body"/>
+            </parameter>
+            <parameter name="html body" code="FVhb" type="text" optional="yes" description="HTML 回复正文">
+                <cocoa key="htmlBody"/>
+            </parameter>
+            <parameter name="reply all" code="FVra" type="boolean" optional="yes" description="回复所有人">
+                <cocoa key="replyAll"/>
+            </parameter>
+            <parameter name="send" code="FVvs" type="boolean" optional="yes" description="是否立即发送（默认保存为草稿）">
+                <cocoa key="send"/>
+            </parameter>
+            <result type="mail message" description="回复邮件对象"/>
+        </command>
+
+        <command name="mark as read" code="FVstMrk" description="标记邮件为已读">
+            <direct-parameter type="mail message" description="要标记的邮件"/>
+        </command>
+
+        <command name="mark as unread" code="FVstMun" description="标记邮件为未读">
+            <direct-parameter type="mail message" description="要标记的邮件"/>
+        </command>
+
+        <command name="mark mail starred" code="FVstStr" description="标记邮件星标">
+            <direct-parameter type="mail message" description="要标记的邮件"/>
+            <parameter name="starred" code="FVst" type="boolean" description="星标状态">
+                <cocoa key="starred"/>
+            </parameter>
+        </command>
+
+        <command name="move mail" code="FVstMov" description="移动邮件到文件夹">
+            <direct-parameter type="mail message" description="要移动的邮件"/>
+            <parameter name="to" code="FVto" type="text" description="目标文件夹名称">
+                <cocoa key="to"/>
+            </parameter>
+        </command>
+
+        <command name="delete mail" code="FVstDel" description="删除邮件">
+            <direct-parameter type="mail message" description="要删除的邮件"/>
+        </command>
+
+        <command name="sync account" code="FVstSnc" description="同步账户邮件">
+            <direct-parameter type="account" description="要同步的账户"/>
+            <parameter name="folder" code="FVfl" type="text" optional="yes" description="指定文件夹名称">
+                <cocoa key="folder"/>
+            </parameter>
+        </command>
+
+        <command name="forward mail" code="FVstFwd" description="转发邮件">
+            <direct-parameter type="mail message" description="要转发的邮件"/>
+            <parameter name="to" code="FVto" type="text" description="收件人邮箱地址">
+                <cocoa key="to"/>
+            </parameter>
+            <parameter name="body" code="FVbd" type="text" optional="yes" description="附加说明">
+                <cocoa key="body"/>
+            </parameter>
+            <parameter name="send" code="FVvs" type="boolean" optional="yes" description="是否立即发送（默认保存为草稿）">
+                <cocoa key="send"/>
+            </parameter>
+            <result type="mail message" description="转发邮件对象"/>
+        </command>
+
+        <command name="archive mail" code="FVstArc" description="归档邮件">
+            <direct-parameter type="mail message" description="要归档的邮件"/>
+        </command>
+
+        <command name="mark as spam" code="FVstSpam" description="标记为垃圾邮件">
+            <direct-parameter type="mail message" description="要标记的邮件"/>
+        </command>
+
+        <command name="unmark spam" code="FVstUSp" description="取消垃圾邮件标记">
+            <direct-parameter type="mail message" description="要取消标记的邮件"/>
+        </command>
+
+        <command name="get drafts" code="FVstGDr" description="获取草稿列表">
+            <parameter name="limit" code="FVlm" type="integer" optional="yes" description="限制返回数量">
+                <cocoa key="limit"/>
+            </parameter>
+            <result type="list of mail message" description="草稿列表"/>
+        </command>
+
+        <command name="delete draft" code="FVstDDr" description="删除草稿">
+            <direct-parameter type="mail message" description="要删除的草稿"/>
+        </command>
+
+        <command name="update draft" code="FVstUDr" description="更新草稿">
+            <direct-parameter type="mail message" description="要更新的草稿"/>
+            <parameter name="to" code="FVto" type="text" optional="yes" description="收件人">
+                <cocoa key="to"/>
+            </parameter>
+            <parameter name="subject" code="FVsu" type="text" optional="yes" description="主题">
+                <cocoa key="subject"/>
+            </parameter>
+            <parameter name="body" code="FVbd" type="text" optional="yes" description="正文">
+                <cocoa key="body"/>
+            </parameter>
+            <result type="mail message" description="更新后的草稿"/>
+        </command>
+
+        <command name="download attachment" code="FVstDAt" description="下载附件">
+            <direct-parameter type="attachment" description="要下载的附件"/>
+            <parameter name="to" code="FVto" type="file" optional="yes" description="保存路径">
+                <cocoa key="to"/>
+            </parameter>
+            <result type="file" description="下载的文件路径"/>
+        </command>
+
+        <command name="search mails" code="FVstSrc" description="搜索邮件">
+            <parameter name="query" code="FVqr" type="text" description="搜索关键词">
+                <cocoa key="query"/>
+            </parameter>
+            <parameter name="in folder" code="FVfl" type="text" optional="yes" description="搜索文件夹（默认所有文件夹）">
+                <cocoa key="inFolder"/>
+            </parameter>
+            <parameter name="limit" code="FVlm" type="integer" optional="yes" description="限制返回数量">
+                <cocoa key="limit"/>
+            </parameter>
+            <parameter name="unread only" code="FVur" type="boolean" optional="yes" description="仅搜索未读邮件">
+                <cocoa key="unreadOnly"/>
+            </parameter>
+            <result type="list of mail message" description="搜索结果"/>
+        </command>
+
+        <command name="get mails with tag" code="FVstGTg" description="获取带有指定标签的邮件">
+            <parameter name="tag" code="FVtg" type="text" description="标签名称">
+                <cocoa key="tag"/>
+            </parameter>
+            <parameter name="limit" code="FVlm" type="integer" optional="yes" description="限制返回数量">
+                <cocoa key="limit"/>
+            </parameter>
+            <result type="list of mail message" description="邮件列表"/>
+        </command>
+
+        <command name="add tag to mail" code="FVstATg" description="给邮件添加标签">
+            <direct-parameter type="mail message" description="邮件对象"/>
+            <parameter name="tag" code="FVtg" type="text" description="标签名称">
+                <cocoa key="tag"/>
+            </parameter>
+        </command>
+
+        <command name="remove tag from mail" code="FVstRTg" description="从邮件移除标签">
+            <direct-parameter type="mail message" description="邮件对象"/>
+            <parameter name="tag" code="FVtg" type="text" description="标签名称">
+                <cocoa key="tag"/>
+            </parameter>
+        </command>
+
+        <command name="get mail body" code="FVstGBd" description="获取邮件完整正文">
+            <direct-parameter type="mail message" description="邮件对象"/>
+            <parameter name="plain text only" code="FVpt" type="boolean" optional="yes" description="仅返回纯文本（默认包含 HTML）">
+                <cocoa key="plainTextOnly"/>
+            </parameter>
+            <result type="text" description="邮件正文"/>
+        </command>
+
+        <command name="get recent mails" code="FVstGRc" description="获取最近的邮件">
+            <parameter name="count" code="FVcn" type="integer" optional="yes" description="获取数量（默认 10）">
+                <cocoa key="count"/>
+            </parameter>
+            <parameter name="folder" code="FVfl" type="text" optional="yes" description="文件夹名称（默认收件箱）">
+                <cocoa key="folder"/>
+            </parameter>
+            <result type="list of mail message" description="最近的邮件列表"/>
+        </command>
+
+        <command name="get unread mails" code="FVstGUn" description="获取未读邮件">
+            <parameter name="count" code="FVcn" type="integer" optional="yes" description="获取数量（默认全部）">
+                <cocoa key="count"/>
+            </parameter>
+            <parameter name="folder" code="FVfl" type="text" optional="yes" description="文件夹名称（默认收件箱）">
+                <cocoa key="folder"/>
+            </parameter>
+            <result type="list of mail message" description="未读邮件列表"/>
+        </command>
+
+        <!-- === 类定义 === -->
+
+        <class name="application" code="capp" inherits="NSApplication" description="FastV 应用">
+            <cocoa class="FastVScriptingApplication"/>
+            <property name="accounts" code="FVac" type="list of account" access="r" description="所有邮件账户">
+                <cocoa key="accounts"/>
+            </property>
+            <property name="default account" code="FVda" type="account" access="rw" description="默认邮件账户">
+                <cocoa key="defaultAccount"/>
+            </property>
+            <property name="mail messages" code="FVmm" type="list of mail message" access="r" description="所有邮件">
+                <cocoa key="mailMessages"/>
+            </property>
+            <responds-to command="get mail messages"/>
+            <responds-to command="get recent mails"/>
+            <responds-to command="get unread mails"/>
+            <responds-to command="get drafts"/>
+            <responds-to command="create mail"/>
+            <responds-to command="send mail"/>
+            <responds-to command="sync account"/>
+            <responds-to command="search mails"/>
+            <responds-to command="get mails with tag"/>
+        </class>
+
+        <class name="account" code="FVAc" inherits="item" description="邮件账户">
+            <cocoa class="FastVAccountScripting"/>
+            <property name="id" code="ID  " type="text" access="r" description="账户 ID">
+                <cocoa key="id"/>
+            </property>
+            <property name="name" code="pnam" type="text" access="r" description="账户显示名称">
+                <cocoa key="name"/>
+            </property>
+            <property name="email address" code="FVeA" type="text" access="r" description="邮箱地址">
+                <cocoa key="emailAddress"/>
+            </property>
+            <property name="service type" code="FVsT" type="service type" access="r" description="服务类型">
+                <cocoa key="serviceType"/>
+            </property>
+            <property name="is enabled" code="FViE" type="boolean" access="rw" description="是否启用">
+                <cocoa key="isEnabled"/>
+            </property>
+            <property name="is default" code="FViD" type="boolean" access="rw" description="是否为默认账户">
+                <cocoa key="isDefault"/>
+            </property>
+            <property name="connection status" code="FVcS" type="connection status" access="r" description="连接状态">
+                <cocoa key="connectionStatus"/>
+            </property>
+            <property name="folders" code="FVfo" type="list of folder" access="r" description="账户文件夹">
+                <cocoa key="folders"/>
+            </property>
+            <property name="last sync date" code="FVls" type="date" access="r" description="上次同步时间">
+                <cocoa key="lastSyncDate"/>
+            </property>
+            <responds-to command="sync account"/>
+        </class>
+
+        <class name="folder" code="FVFo" inherits="item" description="邮件文件夹">
+            <cocoa class="FastVFolderScripting"/>
+            <property name="id" code="ID  " type="text" access="r" description="文件夹 ID">
+                <cocoa key="id"/>
+            </property>
+            <property name="name" code="pnam" type="text" access="r" description="文件夹名称">
+                <cocoa key="name"/>
+            </property>
+            <property name="folder type" code="FVfT" type="folder type" access="r" description="文件夹类型">
+                <cocoa key="folderType"/>
+            </property>
+            <property name="unread count" code="FVuC" type="integer" access="r" description="未读邮件数量">
+                <cocoa key="unreadCount"/>
+            </property>
+            <property name="total count" code="FVtC" type="integer" access="r" description="总邮件数量">
+                <cocoa key="totalCount"/>
+            </property>
+            <property name="mail messages" code="FVmm" type="list of mail message" access="r" description="文件夹中的邮件">
+                <cocoa key="mailMessages"/>
+            </property>
+        </class>
+
+        <class name="mail message" code="FVMM" inherits="item" description="邮件消息">
+            <cocoa class="FastVMessageScripting"/>
+            <property name="id" code="ID  " type="text" access="r" description="邮件 ID">
+                <cocoa key="id"/>
+            </property>
+            <property name="subject" code="FVsu" type="text" access="r" description="邮件主题">
+                <cocoa key="subject"/>
+            </property>
+            <property name="from" code="FVfr" type="text" access="r" description="发件人">
+                <cocoa key="from"/>
+            </property>
+            <property name="from address" code="FVfa" type="text" access="r" description="发件人邮箱地址">
+                <cocoa key="fromAddress"/>
+            </property>
+            <property name="to" code="FVto" type="list of text" access="r" description="收件人列表">
+                <cocoa key="to"/>
+            </property>
+            <property name="cc" code="FVcc" type="list of text" access="r" description="抄送列表">
+                <cocoa key="cc"/>
+            </property>
+            <property name="bcc" code="FVbc" type="list of text" access="r" description="密送列表">
+                <cocoa key="bcc"/>
+            </property>
+            <property name="text body" code="FVtb" type="text" access="r" description="纯文本正文">
+                <cocoa key="textBody"/>
+            </property>
+            <property name="html body" code="FVhb" type="text" access="r" description="HTML 正文">
+                <cocoa key="htmlBody"/>
+            </property>
+            <property name="preview" code="FVpr" type="text" access="r" description="预览文本">
+                <cocoa key="preview"/>
+            </property>
+            <property name="date sent" code="FVds" type="date" access="r" description="发送时间">
+                <cocoa key="dateSent"/>
+            </property>
+            <property name="date received" code="FVdr" type="date" access="r" description="接收时间">
+                <cocoa key="dateReceived"/>
+            </property>
+            <property name="is read" code="FVir" type="boolean" access="rw" description="是否已读">
+                <cocoa key="isRead"/>
+            </property>
+            <property name="is starred" code="FVis" type="boolean" access="rw" description="是否标星">
+                <cocoa key="isStarred"/>
+            </property>
+            <property name="is important" code="FVii" type="boolean" access="r" description="是否重要">
+                <cocoa key="isImportant"/>
+            </property>
+            <property name="is spam" code="FVis" type="boolean" access="r" description="是否垃圾邮件">
+                <cocoa key="isSpam"/>
+            </property>
+            <property name="has attachments" code="FVha" type="boolean" access="r" description="是否有附件">
+                <cocoa key="hasAttachments"/>
+            </property>
+            <property name="attachments" code="FVat" type="list of attachment" access="r" description="附件列表">
+                <cocoa key="attachments"/>
+            </property>
+            <property name="tags" code="FVtg" type="list of text" access="rw" description="标签列表">
+                <cocoa key="tags"/>
+            </property>
+            <property name="ai tags" code="FVai" type="list of text" access="r" description="AI 生成的标签">
+                <cocoa key="aiTags"/>
+            </property>
+            <property name="ai summary" code="FVas" type="text" access="r" description="AI 生成的摘要">
+                <cocoa key="aiSummary"/>
+            </property>
+            <property name="ai priority" code="FVap" type="priority" access="r" description="AI 识别的优先级">
+                <cocoa key="aiPriority"/>
+            </property>
+            <property name="account" code="FVac" type="account" access="r" description="所属账户">
+                <cocoa key="account"/>
+            </property>
+            <property name="folder" code="FVfo" type="folder" access="r" description="所属文件夹">
+                <cocoa key="folder"/>
+            </property>
+            <responds-to command="mark as read"/>
+            <responds-to command="mark as unread"/>
+            <responds-to command="mark mail starred"/>
+            <responds-to command="move mail"/>
+            <responds-to command="delete mail"/>
+            <responds-to command="reply to mail"/>
+            <responds-to command="forward mail"/>
+            <responds-to command="archive mail"/>
+            <responds-to command="mark as spam"/>
+            <responds-to command="unmark spam"/>
+            <responds-to command="add tag to mail"/>
+            <responds-to command="remove tag from mail"/>
+            <responds-to command="get mail body"/>
+        </class>
+
+        <class name="attachment" code="FVAt" inherits="item" description="邮件附件">
+            <cocoa class="FastVAttachmentScripting"/>
+            <property name="id" code="ID  " type="text" access="r" description="附件 ID">
+                <cocoa key="id"/>
+            </property>
+            <property name="name" code="pnam" type="text" access="r" description="附件文件名">
+                <cocoa key="name"/>
+            </property>
+            <property name="mime type" code="FVmt" type="text" access="r" description="MIME 类型">
+                <cocoa key="mimeType"/>
+            </property>
+            <property name="size" code="FVsz" type="integer" access="r" description="附件大小（字节）">
+                <cocoa key="size"/>
+            </property>
+            <property name="file path" code="FVfp" type="file" access="r" description="本地文件路径（如果已下载）">
+                <cocoa key="filePath"/>
+            </property>
+        </class>
+
+        <!-- === 枚举类型 === -->
+
+        <enumeration name="service type" code="FVST">
+            <enumerator name="Gmail" code="FVGm" description="Gmail"/>
+            <enumerator name="Outlook" code="FVOl" description="Outlook/Hotmail"/>
+            <enumerator name="Aliyun" code="FVAl" description="阿里云企业邮箱"/>
+            <enumerator name="Tencent" code="FVTc" description="腾讯企业邮箱"/>
+            <enumerator name="custom" code="FVCu" description="自定义"/>
+        </enumeration>
+
+        <enumeration name="folder type" code="FVFT">
+            <enumerator name="inbox" code="FVin" description="收件箱"/>
+            <enumerator name="sent" code="FVse" description="已发送"/>
+            <enumerator name="drafts" code="FVdr" description="草稿箱"/>
+            <enumerator name="trash" code="FVtr" description="已删除"/>
+            <enumerator name="spam" code="FVsp" description="垃圾邮件"/>
+            <enumerator name="archive" code="FVar" description="归档"/>
+            <enumerator name="custom" code="FVcu" description="自定义"/>
+        </enumeration>
+
+        <enumeration name="connection status" code="FVCS">
+            <enumerator name="connected" code="FVcn" description="已连接"/>
+            <enumerator name="connecting" code="FVci" description="连接中"/>
+            <enumerator name="disconnected" code="FVdc" description="未连接"/>
+            <enumerator name="error" code="FVer" description="连接错误"/>
+        </enumeration>
+
+        <enumeration name="priority" code="FVPR">
+            <enumerator name="low" code="FVlo" description="低优先级"/>
+            <enumerator name="normal" code="FVno" description="普通优先级"/>
+            <enumerator name="high" code="FVhi" description="高优先级"/>
+            <enumerator name="urgent" code="FVur" description="紧急"/>
+        </enumeration>
+
+    </terminology>
+
+    <!--
+        === 实现定义 ===
+        定义 Swift 类如何映射到 AppleScript 对象
+    -->
+    <implementation>
+
+        <!-- 根类：应用 -->
+        <class name="application" code="capp" class="FastVScriptingApplication">
+            <property name="accounts" code="FVac">
+                <cocoa method="accounts"/>
+            </property>
+            <property name="default account" code="FVda">
+                <cocoa method="defaultAccount"/>
+            </property>
+            <property name="mail messages" code="FVmm">
+                <cocoa method="mailMessages"/>
+            </property>
+        </class>
+
+        <!-- 账户类 -->
+        <class name="account" code="FVAc" class="FastVAccountScripting">
+            <property name="id" code="ID  ">
+                <cocoa method="id"/>
+            </property>
+            <property name="name" code="pnam">
+                <cocoa method="name"/>
+            </property>
+            <property name="email address" code="FVeA">
+                <cocoa method="emailAddress"/>
+            </property>
+            <property name="service type" code="FVsT">
+                <cocoa method="serviceType"/>
+            </property>
+            <property name="is enabled" code="FViE">
+                <cocoa method="isEnabled"/>
+            </property>
+            <property name="is default" code="FViD">
+                <cocoa method="isDefault"/>
+            </property>
+            <property name="connection status" code="FVcS">
+                <cocoa method="connectionStatus"/>
+            </property>
+            <property name="folders" code="FVfo">
+                <cocoa method="folders"/>
+            </property>
+            <property name="last sync date" code="FVls">
+                <cocoa method="lastSyncDate"/>
+            </property>
+        </class>
+
+        <!-- 文件夹类 -->
+        <class name="folder" code="FVFo" class="FastVFolderScripting">
+            <property name="id" code="ID  ">
+                <cocoa method="id"/>
+            </property>
+            <property name="name" code="pnam">
+                <cocoa method="name"/>
+            </property>
+            <property name="folder type" code="FVfT">
+                <cocoa method="folderType"/>
+            </property>
+            <property name="unread count" code="FVuC">
+                <cocoa method="unreadCount"/>
+            </property>
+            <property name="total count" code="FVtC">
+                <cocoa method="totalCount"/>
+            </property>
+            <property name="mail messages" code="FVmm">
+                <cocoa method="mailMessages"/>
+            </property>
+        </class>
+
+        <!-- 邮件消息类 -->
+        <class name="mail message" code="FVMM" class="FastVMessageScripting">
+            <property name="id" code="ID  ">
+                <cocoa method="id"/>
+            </property>
+            <property name="subject" code="FVsu">
+                <cocoa method="subject"/>
+            </property>
+            <property name="from" code="FVfr">
+                <cocoa method="from"/>
+            </property>
+            <property name="from address" code="FVfa">
+                <cocoa method="fromAddress"/>
+            </property>
+            <property name="to" code="FVto">
+                <cocoa method="to"/>
+            </property>
+            <property name="cc" code="FVcc">
+                <cocoa method="cc"/>
+            </property>
+            <property name="bcc" code="FVbc">
+                <cocoa method="bcc"/>
+            </property>
+            <property name="text body" code="FVtb">
+                <cocoa method="textBody"/>
+            </property>
+            <property name="html body" code="FVhb">
+                <cocoa method="htmlBody"/>
+            </property>
+            <property name="preview" code="FVpr">
+                <cocoa method="preview"/>
+            </property>
+            <property name="date sent" code="FVds">
+                <cocoa method="dateSent"/>
+            </property>
+            <property name="date received" code="FVdr">
+                <cocoa method="dateReceived"/>
+            </property>
+            <property name="is read" code="FVir">
+                <cocoa method="isRead"/>
+            </property>
+            <property name="is starred" code="FVis">
+                <cocoa method="isStarred"/>
+            </property>
+            <property name="is important" code="FVii">
+                <cocoa method="isImportant"/>
+            </property>
+            <property name="is spam" code="FVis">
+                <cocoa method="isSpam"/>
+            </property>
+            <property name="has attachments" code="FVha">
+                <cocoa method="hasAttachments"/>
+            </property>
+            <property name="attachments" code="FVat">
+                <cocoa method="attachments"/>
+            </property>
+            <property name="tags" code="FVtg">
+                <cocoa method="tags"/>
+            </property>
+            <property name="ai tags" code="FVai">
+                <cocoa method="aiTags"/>
+            </property>
+            <property name="ai summary" code="FVas">
+                <cocoa method="aiSummary"/>
+            </property>
+            <property name="ai priority" code="FVap">
+                <cocoa method="aiPriority"/>
+            </property>
+            <property name="account" code="FVac">
+                <cocoa method="account"/>
+            </property>
+            <property name="folder" code="FVfo">
+                <cocoa method="folder"/>
+            </property>
+        </class>
+
+        <!-- 附件类 -->
+        <class name="attachment" code="FVAt" class="FastVAttachmentScripting">
+            <property name="id" code="ID  ">
+                <cocoa method="id"/>
+            </property>
+            <property name="name" code="pnam">
+                <cocoa method="name"/>
+            </property>
+            <property name="mime type" code="FVmt">
+                <cocoa method="mimeType"/>
+            </property>
+            <property name="size" code="FVsz">
+                <cocoa method="size"/>
+            </property>
+            <property name="file path" code="FVfp">
+                <cocoa method="filePath"/>
+            </property>
+        </class>
+
+    </implementation>
+
+</dictionary>

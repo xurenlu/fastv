@@ -244,7 +244,7 @@ enum AIProtocolType: String, Codable, CaseIterable {
 /// AI 服务使用场景
 enum AIScenario: String, Codable, CaseIterable {
     case voiceInputOptimization = "voice_input_optimization"  // 语音输入优化
-    case meetingSummary = "meeting_summary"                    // 会议摘要（已移除）
+    case meetingSummary = "meeting_summary"                    // 会议记录（标题、摘要、行动项）
     case todoParsing = "todo_parsing"                          // Todo 解析
     case aiChat = "ai_chat"                                     // AI 聊天
     case textCorrection = "text_correction"                     // 文本纠错
@@ -256,7 +256,7 @@ enum AIScenario: String, Codable, CaseIterable {
 
     /// 当前版本仍在使用的场景，仅这些场景在设置中显示 AI 配置
     static var activeScenarios: [AIScenario] {
-        [.voiceInputOptimization, .todoParsing, .aiChat]
+        [.voiceInputOptimization, .meetingSummary, .todoParsing, .aiChat]
     }
 
     var displayName: String {
@@ -264,7 +264,7 @@ enum AIScenario: String, Codable, CaseIterable {
         case .voiceInputOptimization:
             return "语音输入优化"
         case .meetingSummary:
-            return "会议摘要"
+            return "会议记录"
         case .todoParsing:
             return "Todo 解析"
         case .aiChat:
