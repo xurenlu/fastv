@@ -582,7 +582,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "1.2.8-rc1";
+				MARKETING_VERSION = "1.2.9-rc1";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
@@ -642,7 +642,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "1.2.8-rc1";
+				MARKETING_VERSION = "1.2.9-rc1";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",

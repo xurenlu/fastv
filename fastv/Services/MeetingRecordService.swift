@@ -138,10 +138,28 @@ class MeetingRecordService: ObservableObject {
         currentRecordingId = newRecord.id
         records.insert(newRecord, at: 0) // 新记录排在最前
 
-        // 开始录音
-        try voiceService.startRecording()
+        // 显示波形悬浮窗，便于确认正在拾音
+        WaveformWindowManager.shared.show()
+
+        do {
+            try voiceService.startRecording()
+        } catch {
+            WaveformWindowManager.shared.hide()
+            records.removeAll { $0.id == newRecord.id }
+            saveRecords()
+            currentRecordingId = nil
+            throw error
+        }
+
         isRecording = true
         recordingDuration = 0
+
+        // 连接音频电平回调，驱动波形显示
+        voiceService.onAudioData = { level in
+            Task { @MainActor in
+                WaveformWindowManager.shared.updateAudioLevel(level)
+            }
+        }
 
         // 启动实时转录定时器
         startIncrementalTranscription()
@@ -165,8 +183,27 @@ class MeetingRecordService: ObservableObject {
         incrementalTranscriptTimer?.invalidate()
         incrementalTranscriptTimer = nil
 
-        // 停止录音并获取最终音频
+        // 停止录音并获取最终音频（完整录音数据）
         let finalRecording = try? await voiceService.stopRecording()
+
+        // 确定最终文本：优先对完整音频做转写，避免短于 15 秒的录音因定时器未触发而丢失内容
+        var fullText = currentTranscriptSegments.joined(separator: "")
+        if let recording = finalRecording, !recording.pcmData.isEmpty {
+            do {
+                let transcribed = try await SpeechTranscriber.transcribe(
+                    recording: recording,
+                    language: language,
+                    enableCTCDeduplication: nil
+                )
+                // 完整转写覆盖增量片段，确保不丢内容（短录音时 currentTranscriptSegments 为空）
+                if !transcribed.isEmpty {
+                    fullText = transcribed
+                    logger.log("停止时对完整音频转写成功，\(transcribed.count) 字")
+                }
+            } catch {
+                logger.error("停止时完整音频转写失败: \(error.localizedDescription)，使用增量片段")
+            }
+        }
 
         // 更新记录
         if let index = records.firstIndex(where: { $0.id == recordId }) {
@@ -175,17 +212,10 @@ class MeetingRecordService: ObservableObject {
             record.endTime = Date()
             record.duration = recordingDuration
             record.updatedAt = Date()
-
-            // 合并所有转录片段
-            let fullText = currentTranscriptSegments.joined(separator: "")
             record.originalText = fullText
-
-            // 自动纠错
-            if CommonMistakeManager.shared.enableAutoCorrection {
-                record.correctedText = TextCorrectionService.shared.correctText(fullText)
-            } else {
-                record.correctedText = fullText
-            }
+            record.correctedText = CommonMistakeManager.shared.enableAutoCorrection
+                ? TextCorrectionService.shared.correctText(fullText)
+                : fullText
 
             records[index] = record
             saveRecords()
@@ -197,6 +227,10 @@ class MeetingRecordService: ObservableObject {
         recordingDuration = 0
         currentTranscriptSegments = []
         lastTranscriptTime = nil
+
+        // 断开回调并隐藏波形窗口
+        voiceService.onAudioData = nil
+        WaveformWindowManager.shared.hide()
     }
 
     /// 取消录音（不保存）
@@ -221,6 +255,10 @@ class MeetingRecordService: ObservableObject {
         recordingDuration = 0
         currentTranscriptSegments = []
         lastTranscriptTime = nil
+
+        // 断开回调并隐藏波形窗口
+        voiceService.onAudioData = nil
+        WaveformWindowManager.shared.hide()
     }
 
     // MARK: - 实时转录

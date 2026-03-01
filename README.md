@@ -17,10 +17,24 @@
 - **动态规划分批**：每批至少 3 段、至少 3 秒，避免过短片段，松键时优先用准路径结果替换零碎结果
 - **多语言支持**：支持中文、英文、日文、韩文、粤语等多种语言识别
 
+### 📝 会议记录
+
+- **一键录音**：点击开始录音，自动转写会议、访谈、笔记等内容
+- **实时波形**：录音时显示悬浮波形窗口，直观确认正在拾音
+- **AI 整理**：支持生成摘要、提取行动项、完整整理
+- **多格式导出**：支持导出为 PDF、纯文本、Markdown、HTML
+
 ### ⚡ 快速纠错
+
 - **常用词管理**：自定义常用词替换规则
-- **水词修正**：自动去除"嗯"、"那个"等填充词
+- **水词修正**：自动去除「嗯」「那个」等填充词
 - **AI 优化**：可选启用 AI 文本优化（需要配置 AI 服务）
+
+### 💬 其他功能
+
+- **AI Chat**：多 Provider 支持（OpenAI、DashScope、智谱、MiniMax、Ollama、OpenRouter 等）
+- **AI Todo**：与 macOS 提醒事项同步的智能待办
+- **邮箱**：IMAP 邮件客户端
 
 ## 🚀 快速开始
 
@@ -31,32 +45,35 @@
 ```bash
 git clone https://github.com/xurenlu/fastv.git
 cd fastv
-open fastv.xcodeproj
+open fastv.xcworkspace   # 使用 workspace（含 CocoaPods）
+# 或 open fastv.xcodeproj
 ```
 
 ### 2. 配置权限
 
 首次运行时，需要在系统设置中授权：
-- **麦克风权限**：用于语音输入
+
+- **麦克风权限**：用于语音输入和会议录音
 - **辅助功能权限**：用于全局快捷键和文本插入
 
 ### 3. 设置快捷键
 
-1. 打开应用设置
-2. 在"语音输入法"部分配置快捷键（默认 ⌥+V）
-3. 确保"启用语音输入法"已勾选
+1. 打开应用设置（⌘+,）
+2. 在「语音输入法」部分配置快捷键（默认 FN）
+3. 确保「启用语音输入法」已勾选
 
 ### 4. 开始使用
 
 1. 打开任意应用的输入框（如备忘录、微信、浏览器等）
-2. 按下设置的快捷键（默认 ⌥+V）
+2. 按下设置的快捷键（默认 FN）
 3. 开始说话，松开快捷键后自动转文字并插入
 
 ## 📖 使用技巧
 
 ### 智能分段转文字（又快又准）
 
-启用"智能分段转文字"功能后：
+启用「智能分段转文字」功能后：
+
 - 检测到停顿（默认 0.8 秒）时，立即将前面的音频转文字并缓存
 - 无需等待松开快捷键，实现边说边转的效果
 - 累积 3 段以上时，后台自动将多段音频拼接后二次转写，准确率更高
@@ -66,9 +83,10 @@ open fastv.xcodeproj
 ### AI 优化
 
 配置 AI 服务后：
+
 - 按住快捷键时同时按住 ⌃（Control）键，可启用 AI 优化
 - 优化后的文本会自动去除水词、添加标点、修正错别字
-- 支持多种 AI 服务：OpenAI、DashScope、Ollama、Claude 等
+- 支持多种 AI 服务：OpenAI、DashScope、Ollama、Claude、智谱、MiniMax 等
 
 ## 🔌 STT API 服务
 
@@ -92,25 +110,28 @@ cd stt-api && pip install -r requirements.txt && python stt_api.py --port 50002
 - **音频处理**：AVFoundation, Accelerate
 - **语音识别**：SenseVoice Small 模型（本地 ONNX 推理）
 - **音频特征提取**：Kaldi Native FBank
-- **平台要求**：macOS 11.0+
+- **平台要求**：macOS 14.6+
 
 ## 📦 依赖库
 
 本项目使用了以下优秀的开源库，在此表示感谢：
 
 ### ONNX Runtime
+
 - **项目地址**：https://github.com/microsoft/onnxruntime
 - **授权协议**：MIT License
 - **用途**：用于运行 SenseVoice 语音识别模型
 - **感谢**：感谢 Microsoft 提供强大的 ONNX 运行时支持
 
 ### SenseVoice (FunASR)
+
 - **项目地址**：https://github.com/alibaba-damo-academy/FunASR
 - **授权协议**：Apache 2.0 License
 - **用途**：提供多语言语音识别模型
 - **感谢**：感谢阿里巴巴达摩院开源 SenseVoice 模型，使本地化语音识别成为可能
 
 ### Kaldi Native FBank
+
 - **项目地址**：https://github.com/kaldi-asr/kaldi
 - **授权协议**：Apache 2.0 License
 - **用途**：音频特征提取（Mel 频谱图）
@@ -138,30 +159,7 @@ cd stt-api && pip install -r requirements.txt && python stt_api.py --port 50002
 
 ## 📝 更新日志
 
-### v1.3.0 (开发中)
-- ✨ 语音输入「又快又准」策略
-  - 双路径并行：快路径（停顿即转）+ 准路径（多段拼接二次转写）
-  - 动态规划分批：每批至少 3 段、3 秒，避免过短片段
-  - 松键时优先用准路径结果替换零碎结果
-- ✨ STT API 服务：HTTP + WebSocket 暴露语音转文字能力
-- ♻️ 聚焦核心：移除语音备忘录、会议记录、视频工具、健康助理等非核心功能
-
-### v1.2.0
-- ✨ 全新主界面设计
-- ✨ 智能分段转文字功能
-- ✨ 会议记录自动检测和分段转文字
-- ✨ 语音备忘录功能
-- 🐛 修复多项编译错误
-
-### v1.1.0
-- ✨ AI 文本优化功能
-- ✨ 快速纠错功能
-- ✨ 常用词管理
-
-### v1.0.0
-- 🎉 首次发布
-- ✨ 基础语音输入功能
-- ✨ 多语言支持
+详见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 🤝 贡献
 
