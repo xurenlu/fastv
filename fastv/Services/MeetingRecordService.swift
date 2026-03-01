@@ -219,6 +219,13 @@ class MeetingRecordService: ObservableObject {
 
             records[index] = record
             saveRecords()
+
+            // 若配置了 AI 且内容非空，异步生成标题
+            if !fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Task { @MainActor in
+                    await generateTitleIfConfigured(for: recordId, text: record.correctedText.isEmpty ? fullText : record.correctedText)
+                }
+            }
         }
 
         // 重置状态
@@ -342,6 +349,46 @@ class MeetingRecordService: ObservableObject {
 
     // MARK: - AI 功能
 
+    /// 若已配置 AI，根据内容生成标题并更新记录
+    private func generateTitleIfConfigured(for recordId: UUID, text: String) async {
+        guard !text.isEmpty, text.count >= 5 else { return }
+        guard let index = records.firstIndex(where: { $0.id == recordId }) else { return }
+
+        let systemPrompt = """
+        根据以下会议/录音内容，生成一个简短标题，概括主题或主要内容。
+        要求：只输出标题文字，不超过 20 字，不要引号、不要序号、不要其他说明。
+        """
+
+        do {
+            let title = try await OllamaService.shared.optimizeTranscript(
+                text: String(text.prefix(800)),  // 限制长度，避免超长请求
+                scenario: .meetingSummary,
+                systemPrompt: systemPrompt,
+                useMistakes: false,
+                useHighFrequencyWords: false
+            )
+            // 取首行、去除常见前缀（如「标题：」）
+            let trimmed = title
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .components(separatedBy: .newlines)
+                .first?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                ?? title.trimmingCharacters(in: .whitespacesAndNewlines)
+            let cleaned = trimmed
+                .replacingOccurrences(of: "标题：", with: "")
+                .replacingOccurrences(of: "标题:", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !cleaned.isEmpty, cleaned.count <= 50 {
+                records[index].title = cleaned
+                records[index].updatedAt = Date()
+                saveRecords()
+                logger.log("AI 生成标题: \(cleaned)")
+            }
+        } catch {
+            logger.log("AI 生成标题未执行或失败（可能未配置 AI）: \(error.localizedDescription)")
+        }
+    }
+
     /// 生成摘要
     func generateSummary(for recordId: UUID) async throws {
         guard let index = records.firstIndex(where: { $0.id == recordId }) else {
@@ -365,7 +412,7 @@ class MeetingRecordService: ObservableObject {
 
         let summary = try await OllamaService.shared.optimizeTranscript(
             text: text,
-            scenario: .voiceInputOptimization,
+            scenario: .meetingSummary,
             systemPrompt: systemPrompt,
             useMistakes: false,
             useHighFrequencyWords: false
@@ -403,7 +450,7 @@ class MeetingRecordService: ObservableObject {
 
         let result = try await OllamaService.shared.optimizeTranscript(
             text: text,
-            scenario: .voiceInputOptimization,
+            scenario: .meetingSummary,
             systemPrompt: systemPrompt,
             useMistakes: false,
             useHighFrequencyWords: false
