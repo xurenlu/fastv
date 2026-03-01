@@ -59,68 +59,69 @@ struct ContentView: View {
             if !preferences.hasCompletedOnboarding {
                 OnboardingView()
             } else {
-            NavigationSplitView {
-                // 左侧侧边栏
-                List(selection: $selectedSidebarItem) {
-                    ForEach(SidebarItem.builtInItems) { item in
-                        SidebarItemRow(item: item, isSelected: selectedSidebarItem == item)
-                            .tag(item)
+                NavigationSplitView {
+                    // 左侧侧边栏
+                    List(selection: $selectedSidebarItem) {
+                        ForEach(SidebarItem.builtInItems) { item in
+                            SidebarItemRow(item: item, isSelected: selectedSidebarItem == item)
+                                .tag(item)
+                        }
                     }
-                }
-                .listStyle(.sidebar)
-                .navigationTitle("功能")
-                .frame(minWidth: 140, idealWidth: 160, maxWidth: 180)
-            } detail: {
-                // 右侧内容区域（.id 确保切换时销毁旧视图，释放内存，避免累积导致无响应）
-                Group {
-                    switch selectedSidebarItem {
-                    case .voiceInput:
-                        VoiceInputView()
-                            .toolbar {
-                                ToolbarItem(placement: .automatic) {
-                                    Button(action: { showSettings = true }) {
-                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                    .listStyle(.sidebar)
+                    .navigationTitle("功能")
+                    .frame(minWidth: 140, idealWidth: 160, maxWidth: 180)
+                } detail: {
+                    // 右侧内容区域（.id 确保切换时销毁旧视图，释放内存，避免累积导致无响应）
+                    Group {
+                        switch selectedSidebarItem {
+                        case .voiceInput:
+                            VoiceInputView()
+                                .toolbar {
+                                    ToolbarItem(placement: .automatic) {
+                                        Button(action: { showSettings = true }) {
+                                            Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                                        }
+                                        .help(NSLocalizedString("settings", comment: ""))
                                     }
-                                    .help(NSLocalizedString("settings", comment: ""))
                                 }
-                            }
-                    case .aiTodo:
-                        AITodoView()
-                            .toolbar {
-                                ToolbarItem(placement: .automatic) {
-                                    Button(action: { showSettings = true }) {
-                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                        case .aiTodo:
+                            AITodoView()
+                                .toolbar {
+                                    ToolbarItem(placement: .automatic) {
+                                        Button(action: { showSettings = true }) {
+                                            Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                                        }
+                                        .help(NSLocalizedString("settings", comment: ""))
                                     }
-                                    .help(NSLocalizedString("settings", comment: ""))
                                 }
-                            }
-                    case .aiChat:
-                        AIChatView()
-                            .toolbar {
-                                ToolbarItem(placement: .automatic) {
-                                    Button(action: { showSettings = true }) {
-                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                        case .aiChat:
+                            AIChatView()
+                                .toolbar {
+                                    ToolbarItem(placement: .automatic) {
+                                        Button(action: { showSettings = true }) {
+                                            Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                                        }
+                                        .help(NSLocalizedString("settings", comment: ""))
                                     }
-                                    .help(NSLocalizedString("settings", comment: ""))
                                 }
-                            }
-                    case .email:
-                        EmailView()
-                            .toolbar {
-                                ToolbarItem(placement: .automatic) {
-                                    Button(action: { showSettings = true }) {
-                                        Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                        case .email:
+                            EmailView()
+                                .toolbar {
+                                    ToolbarItem(placement: .automatic) {
+                                        Button(action: { showSettings = true }) {
+                                            Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
+                                        }
+                                        .help(NSLocalizedString("settings", comment: ""))
                                     }
-                                    .help(NSLocalizedString("settings", comment: ""))
                                 }
-                            }
+                        }
                     }
+                    .sheet(isPresented: $showSettings) {
+                        SettingsView()
+                            .frame(minWidth: 800, idealWidth: 900, maxWidth: 1000, minHeight: 600, idealHeight: 700, maxHeight: 800)
+                    }
+                    .id(selectedSidebarItem)
                 }
-                .sheet(isPresented: $showSettings) {
-                    SettingsView()
-                        .frame(minWidth: 800, idealWidth: 900, maxWidth: 1000, minHeight: 600, idealHeight: 700, maxHeight: 800)
-                }
-                .id(selectedSidebarItem)
             }
         }
         .onChange(of: preferences.hasCompletedOnboarding) { _, completed in
