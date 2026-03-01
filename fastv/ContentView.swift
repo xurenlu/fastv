@@ -122,8 +122,6 @@ struct ContentView: View {
                 }
                 .id(selectedSidebarItem)
             }
-            .frame(minWidth: 720, minHeight: 520)
-            }
         }
         .onChange(of: preferences.hasCompletedOnboarding) { _, completed in
             if completed {
