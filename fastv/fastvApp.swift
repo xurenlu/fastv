@@ -221,6 +221,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // AppleScript 支持
     private var scriptingAppInstance: FastVScriptingApplication?
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // 一次性清除已保存的窗口状态，解决「侧边栏被持久化为折叠」导致看不到菜单的问题
+        flushSavedSidebarStateIfNeeded()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 应用启动完成后，初始化状态栏
         print("📱 [AppDelegate] 应用启动完成，初始化状态栏")
@@ -258,6 +263,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return event
         }
         print("⌨️ [AppDelegate] Cmd+, 快捷键已设置")
+    }
+
+    /// 一次性清除已保存的窗口状态（含侧边栏折叠状态），解决 macOS 恢复「折叠」导致看不到菜单
+    private func flushSavedSidebarStateIfNeeded() {
+        let key = "sidebarStateFlush_v1"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        guard let libURL = try? FileManager.default.url(for: .libraryDirectory, in: .userDomainMask, appropriateFor: nil, create: false) else { return }
+        let bundleId = Bundle.main.bundleIdentifier ?? "fastv"
+        let windowsPlist = libURL
+            .appendingPathComponent("Saved Application State", isDirectory: true)
+            .appendingPathComponent("\(bundleId).savedState", isDirectory: true)
+            .appendingPathComponent("windows.plist", isDirectory: false)
+        if FileManager.default.fileExists(atPath: windowsPlist.path) {
+            try? FileManager.default.removeItem(at: windowsPlist)
+            print("🧹 [AppDelegate] 已清除窗口保存状态，解决侧边栏折叠持久化问题")
+        }
+        UserDefaults.standard.set(true, forKey: key)
     }
 
     /// 打开设置窗口
