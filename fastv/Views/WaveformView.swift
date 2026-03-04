@@ -26,6 +26,8 @@ class WaveformWindowManager: ObservableObject {
     private var window: NSWindow?
     private var hostingView: NSHostingView<WaveformView>?
     private var cleanupTask: DispatchWorkItem?
+    private var autoHideTask: DispatchWorkItem?
+    private var windowDelegate: WindowDelegate?
     
     @Published var audioLevel: Float = 0.0
     @Published var isVisible = false
@@ -37,9 +39,11 @@ class WaveformWindowManager: ObservableObject {
     func show() {
         print("📊 [WaveformWindowManager] show() 被调用")
         
-        // 取消之前的清理任务
+        // 取消之前的清理/自动隐藏任务
         cleanupTask?.cancel()
         cleanupTask = nil
+        autoHideTask?.cancel()
+        autoHideTask = nil
         
         // 如果窗口已存在，先关闭它
         if let existingWindow = window {
@@ -88,8 +92,9 @@ class WaveformWindowManager: ObservableObject {
         window.isReleasedWhenClosed = false  // 重要：防止窗口被自动释放
         window.hidesOnDeactivate = false  // 防止失去焦点时隐藏
         
-        // 设置窗口委托，监听窗口关闭事件
+        // 设置窗口委托，监听窗口关闭事件（需强引用防止被释放）
         let delegate = WindowDelegate(manager: self)
+        self.windowDelegate = delegate
         window.delegate = delegate
         
         self.window = window
@@ -150,6 +155,7 @@ class WaveformWindowManager: ObservableObject {
             if self.window === windowToClose {
                 self.window = nil
                 self.hostingView = nil
+                self.windowDelegate = nil
             }
             self.isVisible = false
             self.cleanupTask = nil
@@ -195,11 +201,7 @@ class WaveformWindowManager: ObservableObject {
         print("📊 [WaveformWindowManager] 设置AI修正成功状态")
         state = .aiCorrected
         audioLevel = 0.0
-        
-        // 1秒后自动隐藏窗口
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            self?.hide()
-        }
+        scheduleAutoHide(after: 1.0)
     }
     
     /// 设置AI修正失败状态（会自动在0.8秒后隐藏）
@@ -207,11 +209,7 @@ class WaveformWindowManager: ObservableObject {
         print("📊 [WaveformWindowManager] 设置AI修正失败状态")
         state = .aiCorrectionFailed
         audioLevel = 0.0
-        
-        // 0.8秒后自动隐藏窗口
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-            self?.hide()
-        }
+        scheduleAutoHide(after: 0.8)
     }
     
     /// 设置AI修正未启用状态（会自动在0.8秒后隐藏）
@@ -219,11 +217,18 @@ class WaveformWindowManager: ObservableObject {
         print("📊 [WaveformWindowManager] 设置AI修正未启用状态")
         state = .aiCorrectionDisabled
         audioLevel = 0.0
-        
-        // 0.8秒后自动隐藏窗口
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+        scheduleAutoHide(after: 0.8)
+    }
+
+    /// 可取消的延迟隐藏，防止与新的 show() 竞态
+    private func scheduleAutoHide(after delay: TimeInterval) {
+        autoHideTask?.cancel()
+        let task = DispatchWorkItem { [weak self] in
             self?.hide()
+            self?.autoHideTask = nil
         }
+        autoHideTask = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: task)
     }
     
     /// 强制清理窗口（用于应用退出时的兜底方案）
@@ -233,6 +238,8 @@ class WaveformWindowManager: ObservableObject {
         // 取消所有延迟任务
         cleanupTask?.cancel()
         cleanupTask = nil
+        autoHideTask?.cancel()
+        autoHideTask = nil
         
         guard let window = window else {
             print("ℹ️ [WaveformWindowManager] 窗口不存在，无需清理")
@@ -251,6 +258,7 @@ class WaveformWindowManager: ObservableObject {
         // 立即清理引用（不使用延迟）
         self.window = nil
         self.hostingView = nil
+        self.windowDelegate = nil
         self.isVisible = false
         
         print("✅ [WaveformWindowManager] 窗口已强制清理")
