@@ -533,6 +533,9 @@ class VoiceInputService: ObservableObject {
             print("✅ [VoiceInputService] 音频引擎已恢复，新格式: \(newFormat)")
         } catch {
             print("❌ [VoiceInputService] 音频引擎恢复失败: \(error)")
+            // 引擎启动失败时移除 tap，避免留下无效 tap
+            engine.inputNode.removeTap(onBus: 0)
+            isMicTapInstalled = false
         }
     }
     

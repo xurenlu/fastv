@@ -149,11 +149,13 @@ actor SpeechTranscriptionModel {
 
         let idleTime = Date().timeIntervalSince(lastUse)
 
-        // 检查内存压力
+        // 检查内存压力（count 与 capacity 以 integer_t 为单位，Apple 平台为 4 字节）
         var info = mach_task_basic_info()
-        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
+        let intSize = MemoryLayout<integer_t>.size
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size / intSize)
+        let capacity = MemoryLayout<mach_task_basic_info>.size / intSize
         let result = withUnsafeMutablePointer(to: &info) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: capacity) {
                 task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
             }
         }
