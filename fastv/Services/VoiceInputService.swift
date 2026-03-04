@@ -29,6 +29,7 @@ class VoiceInputService: ObservableObject {
     // 跟踪 tap 安装状态，确保正确清理
     private var isMicTapInstalled = false
     private var isSystemAudioTapInstalled = false
+    private var engineConfigObserver: NSObjectProtocol?
     nonisolated(unsafe) private var recordedBuffers: [Data] = []
     private var recordingOriginalFormat: AVAudioFormat?
     private let recordingSampleRate: Double = 16000
@@ -424,6 +425,17 @@ class VoiceInputService: ObservableObject {
             isRecording = true
             print("✅ [VoiceInputService] 麦克风音频引擎已启动")
 
+            // 监听音频引擎配置变更（蓝牙设备断开等），自动恢复录音
+            engineConfigObserver = NotificationCenter.default.addObserver(
+                forName: .AVAudioEngineConfigurationChange,
+                object: engine,
+                queue: nil
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    self?.handleAudioEngineConfigurationChange()
+                }
+            }
+
             // 启动音频电平更新定时器
             audioLevelTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] timer in
                 guard let strongSelf = self else {
@@ -483,6 +495,44 @@ class VoiceInputService: ObservableObject {
             sysEngine.inputNode.removeTap(onBus: 0)
             isSystemAudioTapInstalled = false
             print("🧹 [VoiceInputService] 已移除系统音频 tap")
+        }
+        if let observer = engineConfigObserver {
+            NotificationCenter.default.removeObserver(observer)
+            engineConfigObserver = nil
+        }
+    }
+
+    /// 音频引擎配置变更时（蓝牙断开/音频设备切换）尝试恢复录音
+    private func handleAudioEngineConfigurationChange() {
+        guard isRecording, let engine = audioEngine else { return }
+        print("⚠️ [VoiceInputService] 检测到音频设备配置变更，尝试恢复录音")
+
+        let newFormat = engine.inputNode.inputFormat(forBus: 0)
+        guard newFormat.sampleRate > 0, newFormat.channelCount > 0 else {
+            print("❌ [VoiceInputService] 新的音频格式无效（设备可能已断开），等待设备恢复")
+            return
+        }
+
+        if isMicTapInstalled {
+            engine.inputNode.removeTap(onBus: 0)
+            isMicTapInstalled = false
+        }
+
+        recordingOriginalFormat = newFormat
+        let isBluetooth = isBluetoothDevice()
+        let bufferSize: AVAudioFrameCount = isBluetooth ? 8192 : (newFormat.sampleRate >= 44100 ? 4096 : 2048)
+
+        engine.inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: newFormat) { [weak self] buffer, _ in
+            guard let self = self else { return }
+            self.processMicrophoneBuffer(buffer)
+        }
+        isMicTapInstalled = true
+
+        do {
+            try engine.start()
+            print("✅ [VoiceInputService] 音频引擎已恢复，新格式: \(newFormat)")
+        } catch {
+            print("❌ [VoiceInputService] 音频引擎恢复失败: \(error)")
         }
     }
     

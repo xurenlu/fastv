@@ -13,6 +13,11 @@ import AVFoundation
 struct QuickSettingsTab: View {
     @ObservedObject var preferences = UserPreferences.shared
     
+    /// 系统物理内存（GB），用于显示动态清理内存的提示
+    private var systemMemoryGB: Int {
+        Int(ProcessInfo.processInfo.physicalMemory / 1024 / 1024 / 1024)
+    }
+    
     var body: some View {
         Form {
             // 语音输入配置
@@ -173,6 +178,29 @@ struct QuickSettingsTab: View {
                             Text(NSLocalizedString("voice.input.release.tail.buffer.description", comment: ""))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                        }
+                        
+                        Divider()
+                        
+                        // 动态清理内存：空闲后卸载模型释放内存
+                        VStack(alignment: .leading, spacing: 8) {
+                            Toggle(NSLocalizedString("voice.input.auto.unload.model", comment: ""), isOn: $preferences.enableAutoUnloadSpeechModel)
+                            
+                            HStack(spacing: 6) {
+                                Image(systemName: "info.circle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text(NSLocalizedString("voice.input.auto.unload.model.description", comment: ""))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.leading, 20)
+                            
+                            // 显示当前系统内存
+                            Text(String(format: NSLocalizedString("voice.input.auto.unload.model.hint", comment: ""), systemMemoryGB))
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .padding(.leading, 20)
                         }
                         
                         Divider()

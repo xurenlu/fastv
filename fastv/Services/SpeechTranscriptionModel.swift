@@ -15,11 +15,22 @@ actor SpeechTranscriptionModel {
     private var wrapper: ONNXRuntimeWrapper?
     private var lastUseTime: Date?
     private var isInactivityMonitoringEnabled = false
+    private var monitoringTask: Task<Void, Never>?  // 添加任务引用，用于取消
 
     // 空闲后自动卸载模型的时间阈值（秒）
     private static let inactivityThreshold: TimeInterval = 300  // 5分钟
 
     private init() {}
+
+    /// 停止监控（用于清理资源）
+    func stopMonitoring() {
+        monitoringTask?.cancel()
+        monitoringTask = nil
+        isInactivityMonitoringEnabled = false
+        #if DEBUG
+        print("🛑 [SpeechTranscriptionModel] 监控已停止")
+        #endif
+    }
 
     /// 获取模型路径（与 SpeechTranscriber 逻辑一致）
     private static func getModelPath() -> URL? {
@@ -84,21 +95,38 @@ actor SpeechTranscriptionModel {
         wrapper = w
         lastUseTime = Date()
 
-        // 启动空闲监控
+        // 启动空闲监控（仅当用户开启「动态清理内存」时）
         if !isInactivityMonitoringEnabled {
             isInactivityMonitoringEnabled = true
-            Task.detached(priority: .utility) {
+            // 保存任务引用以便后续取消
+            // 注意：Task.detached 不支持 [weak self]，我们通过 shared 实例访问
+            let task = Task.detached(priority: .utility) {
                 await Self.monitorInactivity()
             }
+            monitoringTask = task
         }
 
         return w
     }
 
-    /// 监控模型空闲时间，自动卸载
+    /// 监控模型空闲时间，自动卸载（仅当 enableAutoUnloadSpeechModel 为 true 时执行）
     private static func monitorInactivity() async {
-        while true {
-            try? await Task.sleep(nanoseconds: UInt64(60 * 1_000_000_000))  // 每分钟检查一次
+        while !Task.isCancelled {
+            do {
+                try await Task.sleep(nanoseconds: UInt64(60 * 1_000_000_000))
+            } catch {
+                #if DEBUG
+                print("🛑 [SpeechTranscriptionModel] 监控任务睡眠被中断，退出监控")
+                #endif
+                return
+            }
+
+            // 模型未加载时跳过检查，节省 MainActor 调度开销
+            let isLoaded = await shared.isModelLoaded()
+            guard isLoaded else { continue }
+
+            let enabled = await MainActor.run { UserPreferences.shared.enableAutoUnloadSpeechModel }
+            guard enabled else { continue }
 
             let shouldUnload = await shared.checkAndUnloadIfIdle()
             if shouldUnload {
@@ -107,34 +135,54 @@ actor SpeechTranscriptionModel {
                 #endif
             }
         }
+        #if DEBUG
+        print("🛑 [SpeechTranscriptionModel] 监控循环已退出")
+        #endif
     }
 
     /// 检查并卸载空闲模型
     private func checkAndUnloadIfIdle() -> Bool {
-        guard let wrapper = wrapper,
+        guard wrapper != nil,
               let lastUse = lastUseTime else {
             return false
         }
 
         let idleTime = Date().timeIntervalSince(lastUse)
-        if idleTime > Self.inactivityThreshold {
-            // 检查内存压力
-            var info = mach_task_basic_info()
-            var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
-            let result = withUnsafeMutablePointer(to: &info) {
-                $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
-                    task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
-                }
-            }
 
-            // 如果内存使用超过 4GB 或空闲超过阈值，卸载模型
-            let memoryUsedMB = UInt64(info.resident_size) / 1024 / 1024
-            if memoryUsedMB > 4096 || idleTime > Self.inactivityThreshold {
+        // 检查内存压力
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
+        let result = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+            }
+        }
+
+        // task_info 失败时仅按空闲时间判断，不依赖可能无效的内存数据
+        guard result == KERN_SUCCESS else {
+            if idleTime > Self.inactivityThreshold {
                 self.wrapper = nil
                 self.lastUseTime = nil
                 return true
             }
+            return false
         }
+
+        let memoryUsedMB = UInt64(info.resident_size) / 1024 / 1024
+
+        let shouldUnload = idleTime > Self.inactivityThreshold || memoryUsedMB > 4096
+        let isMemoryPressureHigh = memoryUsedMB > 2048
+
+        if shouldUnload || (isMemoryPressureHigh && idleTime > 60) {
+            #if DEBUG
+            print("💾 [SpeechTranscriptionModel] 内存检查: 已用 \(memoryUsedMB)MB, 空闲 \(Int(idleTime))s")
+            print("🧹 [SpeechTranscriptionModel] 卸载模型以释放内存")
+            #endif
+            self.wrapper = nil
+            self.lastUseTime = nil
+            return true
+        }
+
         return false
     }
 
@@ -165,10 +213,12 @@ actor SpeechTranscriptionModel {
     ) throws -> [Int] {
         let w = try getOrLoadWrapper()
         let inputFeatures: [[[Float]]] = [features]
-        return try w.runInference(
+        let result = try w.runInference(
             input: inputFeatures,
             language: language,
             enableCTCDeduplication: enableCTCDeduplication
         )
+
+        return result
     }
 }

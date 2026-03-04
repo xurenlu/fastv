@@ -52,6 +52,12 @@ class IncrementalTranscriptionManager: ObservableObject {
     private var transcriptionQueue: [(id: UUID, audioData: Data, sampleRate: Double, channelCount: Int, language: TranscriptLanguage)] = []
     private var currentTranscriptionTask: Task<Void, Never>?
     private var isProcessingQueue = false
+
+    /// 转写队列最大长度，超出时丢弃最旧条目以防内存无限增长
+    private let maxQueueSize = 20
+
+    /// segments 历史记录上限，超长会议时移除最早的已完成段落
+    private let maxSegmentsCount = 500
     
     // 转写完成回调：当段落转写完成时调用，参数是完整的转录文本
     var onTranscriptionUpdated: ((String) -> Void)?
@@ -98,8 +104,23 @@ class IncrementalTranscriptionManager: ObservableObject {
         )
         
         segments.append(segment)
-        
-        // 添加到转写队列
+
+        // 裁剪已完成的旧段落，防止超长会议时 segments 无限增长
+        if segments.count > maxSegmentsCount {
+            let excess = segments.count - maxSegmentsCount
+            segments.removeFirst(excess)
+            print("🧹 [IncrementalTranscription] 移除了 \(excess) 个最旧段落，当前 \(segments.count) 段")
+        }
+
+        // 添加到转写队列（超出上限时丢弃最旧条目）
+        if transcriptionQueue.count >= maxQueueSize {
+            let dropped = transcriptionQueue.removeFirst()
+            if let idx = segments.firstIndex(where: { $0.id == dropped.id }) {
+                segments[idx].transcriptionError = "队列已满，已跳过"
+                segments[idx].isTranscribing = false
+            }
+            print("⚠️ [IncrementalTranscription] 队列已满(\(maxQueueSize))，丢弃最旧段落")
+        }
         transcriptionQueue.append((id: segment.id, audioData: audioData, sampleRate: sampleRate, channelCount: channelCount, language: language))
         pendingSegmentsCount = transcriptionQueue.count
         

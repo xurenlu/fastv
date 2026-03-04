@@ -78,6 +78,9 @@
 "silence.detection.duration" = "停頓閾值";
 "voice.input.release.tail.buffer" = "鬆開後尾緩衝";
 "voice.input.release.tail.buffer.description" = "鬆開快捷鍵後繼續錄音一小段時間，減少末尾內容丟失（0 為關閉）";
+"voice.input.auto.unload.model" = "空閒後自動卸載語音模型";
+"voice.input.auto.unload.model.description" = "開啟後，語音模型喺 5 分鐘唔使用時會自動釋放內存。再次語音輸入需 1–2 秒加載模型。大內存（≥16GB）建議關閉以保持即時響應，小內存建議開啟。";
+"voice.input.auto.unload.model.hint" = "當前內存 %d GB，系統已據此設置默認值";
 
 // 統計
 "total.duration" = "總時長";

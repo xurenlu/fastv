@@ -46,13 +46,10 @@ struct SpeechTranscriber {
         return Bundle.main.url(forResource: "config", withExtension: "yaml")
     }
     
-    // 缓存 token 映射（使用 NSCache 自动管理内存）
-    private static var tokenCache: NSCache<NSNumber, NSString> = {
-        let cache = NSCache<NSNumber, NSString>()
-        cache.countLimit = 10000  // 限制缓存条目数
-        cache.totalCostLimit = 10 * 1024 * 1024  // 限制总大小为 10MB
-        return cache
-    }()
+    // 缓存整个 token 映射表，避免每次转写都重新读取文件
+    private static var cachedTokenMap: [Int: String]?
+    private static var cachedTokenMapURL: URL?
+    private static let tokenMapLock = NSLock()
     
     // am.mvn 文件从 Bundle 中读取（随 app 提供）
     private static func resolveCMVNURL() -> URL? {
@@ -596,28 +593,35 @@ struct SpeechTranscriber {
             nonisolated(unsafe) let audioInputCapture = audioInput
             nonisolated(unsafe) let audioOutputCapture = audioOutput
             nonisolated(unsafe) let writerCapture = writer
+            let resumeLock = NSLock()
+            nonisolated(unsafe) var hasResumed = false
+
+            let finishAndResume = {
+                audioInputCapture.markAsFinished()
+                writerCapture.finishWriting {
+                    resumeLock.lock()
+                    guard !hasResumed else {
+                        resumeLock.unlock()
+                        return
+                    }
+                    hasResumed = true
+                    resumeLock.unlock()
+                    if let error = writerCapture.error {
+                        continuation.resume(throwing: VideoProcessingError.transcriptionFailed("音频预处理失败: \(error.localizedDescription)"))
+                    } else {
+                        continuation.resume(returning: outputURL)
+                    }
+                }
+            }
+
             audioInputCapture.requestMediaDataWhenReady(on: queue) {
                 while audioInputCapture.isReadyForMoreMediaData {
                     guard let sampleBuffer = audioOutputCapture.copyNextSampleBuffer() else {
-                        audioInputCapture.markAsFinished()
-                        writerCapture.finishWriting {
-                            if let error = writerCapture.error {
-                                continuation.resume(throwing: VideoProcessingError.transcriptionFailed("音频预处理失败: \(error.localizedDescription)"))
-                            } else {
-                                continuation.resume(returning: outputURL)
-                            }
-                        }
+                        finishAndResume()
                         return
                     }
                     if !audioInputCapture.append(sampleBuffer) {
-                        audioInputCapture.markAsFinished()
-                        writerCapture.finishWriting {
-                            if let error = writerCapture.error {
-                                continuation.resume(throwing: VideoProcessingError.transcriptionFailed("音频预处理失败: \(error.localizedDescription)"))
-                            } else {
-                                continuation.resume(returning: outputURL)
-                            }
-                        }
+                        finishAndResume()
                         return
                     }
                 }
@@ -665,25 +669,38 @@ struct SpeechTranscriber {
         return text
     }
     
-    /// 加载 token 映射表
+    /// 加载 token 映射表（带文件级缓存，同一文件只读取一次）
     private static func loadTokenMap(from url: URL) async throws -> [Int: String] {
-        // 首先检查缓存
+        tokenMapLock.lock()
+        if let cached = cachedTokenMap, cachedTokenMapURL == url {
+            tokenMapLock.unlock()
+            return cached
+        }
+        tokenMapLock.unlock()
+
         let data = try Data(contentsOf: url)
         let tokens = try JSONDecoder().decode([String].self, from: data)
 
         var map: [Int: String] = [:]
+        map.reserveCapacity(tokens.count)
         for (index, token) in tokens.enumerated() {
             map[index] = token
-            // 存入 NSCache
-            tokenCache.setObject(token as NSString, forKey: NSNumber(value: index))
         }
+
+        tokenMapLock.lock()
+        cachedTokenMap = map
+        cachedTokenMapURL = url
+        tokenMapLock.unlock()
 
         return map
     }
 
     /// 清除 token 缓存（用于释放内存）
     static func clearTokenCache() {
-        tokenCache.removeAllObjects()
+        tokenMapLock.lock()
+        cachedTokenMap = nil
+        cachedTokenMapURL = nil
+        tokenMapLock.unlock()
         #if DEBUG
         print("🧹 [SpeechTranscriber] Token 缓存已清除")
         #endif

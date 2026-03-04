@@ -27,6 +27,7 @@ class MeetingRecordService: ObservableObject {
 
     // 实时转录相关
     private var incrementalTranscriptTimer: Timer?
+    private var durationUpdateTimer: Timer?  // 添加对时长更新 Timer 的引用
     private var currentTranscriptSegments: [String] = []
     private let transcriptInterval: TimeInterval = 15.0 // 每15秒进行一次转录
     private var lastTranscriptTime: Date?
@@ -57,37 +58,38 @@ class MeetingRecordService: ObservableObject {
 
     /// 加载所有记录
     private func loadRecords() {
-        saveQueue.sync {
-            guard FileManager.default.fileExists(atPath: recordsFileURL.path) else {
-                self.records = []
-                return
-            }
+        let fileURL = recordsFileURL
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            self.records = []
+            return
+        }
 
-            do {
-                let data = try Data(contentsOf: recordsFileURL)
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601
-                self.records = try decoder.decode([MeetingRecord].self, from: data)
-                logger.log("加载了 \(self.records.count) 条会议记录")
-            } catch {
-                logger.error("加载会议记录失败: \(error.localizedDescription)")
-                self.records = []
-            }
+        do {
+            let data = try Data(contentsOf: fileURL)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            self.records = try decoder.decode([MeetingRecord].self, from: data)
+            logger.log("加载了 \(self.records.count) 条会议记录")
+        } catch {
+            logger.error("加载会议记录失败: \(error.localizedDescription)")
+            self.records = []
         }
     }
 
     /// 保存所有记录
     private func saveRecords() {
-        saveQueue.async {
+        let snapshot = records
+        let fileURL = recordsFileURL
+        saveQueue.async { [logger] in
             do {
                 let encoder = JSONEncoder()
                 encoder.dateEncodingStrategy = .iso8601
                 encoder.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes]
-                let data = try encoder.encode(self.records)
-                try data.write(to: self.recordsFileURL, options: .atomic)
-                self.logger.log("保存了 \(self.records.count) 条会议记录")
+                let data = try encoder.encode(snapshot)
+                try data.write(to: fileURL, options: .atomic)
+                logger.log("保存了 \(snapshot.count) 条会议记录")
             } catch {
-                self.logger.error("保存会议记录失败: \(error.localizedDescription)")
+                logger.error("保存会议记录失败: \(error.localizedDescription)")
             }
         }
     }
@@ -182,6 +184,8 @@ class MeetingRecordService: ObservableObject {
         // 停止定时器
         incrementalTranscriptTimer?.invalidate()
         incrementalTranscriptTimer = nil
+        durationUpdateTimer?.invalidate()  // 清理时长更新定时器
+        durationUpdateTimer = nil
 
         // 停止录音并获取最终音频（完整录音数据）
         let finalRecording = try? await voiceService.stopRecording()
@@ -250,6 +254,8 @@ class MeetingRecordService: ObservableObject {
 
         incrementalTranscriptTimer?.invalidate()
         incrementalTranscriptTimer = nil
+        durationUpdateTimer?.invalidate()  // 清理时长更新定时器
+        durationUpdateTimer = nil
 
         voiceService.cancelRecording()
 
@@ -332,17 +338,18 @@ class MeetingRecordService: ObservableObject {
 
     /// 时长更新定时器
     private func startDurationTimer() {
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
-            guard let self = self, self.isRecording else {
-                timer.invalidate()
-                return
-            }
-            self.recordingDuration += 1.0
+        durationUpdateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+            Task { @MainActor in
+                guard let self = self, self.isRecording else {
+                    timer.invalidate()
+                    return
+                }
+                self.recordingDuration += 1.0
 
-            // 更新记录时长
-            if let recordId = self.currentRecordingId,
-               let index = self.records.firstIndex(where: { $0.id == recordId }) {
-                self.records[index].duration = self.recordingDuration
+                if let recordId = self.currentRecordingId,
+                   let index = self.records.firstIndex(where: { $0.id == recordId }) {
+                    self.records[index].duration = self.recordingDuration
+                }
             }
         }
     }

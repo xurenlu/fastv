@@ -89,6 +89,8 @@ class UserPreferences: ObservableObject {
         static let silenceRelativeThreshold = "silenceRelativeThreshold"
         static let enableIncrementalTranscription = "enableIncrementalTranscription"
         static let voiceInputReleaseTailBufferSeconds = "voiceInputReleaseTailBufferSeconds"
+        /// 空闲后自动卸载语音模型以释放内存（小内存设备建议开启，大内存可关闭以保持即时响应）
+        static let enableAutoUnloadSpeechModel = "enableAutoUnloadSpeechModel"
         // AI 服务配置相关（新）
         static let aiServiceProfiles = "aiServiceProfiles"
         static let aiScenarioBindings = "aiScenarioBindings"
@@ -373,6 +375,11 @@ class UserPreferences: ObservableObject {
     /// 松开快捷键后继续录音的尾缓冲时长（秒），用于减少末尾内容丢失，默认 0.3 秒
     @Published var voiceInputReleaseTailBufferSeconds: Double {
         willSet { defaults.set(newValue, forKey: Keys.voiceInputReleaseTailBufferSeconds) }
+    }
+    
+    /// 空闲后自动卸载语音模型以释放内存。大内存（≥16GB）默认关闭，小内存默认开启。开启后再次语音输入需 1–2 秒加载模型。
+    @Published var enableAutoUnloadSpeechModel: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.enableAutoUnloadSpeechModel) }
     }
     
     // 引导流程相关
@@ -744,6 +751,14 @@ class UserPreferences: ObservableObject {
         silenceRelativeThreshold = defaults.object(forKey: Keys.silenceRelativeThreshold) as? Float ?? 0.25 // 默认25%，更敏感
         enableIncrementalTranscription = defaults.object(forKey: Keys.enableIncrementalTranscription) as? Bool ?? false
         voiceInputReleaseTailBufferSeconds = defaults.object(forKey: Keys.voiceInputReleaseTailBufferSeconds) as? Double ?? 0.3
+        
+        // 动态清理内存：根据系统内存设置默认值（≥16GB 默认关闭，<16GB 默认开启）
+        if let saved = defaults.object(forKey: Keys.enableAutoUnloadSpeechModel) as? Bool {
+            enableAutoUnloadSpeechModel = saved
+        } else {
+            let ramGB = Double(ProcessInfo.processInfo.physicalMemory) / 1024 / 1024 / 1024
+            enableAutoUnloadSpeechModel = ramGB < 16  // 16GB 及以上默认不清理，小内存默认清理
+        }
         
         // 引导流程设置，默认为未完成
         hasCompletedOnboarding = defaults.bool(forKey: Keys.hasCompletedOnboarding)

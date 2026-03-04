@@ -78,6 +78,9 @@
 "silence.detection.duration" = "停顿阈值";
 "voice.input.release.tail.buffer" = "松开后尾缓冲";
 "voice.input.release.tail.buffer.description" = "松开快捷键后继续录音一小段时间，减少末尾内容丢失（0 为关闭）";
+"voice.input.auto.unload.model" = "空闲后自动卸载语音模型";
+"voice.input.auto.unload.model.description" = "开启后，语音模型在 5 分钟不使用时会自动释放内存。再次语音输入需 1–2 秒加载模型。大内存（≥16GB）建议关闭以保持即时响应，小内存建议开启。";
+"voice.input.auto.unload.model.hint" = "当前内存 %d GB，系统已据此设置默认值";
 
 // 统计
 "total.duration" = "总时长";

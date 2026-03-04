@@ -78,6 +78,9 @@
 "silence.detection.duration" = "ポーズ閾値";
 "voice.input.release.tail.buffer" = "リリース後テールバッファ";
 "voice.input.release.tail.buffer.description" = "ショートカットを離した後、少し録音を続けて末尾の内容の欠落を減らす（0で無効）";
+"voice.input.auto.unload.model" = "アイドル時に音声モデルを自動アンロード";
+"voice.input.auto.unload.model.description" = "有効にすると、5分間使用しないと音声モデルが自動でメモリを解放します。次回の音声入力は1〜2秒の読み込みが必要です。16GB以上のメモリではオフ、少ないメモリではオンを推奨。";
+"voice.input.auto.unload.model.hint" = "現在のメモリ: %d GB。これに基づきデフォルトを設定しました。";
 
 // 統計
 "total.duration" = "合計時間";

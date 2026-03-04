@@ -78,6 +78,9 @@
 "silence.detection.duration" = "일시 정지 임계값";
 "voice.input.release.tail.buffer" = "해제 후 테일 버퍼";
 "voice.input.release.tail.buffer.description" = "단축키를 놓은 후 잠시 녹음을 계속하여 끝부분 내용 손실을 줄임 (0으로 비활성화)";
+"voice.input.auto.unload.model" = "유휴 시 음성 모델 자동 언로드";
+"voice.input.auto.unload.model.description" = "활성화하면 5분간 사용하지 않을 때 음성 모델이 메모리를 자동으로 해제합니다. 다음 음성 입력 시 1〜2초 로딩이 필요합니다. 16GB 이상이면 끄기, 적은 메모리면 켜기 권장.";
+"voice.input.auto.unload.model.hint" = "현재 메모리: %d GB. 이에 따라 기본값이 설정되었습니다.";
 
 // 통계
 "total.duration" = "총 시간";

@@ -252,8 +252,10 @@ class MemoryMonitor: ObservableObject {
         }
 
         monitorTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
-            self?.updateMemory()
-            self?.scheduleNextSample()
+            Task { @MainActor in
+                self?.updateMemory()
+                self?.scheduleNextSample()
+            }
         }
     }
 
@@ -301,14 +303,31 @@ class MemoryMonitor: ObservableObject {
     }
 
     private func checkMemoryPressure(_ memoryMB: Double) {
-        let memoryUInt = UInt64(memoryMB * 1024 * 1024)
+        let memMB = UInt64(memoryMB)
 
-        if memoryUInt > dangerThreshold {
-            print("🔴 [MemoryMonitor] 内存危险: \(Int(memoryMB))MB - 建议立即重启")
-        } else if memoryUInt > criticalThreshold {
-            print("🚨 [MemoryMonitor] 内存严重: \(Int(memoryMB))MB - 建议释放资源")
-        } else if memoryUInt > warningThreshold {
+        if memMB > dangerThreshold {
+            print("🔴 [MemoryMonitor] 内存危险: \(Int(memoryMB))MB - 主动释放资源")
+            performEmergencyCleanup()
+        } else if memMB > criticalThreshold {
+            print("🚨 [MemoryMonitor] 内存严重: \(Int(memoryMB))MB - 尝试释放资源")
+            performMemoryCleanup()
+        } else if memMB > warningThreshold {
             print("⚠️ [MemoryMonitor] 内存警告: \(Int(memoryMB))MB")
+        }
+    }
+
+    /// 内存较高时清理可回收资源（token 缓存）
+    private func performMemoryCleanup() {
+        SpeechTranscriber.clearTokenCache()
+        print("🧹 [MemoryMonitor] 已清除 token 缓存")
+    }
+
+    /// 内存危险时强制释放（卸载模型 + 清除缓存）
+    private func performEmergencyCleanup() {
+        SpeechTranscriber.clearTokenCache()
+        Task {
+            await SpeechTranscriptionModel.shared.unloadModel()
+            print("🧹 [MemoryMonitor] 紧急清理完成：已卸载模型并清除缓存")
         }
     }
 
@@ -397,13 +416,14 @@ class MemoryMonitor: ObservableObject {
     // MARK: - Persistence
 
     private func saveToDisk() {
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            guard let self = self else { return }
+        let snapshot = memoryHistory
+        let key = saveKey
+        DispatchQueue.global(qos: .utility).async {
             do {
                 let encoder = JSONEncoder()
                 encoder.dateEncodingStrategy = .iso8601
-                let data = try encoder.encode(self.memoryHistory)
-                UserDefaults.standard.set(data, forKey: self.saveKey)
+                let data = try encoder.encode(snapshot)
+                UserDefaults.standard.set(data, forKey: key)
             } catch {
                 print("❌ [MemoryMonitor] 保存失败: \(error)")
             }

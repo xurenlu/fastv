@@ -78,6 +78,9 @@
 "silence.detection.duration" = "Pause threshold";
 "voice.input.release.tail.buffer" = "Release tail buffer";
 "voice.input.release.tail.buffer.description" = "Continue recording briefly after releasing shortcut to reduce tail content loss (0 to disable)";
+"voice.input.auto.unload.model" = "Auto-unload voice model when idle";
+"voice.input.auto.unload.model.description" = "When enabled, the voice model is unloaded after 5 minutes of inactivity to free memory. Next voice input will take 1–2 seconds to load. Recommended off for 16GB+ RAM, on for smaller systems.";
+"voice.input.auto.unload.model.hint" = "Current memory: %d GB. Default was set based on this.";
 
 // Statistics
 "total.duration" = "Total Duration";

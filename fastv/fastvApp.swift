@@ -37,9 +37,18 @@ private var currentSessionSilenceDetector: SilenceDetector?
 private var incrementalTranscriptionTask: Task<Void, Never>?
 /// 智能分段單條結果：含音頻與轉寫文本，用於二次拼接轉寫（長音頻準確率更高）
 private struct IncrementalSegmentInfo {
-    let audio: VoiceRecording
+    var audio: VoiceRecording?
     let transcript: String
+
+    init(audio: VoiceRecording, transcript: String) {
+        self.audio = audio
+        self.transcript = transcript
+    }
 }
+
+/// 智能分段結果最大段數上限，防止超長錄音內存無限增長
+/// 200 段 × ~2s ≈ 400s ≈ 6.7 分鐘 × 1.9MB/min ≈ 12MB PCM
+private let incrementalMaxSegments = 200
 
 // 智能分段轉寫結果緩存：邊說邊轉但不插入，鬆鍵時一次性合併輸出（利於 AI 優化整段）
 private var incrementalTranscriptionResults: [IncrementalSegmentInfo] = []
@@ -84,6 +93,10 @@ private func performIncrementalSegmentTranscription() async {
         guard !text.isEmpty else { return }
 
         let segmentInfo = IncrementalSegmentInfo(audio: result.recording, transcript: text)
+        if incrementalTranscriptionResults.count >= incrementalMaxSegments {
+            print("⚠️ [fastvApp] 智能分段結果達到上限(\(incrementalMaxSegments)段)，丟棄最舊段落以防內存累積")
+            incrementalTranscriptionResults.removeFirst()
+        }
         incrementalTranscriptionResults.append(segmentInfo)
         print("✅ [fastvApp] 智能分段轉寫緩存: \(text.prefix(30))... (共\(incrementalTranscriptionResults.count)段)")
 
@@ -119,11 +132,11 @@ private func partitionSegmentsForBatchRefinement(_ segments: [IncrementalSegment
             break
         }
         var bestEnd = start + incrementalBatchMinSegments
-        var bestDuration = segments[start..<bestEnd].reduce(0.0) { $0 + $1.audio.durationSeconds }
+        var bestDuration = segments[start..<bestEnd].reduce(0.0) { $0 + ($1.audio?.durationSeconds ?? 0) }
         // 若不足最小時長，繼續加段（但不超过最大時長）
         while bestDuration < incrementalBatchMinDuration && bestEnd < n && bestDuration < incrementalBatchMaxDuration {
             bestEnd += 1
-            bestDuration += segments[bestEnd - 1].audio.durationSeconds
+            bestDuration += segments[bestEnd - 1].audio?.durationSeconds ?? 0
         }
         let tailCount = n - bestEnd
         if tailCount > 0 && tailCount < incrementalBatchMinSegments {
@@ -131,7 +144,7 @@ private func partitionSegmentsForBatchRefinement(_ segments: [IncrementalSegment
         } else if bestEnd < n {
             // 嘗試擴展當前批次，但同時滿足：最小時長、剩余可成批、不超过最大時長
             for end in (bestEnd + 1)...n {
-                let duration = segments[start..<end].reduce(0.0) { $0 + $1.audio.durationSeconds }
+                let duration = segments[start..<end].reduce(0.0) { $0 + ($1.audio?.durationSeconds ?? 0) }
                 let tail = n - end
                 // 超過最大時長時停止擴展
                 if duration > incrementalBatchMaxDuration {
@@ -167,8 +180,12 @@ private func scheduleBatchRefinementTranscription(language: TranscriptLanguage) 
             guard !Task.isCancelled, let r = refined else { return }
             if index < incrementalBatchRefinedTexts.count {
                 incrementalBatchRefinedTexts[index] = r
-                let duration = batchSegments.reduce(0.0) { $0 + $1.audio.durationSeconds }
+                let duration = batchSegments.reduce(0.0) { $0 + ($1.audio?.durationSeconds ?? 0) }
                 print("✅ [fastvApp] 批次\(index+1)/\(partition.count) 二次轉寫完成(\(range.count)段, \(String(format: "%.1f", duration))s)")
+                // 二次拼接完成後釋放該批音頻數據，只保留文本
+                for i in range where i < incrementalTranscriptionResults.count {
+                    incrementalTranscriptionResults[i].audio = nil
+                }
             }
         }
         incrementalBatchRefinementTasks.append(task)
@@ -179,9 +196,11 @@ private func scheduleBatchRefinementTranscription(language: TranscriptLanguage) 
 @MainActor
 private func runBatchRefinementTranscription(segments: [IncrementalSegmentInfo], language: TranscriptLanguage) async -> String? {
     guard segments.count >= incrementalBatchMinSegments else { return nil }
-    let combinedPCM = segments.map { $0.audio.pcmData }.reduce(Data(), +)
+    let validSegments = segments.compactMap { $0.audio }
+    guard !validSegments.isEmpty else { return nil }
+    let combinedPCM = validSegments.map { $0.pcmData }.reduce(Data(), +)
     guard !combinedPCM.isEmpty else { return nil }
-    let first = segments[0].audio
+    let first = validSegments[0]
     let combined = VoiceRecording(pcmData: combinedPCM, sampleRate: first.sampleRate, channelCount: first.channelCount)
     do {
         var text = try await SpeechTranscriber.transcribe(
@@ -412,6 +431,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 VoiceInputService.shared.forceReleaseMicrophone()
             }
         }
+
+        // 停止语音转录模型监控，防止无限循环任务继续运行
+        // 使用 DispatchSemaphore 确保在退出前同步完成清理
+        let semaphore = DispatchSemaphore(value: 0)
+        Task.detached {
+            await SpeechTranscriptionModel.shared.stopMonitoring()
+            await SpeechTranscriptionModel.shared.unloadModel()
+            SpeechTranscriber.clearTokenCache()
+            semaphore.signal()
+        }
+        _ = semaphore.wait(timeout: .now() + 2)
 
         // 移除所有通知观察者
         if let observer = windowObserver {
