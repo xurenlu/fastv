@@ -1736,7 +1736,7 @@ struct MessageHeadersView: View {
         }
         
         let savePanel = NSSavePanel()
-        savePanel.allowedContentTypes = [.init(filenameExtension: "eml")!]
+        savePanel.applyEMLContentTypes()
         savePanel.nameFieldStringValue = sanitizeFilename(message.subject.isEmpty ? "邮件" : message.subject) + ".eml"
         savePanel.title = "保存邮件"
         savePanel.prompt = "保存"

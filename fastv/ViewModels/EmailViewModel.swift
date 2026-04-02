@@ -3137,7 +3137,7 @@ class EmailViewModel: ObservableObject {
             
             // 使用文件保存对话框
             let savePanel = NSSavePanel()
-            savePanel.allowedContentTypes = [.init(filenameExtension: "eml")!]
+            savePanel.applyEMLContentTypes()
             savePanel.nameFieldStringValue = sanitizeFilename(message.subject.isEmpty ? "邮件" : message.subject) + ".eml"
             savePanel.title = "保存邮件"
             savePanel.prompt = "保存"
@@ -3165,7 +3165,7 @@ class EmailViewModel: ObservableObject {
         }
         
         let savePanel = NSSavePanel()
-        savePanel.allowedContentTypes = [.init(filenameExtension: "eml")!]
+        savePanel.applyEMLContentTypes()
         savePanel.nameFieldStringValue = sanitizeFilename(message.subject.isEmpty ? "邮件" : message.subject) + ".eml"
         savePanel.title = "保存邮件"
         savePanel.prompt = "保存"

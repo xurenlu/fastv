@@ -142,8 +142,10 @@ class CommonMistakeManager: ObservableObject {
             regexCache[pattern] = regex
             return regex
         }
-        // 如果创建失败，返回一个不会匹配任何内容的正则
-        return try! NSRegularExpression(pattern: "(?!.*)", options: [])
+        // 用户词转义后仍非法时，使用固定合法模式 `a^`（永不匹配），避免对动态 pattern 使用 try!
+        let neverMatch = try! NSRegularExpression(pattern: "a^", options: [])
+        regexCache[pattern] = neverMatch
+        return neverMatch
     }
     
     /// 获取统计信息

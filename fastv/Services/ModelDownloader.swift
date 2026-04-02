@@ -287,7 +287,9 @@ class ModelDownloader: ObservableObject {
                     }
                 }
             }
-            RunLoop.main.add(speedTimer!, forMode: .common)
+            if let timer = speedTimer {
+                RunLoop.main.add(timer, forMode: .common)
+            }
             
             task.resume()
         }

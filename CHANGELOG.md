@@ -2,6 +2,17 @@
 
 所有版本變更記錄。
 
+## [1.2.9-rc2] - 2026-04-02
+
+### 修復與穩定性
+- `ChatManager`：從 UserDefaults 恢復聊天消息時，跳過無法解析為 UUID 的鍵，避免 `UUID(uuidString:)` 強制解包崩潰（舊數據或損壞鍵時更穩健）
+- 保存 `.eml`：`UTType(filenameExtension:)` 改為安全處理，模型下載速度定時器避免對 `Timer` 強制解包
+- `CommonMistakeManager`：用戶常錯詞正則編譯失敗時，改為固定兜底模式，避免對動態非法 pattern 使用 `try!`
+
+### 產品與文檔
+- 主界面側邊欄僅保留「語音輸入」「郵箱」，與當前產品範圍一致
+- 更新根目錄 README、`docs/README.md`、`docs/產品功能說明.md`，標註當前主線能力與歷史文檔的關係
+
 ## [1.2.9-rc1] - 2026-03-01
 
 ### 新增

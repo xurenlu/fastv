@@ -259,8 +259,12 @@ class ChatManager: ObservableObject {
         
         await MainActor.run {
             if let decoded = decoded {
-                messages = Dictionary(uniqueKeysWithValues: decoded.map { (key, value) in
-                    (UUID(uuidString: key)!, value)
+                messages = Dictionary(uniqueKeysWithValues: decoded.compactMap { key, value in
+                    guard let uuid = UUID(uuidString: key) else {
+                        print("⚠️ [ChatManager] 跳过无效会话 ID，无法解析为 UUID: \(key.prefix(80))")
+                        return nil
+                    }
+                    return (uuid, value)
                 })
             } else {
                 messages = [:]

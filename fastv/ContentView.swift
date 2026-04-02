@@ -10,20 +10,14 @@ import AppKit
 import UniformTypeIdentifiers
 import Combine
 
-/// 侧边栏选项
+/// 侧边栏选项（当前产品仅保留语音输入与邮箱）
 enum SidebarItem: Identifiable, Hashable {
     case voiceInput
-    case meeting
-    case aiTodo
-    case aiChat
     case email
 
     var id: String {
         switch self {
         case .voiceInput: return "语音输入"
-        case .meeting: return "会议记录"
-        case .aiTodo: return "AI Todo"
-        case .aiChat: return "AI Chat"
         case .email: return "邮箱"
         }
     }
@@ -31,9 +25,6 @@ enum SidebarItem: Identifiable, Hashable {
     var displayName: String {
         switch self {
         case .voiceInput: return "语音输入"
-        case .meeting: return "会议记录"
-        case .aiTodo: return "AI Todo"
-        case .aiChat: return "AI Chat"
         case .email: return "邮箱"
         }
     }
@@ -41,15 +32,12 @@ enum SidebarItem: Identifiable, Hashable {
     var icon: String {
         switch self {
         case .voiceInput: return "mic.fill"
-        case .meeting: return "doc.text.fill"
-        case .aiTodo: return "checklist"
-        case .aiChat: return "message.fill"
         case .email: return "envelope.fill"
         }
     }
 
     static var builtInItems: [SidebarItem] {
-        [.voiceInput, .meeting, .aiTodo, .aiChat, .email]
+        [.voiceInput, .email]
     }
 }
 
@@ -128,36 +116,6 @@ struct ContentView: View {
             switch selectedSidebarItem {
             case .voiceInput:
                 VoiceInputView()
-                    .toolbar {
-                        ToolbarItem(placement: .automatic) {
-                            Button(action: { showSettings = true }) {
-                                Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
-                            }
-                            .help(NSLocalizedString("settings", comment: ""))
-                        }
-                    }
-            case .meeting:
-                MeetingRecordView()
-                    .toolbar {
-                        ToolbarItem(placement: .automatic) {
-                            Button(action: { showSettings = true }) {
-                                Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
-                            }
-                            .help(NSLocalizedString("settings", comment: ""))
-                        }
-                    }
-            case .aiTodo:
-                AITodoView()
-                    .toolbar {
-                        ToolbarItem(placement: .automatic) {
-                            Button(action: { showSettings = true }) {
-                                Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
-                            }
-                            .help(NSLocalizedString("settings", comment: ""))
-                        }
-                    }
-            case .aiChat:
-                AIChatView()
                     .toolbar {
                         ToolbarItem(placement: .automatic) {
                             Button(action: { showSettings = true }) {
