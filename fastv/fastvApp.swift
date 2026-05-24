@@ -236,7 +236,7 @@ private func performContextualRewriteIfNeeded(
         return ContextualRewriteOutcome(attempted: false, rewrittenText: nil)
     }
 
-    print("✍️ [fastvApp] 触发 AI 上下文回改，目标片段: \(context.targetText.prefix(50))...")
+    print("✍️ [fastvApp] 触发 AI 上下文回改，目标片段长度: \(context.targetText.count)，范围: \(context.targetRange.location)+\(context.targetRange.length)")
     waveformManager.setAICorrecting()
 
     do {
@@ -247,12 +247,12 @@ private func performContextualRewriteIfNeeded(
         let success = contextService.replaceTarget(in: context, with: rewrittenText)
         if success {
             waveformManager.setAICorrected()
-            print("✅ [fastvApp] AI 上下文回改完成: \(rewrittenText.prefix(50))...")
+            print("✅ [fastvApp] AI 上下文回改完成，结果长度: \(rewrittenText.count)")
             return ContextualRewriteOutcome(attempted: true, rewrittenText: rewrittenText)
         } else if contextService.selectTarget(in: context) {
             insertVoiceText(rewrittenText, preferences: preferences)
             waveformManager.setAICorrected()
-            print("✅ [fastvApp] AI 上下文回改通过选区替换完成: \(rewrittenText.prefix(50))...")
+            print("✅ [fastvApp] AI 上下文回改通过选区替换完成，结果长度: \(rewrittenText.count)")
             return ContextualRewriteOutcome(attempted: true, rewrittenText: rewrittenText)
         } else {
             waveformManager.setAICorrectionFailed()
@@ -1148,7 +1148,7 @@ struct fastvApp: App {
             let audioSec = currentSessionIncrementalAudioSeconds > 0 ? currentSessionIncrementalAudioSeconds : nil
             let transSec = currentSessionIncrementalTranscriptionSeconds > 0 ? currentSessionIncrementalTranscriptionSeconds : nil
             VoiceInputHistoryManager.shared.add(text: text, audioDurationSeconds: audioSec, transcriptionDurationSeconds: transSec)
-            print("✅ [fastvApp] 智能分段一次性插入: \(text.prefix(50))...")
+            print("✅ [fastvApp] 智能分段一次性插入完成，文本长度: \(text.count)")
             currentSessionUsesIncremental = false
             currentVoiceInputNeedsAI = false
             return
@@ -1180,7 +1180,7 @@ struct fastvApp: App {
             let transcribeStart = CFAbsoluteTimeGetCurrent()
             var text = try await SpeechTranscriber.transcribe(recording: recording, language: language, enableCTCDeduplication: nil)
             let transcriptionDuration = CFAbsoluteTimeGetCurrent() - transcribeStart
-            print("✅ [fastvApp] 语音转文字成功: \(text.prefix(50))...")
+            print("✅ [fastvApp] 语音转文字成功，文本长度: \(text.count)")
             // 转录完成后主动回收 C/ObjC 层 autorelease 对象，便于释放大块 PCM 等内存
             autoreleasepool { }
             
@@ -1193,8 +1193,7 @@ struct fastvApp: App {
                 if text != originalText {
                     let correctionDuration = Date().timeIntervalSince(correctionStartTime) * 1000
                     print("✅ [fastvApp] 自动纠错完成，耗时: \(String(format: "%.2f", correctionDuration))毫秒")
-                    print("📝 [fastvApp] 修正前: \(originalText.prefix(50))...")
-                    print("📝 [fastvApp] 修正后: \(text.prefix(50))...")
+                    print("📝 [fastvApp] 自动纠错文本长度: \(originalText.count) -> \(text.count)")
                 }
             }
             
@@ -1243,8 +1242,7 @@ struct fastvApp: App {
                     )
                     let aiDuration = Date().timeIntervalSince(aiStartTime)
                     print("✅ [fastvApp] AI 優化完成，耗時: \(String(format: "%.2f", aiDuration))秒")
-                    print("📝 [fastvApp] 原文: \(text.prefix(50))...")
-                    print("📝 [fastvApp] 優化後: \(optimizedText.prefix(50))...")
+                    print("📝 [fastvApp] AI 优化文本长度: \(text.count) -> \(optimizedText.count)")
                     text = optimizedText
                     
                     // AI修正成功：設置成功狀態（會自動在1秒後隱藏窗口）

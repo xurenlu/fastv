@@ -550,7 +550,7 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -582,7 +582,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "1.3.0-rc1";
+				MARKETING_VERSION = "1.3.0-rc2";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
@@ -610,7 +610,7 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -642,7 +642,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "1.3.0-rc1";
+				MARKETING_VERSION = "1.3.0-rc2";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",

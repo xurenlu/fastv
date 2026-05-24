@@ -62,7 +62,6 @@ class DirectTextInsertionService {
         
         print("═══════════════════════════════════════════════════════")
         print("📝 [DirectTextInsertionService] 开始插入操作 #\(currentCount)")
-        print("📝 [DirectTextInsertionService] 要插入的文本: \"\(text.prefix(100))...\"")
         print("📝 [DirectTextInsertionService] 文本长度: \(text.count) 字符")
         print("═══════════════════════════════════════════════════════")
         
@@ -169,4 +168,3 @@ class DirectTextInsertionService {
         _ = AXIsProcessTrustedWithOptions(options as CFDictionary)
     }
 }
-

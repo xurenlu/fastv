@@ -587,8 +587,7 @@ class OllamaService {
         let duration = Date().timeIntervalSince(startTime)
         
         print("✅ [OllamaService] 测试完成，耗时: \(String(format: "%.2f", duration))秒")
-        print("📝 [OllamaService] 原文: \(testText)")
-        print("📝 [OllamaService] 优化后: \(optimizedText)")
+        print("📝 [OllamaService] 测试文本长度: \(testText.count) -> \(optimizedText.count)")
         
         return (optimizedText, duration)
     }

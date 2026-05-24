@@ -53,7 +53,6 @@ class TextInsertionService {
         
         print("═══════════════════════════════════════════════════════")
         print("📝 [TextInsertionService] 开始插入操作 #\(currentCount)")
-        print("📝 [TextInsertionService] 要插入的文本: \"\(text)\"")
         print("📝 [TextInsertionService] 文本长度: \(text.count) 字符")
         print("═══════════════════════════════════════════════════════")
         
@@ -88,16 +87,16 @@ class TextInsertionService {
         let pasteboard = NSPasteboard.general
         
         // 记录操作前的剪贴板状态
-        let oldContent = pasteboard.string(forType: .string) ?? "(空)"
+        let oldContentLength = pasteboard.string(forType: .string)?.count ?? 0
         let changeCountBefore = pasteboard.changeCount
-        print("📋 [#\(operationId)] 操作前剪贴板: changeCount=\(changeCountBefore), 内容=\"\(oldContent.prefix(50))...\"")
+        print("📋 [#\(operationId)] 操作前剪贴板: changeCount=\(changeCountBefore), 文本长度=\(oldContentLength)")
         
         // ========== 第一步：清空剪贴板 ==========
         pasteboard.clearContents()
         Thread.sleep(forTimeInterval: 0.05) // 50ms
         
         let afterClear = pasteboard.string(forType: .string)
-        print("📋 [#\(operationId)] 清空后剪贴板内容: \(afterClear == nil ? "nil (正确)" : "\"\(afterClear!)\" (异常!)")")
+        print("📋 [#\(operationId)] 清空后剪贴板状态: \(afterClear == nil ? "nil (正确)" : "仍有文本，长度=\(afterClear?.count ?? 0)")")
         
         // ========== 第二步：设置新内容 ==========
         let success = pasteboard.setString(text, forType: .string)
@@ -114,12 +113,12 @@ class TextInsertionService {
             return
         }
         
-        print("📋 [#\(operationId)] 设置后剪贴板: changeCount=\(changeCountAfter), 内容=\"\(currentContent)\"")
+        print("📋 [#\(operationId)] 设置后剪贴板: changeCount=\(changeCountAfter), 文本长度=\(currentContent.count)")
         
         if currentContent != text {
             print("❌ [#\(operationId)] 剪贴板内容不匹配!")
-            print("   预期: \"\(text)\"")
-            print("   实际: \"\(currentContent)\"")
+            print("   预期长度: \(text.count)")
+            print("   实际长度: \(currentContent.count)")
             print("   这可能是因为其他程序修改了剪贴板!")
             
             // 强制重试
@@ -144,7 +143,7 @@ class TextInsertionService {
         
         // 最终验证
         if let finalContent = pasteboard.string(forType: .string) {
-            print("📋 [#\(operationId)] 发送粘贴前最终验证: \"\(finalContent)\"")
+            print("📋 [#\(operationId)] 发送粘贴前最终验证: 文本长度=\(finalContent.count)")
             if finalContent != text {
                 print("⚠️ [#\(operationId)] 警告: 剪贴板在最终验证时内容不匹配!")
             }
@@ -211,4 +210,3 @@ class TextInsertionService {
         _ = AXIsProcessTrustedWithOptions(options as CFDictionary)
     }
 }
-
