@@ -101,9 +101,9 @@ class MemoryMonitor: ObservableObject {
     private let maxPerHourRecords = 720         // 保留最近30天的小时数据
 
     // 内存压力阈值（MB）
-    private let warningThreshold: UInt64 = 2048   // 2GB 警告
-    private let criticalThreshold: UInt64 = 4096  // 4GB 严重警告
-    private let dangerThreshold: UInt64 = 6144    // 6GB 危险
+    private let warningThresholdMB: Double = 2048   // 2GB 警告
+    private let criticalThresholdMB: Double = 4096  // 4GB 严重警告
+    private let dangerThresholdMB: Double = 6144    // 6GB 危险
 
     // MARK: - Private Properties
 
@@ -252,8 +252,12 @@ class MemoryMonitor: ObservableObject {
         }
 
         monitorTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
-            self?.updateMemory()
-            self?.scheduleNextSample()
+            guard let monitor = self else { return }
+            Task { @MainActor [weak monitor] in
+                guard let monitor, monitor.isMonitoring else { return }
+                monitor.updateMemory()
+                monitor.scheduleNextSample()
+            }
         }
     }
 
@@ -262,8 +266,6 @@ class MemoryMonitor: ObservableObject {
         currentMemoryMB = memoryMB
 
         let now = Date()
-        let oneHourAgo = now.addingTimeInterval(-oneHourInterval)
-        let fiveDaysAgo = now.addingTimeInterval(-fiveDaysInterval)
 
         // 决定记录粒度
         let granularity: MemoryRecord.RecordGranularity
@@ -301,13 +303,11 @@ class MemoryMonitor: ObservableObject {
     }
 
     private func checkMemoryPressure(_ memoryMB: Double) {
-        let memoryUInt = UInt64(memoryMB * 1024 * 1024)
-
-        if memoryUInt > dangerThreshold {
+        if memoryMB > dangerThresholdMB {
             print("🔴 [MemoryMonitor] 内存危险: \(Int(memoryMB))MB - 建议立即重启")
-        } else if memoryUInt > criticalThreshold {
+        } else if memoryMB > criticalThresholdMB {
             print("🚨 [MemoryMonitor] 内存严重: \(Int(memoryMB))MB - 建议释放资源")
-        } else if memoryUInt > warningThreshold {
+        } else if memoryMB > warningThresholdMB {
             print("⚠️ [MemoryMonitor] 内存警告: \(Int(memoryMB))MB")
         }
     }
@@ -397,13 +397,15 @@ class MemoryMonitor: ObservableObject {
     // MARK: - Persistence
 
     private func saveToDisk() {
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            guard let self = self else { return }
+        let records = memoryHistory
+        let key = saveKey
+
+        DispatchQueue.global(qos: .utility).async {
             do {
                 let encoder = JSONEncoder()
                 encoder.dateEncodingStrategy = .iso8601
-                let data = try encoder.encode(self.memoryHistory)
-                UserDefaults.standard.set(data, forKey: self.saveKey)
+                let data = try encoder.encode(records)
+                UserDefaults.standard.set(data, forKey: key)
             } catch {
                 print("❌ [MemoryMonitor] 保存失败: \(error)")
             }

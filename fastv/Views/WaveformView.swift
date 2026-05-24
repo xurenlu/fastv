@@ -318,7 +318,7 @@ class WindowDelegate: NSObject, NSWindowDelegate {
     }
     
     @objc(windowDidClose:)
-    func windowDidClose(_ notification: Notification) {
+    private func windowDidClose(_ notification: Notification) {
         print("📊 [WindowDelegate] 窗口已关闭")
     }
 }
@@ -584,4 +584,3 @@ struct WaveformView: View {
         }
     }
 }
-

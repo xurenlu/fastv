@@ -481,8 +481,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             forName: NSWindow.didBecomeKeyNotification,
             object: nil,
             queue: .main
-        ) { [weak self] notification in
-            guard let self = self else { return }
+        ) { notification in
             if let window = notification.object as? NSWindow {
                 window.title = NSLocalizedString("app.name", comment: "应用名称")
             }
