@@ -29,20 +29,33 @@ final class SpeechModelPreloadManager {
     /// 启动预加载流程
     /// 若有模型文件则预加载并显示启动屏，否则直接完成
     func startPreloadIfNeeded() {
+        guard !Self.isRunningUnderXCTest else {
+            isPreloading = false
+            isPreloadComplete = true
+            preloadDuration = 0
+            print("ℹ️ [SpeechModelPreload] XCTest 环境跳过启动预加载")
+            return
+        }
+
+        guard !isPreloading, !isPreloadComplete else {
+            return
+        }
+
         guard !SpeechTranscriptionModel.hasModelFile() else {
             // 有模型文件，开始预加载
             isPreloading = true
             isPreloadComplete = false
             let startTime = CFAbsoluteTimeGetCurrent()
             
-            Task.detached(priority: .userInitiated) { [weak self] in
+            Task.detached(priority: .userInitiated) {
                 let loaded = await SpeechTranscriptionModel.shared.preload()
                 let duration = CFAbsoluteTimeGetCurrent() - startTime
-                
+
                 await MainActor.run {
-                    self?.isPreloading = false
-                    self?.isPreloadComplete = true
-                    self?.preloadDuration = duration
+                    let manager = SpeechModelPreloadManager.shared
+                    manager.isPreloading = false
+                    manager.isPreloadComplete = true
+                    manager.preloadDuration = duration
                     if loaded {
                         print("✅ [SpeechModelPreload] 模型预加载完成，耗时: \(String(format: "%.2f", duration)) 秒")
                     } else {
@@ -56,5 +69,16 @@ final class SpeechModelPreloadManager {
         // 无模型文件，直接完成
         isPreloadComplete = true
         print("ℹ️ [SpeechModelPreload] 无模型文件，跳过预加载")
+    }
+
+    private static var isRunningUnderXCTest: Bool {
+        let environment = ProcessInfo.processInfo.environment
+        if environment["XCTestConfigurationFilePath"] != nil || environment["XCTestBundlePath"] != nil {
+            return true
+        }
+
+        return ProcessInfo.processInfo.arguments.contains { argument in
+            argument.contains(".xctest") || argument == "-XCTest"
+        }
     }
 }
