@@ -78,6 +78,11 @@
 "silence.detection.duration" = "일시 정지 임계값";
 "voice.input.release.tail.buffer" = "해제 후 테일 버퍼";
 "voice.input.release.tail.buffer.description" = "단축키를 놓은 후 잠시 녹음을 계속하여 끝부분 내용 손실을 줄임 (0으로 비활성화)";
+"direct.text.insertion" = "직접 키보드 입력(권장)";
+"direct.text.insertion.description" = "키보드 이벤트로 직접 입력하며 클립보드 내용을 변경하지 않습니다";
+"clipboard.text.insertion.description" = "클립보드 붙여넣기를 사용하므로 클립보드 내용이 덮어써질 수 있습니다";
+"ai.contextual.rewrite" = "AI 최근 문장 수정";
+"ai.contextual.rewrite.description" = "AI 단축키로 수정, 다듬기, 대체 명령을 말하면 선택한 텍스트 또는 커서 앞 최근 문장만 업데이트합니다";
 
 // 통계
 "total.duration" = "총 시간";
@@ -264,4 +269,3 @@
 "ai.models.list.found" = "%d개의 사용 가능한 모델을 찾았습니다:\n\n• %@\n\n모델 이름을 위의 \"모델 이름\" 필드에 복사할 수 있습니다.";
 "ai.test.success.title" = "✅ 테스트 성공";
 "ai.test.success.description" = "AI 최적화 기능이 정상적으로 작동합니다!\n\n원본 텍스트:\n%@\n\n최적화 후:\n%@\n\n소요 시간: %@ 초";
-

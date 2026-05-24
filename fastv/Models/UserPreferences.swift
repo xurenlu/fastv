@@ -61,6 +61,7 @@ class UserPreferences: ObservableObject {
         static let enableAICorrectionDetection = "enableAICorrectionDetection"
         static let correctionDetectionModel = "correctionDetectionModel"
         static let correctionDetectionTimeout = "correctionDetectionTimeout"
+        static let enableAIContextualRewrite = "enableAIContextualRewrite"
         // 模型下载相关
         static let modelDownloadURL = "modelDownloadURL"
         static let modelStoragePath = "modelStoragePath"
@@ -278,6 +279,11 @@ class UserPreferences: ObservableObject {
     
     @Published var correctionDetectionTimeout: Double {
         willSet { defaults.set(newValue, forKey: Keys.correctionDetectionTimeout) }
+    }
+
+    /// AI 快捷键识别到“修改/润色/重写上一句”等语音指令时，回改当前输入框最近一句或选中文本
+    @Published var enableAIContextualRewrite: Bool {
+        willSet { defaults.set(newValue, forKey: Keys.enableAIContextualRewrite) }
     }
     
     // 模型下载相关
@@ -642,6 +648,7 @@ class UserPreferences: ObservableObject {
         // 默认使用更强的推理模型（如deepseek-r1:1.5b），如果没有配置则使用AI优化模型
         correctionDetectionModel = defaults.string(forKey: Keys.correctionDetectionModel) ?? ""
         correctionDetectionTimeout = defaults.object(forKey: Keys.correctionDetectionTimeout) as? Double ?? 10.0 // 默认 10 秒超时（错误检测需要更多时间）
+        enableAIContextualRewrite = defaults.object(forKey: Keys.enableAIContextualRewrite) as? Bool ?? true
         
         // 默认系统提示词
         let defaultSystemPrompt = """
@@ -1249,4 +1256,3 @@ extension AIServiceProfile {
         return copy
     }
 }
-

@@ -235,11 +235,17 @@ struct QuickSettingsTab: View {
                         
                         // 文本插入方式设置
                         VStack(alignment: .leading, spacing: 8) {
-                            Toggle("直接键盘输入（推荐）", isOn: $preferences.useDirectTextInsertion)
+                            Toggle(NSLocalizedString("direct.text.insertion", comment: ""), isOn: $preferences.useDirectTextInsertion)
                             
-                            Text(preferences.useDirectTextInsertion 
-                                ? "使用键盘事件直接输入文字，不会影响剪贴板内容" 
-                                : "使用剪贴板粘贴方式，可能会覆盖剪贴板内容")
+                            Text(preferences.useDirectTextInsertion
+                                ? NSLocalizedString("direct.text.insertion.description", comment: "")
+                                : NSLocalizedString("clipboard.text.insertion.description", comment: ""))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            Toggle(NSLocalizedString("ai.contextual.rewrite", comment: ""), isOn: $preferences.enableAIContextualRewrite)
+
+                            Text(NSLocalizedString("ai.contextual.rewrite.description", comment: ""))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -509,4 +515,3 @@ struct QuickSettingsTab: View {
 #Preview {
     QuickSettingsTab()
 }
-

@@ -78,6 +78,11 @@
 "silence.detection.duration" = "停顿阈值";
 "voice.input.release.tail.buffer" = "松开后尾缓冲";
 "voice.input.release.tail.buffer.description" = "松开快捷键后继续录音一小段时间，减少末尾内容丢失（0 为关闭）";
+"direct.text.insertion" = "直接键盘输入（推荐）";
+"direct.text.insertion.description" = "使用键盘事件直接输入文字，不会影响剪贴板内容";
+"clipboard.text.insertion.description" = "使用剪贴板粘贴方式，可能会覆盖剪贴板内容";
+"ai.contextual.rewrite" = "AI 回改最近一句";
+"ai.contextual.rewrite.description" = "使用 AI 快捷键说出修改、润色或重写指令时，只回改当前输入框的选中文本或光标前最近一句";
 
 // 统计
 "total.duration" = "总时长";

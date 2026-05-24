@@ -78,6 +78,11 @@
 "silence.detection.duration" = "Pause threshold";
 "voice.input.release.tail.buffer" = "Release tail buffer";
 "voice.input.release.tail.buffer.description" = "Continue recording briefly after releasing shortcut to reduce tail content loss (0 to disable)";
+"direct.text.insertion" = "Direct Keyboard Input (Recommended)";
+"direct.text.insertion.description" = "Type through keyboard events without changing clipboard content";
+"clipboard.text.insertion.description" = "Paste through the clipboard, which may overwrite clipboard content";
+"ai.contextual.rewrite" = "AI Rewrite Recent Sentence";
+"ai.contextual.rewrite.description" = "When using the AI shortcut with a rewrite, polish, or replace command, only update selected text or the sentence before the cursor";
 
 // Statistics
 "total.duration" = "Total Duration";

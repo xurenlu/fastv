@@ -78,6 +78,11 @@
 "silence.detection.duration" = "停頓閾值";
 "voice.input.release.tail.buffer" = "鬆開後尾緩衝";
 "voice.input.release.tail.buffer.description" = "鬆開快捷鍵後繼續錄音一小段時間，減少末尾內容丟失（0 為關閉）";
+"direct.text.insertion" = "直接鍵盤輸入（推薦）";
+"direct.text.insertion.description" = "使用鍵盤事件直接輸入文字，不會影響剪貼簿內容";
+"clipboard.text.insertion.description" = "使用剪貼簿貼上方式，可能會覆蓋剪貼簿內容";
+"ai.contextual.rewrite" = "AI 回改最近一句";
+"ai.contextual.rewrite.description" = "使用 AI 快捷鍵講出修改、潤色或重寫指令時，只回改目前輸入框的選中文字或游標前最近一句";
 
 // 統計
 "total.duration" = "總時長";
@@ -264,4 +269,3 @@
 "ai.models.list.found" = "找到 %d 個可用模型：\n\n• %@\n\n您可以將模型名稱複製到上方的「模型名稱」欄位中。";
 "ai.test.success.title" = "✅ 測試成功";
 "ai.test.success.description" = "AI 優化功能正常運作！\n\n原始文字：\n%@\n\n優化後：\n%@\n\n耗時：%@ 秒";
-

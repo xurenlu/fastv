@@ -202,6 +202,70 @@ private func runBatchRefinementTranscription(segments: [IncrementalSegmentInfo],
     }
 }
 
+private struct ContextualRewriteOutcome {
+    let attempted: Bool
+    let rewrittenText: String?
+}
+
+private func insertVoiceText(_ text: String, preferences: UserPreferences) {
+    if preferences.useDirectTextInsertion {
+        DirectTextInsertionService.shared.insertText(text)
+    } else {
+        TextInsertionService.shared.insertText(text)
+    }
+}
+
+/// AI 快捷键下，识别“修改/润色/重写上一句”等语音指令后，只回改当前输入框中的选区或最近一句。
+@MainActor
+private func performContextualRewriteIfNeeded(
+    spokenText: String,
+    preferences: UserPreferences,
+    waveformManager: WaveformWindowManager
+) async -> ContextualRewriteOutcome {
+    guard preferences.enableAIContextualRewrite, isAIServiceConfigured() else {
+        return ContextualRewriteOutcome(attempted: false, rewrittenText: nil)
+    }
+
+    let contextService = ActiveTextInputContextService.shared
+    guard let context = contextService.captureRecentEditableContext() else {
+        return ContextualRewriteOutcome(attempted: false, rewrittenText: nil)
+    }
+
+    let shouldRewrite = context.isSelectedText || contextService.looksLikeRewriteInstruction(spokenText)
+    guard shouldRewrite else {
+        return ContextualRewriteOutcome(attempted: false, rewrittenText: nil)
+    }
+
+    print("✍️ [fastvApp] 触发 AI 上下文回改，目标片段: \(context.targetText.prefix(50))...")
+    waveformManager.setAICorrecting()
+
+    do {
+        let rewrittenText = try await OllamaService.shared.rewriteActiveInputFragment(
+            originalFragment: context.targetText,
+            spokenInstruction: spokenText
+        )
+        let success = contextService.replaceTarget(in: context, with: rewrittenText)
+        if success {
+            waveformManager.setAICorrected()
+            print("✅ [fastvApp] AI 上下文回改完成: \(rewrittenText.prefix(50))...")
+            return ContextualRewriteOutcome(attempted: true, rewrittenText: rewrittenText)
+        } else if contextService.selectTarget(in: context) {
+            insertVoiceText(rewrittenText, preferences: preferences)
+            waveformManager.setAICorrected()
+            print("✅ [fastvApp] AI 上下文回改通过选区替换完成: \(rewrittenText.prefix(50))...")
+            return ContextualRewriteOutcome(attempted: true, rewrittenText: rewrittenText)
+        } else {
+            waveformManager.setAICorrectionFailed()
+            print("⚠️ [fastvApp] AI 上下文回改失败：当前输入框不支持直接回写")
+            return ContextualRewriteOutcome(attempted: true, rewrittenText: nil)
+        }
+    } catch {
+        waveformManager.setAICorrectionFailed()
+        print("⚠️ [fastvApp] AI 上下文回改失败: \(error.localizedDescription)")
+        return ContextualRewriteOutcome(attempted: true, rewrittenText: nil)
+    }
+}
+
 private struct ShortcutConfig: Equatable {
     var isEnabled: Bool
     var keyCode: UInt16
@@ -1040,6 +1104,24 @@ struct fastvApp: App {
             
             let shouldDoAI = needsAI && isAIServiceConfigured()
             if shouldDoAI {
+                let rewriteOutcome = await performContextualRewriteIfNeeded(
+                    spokenText: text,
+                    preferences: preferences,
+                    waveformManager: waveformManager
+                )
+                if rewriteOutcome.attempted {
+                    if let rewrittenText = rewriteOutcome.rewrittenText {
+                        let audioSec = currentSessionIncrementalAudioSeconds > 0 ? currentSessionIncrementalAudioSeconds : nil
+                        let transSec = currentSessionIncrementalTranscriptionSeconds > 0 ? currentSessionIncrementalTranscriptionSeconds : nil
+                        VoiceInputHistoryManager.shared.add(text: rewrittenText, audioDurationSeconds: audioSec, transcriptionDurationSeconds: transSec)
+                    }
+                    currentSessionUsesIncremental = false
+                    currentVoiceInputNeedsAI = false
+                    return
+                }
+            }
+
+            if shouldDoAI {
                 waveformManager.setAICorrecting()
                 do {
                     text = try await OllamaService.shared.optimizeTranscript(
@@ -1124,6 +1206,25 @@ struct fastvApp: App {
             
             if needsAI && !shouldDoAI {
                 print("⚠️ [fastvApp] 用戶按下了 AI 校正快捷鍵，但 AI 服務未配置，跳過 AI 校正")
+            }
+
+            if shouldDoAI {
+                let rewriteOutcome = await performContextualRewriteIfNeeded(
+                    spokenText: text,
+                    preferences: preferences,
+                    waveformManager: waveformManager
+                )
+                if rewriteOutcome.attempted {
+                    if let rewrittenText = rewriteOutcome.rewrittenText {
+                        VoiceInputHistoryManager.shared.add(
+                            text: rewrittenText,
+                            audioDurationSeconds: audioDuration > 0 ? audioDuration : nil,
+                            transcriptionDurationSeconds: transcriptionDuration > 0 ? transcriptionDuration : nil
+                        )
+                    }
+                    currentVoiceInputNeedsAI = false
+                    return
+                }
             }
             
             if shouldDoAI {
@@ -1243,4 +1344,3 @@ class AppStateManager: ObservableObject {
     static let shared = AppStateManager()
     private init() {}
 }
-

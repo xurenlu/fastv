@@ -78,6 +78,11 @@
 "silence.detection.duration" = "ポーズ閾値";
 "voice.input.release.tail.buffer" = "リリース後テールバッファ";
 "voice.input.release.tail.buffer.description" = "ショートカットを離した後、少し録音を続けて末尾の内容の欠落を減らす（0で無効）";
+"direct.text.insertion" = "直接キーボード入力（推奨）";
+"direct.text.insertion.description" = "キーボードイベントで直接入力し、クリップボード内容を変更しません";
+"clipboard.text.insertion.description" = "クリップボード貼り付けを使用するため、クリップボード内容が上書きされる場合があります";
+"ai.contextual.rewrite" = "AIで直近の文を修正";
+"ai.contextual.rewrite.description" = "AIショートカットで修正、推敲、置換の指示を話すと、選択中のテキストまたはカーソル前の直近の文だけを更新します";
 
 // 統計
 "total.duration" = "合計時間";
