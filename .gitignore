@@ -34,6 +34,7 @@ ThirdParty/libetpan/
 
 # Shell scripts (if not needed)
 *.sh
+!scripts/run_unit_tests.sh
 
 # macOS
 .DS_Store

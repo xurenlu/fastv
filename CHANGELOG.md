@@ -2,6 +2,13 @@
 
 所有版本變更記錄。
 
+## [1.3.0-rc3] - 2026-05-24
+
+### 改進
+- 測試工程：新增共享 `row1` scheme 與 `row1.xctestplan`，默認只運行 `fastvTests`，避免命令行/CI 被未配置完整的 UI 測試目標阻塞。
+- 测试工程：新增 `scripts/run_unit_tests.sh`，在同一个 DerivedData 下先构建 CocoaPods 的 GRDB 与 `Pods-row1`，再执行 `row1` 单元测试，减少命令行/CI 对本机缓存和 workspace 状态的依赖。
+- 测试工程：补齐 `fastvTests` 的 test host、模块导入、搜索路径与版本配置，确保命令行测试能解析 `row1`、GRDB 与 ONNX 依赖。
+
 ## [1.3.0-rc2] - 2026-05-24
 
 ### 改進

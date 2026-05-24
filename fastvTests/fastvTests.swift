@@ -6,7 +6,7 @@
 //
 
 import Testing
-@testable import fastv
+@testable import row1
 
 struct fastvTests {
 

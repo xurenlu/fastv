@@ -215,6 +215,32 @@ private func insertVoiceText(_ text: String, preferences: UserPreferences) {
     }
 }
 
+@MainActor
+private func hasConfiguredAIService() -> Bool {
+    let preferences = UserPreferences.shared
+
+    if let defaultProfile = preferences.getDefaultProfile() {
+        let hasEndpoint = !defaultProfile.endpoint.isEmpty
+        let hasModel = !defaultProfile.defaultModel.isEmpty
+
+        if hasEndpoint && hasModel {
+            print("✅ [fastvApp] AI 服務已配置: \(defaultProfile.name) (\(defaultProfile.defaultModel))")
+            return true
+        }
+    }
+
+    let hasLegacyEndpoint = !preferences.aiAPIEndpoint.isEmpty
+    let hasLegacyModel = !preferences.aiModel.isEmpty
+
+    if hasLegacyEndpoint && hasLegacyModel {
+        print("✅ [fastvApp] AI 服務已配置（舊版配置）: \(preferences.aiAPIEndpoint) (\(preferences.aiModel))")
+        return true
+    }
+
+    print("⚠️ [fastvApp] AI 服務未配置")
+    return false
+}
+
 /// AI 快捷键下，识别“修改/润色/重写上一句”等语音指令后，只回改当前输入框中的选区或最近一句。
 @MainActor
 private func performContextualRewriteIfNeeded(
@@ -222,7 +248,7 @@ private func performContextualRewriteIfNeeded(
     preferences: UserPreferences,
     waveformManager: WaveformWindowManager
 ) async -> ContextualRewriteOutcome {
-    guard preferences.enableAIContextualRewrite, isAIServiceConfigured() else {
+    guard preferences.enableAIContextualRewrite, hasConfiguredAIService() else {
         return ContextualRewriteOutcome(attempted: false, rewrittenText: nil)
     }
 
@@ -1308,32 +1334,7 @@ struct fastvApp: App {
     /// 檢查 AI 服務是否已配置
     @MainActor
     private func isAIServiceConfigured() -> Bool {
-        let preferences = UserPreferences.shared
-        
-        // 檢查是否有可用的 AI 服務配置
-        // 1. 檢查是否有默認 Profile
-        if let defaultProfile = preferences.getDefaultProfile() {
-            // 2. 檢查 endpoint 和 model 是否已設置
-            let hasEndpoint = !defaultProfile.endpoint.isEmpty
-            let hasModel = !defaultProfile.defaultModel.isEmpty
-            
-            if hasEndpoint && hasModel {
-                print("✅ [fastvApp] AI 服務已配置: \(defaultProfile.name) (\(defaultProfile.defaultModel))")
-                return true
-            }
-        }
-        
-        // 3. 向後兼容：檢查舊版配置
-        let hasLegacyEndpoint = !preferences.aiAPIEndpoint.isEmpty
-        let hasLegacyModel = !preferences.aiModel.isEmpty
-        
-        if hasLegacyEndpoint && hasLegacyModel {
-            print("✅ [fastvApp] AI 服務已配置（舊版配置）: \(preferences.aiAPIEndpoint) (\(preferences.aiModel))")
-            return true
-        }
-        
-        print("⚠️ [fastvApp] AI 服務未配置")
-        return false
+        hasConfiguredAIService()
     }
 }
 

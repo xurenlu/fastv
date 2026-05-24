@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "8F464195-CA81-4C0B-B8F4-6AA5B33D2F1A",
+      "name" : "Debug",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:fastv.xcodeproj",
+        "identifier" : "5C04238C2ECD793000821B50",
+        "name" : "fastvTests"
+      }
+    }
+  ],
+  "version" : 1
+}
