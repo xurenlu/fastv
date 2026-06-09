@@ -35,16 +35,24 @@ class EmailSignatureTemplates {
             classicTemplate,
             minimalTemplate,
             cleanTemplate,
-            
+
             // 商务风格
             businessFullTemplate,
             corporateTemplate,
             executiveTemplate,
-            
+
             // 创意风格
             modernTemplate,
             creativeTemplate,
-            
+
+            // 精致样式（v1.4.3-rc8 新增）
+            brandCardTemplate,
+            accentBarTemplate,
+            warmAccentTemplate,
+            gradientGlassTemplate,
+            mondrianTemplate,
+            monoChipTemplate,
+
             // 纯文本风格
             plainTextSimpleTemplate,
             plainTextBusinessTemplate,
@@ -364,6 +372,220 @@ class EmailSignatureTemplates {
         )
     }
     
+    // MARK: - 精致样式模板（v1.4.3-rc8 新增）
+
+    /// 品牌色卡片 - 圆角卡片 + 强调色名称
+    private var brandCardTemplate: EmailSignatureTemplate {
+        EmailSignatureTemplate(
+            id: "brand_card",
+            name: "品牌卡片",
+            description: "圆角卡片 + 品牌色名称，适合产品 / 设计岗",
+            content: """
+            <br>
+            <table cellpadding="0" cellspacing="0" border="0" style="\(baseFont) font-size: 14px;">
+                <tr>
+                    <td style="padding: 16px 20px; background-color: #fafafa; border-radius: 10px; border: 1px solid #ececec;">
+                        <table cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td style="padding-bottom: 6px;">
+                                    <span style="font-size: 18px; font-weight: 700; color: #6E56CF; letter-spacing: -0.2px;">{{name}}</span>
+                                    <span style="font-size: 13px; color: #6f6f76; padding-left: 6px;">· {{title}}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="font-size: 12px; color: #6f6f76; padding-bottom: 10px;">{{company}}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-size: 13px; color: #38383f; line-height: 1.7;">
+                                    <a href="mailto:{{email}}" style="color: #6E56CF; text-decoration: none;">{{email}}</a>
+                                    &nbsp;·&nbsp; {{phone}}
+                                    &nbsp;·&nbsp; <a href="{{website}}" style="color: #38383f; text-decoration: none;">{{website}}</a>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            """,
+            isHtml: true
+        )
+    }
+
+    /// 左侧粗色条 - 强对比，名称突出
+    private var accentBarTemplate: EmailSignatureTemplate {
+        EmailSignatureTemplate(
+            id: "accent_bar",
+            name: "左色条",
+            description: "左侧粗色条 + 大字号名片，名字最先被看到",
+            content: """
+            <br>
+            <table cellpadding="0" cellspacing="0" border="0" style="\(baseFont) font-size: 13px; color: #2f3137;">
+                <tr>
+                    <td width="6" style="background-color: #FF5A5F; border-radius: 3px;"></td>
+                    <td width="16"></td>
+                    <td>
+                        <table cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td style="font-size: 22px; font-weight: 800; color: #1a1a1d; letter-spacing: -0.5px; padding-bottom: 2px;">{{name}}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-size: 12px; color: #FF5A5F; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px; padding-bottom: 10px;">{{title}} · {{company}}</td>
+                            </tr>
+                            <tr>
+                                <td style="line-height: 1.7;">
+                                    <a href="mailto:{{email}}" style="color: #2f3137; text-decoration: none;">✉ {{email}}</a><br>
+                                    <span style="color: #2f3137;">☎ {{phone}}</span><br>
+                                    <a href="{{website}}" style="color: #2f3137; text-decoration: none;">⌖ {{website}}</a>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            """,
+            isHtml: true
+        )
+    }
+
+    /// 暖色调 - 橙红渐变线条，温暖而不张扬
+    private var warmAccentTemplate: EmailSignatureTemplate {
+        EmailSignatureTemplate(
+            id: "warm_accent",
+            name: "暖色线条",
+            description: "橙红渐变下划线，适合自由职业 / 文创",
+            content: """
+            <br>
+            <table cellpadding="0" cellspacing="0" border="0" style="\(baseFont) font-size: 13.5px; color: #3b2f2f;">
+                <tr>
+                    <td>
+                        <span style="font-size: 17px; font-weight: 700; color: #2b1d1d;">{{name}}</span>
+                        <span style="color: #b96a4a; font-style: italic; padding-left: 8px;">{{title}}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 0 12px 0;">
+                        <div style="height: 3px; width: 80px; background: linear-gradient(90deg, #FF8A65 0%, #FF5252 100%); border-radius: 2px;"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="line-height: 1.7;">
+                        <a href="mailto:{{email}}" style="color: #b96a4a; text-decoration: none; font-weight: 600;">{{email}}</a>
+                        <span style="color: #aaa; padding: 0 6px;">|</span>
+                        <span>{{phone}}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="font-size: 12px; color: #8a7c7c; padding-top: 4px;">
+                        <a href="{{website}}" style="color: #8a7c7c; text-decoration: none;">{{website}}</a>
+                        <span style="padding: 0 6px;">·</span>
+                        {{address}}
+                    </td>
+                </tr>
+            </table>
+            """,
+            isHtml: true
+        )
+    }
+
+    /// 渐变玻璃 - 浅紫淡蓝背景，现代轻盈
+    private var gradientGlassTemplate: EmailSignatureTemplate {
+        EmailSignatureTemplate(
+            id: "gradient_glass",
+            name: "渐变玻璃",
+            description: "浅紫淡蓝渐变背景，现代而轻盈",
+            content: """
+            <br>
+            <table cellpadding="0" cellspacing="0" border="0" style="\(baseFont) font-size: 13px;">
+                <tr>
+                    <td style="padding: 18px 22px; background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%); border-radius: 12px;">
+                        <table cellpadding="0" cellspacing="0" border="0" style="width: 100%;">
+                            <tr>
+                                <td>
+                                    <div style="font-size: 19px; font-weight: 700; color: #1a1a2e; padding-bottom: 2px;">{{name}}</div>
+                                    <div style="font-size: 12px; color: #4a4a6a; padding-bottom: 12px;">{{title}} @ {{company}}</div>
+                                    <div style="font-size: 12.5px; color: #1a1a2e; line-height: 1.7;">
+                                        <a href="mailto:{{email}}" style="color: #1a1a2e; text-decoration: none;">{{email}}</a>
+                                        &nbsp;·&nbsp; {{phone}}
+                                        &nbsp;·&nbsp; <a href="{{website}}" style="color: #1a1a2e; text-decoration: none;">{{website}}</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            """,
+            isHtml: true
+        )
+    }
+
+    /// 蒙德里安格 - 色块分割，平面设计感
+    private var mondrianTemplate: EmailSignatureTemplate {
+        EmailSignatureTemplate(
+            id: "mondrian",
+            name: "蒙德里安",
+            description: "色块分割排版，强平面设计感",
+            content: """
+            <br>
+            <table cellpadding="0" cellspacing="0" border="0" style="\(baseFont) font-size: 13px; color: #1a1a1a;">
+                <tr>
+                    <td>
+                        <table cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td style="padding: 14px 16px; background-color: #0F62FE; vertical-align: top;">
+                                    <div style="color: #ffffff; font-size: 18px; font-weight: 700; letter-spacing: -0.3px;">{{name}}</div>
+                                    <div style="color: #c4dafe; font-size: 11.5px; padding-top: 4px;">{{title}}</div>
+                                </td>
+                                <td width="4" style="background-color: #FFFFFF;"></td>
+                                <td style="padding: 14px 16px; background-color: #FAFAFA; vertical-align: top;">
+                                    <div style="font-size: 12px; line-height: 1.7;">
+                                        <span style="color: #888;">公司</span> &nbsp; {{company}}<br>
+                                        <span style="color: #888;">邮箱</span> &nbsp; <a href="mailto:{{email}}" style="color: #0F62FE; text-decoration: none;">{{email}}</a><br>
+                                        <span style="color: #888;">电话</span> &nbsp; {{phone}}
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr><td colspan="3" style="height: 4px; background-color: #FFC832;"></td></tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            """,
+            isHtml: true
+        )
+    }
+
+    /// 黑白胶囊 - 极简芯片化排版
+    private var monoChipTemplate: EmailSignatureTemplate {
+        EmailSignatureTemplate(
+            id: "mono_chip",
+            name: "黑白胶囊",
+            description: "黑白胶囊芯片排版，极简且高级",
+            content: """
+            <br>
+            <table cellpadding="0" cellspacing="0" border="0" style="\(baseFont) font-size: 13px; color: #111111;">
+                <tr>
+                    <td style="padding-bottom: 6px;">
+                        <span style="font-size: 20px; font-weight: 800; letter-spacing: -0.4px;">{{name}}</span>
+                        <span style="font-size: 12px; color: #6b6b6b; padding-left: 8px;">— {{title}}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-bottom: 10px; font-size: 12px; color: #6b6b6b;">{{company}}</td>
+                </tr>
+                <tr>
+                    <td style="font-size: 12px;">
+                        <a href="mailto:{{email}}" style="display: inline-block; padding: 4px 10px; background-color: #111111; color: #ffffff; text-decoration: none; border-radius: 999px; margin-right: 6px;">{{email}}</a>
+                        <span style="display: inline-block; padding: 4px 10px; background-color: #f1f1f1; color: #111111; border-radius: 999px; margin-right: 6px;">{{phone}}</span>
+                        <a href="{{website}}" style="display: inline-block; padding: 4px 10px; background-color: #f1f1f1; color: #111111; text-decoration: none; border-radius: 999px;">{{website}}</a>
+                    </td>
+                </tr>
+            </table>
+            """,
+            isHtml: true
+        )
+    }
+
     // MARK: - 纯文本模板
     
     /// 简单纯文本模板

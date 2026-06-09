@@ -26,6 +26,7 @@ fastv（row1）定位为 macOS 上的个人 AI 助手，核心交互是低打扰
 
 ## 版本记录
 
+- `1.4.3-rc8`：邮件签名编辑器三连改造：(1) 布局从 `Form` 重构为 `ScrollView + VStack`，可用变量从两列稀疏卡片改为 `LazyVGrid` adaptive 紧凑芯片，4 行 footer 折叠到 `DisclosureGroup`，窗体 `minHeight` 600 → 520；(2) 引入 `SignatureEditorController` + 自定义 `SignatureTextEditor`(NSViewRepresentable 包 NSTextView)，变量芯片点击走 `replaceCharacters(in: selectedRange, with:)` 插入到光标位置，支持 Undo，光标自动推到插入末尾；(3) 内置签名样式从 11 套扩到 17 套，新增「精致样式」分组（品牌卡片 / 左色条 / 暖色线条 / 渐变玻璃 / 蒙德里安 / 黑白胶囊）。HTML 编辑时 NSTextView 用等宽字体。
 - `1.4.3-rc7`：修「已发送(本地)」虚拟文件夹被后台同步无差别 IMAP `selectFolder` 触发 NON_EXISTANT_FOLDER（错码 33）的告警刷屏，连带修「点开本地已发送邮件不被标已读」（IMAP 抛错导致 ViewModel.markAsRead 走 catch 分支，本地 `isRead = true` 写库被跳过）。`EmailFolder` 加 `isLocal` 计算属性（以 `path == "__LocalSent__"` 判定）；`EmailService` 全部 IMAP 入口（sync/markAsRead/delete/star/move/fetchBody/fetchRaw/downloadAttachment/search）对本地文件夹短路；`EmailViewModel.startBackgroundSyncTask` 循环顶部 `if folder.isLocal { continue }` 双保险。
 - `1.4.3-rc6`：消掉 Xcode runtime 的 `mailstream_cfstream.c:912` 优先级反转告警。libetpan CFStream runloop 跑在 Default QoS，调用线程被钉到 UserInitiated 时会触发 "User-initiated waiting on a lower QoS thread"。`LibEtPanWrapper.m` 的 `ensureUserInitiatedQoS` 函数体改为 `QOS_CLASS_UTILITY`；`EmailService.swift` 中 16 处包 IMAP/SMTP 同步调用的 `Task.detached(priority: .userInitiated)` 全部降为 `.utility`（已存在的 `.background` 后台同步保持不动）。
 - `1.4.3-rc5`：rc4 的「正文加载失败 + 重试按钮」收尾。重试按钮先 `loadFolders` 再 `loadMessageBody`，按钮行为对得上文案；`loadMessageBody` 在 folder 解析失败后扫 `EmailStore.messages` 找同账号同 messageId 的副本借用正文（覆盖 Gmail INBOX + All Mail 双份场景），避免 `folder_id` 被 `ON DELETE SET NULL` 清空后整封邮件死锁。

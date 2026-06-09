@@ -24,6 +24,7 @@ struct SignatureTemplatePickerView: View {
             ("简洁风格", templates.filter { ["classic", "minimal", "clean"].contains($0.id) }),
             ("商务风格", templates.filter { ["business_full", "corporate", "executive"].contains($0.id) }),
             ("创意风格", templates.filter { ["modern", "creative"].contains($0.id) }),
+            ("精致样式", templates.filter { ["brand_card", "accent_bar", "warm_accent", "gradient_glass", "mondrian", "mono_chip"].contains($0.id) }),
             ("纯文本风格", templates.filter { ["plain_simple", "plain_business", "plain_minimal"].contains($0.id) })
         ]
     }

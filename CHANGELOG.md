@@ -2,6 +2,29 @@
 
 所有版本變更記錄。
 
+## [1.4.3-rc8] - 2026-06-09
+
+### 修復 & 增強（邮件签名编辑器三连：塞不下、点击没反应、样式不够好看）
+
+用户反馈截图里签名编辑窗体内容溢出，必须滚动才能看到底部「保存」「设为默认」；可用变量芯片是死的，点击不会插入；样式不够丰富。
+
+- **布局重构 — 把"塞不下"压成"清爽够用"**。[`EmailSignatureEditorView.swift`](fastv/Views/EmailSignature/EmailSignatureEditorView.swift) 整段重写：丢掉 `Form` 改 `ScrollView + VStack`，名称 / HTML / 默认 / 预览四个控件挤进两行；可用变量从两列 6 行的稀疏卡片换成 `LazyVGrid(adaptive: 130-200)` 的紧凑芯片（每行 4-5 个）；原本 4 行 footer 提示文案折叠到 `DisclosureGroup("变量替换规则")`，默认收起；TextEditor 高度 250 → `minHeight: 180, idealHeight: 220, maxHeight: 320` 自适应。窗体 `minHeight` 从 600 降到 520，正常显示器一屏装得下、低分屏也不爆。
+- **变量芯片点击即插入光标位置**。引入 [`SignatureEditorController`](fastv/Views/EmailSignature/EmailSignatureEditorView.swift:18) + [`SignatureTextEditor`](fastv/Views/EmailSignature/EmailSignatureEditorView.swift:42) — NSViewRepresentable 包 NSTextView，controller 持弱引用 textView 暴露 `insert(_ fragment:)`。点击芯片走 `tv.shouldChangeText` → `replaceCharacters(in: selectedRange, with:)` → `didChangeText`，可走 Undo；光标自动推到插入末尾，并 `scrollRangeToVisible` 拉回可视区。NSTextView 尚未挂载时（视图首帧）兜底走 `content += token`。鼠标 hover 芯片显示 `help` 提示「点击把 {{name}} 插入光标位置 — 发件人显示名称」。
+- **HTML 编辑用等宽字体**。`isHtml = true` 时 SignatureTextEditor 切到 `monospacedSystemFont(ofSize: 12)`，对齐邮件 HTML 标签视觉；纯文本切回 `systemFont(ofSize: 13)`。
+
+### 新增（精致样式 ×6 — 内置签名样式从 11 套扩到 17 套）
+
+[`EmailSignatureTemplates.swift`](fastv/Services/EmailSignatureTemplates.swift) 新增「精致样式」分组：
+
+- **品牌卡片** (`brand_card`)：圆角浅灰底 + 品牌紫名称，产品 / 设计岗常用质感。
+- **左色条** (`accent_bar`)：左侧 6px 红色圆角条 + 22px 大字号名片，名字一眼被看到。
+- **暖色线条** (`warm_accent`)：橙红渐变 80px 下划线 + 斜体职位，文创 / 自由职业风。
+- **渐变玻璃** (`gradient_glass`)：浅紫淡蓝 135° 渐变背景卡片 + 12px 圆角，现代轻盈。
+- **蒙德里安** (`mondrian`)：蓝白色块分割 + 底部明黄条，强平面设计感。
+- **黑白胶囊** (`mono_chip`)：黑白胶囊化芯片 (border-radius: 999px) 排版联系方式，极简高级。
+
+[`SignatureTemplatePickerView`](fastv/Views/EmailSignature/SignatureTemplatePickerView.swift:23) 新增「精致样式」分类，左侧栏可直接点进去看缩略图预览。
+
 ## [1.4.3-rc7] - 2026-06-09
 
 ### 修復（本地「已发送(本地)」文件夹被无差别走 IMAP，触发 NON_EXISTANT_FOLDER 错码 33）
