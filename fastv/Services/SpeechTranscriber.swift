@@ -53,6 +53,8 @@ struct SpeechTranscriber {
         cache.totalCostLimit = 10 * 1024 * 1024  // 限制总大小为 10MB
         return cache
     }()
+    private static let tokenMapQueue = DispatchQueue(label: "speech.transcriber.tokenMapCache")
+    nonisolated(unsafe) private static var cachedTokenMap: [Int: String]?
     
     // am.mvn 文件从 Bundle 中读取（随 app 提供）
     private static func resolveCMVNURL() -> URL? {
@@ -667,6 +669,10 @@ struct SpeechTranscriber {
     
     /// 加载 token 映射表
     private static func loadTokenMap(from url: URL) async throws -> [Int: String] {
+        if let cached = tokenMapQueue.sync(execute: { cachedTokenMap }) {
+            return cached
+        }
+
         // 首先检查缓存
         let data = try Data(contentsOf: url)
         let tokens = try JSONDecoder().decode([String].self, from: data)
@@ -678,12 +684,19 @@ struct SpeechTranscriber {
             tokenCache.setObject(token as NSString, forKey: NSNumber(value: index))
         }
 
+        tokenMapQueue.sync {
+            cachedTokenMap = map
+        }
+
         return map
     }
 
     /// 清除 token 缓存（用于释放内存）
     static func clearTokenCache() {
         tokenCache.removeAllObjects()
+        tokenMapQueue.sync {
+            cachedTokenMap = nil
+        }
         #if DEBUG
         print("🧹 [SpeechTranscriber] Token 缓存已清除")
         #endif
@@ -764,4 +777,3 @@ struct SpeechTranscriber {
     // 注意：CTC 去重函数已移至 ONNXRuntimeWrapper 中统一处理
     // 这里不再进行第二次去重，以避免叠词（如"谢谢"）和连续数字（如"100"）被错误合并
 }
-

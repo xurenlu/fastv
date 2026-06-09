@@ -104,6 +104,8 @@ class UserPreferences: ObservableObject {
         static let emailAISmartTaggingEnabled = "emailAISmartTaggingEnabled"
         static let emailAISummaryEnabled = "emailAISummaryEnabled"
         static let emailAIPriorityDetectionEnabled = "emailAIPriorityDetectionEnabled"
+        /// 选中邮件后延迟多少秒标已读。0 = 立即（不推荐）；-1 = 手动；默认 3。
+        static let emailMarkAsReadDelaySeconds = "emailMarkAsReadDelaySeconds"
         // 网络代理相关设置
         static let emailProxyEnabled = "emailProxyEnabled"
         static let emailProxyHost = "emailProxyHost"
@@ -439,6 +441,14 @@ class UserPreferences: ObservableObject {
     @Published var emailAIPriorityDetectionEnabled: Bool {
         willSet { defaults.set(newValue, forKey: Keys.emailAIPriorityDetectionEnabled) }
     }
+
+    /// 选中邮件后延迟多少秒才标已读。
+    /// - `0`：立即（旧行为，键盘滚动会"误标"未读）
+    /// - `1` / `3` / `5` / `10`：等待 N 秒，期间换邮件就取消
+    /// - `-1`：手动（永远不自动标，必须用菜单/快捷键手动）
+    @Published var emailMarkAsReadDelaySeconds: Int {
+        willSet { defaults.set(newValue, forKey: Keys.emailMarkAsReadDelaySeconds) }
+    }
     
     // 网络代理相关设置
     @Published var emailProxyEnabled: Bool {
@@ -763,9 +773,23 @@ class UserPreferences: ObservableObject {
             aiServiceProfiles = []
         }
         
-        if let bindingsData = defaults.data(forKey: Keys.aiScenarioBindings),
-           let bindings = try? JSONDecoder().decode([AIScenarioBinding].self, from: bindingsData) {
-            aiScenarioBindings = bindings
+        if let bindingsData = defaults.data(forKey: Keys.aiScenarioBindings) {
+            // 逐项解码：单条 binding 损坏（例如残留已删除的 AIScenario rawValue）不应让整数组丢失
+            if let bindings = try? JSONDecoder().decode([AIScenarioBinding].self, from: bindingsData) {
+                aiScenarioBindings = bindings
+            } else if let rawArray = try? JSONSerialization.jsonObject(with: bindingsData) as? [Any] {
+                var recovered: [AIScenarioBinding] = []
+                for raw in rawArray {
+                    if let dict = raw as? [String: Any],
+                       let data = try? JSONSerialization.data(withJSONObject: dict),
+                       let one = try? JSONDecoder().decode(AIScenarioBinding.self, from: data) {
+                        recovered.append(one)
+                    }
+                }
+                aiScenarioBindings = recovered
+            } else {
+                aiScenarioBindings = []
+            }
         } else {
             aiScenarioBindings = []
         }
@@ -780,7 +804,9 @@ class UserPreferences: ObservableObject {
         emailAISmartTaggingEnabled = defaults.object(forKey: Keys.emailAISmartTaggingEnabled) as? Bool ?? true
         emailAISummaryEnabled = defaults.object(forKey: Keys.emailAISummaryEnabled) as? Bool ?? true
         emailAIPriorityDetectionEnabled = defaults.object(forKey: Keys.emailAIPriorityDetectionEnabled) as? Bool ?? true
-        
+        // 默认 3 秒后标已读：兼顾"键盘上下扫一遍不会误标整个收件箱"与"看一眼真的就算读了"
+        emailMarkAsReadDelaySeconds = defaults.object(forKey: Keys.emailMarkAsReadDelaySeconds) as? Int ?? 3
+
         // 网络代理设置默认值
         emailProxyEnabled = defaults.object(forKey: Keys.emailProxyEnabled) as? Bool ?? true
         emailProxyHost = defaults.string(forKey: Keys.emailProxyHost) ?? "localhost"

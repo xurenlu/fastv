@@ -20,9 +20,9 @@ private enum VoiceInputDurationThreshold {
     /// 最短推荐录音时长，低于此时长提示用户「建议说长一点」
     static let minimumRecommended: TimeInterval = 0.5
     /// 智能分段：单段最短时长，低于此时长跳过转写
-    static let minimumIncrementalSegment: TimeInterval = 1.0
+    static let minimumIncrementalSegment: TimeInterval = 0.75
     /// 智能分段：剩余段落最短时长（已有缓存时更严格）
-    static let minimumRemainingWhenHasCache: TimeInterval = 1.5
+    static let minimumRemainingWhenHasCache: TimeInterval = 0.8
 }
 
 // 全局变量：记录语音输入开始时间
@@ -31,6 +31,8 @@ private var voiceInputStartTime: Date?
 private var currentVoiceInputNeedsAI: Bool = false
 // 本次錄音會話是否啟用智能分段
 private var currentSessionUsesIncremental: Bool = false
+// 普通語音輸入下邊轉邊插入；AI 模式仍保留鬆鍵後整段優化
+private var currentSessionUsesLiveInsertion: Bool = false
 // 本次錄音會話的靜音檢測器（智能分段時使用）
 private var currentSessionSilenceDetector: SilenceDetector?
 // 智能分段轉寫串行隊列：確保按時間順序插入，避免並發導致順序錯亂
@@ -43,6 +45,7 @@ private struct IncrementalSegmentInfo {
 
 // 智能分段轉寫結果緩存：邊說邊轉但不插入，鬆鍵時一次性合併輸出（利於 AI 優化整段）
 private var incrementalTranscriptionResults: [IncrementalSegmentInfo] = []
+private var currentSessionLiveInsertedText = ""
 // 智能分段本輪累計：語音時長、識別耗時（用於統計）
 private var currentSessionIncrementalAudioSeconds: TimeInterval = 0
 private var currentSessionIncrementalTranscriptionSeconds: TimeInterval = 0
@@ -87,8 +90,13 @@ private func performIncrementalSegmentTranscription() async {
         incrementalTranscriptionResults.append(segmentInfo)
         print("✅ [fastvApp] 智能分段轉寫緩存: \(text.prefix(30))... (共\(incrementalTranscriptionResults.count)段)")
 
-        // 二次拼接轉寫：動態規劃分批，每批至少3段、至少2秒
-        if incrementalTranscriptionResults.count >= incrementalBatchMinSegments {
+        if currentSessionUsesLiveInsertion {
+            insertVoiceText(text, preferences: UserPreferences.shared)
+            currentSessionLiveInsertedText += text
+            print("⚡️ [fastvApp] 實時插入分段完成，累計文本长度: \(currentSessionLiveInsertedText.count)")
+        } else if incrementalTranscriptionResults.count >= incrementalBatchMinSegments {
+            // 二次拼接轉寫：動態規劃分批，每批至少3段、至少2秒。
+            // 實時插入模式不做二次替換，避免回改已插入內容時干擾用戶輸入。
             scheduleBatchRefinementTranscription(language: language)
         }
     } catch {
@@ -518,6 +526,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         WaveformWindowManager.shared.cleanup()
         StatusBarManager.shared.cleanup()
+
+        // 关闭邮件相关后台任务（含 IMAP IDLE 长连接）
+        EmailService.shared.cleanupAllSessions()
     }
 
     deinit {
@@ -559,14 +570,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 @main
 struct fastvApp: App {
-    @StateObject private var appState = AppStateManager.shared
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
+
     var body: some Scene {
         WindowGroup {
             ZStack {
                 ContentView()
-                    .environmentObject(appState)
                 
                 // 语音模型预加载启动屏（仅当已完成引导且有模型文件时显示）
                 if UserPreferences.shared.hasCompletedOnboarding {
@@ -837,14 +846,17 @@ struct fastvApp: App {
         currentVoiceInputNeedsAI = needsAI
 
         let preferences = UserPreferences.shared
-        currentSessionUsesIncremental = preferences.enableIncrementalTranscription
+        currentSessionUsesLiveInsertion = !needsAI
+        currentSessionUsesIncremental = currentSessionUsesLiveInsertion || preferences.enableIncrementalTranscription
         incrementalTranscriptionResults = []
+        currentSessionLiveInsertedText = ""
         currentSessionIncrementalAudioSeconds = 0
         currentSessionIncrementalTranscriptionSeconds = 0
         incrementalBatchRefinementTasks.forEach { $0.cancel() }
         incrementalBatchRefinementTasks = []
         incrementalBatchPartition = []
         incrementalBatchRefinedTexts = []
+        SpeechModelPreloadManager.shared.warmUpForImmediateVoiceInput()
 
         let voiceService = VoiceInputService.shared
         let waveformManager = WaveformWindowManager.shared
@@ -865,7 +877,7 @@ struct fastvApp: App {
                 let silenceDetector = SilenceDetector()
                 silenceDetector.silenceThreshold = preferences.silenceThreshold
                 silenceDetector.relativeThreshold = preferences.silenceRelativeThreshold
-                silenceDetector.minimumSilenceDuration = preferences.silenceDetectionDuration
+                silenceDetector.minimumSilenceDuration = currentSessionUsesLiveInsertion ? min(preferences.silenceDetectionDuration, 0.5) : preferences.silenceDetectionDuration
                 silenceDetector.onSilenceDetected = { _ in
                     let previousTask = incrementalTranscriptionTask
                     incrementalTranscriptionTask = Task { @MainActor in
@@ -878,7 +890,7 @@ struct fastvApp: App {
                     waveformManager.updateAudioLevel(level)
                     silenceDetector.processAudioLevel(level)
                 }
-                print("✅ [fastvApp] 智能分段已启用，停顿阈值: \(preferences.silenceDetectionDuration)秒")
+                print("✅ [fastvApp] 智能分段已启用，停顿阈值: \(silenceDetector.minimumSilenceDuration)秒，实时插入: \(currentSessionUsesLiveInsertion)")
             } else {
                 currentSessionSilenceDetector = nil
                 voiceService.onAudioData = { level in
@@ -914,8 +926,10 @@ struct fastvApp: App {
         currentVoiceInputNeedsAI = needsAI
         
         let preferences = UserPreferences.shared
-        currentSessionUsesIncremental = preferences.enableIncrementalTranscription
+        currentSessionUsesLiveInsertion = !needsAI
+        currentSessionUsesIncremental = currentSessionUsesLiveInsertion || preferences.enableIncrementalTranscription
         incrementalTranscriptionResults = []
+        currentSessionLiveInsertedText = ""
         currentSessionIncrementalAudioSeconds = 0
         currentSessionIncrementalTranscriptionSeconds = 0
         incrementalBatchRefinementTasks.forEach { $0.cancel() }
@@ -942,7 +956,7 @@ struct fastvApp: App {
                 let silenceDetector = SilenceDetector()
                 silenceDetector.silenceThreshold = preferences.silenceThreshold
                 silenceDetector.relativeThreshold = preferences.silenceRelativeThreshold
-                silenceDetector.minimumSilenceDuration = preferences.silenceDetectionDuration
+                silenceDetector.minimumSilenceDuration = currentSessionUsesLiveInsertion ? min(preferences.silenceDetectionDuration, 0.5) : preferences.silenceDetectionDuration
                 silenceDetector.onSilenceDetected = { _ in
                     let previousTask = incrementalTranscriptionTask
                     incrementalTranscriptionTask = Task { @MainActor in
@@ -955,7 +969,7 @@ struct fastvApp: App {
                     waveformManager.updateAudioLevel(level)
                     silenceDetector.processAudioLevel(level)
                 }
-                print("✅ [fastvApp] 智能分段已启用，停顿阈值: \(preferences.silenceDetectionDuration)秒")
+                print("✅ [fastvApp] 智能分段已启用，停顿阈值: \(silenceDetector.minimumSilenceDuration)秒，实时插入: \(currentSessionUsesLiveInsertion)")
             } else {
                 currentSessionSilenceDetector = nil
                 voiceService.onAudioData = { level in
@@ -1071,7 +1085,9 @@ struct fastvApp: App {
             // 按動態規劃分批：若某批二次轉寫已完成則替換該批零碎結果，否則用零碎結果
             var fullText = ""
             let segments = incrementalTranscriptionResults
-            if !incrementalBatchPartition.isEmpty && incrementalBatchPartition.count == incrementalBatchRefinedTexts.count {
+            if currentSessionUsesLiveInsertion {
+                fullText = currentSessionLiveInsertedText
+            } else if !incrementalBatchPartition.isEmpty && incrementalBatchPartition.count == incrementalBatchRefinedTexts.count {
                 for (i, range) in incrementalBatchPartition.enumerated() {
                     let lo = max(0, min(range.lowerBound, segments.count))
                     let hi = max(lo, min(range.upperBound, segments.count))
@@ -1107,6 +1123,11 @@ struct fastvApp: App {
                     }
                     if !remainingText.isEmpty {
                         fullText += remainingText
+                        if currentSessionUsesLiveInsertion {
+                            insertVoiceText(remainingText, preferences: preferences)
+                            currentSessionLiveInsertedText += remainingText
+                            print("⚡️ [fastvApp] 松键后插入末段，末段长度: \(remainingText.count)")
+                        }
                     }
                 } catch {
                     print("❌ [fastvApp] 智能分段剩餘轉寫失敗: \(error)")
@@ -1116,6 +1137,19 @@ struct fastvApp: App {
             guard !fullText.isEmpty else {
                 waveformManager.setAICorrectionDisabled()
                 currentSessionUsesIncremental = false
+                currentSessionUsesLiveInsertion = false
+                currentVoiceInputNeedsAI = false
+                return
+            }
+
+            if currentSessionUsesLiveInsertion {
+                waveformManager.setAICorrectionDisabled()
+                let audioSec = currentSessionIncrementalAudioSeconds > 0 ? currentSessionIncrementalAudioSeconds : nil
+                let transSec = currentSessionIncrementalTranscriptionSeconds > 0 ? currentSessionIncrementalTranscriptionSeconds : nil
+                VoiceInputHistoryManager.shared.add(text: fullText, audioDurationSeconds: audioSec, transcriptionDurationSeconds: transSec)
+                print("✅ [fastvApp] 实时语音输入完成，文本长度: \(fullText.count)")
+                currentSessionUsesIncremental = false
+                currentSessionUsesLiveInsertion = false
                 currentVoiceInputNeedsAI = false
                 return
             }
@@ -1141,6 +1175,7 @@ struct fastvApp: App {
                         VoiceInputHistoryManager.shared.add(text: rewrittenText, audioDurationSeconds: audioSec, transcriptionDurationSeconds: transSec)
                     }
                     currentSessionUsesIncremental = false
+                    currentSessionUsesLiveInsertion = false
                     currentVoiceInputNeedsAI = false
                     return
                 }
@@ -1175,6 +1210,7 @@ struct fastvApp: App {
             VoiceInputHistoryManager.shared.add(text: text, audioDurationSeconds: audioSec, transcriptionDurationSeconds: transSec)
             print("✅ [fastvApp] 智能分段一次性插入完成，文本长度: \(text.count)")
             currentSessionUsesIncremental = false
+            currentSessionUsesLiveInsertion = false
             currentVoiceInputNeedsAI = false
             return
         }
@@ -1338,7 +1374,3 @@ struct fastvApp: App {
 }
 
 /// 应用状态管理器
-class AppStateManager: ObservableObject {
-    static let shared = AppStateManager()
-    private init() {}
-}

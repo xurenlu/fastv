@@ -12,13 +12,18 @@ import io
 import logging
 import os
 import tempfile
+import threading
 from pathlib import Path
 from typing import Literal, Optional
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, UploadFile, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 import uvicorn
+
+# 上传体积上限：50 MB
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
 # 配置日志
 logging.basicConfig(
@@ -28,7 +33,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # 版本号（与主项目保持一致）
-API_VERSION = "1.2.7"
+API_VERSION = "1.4.3-rc4"
 
 app = FastAPI(
     title="FastV STT API",
@@ -45,6 +50,28 @@ app.add_middleware(
 )
 
 
+class BodySizeLimitMiddleware(BaseHTTPMiddleware):
+    """拒绝任何 Content-Length 超过 MAX_UPLOAD_BYTES 的 HTTP 请求。"""
+
+    async def dispatch(self, request: Request, call_next):
+        cl = request.headers.get("content-length")
+        if cl is not None:
+            try:
+                if int(cl) > MAX_UPLOAD_BYTES:
+                    return JSONResponse(
+                        status_code=413,
+                        content={
+                            "detail": f"上传文件过大，限制 {MAX_UPLOAD_BYTES // (1024 * 1024)} MB"
+                        },
+                    )
+            except ValueError:
+                pass
+        return await call_next(request)
+
+
+app.add_middleware(BodySizeLimitMiddleware)
+
+
 @app.middleware("http")
 async def add_version_header(request, call_next):
     """为所有响应添加版本号 header"""
@@ -52,12 +79,11 @@ async def add_version_header(request, call_next):
     response.headers["X-API-Version"] = API_VERSION
     return response
 
-# 全局模型（延迟加载）
+# 全局模型（延迟加载，跨连接共享 _model / _frontend；_vad 改为每连接独立实例）
 _model = None
 _frontend = None
-_vad = None
-_model_loading = False
 _download_path: Optional[str] = None
+_model_load_lock = threading.Lock()
 
 
 def _get_download_path() -> str:
@@ -71,20 +97,16 @@ def _get_download_path() -> str:
 
 
 def _ensure_model():
-    """延迟加载 SenseVoice 模型"""
-    global _model, _frontend, _vad, _model_loading
+    """延迟加载 SenseVoice 模型。线程安全：用 threading.Lock 防止并发首请求重复加载。"""
+    global _model, _frontend
 
     if _model is not None:
         return
 
-    if _model_loading:
-        import time
-        while _model_loading:
-            time.sleep(0.1)
-        return
+    with _model_load_lock:
+        if _model is not None:
+            return
 
-    try:
-        _model_loading = True
         logger.info("正在加载 SenseVoice 模型...")
 
         from huggingface_hub import snapshot_download
@@ -99,7 +121,6 @@ def _ensure_model():
 
         from sensevoice.onnx.sense_voice_ort_session import SenseVoiceInferenceSession
         from sensevoice.utils.frontend import WavFrontend
-        from sensevoice.utils.fsmn_vad import FSMNVad
 
         am_mvn = os.path.join(download_path, "am.mvn")
         encoder = os.path.join(download_path, "sense-voice-encoder.onnx")
@@ -114,11 +135,14 @@ def _ensure_model():
             device=-1,
             num_threads=4,
         )
-        _vad = FSMNVad(download_path)
 
         logger.info("SenseVoice 模型加载完成")
-    finally:
-        _model_loading = False
+
+
+def _make_vad():
+    """每个 WS 连接 / 每次 HTTP 转写各自一份 FSMNVad，避免共享状态被互相 reset。"""
+    from sensevoice.utils.fsmn_vad import FSMNVad
+    return FSMNVad(_get_download_path())
 
 
 # 语言映射（与 sensevoice 一致）
@@ -155,11 +179,12 @@ def _preprocess_audio_to_wav(audio_bytes: bytes, suffix: str = ".wav") -> str:
         raise RuntimeError(f"音频预处理失败: {e}") from e
 
 
-def _transcribe_file(wav_path: str, language: str = "auto") -> str:
-    """对 WAV 文件执行转录"""
+def _transcribe_file(wav_path: str, language: str = "auto", vad=None) -> str:
+    """对 WAV 文件执行转录。`vad` 为可选独立实例；None 时临时新建一份，避免与并发请求共享状态。"""
     import soundfile as sf
 
     _ensure_model()
+    own_vad = vad if vad is not None else _make_vad()
     waveform, _ = sf.read(wav_path, dtype="float32", always_2d=True)
 
     # 单声道
@@ -168,7 +193,7 @@ def _transcribe_file(wav_path: str, language: str = "auto") -> str:
     else:
         channel_data = waveform
 
-    segments = _vad.segments_offline(channel_data)
+    segments = own_vad.segments_offline(channel_data)
     results = []
     for part in segments:
         audio_feats = _frontend.get_features(channel_data[part[0] * 16 : part[1] * 16])
@@ -182,7 +207,7 @@ def _transcribe_file(wav_path: str, language: str = "auto") -> str:
         text = _clean_sensevoice_result(asr_result)
         if text:
             results.append(text)
-        _vad.vad.all_reset_detection()
+        own_vad.vad.all_reset_detection()
 
     return "".join(results) if results else ""
 
@@ -235,12 +260,23 @@ async def transcribe_file(
     """
     temp_path = None
     try:
-        content = await file.read()
+        # 分块读取，避免一次性把大文件读进内存触发 OOM
+        content = bytearray()
+        while True:
+            chunk = await file.read(1 << 20)  # 1MB
+            if not chunk:
+                break
+            if len(content) + len(chunk) > MAX_UPLOAD_BYTES:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"上传文件过大，限制 {MAX_UPLOAD_BYTES // (1024 * 1024)} MB",
+                )
+            content.extend(chunk)
         if not content:
             raise HTTPException(status_code=400, detail="文件为空")
 
         suffix = Path(file.filename or "").suffix or ".wav"
-        temp_path = _preprocess_audio_to_wav(content, suffix)
+        temp_path = _preprocess_audio_to_wav(bytes(content), suffix)
 
         try:
             text = _transcribe_file(temp_path, language)
@@ -255,25 +291,34 @@ async def transcribe_file(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
+        # detail 不暴露内部 traceback / 路径；详细错误进服务端 log
         logger.exception("转录失败")
-        raise HTTPException(status_code=500, detail=f"转录失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="转录失败，请稍后重试")
 
 
-def _transcribe_pcm(pcm_bytes: bytes, sample_rate: int = 16000) -> str:
-    """对 PCM 16kHz 单声道 int16 数据执行转录"""
-    import soundfile as sf
+def _transcribe_pcm(pcm_bytes: bytes, sample_rate: int = 16000, vad=None) -> str:
+    """对 PCM 16kHz 单声道 int16 数据执行转录。不再走临时 wav，直接喂 frontend。"""
     import numpy as np
 
+    _ensure_model()
+    own_vad = vad if vad is not None else _make_vad()
     samples = np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32) / 32768
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-        wav_path = tmp.name
-    try:
-        sf.write(wav_path, samples, sample_rate)
-        return _transcribe_file(wav_path, "auto")
-    finally:
-        if os.path.exists(wav_path):
-            os.unlink(wav_path)
+
+    segments = own_vad.segments_offline(samples)
+    results = []
+    for part in segments:
+        audio_feats = _frontend.get_features(samples[part[0] * 16 : part[1] * 16])
+        asr_result = _model(
+            audio_feats[None, ...],
+            language=LANGUAGES.get("auto", 0),
+            use_itn=True,
+        )
+        text = _clean_sensevoice_result(asr_result)
+        if text:
+            results.append(text)
+        own_vad.vad.all_reset_detection()
+    return "".join(results)
 
 
 @app.websocket("/ws/transcribe")
@@ -295,6 +340,9 @@ async def websocket_transcribe(websocket: WebSocket):
     import json
     import numpy as np
 
+    # 每个 WS 连接独立 VAD，避免与其他并发连接互相 reset 检测状态
+    connection_vad = _make_vad()
+
     buffer = bytearray()
     sample_rate = 16000
     bytes_per_sec = sample_rate * 2  # 16bit
@@ -311,7 +359,7 @@ async def websocket_transcribe(websocket: WebSocket):
         buffer.clear()
         silence_chunk_count = 0
         try:
-            text = _transcribe_pcm(data, sample_rate)
+            text = _transcribe_pcm(data, sample_rate, vad=connection_vad)
             if text:
                 await websocket.send_json({"type": "segment", "text": text})
         except Exception as e:
@@ -356,10 +404,10 @@ async def websocket_transcribe(websocket: WebSocket):
 
     except WebSocketDisconnect:
         pass
-    except Exception as e:
+    except Exception:
         logger.exception("WebSocket 异常")
         try:
-            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.send_json({"type": "error", "message": "服务端异常"})
         except Exception:
             pass
     finally:

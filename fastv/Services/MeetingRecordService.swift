@@ -18,6 +18,8 @@ class MeetingRecordService: ObservableObject {
     @Published private(set) var records: [MeetingRecord] = []
     @Published private(set) var isRecording = false
     @Published private(set) var currentRecordingId: UUID?
+    /// 录音中的当前时长（1Hz 刷新）。**只在当前录音期间有意义**，不会写回 records[index].duration，
+    /// 避免每秒触发整个 records 数组重新 publish 导致左侧列表全列重渲染。
     @Published private(set) var recordingDuration: TimeInterval = 0
 
     private let logger = Logger(subsystem: "com.fastv.meeting", category: "MeetingRecord")
@@ -25,9 +27,14 @@ class MeetingRecordService: ObservableObject {
     private let documentsURL: URL
     private let recordsFileURL: URL
 
+    // 落盘节流
+    private var saveDebounceTask: Task<Void, Never>?
+    private let saveDebounceInterval: TimeInterval = 1.0
+
     // 实时转录相关
     private var incrementalTranscriptTimer: Timer?
     private var currentTranscriptSegments: [String] = []
+    private var accumulatedTranscript: String = ""  // 已累积转写，避免每次 joined("") 重拼 O(n²)
     private let transcriptInterval: TimeInterval = 15.0 // 每15秒进行一次转录
     private var lastTranscriptTime: Date?
 
@@ -50,44 +57,63 @@ class MeetingRecordService: ObservableObject {
 
         voiceService = VoiceInputService.shared
 
-        loadRecords()
+        // 异步加载，避免阻塞主线程冷启动
+        Task { @MainActor [weak self] in
+            await self?.loadRecordsAsync()
+        }
     }
 
     // MARK: - 记录管理
 
-    /// 加载所有记录
-    private func loadRecords() {
-        saveQueue.sync {
-            guard FileManager.default.fileExists(atPath: recordsFileURL.path) else {
-                self.records = []
-                return
+    /// 异步加载所有记录（不阻塞主线程）
+    private func loadRecordsAsync() async {
+        let url = recordsFileURL
+        let loaded: [MeetingRecord] = await withCheckedContinuation { continuation in
+            saveQueue.async {
+                guard FileManager.default.fileExists(atPath: url.path) else {
+                    continuation.resume(returning: [])
+                    return
+                }
+                do {
+                    let data = try Data(contentsOf: url)
+                    let decoder = JSONDecoder()
+                    decoder.dateDecodingStrategy = .iso8601
+                    let result = try decoder.decode([MeetingRecord].self, from: data)
+                    continuation.resume(returning: result)
+                } catch {
+                    continuation.resume(returning: [])
+                }
             }
+        }
+        self.records = loaded
+        logger.log("加载了 \(loaded.count) 条会议记录")
+    }
 
-            do {
-                let data = try Data(contentsOf: recordsFileURL)
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601
-                self.records = try decoder.decode([MeetingRecord].self, from: data)
-                logger.log("加载了 \(self.records.count) 条会议记录")
-            } catch {
-                logger.error("加载会议记录失败: \(error.localizedDescription)")
-                self.records = []
-            }
+    /// 保存所有记录（节流：连续多次调用合并为一次磁盘写）
+    private func saveRecords() {
+        saveDebounceTask?.cancel()
+        saveDebounceTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(nanoseconds: UInt64(self.saveDebounceInterval * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            self.flushSaveNow()
         }
     }
 
-    /// 保存所有记录
-    private func saveRecords() {
-        saveQueue.async {
+    /// 立即落盘（停止/取消录音、关键节点用）。**在 MainActor 上**对 records 做 snapshot，
+    /// 再传给后台队列编码，避免跨 actor 直接读 @Published 数组触发数据竞争。
+    private func flushSaveNow() {
+        let snapshot = records  // MainActor 上 CoW 拷贝
+        saveQueue.async { [weak self, url = recordsFileURL] in
             do {
                 let encoder = JSONEncoder()
                 encoder.dateEncodingStrategy = .iso8601
-                encoder.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes]
-                let data = try encoder.encode(self.records)
-                try data.write(to: self.recordsFileURL, options: .atomic)
-                self.logger.log("保存了 \(self.records.count) 条会议记录")
+                encoder.outputFormatting = [.withoutEscapingSlashes]  // 去掉 prettyPrinted，体积更小
+                let data = try encoder.encode(snapshot)
+                try data.write(to: url, options: .atomic)
+                self?.logger.log("保存了 \(snapshot.count) 条会议记录")
             } catch {
-                self.logger.error("保存会议记录失败: \(error.localizedDescription)")
+                self?.logger.error("保存会议记录失败: \(error.localizedDescription)")
             }
         }
     }
@@ -187,7 +213,7 @@ class MeetingRecordService: ObservableObject {
         let finalRecording = try? await voiceService.stopRecording()
 
         // 确定最终文本：优先对完整音频做转写，避免短于 15 秒的录音因定时器未触发而丢失内容
-        var fullText = currentTranscriptSegments.joined(separator: "")
+        var fullText = accumulatedTranscript
         if let recording = finalRecording, !recording.pcmData.isEmpty {
             do {
                 let transcribed = try await SpeechTranscriber.transcribe(
@@ -220,19 +246,26 @@ class MeetingRecordService: ObservableObject {
             records[index] = record
             saveRecords()
 
-            // 若配置了 AI 且内容非空，异步生成标题
+            // 若配置了 AI 且内容非空，异步生成标题 + 收尾流式图文文档
             if !fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Task { @MainActor in
                     await generateTitleIfConfigured(for: recordId, text: record.correctedText.isEmpty ? fullText : record.correctedText)
                 }
+                Task { @MainActor in
+                    await MeetingRichDocPipeline.shared.finalize(recordId: recordId, in: self)
+                }
             }
         }
+
+        // 立即落盘（停录是关键节点，不走 debounce）
+        flushSaveNow()
 
         // 重置状态
         isRecording = false
         currentRecordingId = nil
         recordingDuration = 0
         currentTranscriptSegments = []
+        accumulatedTranscript = ""
         lastTranscriptTime = nil
 
         // 断开回调并隐藏波形窗口
@@ -253,14 +286,18 @@ class MeetingRecordService: ObservableObject {
 
         voiceService.cancelRecording()
 
-        // 删除临时记录
+        // 取消图文文档流式
+        MeetingRichDocPipeline.shared.cancel(recordId: recordId)
+
+        // 删除临时记录并立即落盘（避免下次启动还能看到这条「半成品」）
         records.removeAll { $0.id == recordId }
-        saveRecords()
+        flushSaveNow()
 
         isRecording = false
         currentRecordingId = nil
         recordingDuration = 0
         currentTranscriptSegments = []
+        accumulatedTranscript = ""
         lastTranscriptTime = nil
 
         // 断开回调并隐藏波形窗口
@@ -273,6 +310,7 @@ class MeetingRecordService: ObservableObject {
     /// 启动增量转录定时器
     private func startIncrementalTranscription() {
         currentTranscriptSegments = []
+        accumulatedTranscript = ""
         lastTranscriptTime = Date()
 
         incrementalTranscriptTimer = Timer.scheduledTimer(withTimeInterval: transcriptInterval, repeats: true) { [weak self] _ in
@@ -310,27 +348,32 @@ class MeetingRecordService: ObservableObject {
 
             logger.log("增量转录: \(text.prefix(30))...")
             currentTranscriptSegments.append(text)
+            accumulatedTranscript += text  // O(1) append，替代每次 O(n²) joined("")
 
             // 更新记录文本
             if let index = records.firstIndex(where: { $0.id == recordId }) {
                 var record = records[index]
-                let fullText = currentTranscriptSegments.joined(separator: "")
-                record.originalText = fullText
+                record.originalText = accumulatedTranscript
                 record.correctedText = CommonMistakeManager.shared.enableAutoCorrection
-                    ? TextCorrectionService.shared.correctText(fullText)
-                    : fullText
+                    ? TextCorrectionService.shared.correctText(accumulatedTranscript)
+                    : accumulatedTranscript
                 record.updatedAt = Date()
                 records[index] = record
                 saveRecords()
             }
 
             lastTranscriptTime = Date()
+
+            // 触发图文文档流式管线
+            MeetingRichDocPipeline.shared.onTranscriptUpdated(recordId: recordId, in: self)
         } catch {
             logger.error("增量转录失败: \(error.localizedDescription)")
         }
     }
 
-    /// 时长更新定时器
+    /// 时长更新定时器：只更新 `recordingDuration`，**不**写回 records[index].duration，
+    /// 避免每秒触发 records 数组重新 publish 导致左侧列表整列重渲染。
+    /// 录音停止时由 stopRecording 把最终 duration 写回当前 record。
     private func startDurationTimer() {
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
             guard let self = self, self.isRecording else {
@@ -338,12 +381,6 @@ class MeetingRecordService: ObservableObject {
                 return
             }
             self.recordingDuration += 1.0
-
-            // 更新记录时长
-            if let recordId = self.currentRecordingId,
-               let index = self.records.firstIndex(where: { $0.id == recordId }) {
-                self.records[index].duration = self.recordingDuration
-            }
         }
     }
 
@@ -472,6 +509,49 @@ class MeetingRecordService: ObservableObject {
     func organizeContent(for recordId: UUID) async throws {
         try await generateSummary(for: recordId)
         try await extractActionItems(for: recordId)
+    }
+
+    // MARK: - 实时图文文档（供 MeetingRichDocPipeline 写回）
+
+    /// 设置 / 清除流式标记
+    func setRichDocStreaming(_ streaming: Bool, for recordId: UUID) {
+        guard let index = records.firstIndex(where: { $0.id == recordId }) else { return }
+        records[index].isRichDocStreaming = streaming
+        records[index].updatedAt = Date()
+    }
+
+    /// 流式过程中：把当前累计输出写回 record（不持久化，避免高频磁盘 IO）
+    func applyRichDocStreamingChunk(_ accumulatedMarkdown: String, for recordId: UUID) {
+        guard let index = records.firstIndex(where: { $0.id == recordId }) else { return }
+        records[index].richDocumentMarkdown = accumulatedMarkdown
+        records[index].isRichDocStreaming = true
+        records[index].updatedAt = Date()
+    }
+
+    /// 流式收尾：落盘 + 推进 cursor + 记录触发时间
+    func commitRichDocStream(
+        finalMarkdown: String,
+        cursor: Int,
+        triggeredAt: Date,
+        for recordId: UUID
+    ) {
+        guard let index = records.firstIndex(where: { $0.id == recordId }) else { return }
+        records[index].richDocumentMarkdown = finalMarkdown
+        records[index].richDocCursor = cursor
+        records[index].lastRichDocAt = triggeredAt
+        records[index].isRichDocStreaming = false
+        records[index].updatedAt = Date()
+        saveRecords()
+    }
+
+    /// 手动重新生成（用户点「重新生成」按钮）
+    func regenerateRichDoc(for recordId: UUID) async {
+        guard let index = records.firstIndex(where: { $0.id == recordId }) else { return }
+        records[index].richDocumentMarkdown = ""
+        records[index].richDocCursor = 0
+        records[index].lastRichDocAt = nil
+        saveRecords()
+        await MeetingRichDocPipeline.shared.finalize(recordId: recordId, in: self)
     }
 }
 

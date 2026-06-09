@@ -184,9 +184,16 @@ class EmailStore: ObservableObject {
     
     /// 删除账号
     func deleteAccount(_ account: EmailAccount) async throws {
+        // 先取消 EmailService 中可能存在的后台同步任务，避免删账号之后
+        // 后台任务仍然在用旧 account 拼接 IMAP 请求并写入已被删除的库行。
+        EmailService.shared.cleanupAccount(accountId: account.id)
+
+        // 关掉该账号的 IDLE 长连接（如果有的话）
+        EmailIdleService.shared.stop(accountId: account.id)
+
         // 删除Keychain中的密码
         EmailCredentialStore.shared.deletePassword(accountId: account.id)
-        
+
         try await database.write { db in
             try db.execute(sql: "DELETE FROM email_accounts WHERE id = ?", arguments: [account.id.uuidString])
         }
@@ -485,6 +492,99 @@ class EmailStore: ObservableObject {
         }
     }
     
+    /// 把一封邮件在内存与数据库里从源文件夹挪到目标文件夹。
+    /// IMAP 操作成功后立刻调用，避免依赖下一次同步刷新源文件夹。
+    /// - Parameters:
+    ///   - message: 原邮件（folderId 仍为源）
+    ///   - sourceFolderId: 源文件夹（与 message.folderId 通常相同；显式传入保持鲁棒）
+    ///   - destinationFolderId: 目标文件夹
+    ///   - mutate: 可选 mutate 闭包，让调用方在跨文件夹的同一次写库里附带改 isSpam / isRead 等字段。
+    ///     这样 archive / spam / 移动可以一次事务搞定，进程被杀也不会留下中间状态。
+    /// - Returns: 已经把 folderId 更新到 destination 的邮件副本
+    @discardableResult
+    func moveMessageInMemory(_ message: EmailMessage,
+                             from sourceFolderId: UUID,
+                             to destinationFolderId: UUID,
+                             mutate: (@Sendable (inout EmailMessage) -> Void)? = nil) async throws -> EmailMessage {
+        guard sourceFolderId != destinationFolderId else { return message }
+
+        // 1) 从源文件夹的内存 dict 中移除（按 id）
+        if var srcList = messages[sourceFolderId] {
+            srcList.removeAll { $0.id == message.id }
+            messages[sourceFolderId] = srcList
+        }
+
+        // 2) 构造一份 folderId 已经指向 destination 的新副本（folderId 是 let，不能直接改）
+        // uid 保留：跨文件夹后服务器侧 UID 通常会变，但本地保留旧 uid 让 UI 在下次同步前仍可显示；
+        //          UI 层若想用 uid 做 IMAP 操作，应自行在 catch 401/410 错误时刷新。
+        var moved = EmailMessage(
+            id: message.id,
+            accountId: message.accountId,
+            folderId: destinationFolderId,
+            uid: message.uid,
+            messageId: message.messageId,
+            threadId: message.threadId,
+            subject: message.subject,
+            from: message.from,
+            to: message.to,
+            cc: message.cc,
+            bcc: message.bcc,
+            replyTo: message.replyTo,
+            textBody: message.textBody,
+            htmlBody: message.htmlBody,
+            preview: message.preview,
+            date: message.date,
+            receivedDate: message.receivedDate,
+            isRead: message.isRead,
+            isStarred: message.isStarred,
+            isImportant: message.isImportant,
+            isNoReply: message.isNoReply,
+            hasAttachments: message.hasAttachments,
+            isSpam: message.isSpam,
+            isDeleted: message.isDeleted,
+            containsRemoteResources: message.containsRemoteResources,
+            hasBeenReplied: message.hasBeenReplied,
+            isDraft: message.isDraft,
+            tags: message.tags,
+            aiTags: message.aiTags,
+            aiSummary: message.aiSummary,
+            aiPriority: message.aiPriority,
+            attachments: message.attachments,
+            syncedAt: message.syncedAt,
+            updatedAt: Date(),
+            isBodyLoaded: message.isBodyLoaded,
+            bodyCachedAt: message.bodyCachedAt
+        )
+
+        // 让调用方在同一次写入里修改 isSpam / isRead / 其它字段
+        mutate?(&moved)
+
+        // 3) 加入目标文件夹的内存 dict（按 id 去重，保留最新一份）
+        var dstList = messages[destinationFolderId] ?? []
+        dstList.removeAll { $0.id == moved.id }
+        dstList.append(moved)
+        // 排序保持与正常加载一致：日期倒序
+        dstList.sort { $0.date > $1.date }
+        messages[destinationFolderId] = dstList
+
+        // 4) 更新计数缓存（避免侧栏数字滞后）
+        let srcCount = messages[sourceFolderId]?.count ?? 0
+        FolderMessageCountCache.shared.updateCount(for: sourceFolderId, count: srcCount)
+        let dstCount = dstList.count
+        FolderMessageCountCache.shared.updateCount(for: destinationFolderId, count: dstCount)
+
+        notifyChange()
+        // 强制再发一次 objectWillChange，让"所有邮件视图"等订阅 messages 全集的视图也立即重排
+        objectWillChange.send()
+
+        // 5) 后台写库：updateMessage 内部会刷新 email_messages 行的 folder_id
+        try await database.asyncWrite { [moved] db in
+            try self.saveMessage(moved, db: db)
+        }
+
+        return moved
+    }
+
     /// 获取文件夹的邮件列表（分页）
     func getMessages(for folderId: UUID, limit: Int = 50, offset: Int = 0) -> [EmailMessage] {
         let allMessages = messages[folderId] ?? []
@@ -578,6 +678,79 @@ class EmailStore: ObservableObject {
         return fallbackCount
     }
     
+    /// 为"所有邮件"视图准备数据：把账号下所有非 spam/trash/drafts 的文件夹都从数据库加载到内存。
+    /// 之前 `updateMessagesForAllFolders` 只看 `messages[folderId]` 内存 dict —— 没加载过的
+    /// 文件夹直接被跳过，于是侧栏 DB COUNT = 14 但列表里只显示已加载文件夹的邮件（比如 2 封）。
+    /// 这里按 folder 并发加载，每个 folder 内部已有"无需加载就跳过"逻辑。
+    func loadAllFoldersForAggregateView(accountId: UUID) async {
+        let foldersForAccount = getFolders(for: accountId)
+        // 并发加载，但限制并发度 4，避免数据库连接 / 主线程压力
+        await withTaskGroup(of: Void.self) { group in
+            var inflight = 0
+            for folder in foldersForAccount {
+                if folder.type == .spam || folder.type == .trash || folder.type == .drafts {
+                    continue
+                }
+                // 已经在内存里就不重复跑（loadMessages 内部也会 early return，这里前置一次省 Task 开销）
+                if let existing = messages[folder.id], !existing.isEmpty { continue }
+                if inflight >= 4 {
+                    _ = await group.next()
+                    inflight -= 1
+                }
+                group.addTask { [folderId = folder.id] in
+                    await self.loadMessages(for: folderId)
+                }
+                inflight += 1
+            }
+            await group.waitForAll()
+        }
+    }
+
+    /// 直接从数据库聚合"所有邮件"：跳过内存 dict，按 message_id 去重，返回最近 `limit` 封。
+    /// 之前 aggregator 完全依赖 `messages[folderId]` 内存 dict，但 IMAP 同步 / IDLE 推送 /
+    /// loadMessages 的 early-return + 替换行为，会让某次跑 aggregator 时内存只有部分文件夹，
+    /// 表现为"启动一切正常，几秒后列表突然只剩 2 封"。
+    /// 改成 DB 直查后，"所有邮件视图"的数据源和侧栏数字（getTotalMessageCountAsync）一致，
+    /// 不再被后台任务节奏影响。
+    nonisolated func fetchAggregateMessagesFromDatabase(accountId: UUID, limit: Int = 500) async -> [EmailMessage] {
+        do {
+            let messages = try await database.asyncRead { [accountId, limit] db -> [EmailMessage] in
+                // 按 message_id 去重：用子查询挑出每个 dedup_key 的最大 date 对应行
+                let sql = """
+                    SELECT m.* FROM email_messages m
+                    INNER JOIN (
+                        SELECT
+                            CASE
+                                WHEN message_id IS NOT NULL AND TRIM(message_id) != '' THEN TRIM(message_id)
+                                ELSE COALESCE(subject, '') || '|' || COALESCE(from_email, '') || '|' || CAST(date AS TEXT)
+                            END AS dedup_key,
+                            MAX(date) AS max_date,
+                            MIN(id) AS picked_id
+                        FROM email_messages
+                        WHERE account_id = ?
+                          AND is_draft = 0
+                          AND is_spam = 0
+                          AND is_deleted = 0
+                        GROUP BY dedup_key
+                    ) d ON m.id = d.picked_id
+                    ORDER BY m.date DESC
+                    LIMIT ?
+                """
+                let rows = try Row.fetchAll(db, sql: sql, arguments: [accountId.uuidString, limit])
+                var result: [EmailMessage] = []
+                for row in rows {
+                    let message = try self.parseMessage(from: row, db: db)
+                    result.append(message)
+                }
+                return result
+            }
+            return messages
+        } catch {
+            print("⚠️ [EmailStore] fetchAggregateMessagesFromDatabase 失败: \(error)")
+            return []
+        }
+    }
+
     /// 获取所有邮件（用于 AI 摘要汇总）
     func getAllMessages(limit: Int = 100) -> [EmailMessage] {
         var allMessages: [EmailMessage] = []
@@ -1006,8 +1179,9 @@ class EmailStore: ObservableObject {
         try db.execute(sql: """
             INSERT OR REPLACE INTO email_attachments (
                 id, message_id, filename, mime_type, size,
-                content_id, is_inline, local_path
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                content_id, is_inline, local_path,
+                part_path, encoding, charset
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, arguments: [
             attachment.id.uuidString,
             messageId.uuidString,
@@ -1016,7 +1190,10 @@ class EmailStore: ObservableObject {
             attachment.size,
             attachment.contentId,
             attachment.isInline ? 1 : 0,
-            attachment.localPath
+            attachment.localPath,
+            attachment.partPath,
+            attachment.encoding,
+            attachment.charset
         ])
     }
     
@@ -1405,7 +1582,10 @@ class EmailStore: ObservableObject {
                 size: row["size"] as? Int64 ?? 0,
                 contentId: row["content_id"] as? String,
                 isInline: (row["is_inline"] as? Int ?? 0) == 1,
-                localPath: row["local_path"] as? String
+                localPath: row["local_path"] as? String,
+                partPath: row["part_path"] as? String,
+                encoding: row["encoding"] as? String,
+                charset: row["charset"] as? String
             )
             attachments.append(attachment)
         }

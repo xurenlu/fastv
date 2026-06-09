@@ -392,17 +392,7 @@ class VoiceInputService: ObservableObject {
         // 安装 tap 来捕获麦克风音频
         // 检测是否为蓝牙设备，使用更大的缓冲区以减少丢帧
         let isBluetooth = isBluetoothDevice()
-        let bufferSize: AVAudioFrameCount
-        if isBluetooth {
-            // 蓝牙设备需要更大的缓冲区来减少丢帧和卡顿
-            // 8192 帧在 48kHz 下约 170ms，在 16kHz 下约 512ms
-            bufferSize = 8192
-            print("🎤 [VoiceInputService] 检测到蓝牙设备，使用更大的缓冲区")
-        } else if format.sampleRate >= 44100 {
-            bufferSize = 4096  // 高采样率下约 85-93ms
-        } else {
-            bufferSize = 2048  // 低采样率下约 128ms
-        }
+        let bufferSize = Self.inputBufferSize(for: format, isBluetooth: isBluetooth)
         print("🎤 [VoiceInputService] 使用缓冲区大小: \(bufferSize) 帧 (约 \(Double(bufferSize) / format.sampleRate * 1000)ms), 蓝牙: \(isBluetooth)")
         inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: format) { [weak self] buffer, time in
             guard let self = self else { return }
@@ -585,14 +575,7 @@ class VoiceInputService: ObservableObject {
         // 安装 tap 来捕获系统音频
         // 使用与麦克风相同的缓冲区大小策略（包括蓝牙检测）
         let isBluetooth = isBluetoothDevice()
-        let sysBufferSize: AVAudioFrameCount
-        if isBluetooth {
-            sysBufferSize = 8192
-        } else if sysFormat.sampleRate >= 44100 {
-            sysBufferSize = 4096
-        } else {
-            sysBufferSize = 2048
-        }
+        let sysBufferSize = Self.inputBufferSize(for: sysFormat, isBluetooth: isBluetooth)
         sysInputNode.installTap(onBus: 0, bufferSize: sysBufferSize, format: sysFormat) { [weak self] buffer, time in
             guard let self = self else { return }
             self.processSystemAudioBuffer(buffer)
@@ -690,6 +673,12 @@ class VoiceInputService: ObservableObject {
         if status != noErr {
             throw VoiceInputError.failedToStartRecording("无法设置音频输入设备: \(status)")
         }
+    }
+
+    nonisolated private static func inputBufferSize(for format: AVAudioFormat, isBluetooth: Bool) -> AVAudioFrameCount {
+        let targetDuration: TimeInterval = isBluetooth ? 0.085 : 0.022
+        let frames = max(256, Int(format.sampleRate * targetDuration))
+        return AVAudioFrameCount(frames)
     }
     
     /// 停止录音并返回音频数据
@@ -1119,4 +1108,3 @@ enum VoiceInputError: LocalizedError {
         }
     }
 }
-

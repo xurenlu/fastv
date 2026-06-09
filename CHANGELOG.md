@@ -2,6 +2,218 @@
 
 所有版本變更記錄。
 
+## [1.4.3-rc5] - 2026-06-09
+
+### 修復（邮件正文「找不到文件夹」死胡同）
+
+rc4 把找不到 folder 的 case 从「无声卡 loading」改成了「显示失败 + 重试按钮」，但点重试只是再走一次 `loadMessageBody`，对真正悬挂的 `folder_id` 没用——失败提示让用户"刷新文件夹列表"，按钮却没刷新，文案和行为对不齐。这一轮把两个口子一并补了：
+
+- **重试按钮顺手刷新文件夹列表**。[`retryLoadMessageBody`](fastv/ViewModels/EmailViewModel.swift:1611) 在调用 `loadMessageBody` 之前先 `await loadFolders(account:, backgroundRefresh: true)`，让按钮实际行为对上提示文案。覆盖"本地 folder 缓存还没拉到"这类时序问题，用户不必再手动去侧栏找刷新入口。
+- **同 accountId、同 messageId 的副本救援**。Gmail / 企业邮箱常见同一封邮件在 INBOX + `[Gmail]/All Mail` 各一份；若用户当前点开的这份 `folder_id` 已被 SQLite `ON DELETE SET NULL` 清空（[EmailDatabase.swift:119](fastv/Services/EmailDatabase.swift:119)），但另一份还在有效文件夹里、且已缓存了正文，[`loadMessageBody`](fastv/ViewModels/EmailViewModel.swift:1702) 现在会在 folder 解析失败之后扫一遍 `EmailStore.messages` 找同 messageId 副本，借用其 `textBody` / `htmlBody` / `attachments` / `containsRemoteResources` 字段直接渲染——不必发起 IMAP 请求，也不必依赖再次同步修复 orphan 状态。
+  - 副本的 `folderId` 故意**不抄**，保留原 row 的 orphan 状态。下一次正常 sync 会自然把 `folder_id` 重新落对，避免在这里硬塞一个可能不准的 folder。
+  - 只在同 `accountId` 范围内匹配，避免误把别人账号的同 messageId 邮件正文塞过来。
+
+### 未触及（已纳入后续计划）
+
+- 在 `email_messages` 表上加冗余 `folder_path` 列，让 folder_id 悬挂时能按 path 反查（需要 schema 迁移，单独排）。
+- `EmailStore.addFolder` 对 IMAP modified UTF-7 / 大小写差异的 path 归一化（重写去重逻辑，单独排）。
+
+## [1.4.3-rc4] - 2026-06-09
+
+### 修復
+- 邮件正文「正在加载正文...」永远转圈的 bug。两条独立的卡死路径都堵掉：
+  1. **「所有邮件」聚合视图下找不到 folder 静默 return**。聚合查询用 `MIN(id)` picked 出来的那条 row，其 `folderId` 可能指向 ViewModel.folders 缓存里还没有的文件夹（跨账号副本 / 启动竞态 / 空文件夹分组）。原来直接 `return` 不写状态，UI 永远停在 loading。现改为：先去 `EmailStore.accounts` 全量文件夹兜底再找一遍；找不到才把失败信息写入 `bodyLoadFailures`，让 UI 显示失败 + 重试按钮。
+  2. **`fetchMessageBody` 无超时控制**。每次现抓正文都新建一条 IMAP 连接（connect+login+select+fetch+disconnect），全程交给 LibEtPan 阻塞 socket；网络慢 / 服务端限流时，await 会一直挂着。现用 `withThrowingTaskGroup` 套 45s 超时，超时抛 `EmailServiceError.timedOut`。LibEtPan socket 不能真正 cancel，但 ViewModel 这一侧能提前拿到错误把 UI 切到「加载失败 → 重试」。
+- 新增 [`EmailViewModel.bodyLoadFailures`](fastv/ViewModels/EmailViewModel.swift:84) + [`retryLoadMessageBody`](fastv/ViewModels/EmailViewModel.swift:1607)：每封邮件一个独立失败态，不再吞到全局 `errorMessage` 横幅里遮住正文区。
+- [`EmailView`](fastv/Views/EmailView.swift:749) 的「正在加载正文...」区块改造为：失败时显示橙色三角 + 错误原因 + 「重试」按钮，点击直接重跑 `loadMessageBody`。
+
+## [1.4.3-rc3] - 2026-06-06
+
+### 修復
+- 邮件翻译把 CSS 当正文翻译的 bug：用户点"翻译为中文"后，正文区出现 "body {width: 600px;margin: 0 auto;}" / "table {border-collapse: collapse;}" 一大段 CSS。根因是 `stripHTMLTagsForTranslate` 只剥 `<tag>` 本身，**`<style>` / `<script>` 标签之间的内容文本被原样留下喂给 AI**。
+- 修复 [`stripHTMLTagsForTranslate`](fastv/ViewModels/EmailViewModel+Translate.swift:240)：先把 `<style>...</style>`、`<script>...</script>`、`<head>...</head>`、`<noscript>...</noscript>`、HTML 注释、`<!DOCTYPE>`、`<?xml?>`、Outlook 条件注释 整段（含内容）一并删掉，再剥剩余标签。
+- 顺手加固：数字字符引用 `&#1234;` / `&#x4e2d;` 还原为 Unicode 字符；多余空格压缩；每行首尾 trim；`</tr>`/`</h5>`/`</h6>` 也算块级换行。
+
+### 测试
+- 新增 [`fastvTests/EmailTranslateStripTests.swift`](fastvTests/EmailTranslateStripTests.swift)：14 个用例覆盖 `<style>` / `<script>` / `<head>` / 注释 / DOCTYPE / `<noscript>` / 数字字符引用 / 段落保留 / 空白压缩。**14/14 全过**。
+- 全套测试 36 → 50，TEST SUCCEEDED。
+
+## [1.4.3-rc2] - 2026-06-06
+
+### 修復（隱私拦截覆盖扩展 — 之前的正则只挡了 60% 场景）
+
+自查时给 stripRemoteImageSources 写单测，**第一次跑 13/21 失败**，逼出一堆之前没覆盖到的远程加载点位。这一轮全部补齐：
+
+- **`<img>` 兼容性**：无引号 `<img src=http://x>` 之前漏过；现在多走一条无引号正则。大小写不敏感、单引号、双引号、protocol-relative `//` 全部覆盖。
+- **`<picture><source srcset>`**：响应式图片在主流邮件客户端越来越常见，之前完全漏过。
+- **`<input type="image" src=...>`**：会发 GET 请求，常用于追踪点击 / 表单内嵌追踪。
+- **`<video poster>`**：海报图同样外链请求。
+- **`<iframe src>` / `<embed src>` / `<object data>`**：极少邮件用但能加载整个外部文档，必须挡。
+- **`<link rel="stylesheet" href=...>`**：远程 CSS 会被 WebKit 加载，且 CSS 内可链 url() 触发二次跟踪。
+- **inline `background:url(...)` 短写法**：之前只挡 `background-image:url(...)`，newsletter 用 `background:url(http://t.com/pixel.gif)` 这种短写法整一片。
+- **`<style>` 标签内 `@import url(http://...)` 与 `url(http://...)`**：用单独的标签内正则替换为 `url(about:blank)` / `/* fastv-blocked @import */`，CSS 引擎不再发请求。
+- **早退**：HTML 里没有 `http` 或 `//` 时直接返回原文，大邮件不白跑 8 个正则。
+
+### 测试
+- 新增 [`fastvTests/EmailRemoteImageBlockingTests.swift`](fastvTests/EmailRemoteImageBlockingTests.swift)：21 个用例覆盖上述所有挡 / 不挡场景，断言用"是否还有 live remote request 形态"的正则判定，避免误把 `data-original-src="http..."` 误判为漏挡。**21/21 全过**。
+- 一次跑 36 个测试（fastvTests + MeetingRichDocTests + EmailRemoteImageBlockingTests），TEST SUCCEEDED。
+
+### 修復（延迟标读 / IDLE 状态边界）
+
+- `EmailViewModel.selectAccount` 切账号时也取消 `pendingMarkAsReadTask`，防止切走后用旧账号 ID 把邮件标读（之前只在 selectFolder 里做了取消）。
+- `EmailIdleService.stop(accountId:)` 把 `statuses[accountId]` 一并清掉 + 广播一次 `.stopped`，让 `EmailViewModel.idleStatusByAccount` 同步去除已删账号的徽章残留。
+
+## [1.4.3-rc1] - 2026-06-06
+
+### 新增（隐私加固）
+
+- **延迟标已读**：邮箱设置新增"自动标已读"选项，默认 **3 秒** 后才标已读。期间换邮件 / 切文件夹会自动取消上一个延迟任务，避免键盘上下浏览时一路把整封收件箱误标读。可选档位：立即 / 1 / 3 / 5 / 10 秒 / 仅手动。
+  - 旧行为（选中即标）仍可选（"立即"档），UI 会标出"⚠️ 服务器 `\\Seen` 标志会同步更新，无法撤销"提醒。
+  - "仅手动"档位下，邮件永远不会被自动标已读，需要用户主动操作。
+  - 实现：`UserPreferences.emailMarkAsReadDelaySeconds` 默认 3；`EmailViewModel.selectMessage` 把原来的 `Task { await markAsRead }` 换成可取消的 `pendingMarkAsReadTask`，回调里二次确认 `selectedMessageId == target.id` 才真的标。
+
+- **真正挡远程图片 + 追踪像素**：之前的实现只是 CSS `img { display: none }`，WebKit 仍会发起 HTTP 请求 → newsletter / marketing 邮件里的 1x1 透明 gif 追踪像素照样能让发件人拿到 IP + UA + 打开时间。
+  - 现在在 `EmailBodyWebView.injectEmailStyles` 注入前，先把外链 `<img src="http(s)://…">` / `srcset` 改名为 `data-original-src` / `data-original-srcset`；同时清掉 inline `style` 里的 `background-image: url(http…)`。WebKit 看到没有 src 的 `<img>` 就根本不发请求。
+  - 内嵌 `cid:` 与 `data:image/…` 图保留不动（不会触发外链）。
+  - CSS 给"有 data-original-src 的图"加占位框："🖼 图片已被隐私保护挡住"；尺寸为 1x1 / 0x0 的（标准追踪像素特征）直接 `display: none`，连占位框都没有。
+  - 用户点"显示图片"切换后，HTML 会被重新注入，这次 src/srcset 不再被剥，图片正常加载。
+
+## [1.4.2-rc4] - 2026-06-06
+
+### 修復
+- 「所有郵件」視圖列表開機幾秒後突然只剩 2 封：根因是 aggregator 完全依賴 `EmailStore.messages` 內存 dict，而 IMAP 同步 / IDLE 推送 / `loadMessages` 的 early-return + 整體替換行為，會在啟動後幾秒讓 `messages[folderId]` 變回"只有最近一封"的瞬間狀態，aggregator 跑時就算出 2 封。
+- 新增 [`EmailStore.fetchAggregateMessagesFromDatabase(accountId:limit:)`](fastv/Models/EmailStore.swift:712)：用一條 SQL 從 `email_messages` 表按 `message_id` 去重直接撈出最近 N 封（與側欄 `getTotalMessageCountAsync` 同源），不再依賴內存。
+- [`EmailViewModel.updateMessagesForAllFolders`](fastv/ViewModels/EmailViewModel.swift:694) 現在走 DB 直查路徑：列表 = 側欄數字 = DB 數據源同一份，IMAP 同步 / IDLE / 後台任務怎麼折騰內存 dict 都不會再讓列表變短。
+- 順便：`showAllMessages` 不再預先調 `loadAllFoldersForAggregateView`（rc3 引入但已不必要），減少啟動時的並發 DB 讀。
+
+## [1.4.2-rc3] - 2026-06-05
+
+### 修復
+- 郵箱「所有郵件」視圖計數 14 但只列出 2 條的不一致：之前 `showAllMessages` 只 aggregator `emailStore.messages[folderId]` 內存 dict，沒主動把賬號下其它文件夾從數據庫加載到內存，於是側欄按 DB 全量去重 = 14、列表按已加載文件夾合併 = 2。
+- 新增 `EmailStore.loadAllFoldersForAggregateView(accountId:)`：並發加載當前賬號所有非 spam/trash/drafts 的文件夾（並發度 4，內部 early return 跳過已緩存）。`showAllMessages` 先確保所有 folder 都進內存再 aggregator，計數和列表終於對得上。
+- 副作用紅利：每個 folder 的 `loadMessages` 會順帶刷新 `FolderMessageCountCache`，所以"INBOX 2"那種小數字若 DB 裡其實是 4 / 5，也會在切到「所有郵件」後自動修正。
+
+### 細節
+- 主菜單側邊欄 tab（語音輸入 / 會議記錄 / Todo / AI Chat / 郵箱）的 icon 左 padding 從 6 拉到 14，紫色選中竪條（leading 4 + 寬 3）與 icon 之間留出 ~7pt 視覺呼吸感，避免兩者貼在一起。HStack 內部 icon-text 間距同步從 8 微調到 10。
+
+## [1.4.2-rc2] - 2026-06-05
+
+### 修復（IDLE 並發 / 安全）
+- IDLE 取消路徑現在會先發 `DONE` 再 `disconnect`，避免服務器把連接半掛到 ~29 分鐘超時、SSL 不優雅關閉招風控（rc1 引入的問題）。
+- `EmailIdleService.onNewMessage` 從 `nonisolated(unsafe) var` 閉包改為 `NotificationCenter` 通知。修復跨 actor 數據競爭，並讓未來多 ViewModel / 多窗口都能各自訂閱，互不覆蓋。
+- 服務器不支持 IDLE 時 `runLoop` 直接停止 + 標記 `.unsupported`，不再每 10-15 分鐘反復 connect / login 招風控。重連退避上限收緊到 6 次（5 → 320s，封頂 300s）。
+- `EmailIdleService.IdleStatus` 暴露 5 種狀態（idle / connecting / reconnecting / unsupported / stopped），通過 `EmailViewModel.idleStatusByAccount` 公開給 UI。`EmailViewModel.deinit` 也補上 NotificationCenter 觀察者移除，避免長生命週期 retain cycle。
+
+### 修復（spam / archive 一致性）
+- `EmailStore.moveMessageInMemory` 新增 `mutate` 閉包參數：`markAsSpam` / `restoreFromSpam` 現在在**一次**寫庫裡完成跨文件夾移動 + `isSpam` 翻轉，進程被殺也不會留下"已挪文件夾但 isSpam 未變"的中間狀態。
+- 跨文件夾移動不再把 `uid` 置 nil（保留舊 UID）：移動後 30 秒內用戶再對該郵件做 `toggleStar` / `markAsRead` 不會莫名其妙報"UID 不存在"。
+- `moveMessageInMemory` 在改完 dict 後額外 `objectWillChange.send()`，確保訂閱 messages 全集的"所有郵件視圖"立即重排。
+
+### 修復（附件 / MIME 解析）
+- `parseAttachments` / `parseMultipart` 統一通過新 helper `splitMultipartSegments` 切分，**跳過 boundary 之前的 preamble 與 closing 之後的 epilogue**，避免郵件以 "This is a MIME message..." 開頭時 partPath 整體偏 1、`BODY[2]` 抓到 part 1。
+- 子 part 拆 header/body 時兼容 `\n\n` 與 `\r\n\r\n` 雙分隔。
+- `decodePartBytes`：encoding 比對前 trim + lowercase，base64 / quoted-printable 解碼字節流時 ASCII 解不出來自動降級到 `isoLatin1`（base64 子集兼容）；空 data / 未知 encoding 安全回退原數據；未知 encoding 打一條 warning 日誌。
+- `makeAttachmentFileURL` 文件名安全策略升級：取最後一個路徑分量 → 替換控制字符 / 文件系統保留符（`:"?*<>|`）為 `_` → 拒絕以 `.` 開頭 → utf-8 長度封頂 240 字節 + UUID 前綴，挡 `../`、隱藏文件、超長文件名等異常輸入。
+- 超大郵件正文截斷時（>10MB），`parseAttachments` 仍走**全量** data 掃描，避免附件元信息丟失。
+
+### 新增（界面酷炫）
+- 郵件詳情頂部 hero header 重做：發件人郵箱稳定 hash 出主題色，配 `LinearGradient + ultraThinMaterial` 玻璃質感卡片；頭像帶白邊陰影；主題下方 chip 行展示星標 / 未讀 / 已回復 / 重要 / 緊急 / 含附件等狀態徽章。
+- 郵件列表行重做：選中時左側 accent 竖條 + 卡片底色；未讀時細竖條 + 蓝點角標 + 極淡 accent 底；hover 加柔和灰底；星標小角標貼在頭像右下；AI 摘要前綴 `sparkles` 圖標；附件 / 優先級 chip 角標。
+- 工具欄新增 `IdleStatusBadge`：8pt 小圓點 + 呼吸光暈動畫表達 IDLE 連接狀態。綠色 = 在 IDLE / 藍 = 建連 / 橙 = 重連 / 灰 = 不支持 / 灰白 = 未啟用，hover 出 tooltip 文案。
+
+## [1.4.2-rc1] - 2026-06-05
+
+### 新增（IMAP IDLE push）
+- 郵件：新增 `EmailIdleService`，為默認啟用的賬號 INBOX 維持一條獨立的 IMAP IDLE 長連接。服務器有新郵件到達（untagged EXISTS）時，立即喚醒 `EmailViewModel.handleIdleNotification` 拉一次收件箱，無需依賴定時輪詢。
+- 細節：每 25 分鐘自動 `idle_done` → `idle` 續期；poll 粒度 1 秒便於響應 Task 取消；異常按指數退避重連（封頂 5 分鐘）；單賬號最多一條 IDLE Task，切賬號 / 刪賬號 / `applicationWillTerminate` 都會清理。
+- 服務器不支持 IDLE 時靜默跳過，不打擾用戶。
+- ViewModel 端 30 秒節流，避免 EXISTS 抖動連續刷 INBOX。
+- `LibEtPanIMAPSession` 對應暴露 `hasIdleCapability` / `idleWithError:` / `idleDoneWithError:` / `idleFd` / `noopWithError:` 五個方法。
+
+### 新增（附件按 MIME part 真實下載）
+- 解析正文時順帶掃描 MIME 結構，把附件的 IMAP body section path（`"2"` / `"1.2"`）、`Content-Transfer-Encoding`、`charset`、`filename`、`Content-ID` 寫進 `EmailMessage.attachments`。
+- `EmailService.downloadAttachment` 改用 `BODY.PEEK[<partPath>]` 只抓目標 part 的字節，再按 base64 / quoted-printable 解碼後寫入臨時目錄；不再取整封郵件再切附件。
+- 老附件無 partPath 時退回"拉全文 + filename 匹配"路徑兜底，保證歷史郵件可下載。
+- 文件名做安全處理（去掉 `/\\`，前置 UUID 前綴防覆蓋）。
+- `LibEtPanIMAPSession` 新增 `fetchMessagePartWithUID:partPath:`；`EmailContentDecoder` 新增 `parseAttachments` 與 `decodePartBytes`。
+- DB schema 升級：`email_attachments` 表新增 `part_path` / `encoding` / `charset` 三列，自動 migrate。
+
+### 改進
+- 郵件移動 / 歸檔 / 標記垃圾 / 取消垃圾 後立即從源文件夾的內存與 store 中移除該郵件，並寫入目標文件夾；不再依賴下次同步刷新源文件夾。
+- 新增 `EmailStore.moveMessageInMemory(_:from:to:)`，跨文件夾移動內存 dict + DB row 一次完成；自動刷新側欄 `FolderMessageCountCache`。
+- `EmailViewModel.markAsSpam` / `restoreFromSpam` 改為先 IMAP 操作、再 `moveMessageInMemory` 跨文件夾挪 + 翻轉 isSpam 落盤，避免之前"標記成功但邮件仍躺在原 inbox 列表"的視覺 bug。
+
+## [1.4.1-rc1] - 2026-06-05
+
+### 新增（IMAP 真實現）
+- 郵件：`EmailService.toggleStar` / `deleteMessage` / `moveMessage` 從原來的"本地佔位"切到真實 IMAP 命令：分別走 `UID STORE +/-FLAGS (\Flagged)`、`UID STORE +FLAGS (\Deleted) + EXPUNGE`、`UID COPY → STORE +FLAGS (\Deleted) → EXPUNGE`。源/目標相同的 move 自動短路為 no-op，避免誤刪。
+- `LibEtPanIMAPSession` 對應新增 `markAsUnreadWithUID:` / `addFlaggedWithUID:` / `removeFlaggedWithUID:` / `deleteAndExpungeWithUID:` / `moveMessageWithUID:toFolder:` 五個能力，並通用化為內部 `storeFlagWithUID:flag:sign:action:error:` helper。目標文件夾名稱包含中文時自動 Modified UTF-7 編碼。
+
+### 改進
+- `EmailViewModel.toggleStar` 改為"服務端先行"：先讓 IMAP 翻轉 `\Flagged` 成功，再翻轉本地並落盤，避免乐观更新與服務端不一致。
+- 邮件搜索任务：新增 `searchGeneration` 序列号。用户连打字时，旧 task 即使在网络层完成也不再覆盖最新的 `searchResults`。
+- 邮件加载任务：`loadMessagesAsync` 入口快照 `loadGeneration + selectedAccountId + selectedFolderId`，结果回写 UI 前校验三者一致；切账号/文件夹后旧任务的数据库写入照常落盘，但不再覆盖新文件夹的 UI。
+- 超大邮件正文保护：`EmailService.fetchMessageBody` 新增 `maxBodyBytes = 10MB` 阈值，超阈值时只解析前 10MB；`EmailBodyContent` 新增 `wasTruncated` / `originalSize` 字段。邮件详情页通过新的 `truncatedBodyBanner` 提示"正文过长，已截断显示"，并指引用户用「保存为 .eml」导出原件。
+
+### 架構
+- 拆分 `EmailViewModel.swift`（從 3302 行 → 2443 行，脫離 CLAUDE.md 的 3000 行紅線）：
+  - 新增 `EmailViewModel+AIPolish.swift`（160 行）：`aiPolishComposeDraft` / `aiPolishReplyDraft`。
+  - 新增 `EmailViewModel+Translate.swift`（258 行）：AI HTML 排版優化、邮件正文翻译、正文截断 banner helpers、`stripHTMLTagsForTranslate`。
+  - 新增 `EmailViewModel+Compose.swift`（566 行）：初始化回复 / 撰写草稿、附件管理、`sendCompose` / `sendReply` 與兩個發送便利方法、"已發送(本地)"保存、發送系統通知、`splitReplyBody`。
+  - 主 `EmailViewModel.swift` 內幾個 `private let` 依賴（emailStore/emailService/emailAIService 等）以及 `optimizationTasks` / `translationTasks` 改为 internal，以便同模块 extension 文件访问；不影响外部 API。
+
+## [1.4.0-rc4] - 2026-06-05
+
+### 修復
+- 郵件後台同步：修復 `EmailService.backgroundSyncTasks` 字典在 `scheduleBackgroundSync` / `cancelBackgroundSync` / `cleanupAllSessions` 三個調用點仍然裸讀裸寫的問題（上一版本已加 NSLock 但調用點沒有走鎖封裝），多賬號 / 多文件夾並發同步可能崩潰或泄漏 Task 句柄。現在所有訪問統一走 `setBackgroundSyncTask` / `cancelBackgroundSyncTask` / `snapshotBackgroundSyncAccountIds` 三個帶鎖 helper。
+- 郵件賬號刪除：`EmailStore.deleteAccount` 現在會先調用 `EmailService.cleanupAccount` 取消該賬號的後台同步 Task，避免賬號刪除後仍有後台任務嘗試訪問已刪除賬號的數據庫行。
+- 郵件 AI 翻譯 / HTML 排版優化：用戶取消後再讓網絡請求返回時，不再覆寫 `optimizedHTMLCache` / `translatedBodyCache`，並把 `CancellationError` / `NSURLErrorCancelled` 識別為取消而非"翻譯失敗"提示，避免一閃而過的紅色錯誤條。
+
+### 隱私
+- `EmailService.sendMessage` 不再在 stdout 打印收件人 / 抄送 / 密送 / 主題 / 附件文件名等明文敏感信息，只輸出條數和長度等指標；`EmailViewModel` 邮件正文合並日志也改為僅輸出 id + 字符數，避免 log 抓取即泄密。
+
+## [1.4.0-rc3] - 2026-06-03
+
+### 新增
+- 郵件：詳情頁工具欄新增「AI 翻譯為中文」按鈕（`character.bubble`）。點擊把正文翻譯成中文並以譯文視圖展示，再次點擊或頂部「顯示原文」可切回原文；同一封郵件的翻譯結果按 message.id 緩存，避免重複調用。
+- 翻譯 prompt 嚴格要求**只譯不改寫**、保留原段落結構、URL/郵箱/代碼/專有名詞不翻譯；走現有 `.aiChat` 場景配置。
+
+### 文檔
+- 新增 `docs/code-review-2026-06.md`：三路 review agent 對 fastv 倉庫的 P0/P1/P2 體檢報告（含已修復項與待辦項）。
+
+### 清理
+- 刪除 `DiaryAIService.swift`、`DiarizationServiceManager.swift`、`AppStateManager` 空殼單例、`ChatAIService.sendMessageLegacy`、`OllamaService.testOptimizationLegacy` 共 5 處死代碼；同時刪除 `AIScenario` 中 4 個零引用枚舉值（videoAnalysis/diaryAnalysis/expenseParsing/intelGeneration）與 3 個 `.backup` 殘留文件。
+- `UserPreferences.aiScenarioBindings` 解碼改為「逐項容錯」：單條 binding 損壞不再導致整數組丟失。
+
+## [1.4.0-rc2] - 2026-06-03
+
+### 修復
+- 設置：頂部工具欄的齒輪設置按鈕不再參與 Tab 焦點，避免出現紫色虛線聚焦圈影響觀感。
+
+## [1.4.0-rc1] - 2026-06-03
+
+### 新增
+- 會議記錄：新增「實時圖文文檔」面板。錄音同時 AI 流式生成結構化 Markdown，自動提煉小節、要點列表、表格、勾選框行動項，並能輸出 mermaid 思維導圖 / 流程圖。觸發策略為段落驅動 + 停頓節流（默認累計 200 字或停頓 12 秒）。
+- AI 設置：新增「會議轉寫修訂」與「會議圖文文檔」兩個獨立場景，可分別綁定不同 Provider / Model / Timeout（推薦：轉寫修訂用輕量本地模型，圖文文檔用更強的雲端模型）。
+- Markdown 渲染：新增 ```mermaid 代碼塊識別與渲染，支持思維導圖、流程圖、序列圖。
+
+### 改進
+- `AIServiceAdapter` 統一新增流式（SSE）能力，覆蓋 OpenAI 兼容 / DashScope / Claude / Gemini / Ollama；`ChatAIService.sendMessageStream` 提供 `AsyncThrowingStream<String, Error>` 統一接口。
+- 會議記錄詳情頁改為「圖文文檔 / 全文 / AI 整理」三 Tab，避免長頁面信息擠壓。
+
+### 版本
+- 同步 macOS app、測試 target 與 STT API 版本到 `1.4.0-rc1`。
+
+## [1.3.0-rc6] - 2026-05-25
+
+### 改進
+- 語音輸入：按下快捷鍵時立即預熱語音識別模型，讓模型加載與用戶說話時間重疊，降低鬆手後首次識別等待。
+- 語音輸入：降低非藍牙麥克風錄音 tap 緩衝時長，提升拾音、波形與停頓檢測響應速度；藍牙設備保留更大的穩定性緩衝。
+- 語音轉寫：進程內復用 SenseVoice token 映射，避免每次識別重讀 `tokens.json`。
+
+### 版本
+- 同步 macOS app、測試 target 與 STT API 版本到 `1.3.0-rc6`。
+
 ## [1.3.0-rc5] - 2026-05-24
 
 ### 修復

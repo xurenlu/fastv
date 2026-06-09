@@ -77,6 +77,11 @@ struct EmailView: View {
             )
         }
         .toolbar {
+            // IDLE 实时推送徽章（小圆点 + tooltip）：连接 / 重连 / 不支持 三态用不同色
+            ToolbarItem(placement: .automatic) {
+                IdleStatusBadge(viewModel: viewModel)
+            }
+
             ToolbarItem(placement: .primaryAction) {
                 Button(action: {
                     viewModel.initComposeDraft()
@@ -546,7 +551,6 @@ struct EmailView: View {
                                 )
                                 .tag(message.id)
                                 .contentShape(Rectangle())
-                                .background(viewModel.selectedMessageId == message.id && !viewModel.isMultiSelectMode ? Color.accentColor.opacity(0.12) : Color.clear)
                                 .if(!viewModel.isMultiSelectMode) { view in
                                     view.onTapGesture { viewModel.selectMessage(message) }
                                 }
@@ -659,15 +663,50 @@ struct EmailView: View {
                     Divider()
                     
                     // 外部资源加载提示 - 移到正文最前面
-                    if message.containsRemoteResources && 
+                    if message.containsRemoteResources &&
                        !viewModel.showImages &&
                        EmailImageDisplayPreferences.shared.shouldShowImages(for: message.from) == nil {
                         remoteResourcesBanner(message: message)
                     }
+
+                    // 正文截断提示：仅本次会话内拉过、且超过阈值的邮件显示
+                    if viewModel.isBodyTruncated(for: message) {
+                        truncatedBodyBanner(message: message)
+                    }
                     
                     // 邮件正文 - 使用 WKWebView 渲染，提供完整的 HTML/CSS 支持
                     Group {
-                        if let htmlBody = message.htmlBody, !htmlBody.isEmpty {
+                        if let translated = viewModel.getTranslatedBody(for: message) {
+                            // 翻译版 - 显示纯文本 + 顶部横幅
+                            VStack(alignment: .leading, spacing: 0) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "character.bubble")
+                                        .font(.caption)
+                                        .foregroundStyle(.purple)
+                                    Text("已翻译为中文")
+                                        .font(.caption)
+                                        .foregroundStyle(.purple)
+                                    Spacer()
+                                    Button("显示原文") {
+                                        viewModel.translateBody(for: message)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .font(.caption)
+                                    .foregroundStyle(.purple)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.purple.opacity(0.08))
+
+                                Text(translated)
+                                    .font(.system(size: 16))
+                                    .lineSpacing(6)
+                                    .foregroundStyle(Color(red: 29/255, green: 29/255, blue: 31/255))
+                                    .textSelection(.enabled)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(20)
+                            }
+                        } else if let htmlBody = message.htmlBody, !htmlBody.isEmpty {
                             // 优先使用AI优化后的HTML，如果没有则使用原始HTML
                             let displayHTML = viewModel.getOptimizedHTML(for: message) ?? htmlBody
                             // 只在必要时尝试解码 base64（性能优化：快速检查是否已包含中文字符）
@@ -707,8 +746,35 @@ struct EmailView: View {
                     if !message.isBodyLoaded &&
                         (message.textBody?.isEmpty ?? true) &&
                         (message.htmlBody?.isEmpty ?? true) {
-                        ProgressView("正在加载正文...")
-                            .padding(.vertical, 8)
+                        if let failure = viewModel.bodyLoadFailures[message.id] {
+                            // 失败态：明确告诉用户为什么 loading 卡住了，并给一个重试按钮
+                            VStack(spacing: 10) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundStyle(.orange)
+                                    Text("正文加载失败")
+                                        .font(.system(size: 14, weight: .semibold))
+                                }
+                                Text(failure)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Button {
+                                    viewModel.retryLoadMessageBody(message)
+                                } label: {
+                                    Label("重试", systemImage: "arrow.clockwise")
+                                        .font(.system(size: 13, weight: .medium))
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.small)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                        } else {
+                            ProgressView("正在加载正文...")
+                                .padding(.vertical, 8)
+                        }
                     }
                     
                     // 附件列表（始终显示，如果有附件）
@@ -723,41 +789,128 @@ struct EmailView: View {
     }
     
     private func messageHeader(message: EmailMessage) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 16) {
-                // 放大头像，增强视觉焦点
-                EmailAvatarView(email: message.from.email, size: 56)
-                
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(message.from.name ?? message.from.email)
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.primary)
-                    
-                    Text(message.from.email)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    
-                    HStack(spacing: 4) {
-                        Image(systemName: "calendar")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                        Text(formatMessageDate(message.date))
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding(.top, 2)
-                }
-                
-                Spacer()
+        // 用发件人邮箱稳定生成两个 accent 色作为渐变。同一发件人色相一致，但不同人不同。
+        let baseColor = Self.heroAccent(for: message.from.email)
+        let badgePairs: [(String, String, Color)] = {
+            var out: [(String, String, Color)] = []
+            if message.isStarred {
+                out.append(("star.fill", "星标", .yellow))
             }
-            
-            Text(message.subject)
+            if !message.isRead {
+                out.append(("circle.fill", "未读", .accentColor))
+            }
+            if message.hasBeenReplied {
+                out.append(("arrowshape.turn.up.left.fill", "已回复", .green))
+            }
+            if let p = message.aiPriority, p == .high || p == .urgent {
+                out.append(("exclamationmark.circle.fill",
+                            p == .urgent ? "紧急" : "重要",
+                            p == .urgent ? .red : .orange))
+            }
+            if message.hasAttachments {
+                out.append(("paperclip", "含附件", .secondary))
+            }
+            return out
+        }()
+
+        return VStack(alignment: .leading, spacing: 14) {
+            // 主题：大字 + 自动多行
+            Text(message.subject.isEmpty ? "(无主题)" : message.subject)
                 .font(.title2)
                 .fontWeight(.bold)
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+
+            // 状态徽章 chip 行（未读 / 星标 / 已回复 / 含附件 / 优先级）
+            if !badgePairs.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(badgePairs, id: \.1) { (icon, label, color) in
+                        HStack(spacing: 4) {
+                            Image(systemName: icon)
+                                .font(.caption2)
+                            Text(label)
+                                .font(.caption2.weight(.medium))
+                        }
+                        .foregroundStyle(color)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background {
+                            Capsule(style: .continuous)
+                                .fill(color.opacity(0.12))
+                        }
+                        .overlay {
+                            Capsule(style: .continuous)
+                                .strokeBorder(color.opacity(0.25), lineWidth: 0.5)
+                        }
+                    }
+                }
+            }
+
+            // 发件人 hero 行：头像 + 姓名 + 邮箱 + 日期
+            HStack(alignment: .top, spacing: 14) {
+                EmailAvatarView(email: message.from.email, size: 52)
+                    .clipShape(Circle())
+                    .overlay {
+                        Circle().strokeBorder(.white.opacity(0.45), lineWidth: 1.2)
+                    }
+                    .shadow(color: baseColor.opacity(0.35), radius: 8, x: 0, y: 4)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(message.from.name ?? message.from.email)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                        .textSelection(.enabled)
+                    Text(message.from.email)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.caption2)
+                        Text(formatMessageDate(message.date))
+                            .font(.caption)
+                    }
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 2)
+                }
+                Spacer()
+            }
         }
+        .padding(18)
+        .background {
+            // 渐变 + ultraThinMaterial 玻璃质感
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        baseColor.opacity(0.22),
+                        baseColor.opacity(0.06),
+                        Color.clear
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .blendMode(.overlay)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(baseColor.opacity(0.18), lineWidth: 1)
+        }
+    }
+
+    /// 为给定邮箱生成一个稳定的 accent 色（同邮箱永远同色，不同邮箱色相分散）。
+    /// 用 djb2 hash 取色相，避免邮箱里包含特殊字符时 hashValue 不稳定。
+    nonisolated private static func heroAccent(for email: String) -> Color {
+        var hash: UInt64 = 5381
+        for byte in email.lowercased().utf8 {
+            hash = ((hash << 5) &+ hash) &+ UInt64(byte)
+        }
+        let hue = Double(hash % 360) / 360.0
+        return Color(hue: hue, saturation: 0.55, brightness: 0.85)
     }
     
     private func messageHeaderWithActions(message: EmailMessage) -> some View {
@@ -862,7 +1015,29 @@ struct EmailView: View {
                         .help(viewModel.isLayoutOptimized(for: message) ? "恢复原始排版" : "AI智能排版优化")
                         .disabled(viewModel.isOptimizing(for: message))
                     }
-                    
+
+                    // AI 翻译按钮 - 任意有正文的邮件都显示
+                    if (message.htmlBody?.isEmpty == false) ||
+                        (message.textBody?.isEmpty == false) ||
+                        !message.preview.isEmpty {
+                        Button(action: {
+                            viewModel.translateBody(for: message)
+                        }) {
+                            if viewModel.isTranslating(for: message) {
+                                ProgressView()
+                                    .scaleEffect(0.6)
+                                    .frame(width: 32, height: 32)
+                            } else {
+                                Image(systemName: viewModel.isShowingTranslation(for: message) ? "character.bubble.fill" : "character.bubble")
+                                    .foregroundStyle(viewModel.isShowingTranslation(for: message) ? Color.purple : .secondary)
+                                    .frame(width: 32, height: 32)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .help(viewModel.isShowingTranslation(for: message) ? "显示原文" : "AI 翻译为中文")
+                        .disabled(viewModel.isTranslating(for: message))
+                    }
+
                     // 星标按钮
                     Button(action: {
                         Task {
@@ -922,6 +1097,27 @@ struct EmailView: View {
     
     private func remoteResourcesBanner(message: EmailMessage) -> some View {
         RemoteResourcesBannerView(message: message, viewModel: viewModel)
+    }
+
+    /// 正文被截断提示：服务器返回的原始邮件超过 EmailService.maxBodyBytes，已截断显示。
+    private func truncatedBodyBanner(message: EmailMessage) -> some View {
+        let sizeDesc = viewModel.truncatedOriginalSizeDescription(for: message) ?? "较大"
+        return HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("正文过长，已截断显示")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                Text("原始邮件 \(sizeDesc)；若需查看完整内容，请用「保存为 .eml」导出。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(8)
+        .background(Color.orange.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
     
     private func attachmentsView(attachments: [EmailAttachment]) -> some View {
@@ -1133,90 +1329,163 @@ struct MessageRow: View {
     let isMultiSelectMode: Bool
     let isSelected: Bool
     let onToggleSelection: () -> Void
-    
+
+    @State private var isHovered = false
+
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            // 多选模式下的复选框
-            if isMultiSelectMode {
-                Button(action: onToggleSelection) {
-                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                        .foregroundStyle(isSelected ? Color.blue : .secondary)
-                        .font(.system(size: 18))
-                }
-                .buttonStyle(.plain)
-                .frame(width: 24)
-            }
-            
-            EmailAvatarView(email: message.from.email, size: 36)
-            
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(message.from.name ?? message.from.email)
-                        .font(message.isRead ? .subheadline : .headline)
-                        .fontWeight(message.isRead ? .regular : .semibold)
-                        .foregroundStyle(message.isRead ? .secondary : .primary)
-                        .lineLimit(1)
-                    
-                    Spacer()
-                    
-                    Text(formatMessageDate(message.date))
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
-                
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    // 回复标记图标
-                    if message.hasBeenReplied {
-                        Image(systemName: "arrowshape.turn.up.left.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+        HStack(spacing: 0) {
+            // 左侧 accent 竖条：选中时高亮，未读时变细，已读隐藏
+            Rectangle()
+                .fill(isSelected ? Color.accentColor :
+                      (!message.isRead ? Color.accentColor.opacity(0.7) : Color.clear))
+                .frame(width: isSelected ? 3 : (!message.isRead ? 2 : 0))
+                .animation(.easeInOut(duration: 0.18), value: isSelected)
+
+            HStack(alignment: .top, spacing: 12) {
+                if isMultiSelectMode {
+                    Button(action: onToggleSelection) {
+                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                            .font(.system(size: 18))
                     }
-                    
-                    Text(message.subject)
-                        .font(.subheadline)
-                        .fontWeight(message.isRead ? .regular : .medium)
-                        .lineLimit(2)
-                        .foregroundStyle(message.isRead ? .secondary : .primary)
+                    .buttonStyle(.plain)
+                    .frame(width: 24)
                 }
-                .padding(.top, 2)
-                
-                // 优先显示 AI 摘要，否则显示预览
-                if let aiSummary = message.aiSummary, !aiSummary.isEmpty {
-                    Text(aiSummary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .padding(.top, 2)
-                } else if !message.preview.isEmpty {
-                    Text(message.preview)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(2)
-                        .padding(.top, 2)
-                }
-                
-                if showAttachments && message.hasAttachments {
-                    HStack(spacing: 6) {
-                        Image(systemName: "paperclip")
-                            .font(.caption2)
-                            .foregroundStyle(Color.blue)
-                        Text("\(message.attachments.count) 个附件")
-                            .font(.caption2)
-                            .foregroundStyle(Color.blue)
+
+                ZStack(alignment: .topLeading) {
+                    EmailAvatarView(email: message.from.email, size: 36)
+                        .clipShape(Circle())
+                        .overlay {
+                            Circle().strokeBorder(.white.opacity(0.35), lineWidth: 0.8)
+                        }
+                    // 未读小蓝点
+                    if !message.isRead {
+                        Circle()
+                            .fill(Color.accentColor)
+                            .frame(width: 9, height: 9)
+                            .overlay {
+                                Circle().strokeBorder(.background, lineWidth: 1.5)
+                            }
+                            .offset(x: -3, y: -3)
                     }
-                    .padding(.top, 4)
+                    // 星标小角标
+                    if message.isStarred {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.yellow)
+                            .padding(2)
+                            .background {
+                                Circle().fill(.background)
+                            }
+                            .offset(x: 26, y: 22)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    // 第 1 行：发件人 + 时间
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(message.from.name ?? message.from.email)
+                            .font(message.isRead ? .subheadline : .headline)
+                            .fontWeight(message.isRead ? .regular : .semibold)
+                            .foregroundStyle(message.isRead ? .secondary : .primary)
+                            .lineLimit(1)
+                        Spacer()
+                        Text(formatMessageDate(message.date))
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .monospacedDigit()
+                    }
+
+                    // 第 2 行：主题 + 已回复图标
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        if message.hasBeenReplied {
+                            Image(systemName: "arrowshape.turn.up.left.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.green)
+                        }
+                        Text(message.subject.isEmpty ? "(无主题)" : message.subject)
+                            .font(.subheadline)
+                            .fontWeight(message.isRead ? .regular : .medium)
+                            .lineLimit(2)
+                            .foregroundStyle(message.isRead ? .secondary : .primary)
+                    }
+
+                    // 第 3 行：AI 摘要 优先 → 预览
+                    if let aiSummary = message.aiSummary, !aiSummary.isEmpty {
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Image(systemName: "sparkles")
+                                .font(.caption2)
+                                .foregroundStyle(.blue)
+                            Text(aiSummary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                    } else if !message.preview.isEmpty {
+                        Text(message.preview)
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(2)
+                    }
+
+                    // 第 4 行：状态 chip 行（附件 / 优先级）
+                    if (showAttachments && message.hasAttachments) || (message.aiPriority == .high || message.aiPriority == .urgent) {
+                        HStack(spacing: 6) {
+                            if message.hasAttachments && showAttachments {
+                                rowChip(icon: "paperclip",
+                                        text: "\(message.attachments.count)",
+                                        color: .blue)
+                            }
+                            if let p = message.aiPriority, p == .urgent {
+                                rowChip(icon: "exclamationmark.circle.fill", text: "紧急", color: .red)
+                            } else if let p = message.aiPriority, p == .high {
+                                rowChip(icon: "exclamationmark.circle", text: "重要", color: .orange)
+                            }
+                        }
+                        .padding(.top, 2)
+                    }
                 }
             }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 8)
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 4)
-        .background(message.isRead ? Color.clear : Color.blue.opacity(0.03))
+        .background {
+            // 选中：accent 半透明；hover：tertiary 浅底；未读：极淡 accent；其余透明
+            let bg: Color = {
+                if isSelected { return Color.accentColor.opacity(0.14) }
+                if isHovered { return Color.gray.opacity(0.08) }
+                if !message.isRead { return Color.accentColor.opacity(0.04) }
+                return .clear
+            }()
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(bg)
+                .padding(.horizontal, 2)
+                .animation(.easeInOut(duration: 0.15), value: isHovered)
+        }
         .contentShape(Rectangle())
-        // 仅在多选模式下添加点击手势，避免阻止 List 的选择功能
+        .onHover { hovering in
+            isHovered = hovering
+        }
         .if(isMultiSelectMode) { view in
             view.onTapGesture {
                 onToggleSelection()
             }
+        }
+    }
+
+    @ViewBuilder
+    private func rowChip(icon: String, text: String, color: Color) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: icon)
+                .font(.system(size: 9, weight: .semibold))
+            Text(text)
+                .font(.system(size: 10, weight: .medium))
+        }
+        .foregroundStyle(color)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background {
+            Capsule(style: .continuous).fill(color.opacity(0.12))
         }
     }
 }
@@ -1229,6 +1498,76 @@ private extension View {
             transform(self)
         } else {
             self
+        }
+    }
+}
+
+// MARK: - IDLE 实时推送状态徽章
+
+/// 邮箱主界面 toolbar 上的"实时推送是否在线"小圆点。
+/// 颜色：绿 = 在 IDLE 等推送；橙 = 重连中；蓝 = 建连中；灰 = 服务器不支持 / 没启动。
+/// 在 idle 状态下加一段呼吸光晕动画，传达"活的"。
+struct IdleStatusBadge: View {
+    @ObservedObject var viewModel: EmailViewModel
+    @State private var pulse: Bool = false
+
+    private var status: EmailIdleService.IdleStatus {
+        guard let accountId = viewModel.selectedAccountId,
+              let s = viewModel.idleStatusByAccount[accountId] else {
+            return .stopped
+        }
+        return s
+    }
+
+    private var tint: Color {
+        switch status {
+        case .idle: return .green
+        case .connecting: return .blue
+        case .reconnecting: return .orange
+        case .unsupported: return .gray
+        case .stopped: return .secondary
+        }
+    }
+
+    private var tooltip: String {
+        switch status {
+        case .idle: return "实时推送已连接：服务器有新邮件会立即送达"
+        case .connecting: return "正在建立实时推送连接…"
+        case .reconnecting: return "实时推送已断开，正在自动重连"
+        case .unsupported: return "该邮箱服务器不支持 IDLE 实时推送，依赖定时同步"
+        case .stopped: return "实时推送未启用"
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            // 光晕：仅 idle 状态用呼吸；其它状态收回
+            Circle()
+                .fill(tint.opacity(0.35))
+                .frame(width: status == .idle ? (pulse ? 18 : 10) : 0,
+                       height: status == .idle ? (pulse ? 18 : 10) : 0)
+                .opacity(status == .idle ? (pulse ? 0.0 : 0.5) : 0)
+                .animation(
+                    status == .idle
+                        ? .easeInOut(duration: 1.4).repeatForever(autoreverses: false)
+                        : .default,
+                    value: pulse
+                )
+
+            Circle()
+                .fill(tint)
+                .frame(width: 8, height: 8)
+                .overlay {
+                    Circle().strokeBorder(.white.opacity(0.6), lineWidth: 0.5)
+                }
+        }
+        .frame(width: 18, height: 18)
+        .help(tooltip)
+        .onAppear { pulse = true }
+        .onChange(of: status) { _, newValue in
+            // 状态切换时重启动画（确保停 → 起 / 起 → 停 都生效）
+            pulse.toggle()
+            _ = newValue
         }
     }
 }

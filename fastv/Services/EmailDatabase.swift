@@ -243,6 +243,21 @@ class EmailDatabase {
         if !columnNames.contains("is_draft") {
             try db.execute(sql: "ALTER TABLE email_messages ADD COLUMN is_draft INTEGER NOT NULL DEFAULT 0")
         }
+
+        // 1.4.2: email_attachments 增加 part_path / encoding / charset，用于按 MIME part 真实下载。
+        if try db.tableExists("email_attachments") {
+            let attCols = try db.columns(in: "email_attachments")
+            let attColNames = Set(attCols.map { $0.name })
+            if !attColNames.contains("part_path") {
+                try db.execute(sql: "ALTER TABLE email_attachments ADD COLUMN part_path TEXT")
+            }
+            if !attColNames.contains("encoding") {
+                try db.execute(sql: "ALTER TABLE email_attachments ADD COLUMN encoding TEXT")
+            }
+            if !attColNames.contains("charset") {
+                try db.execute(sql: "ALTER TABLE email_attachments ADD COLUMN charset TEXT")
+            }
+        }
     }
     
     /// 获取数据库队列（用于异步操作）

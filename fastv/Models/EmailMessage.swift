@@ -200,7 +200,15 @@ struct EmailAttachment: Identifiable, Codable, Equatable {
     var contentId: String? // Content-ID（用于内嵌图片）
     var isInline: Bool // 是否内嵌图片
     var localPath: String? // 本地缓存路径
-    
+
+    /// IMAP body section / MIME part path（如 "2", "1.2"）。用于按 part 抓取附件而非取整封邮件。
+    /// 旧数据没有 → nil，下载时回退到整邮件解析模式。
+    var partPath: String?
+    /// Content-Transfer-Encoding（base64 / quoted-printable / 7bit / 8bit / binary 等）。下载后据此解码字节。
+    var encoding: String?
+    /// 对 text/* 附件有意义，记录字符集；非文本附件可忽略。
+    var charset: String?
+
     init(
         id: UUID = UUID(),
         filename: String,
@@ -208,7 +216,10 @@ struct EmailAttachment: Identifiable, Codable, Equatable {
         size: Int64 = 0,
         contentId: String? = nil,
         isInline: Bool = false,
-        localPath: String? = nil
+        localPath: String? = nil,
+        partPath: String? = nil,
+        encoding: String? = nil,
+        charset: String? = nil
     ) {
         self.id = id
         self.filename = filename
@@ -217,8 +228,11 @@ struct EmailAttachment: Identifiable, Codable, Equatable {
         self.contentId = contentId
         self.isInline = isInline
         self.localPath = localPath
+        self.partPath = partPath
+        self.encoding = encoding
+        self.charset = charset
     }
-    
+
     var sizeString: String {
         let formatter = ByteCountFormatter()
         formatter.countStyle = .file

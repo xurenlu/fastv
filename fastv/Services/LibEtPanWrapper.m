@@ -1097,6 +1097,146 @@ static void ensureUserInitiatedQoS(void) {
     return bodyData;
 }
 
+- (nullable NSData *)fetchMessagePartWithUID:(uint32_t)uid
+                                     partPath:(NSString *)partPath
+                                        error:(NSError **)error {
+    if (!_imapSession) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError"
+                                         code:-1
+                                     userInfo:@{NSLocalizedDescriptionKey: @"IMAP 会话未初始化"}];
+        }
+        return nil;
+    }
+
+    if (partPath.length == 0) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError"
+                                         code:-1
+                                     userInfo:@{NSLocalizedDescriptionKey: @"附件 partPath 不能为空"}];
+        }
+        return nil;
+    }
+
+    ensureUserInitiatedQoS();
+
+    // 把 "1.2" 这样的 partPath 拆成 clist<uint32_t*>
+    clist *sec_id = clist_new();
+    if (!sec_id) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError"
+                                         code:-1
+                                     userInfo:@{NSLocalizedDescriptionKey: @"clist_new 失败"}];
+        }
+        return nil;
+    }
+
+    NSArray<NSString *> *parts = [partPath componentsSeparatedByString:@"."];
+    for (NSString *p in parts) {
+        NSInteger v = p.integerValue;
+        if (v <= 0) {
+            // 无效 partPath
+            clist_free(sec_id);
+            if (error) {
+                *error = [NSError errorWithDomain:@"LibEtPanError"
+                                             code:-1
+                                         userInfo:@{NSLocalizedDescriptionKey:
+                                                        [NSString stringWithFormat:@"非法的 partPath: %@", partPath]}];
+            }
+            return nil;
+        }
+        uint32_t *num = malloc(sizeof(uint32_t));
+        if (!num) {
+            clist_free(sec_id);
+            return nil;
+        }
+        *num = (uint32_t)v;
+        if (clist_append(sec_id, num) != 0) {
+            free(num);
+            clist_free(sec_id);
+            return nil;
+        }
+    }
+
+    struct mailimap_section_part *section_part = mailimap_section_part_new(sec_id);
+    if (!section_part) {
+        // 没建成功就要自己释放
+        clistiter *it;
+        for (it = clist_begin(sec_id); it != NULL; it = clist_next(it)) {
+            void *p = clist_content(it);
+            if (p) free(p);
+        }
+        clist_free(sec_id);
+        return nil;
+    }
+    struct mailimap_section *section = mailimap_section_new_part(section_part);
+    if (!section) {
+        // section_part 的释放靠 section_free，这里只有失败路径才需要手动释放
+        mailimap_section_part_free(section_part);
+        return nil;
+    }
+
+    struct mailimap_set *set = mailimap_set_new_single(uid);
+    struct mailimap_fetch_type *fetch_type = mailimap_fetch_type_new_fetch_att_list_empty();
+    // 用 body.peek 避免触发 \Seen
+    struct mailimap_fetch_att *fetch_att = mailimap_fetch_att_new_body_peek_section(section);
+    mailimap_fetch_type_new_fetch_att_list_add(fetch_type, fetch_att);
+
+    clist *fetch_result = NULL;
+    int r = mailimap_uid_fetch((mailimap *)_imapSession, set, fetch_type, &fetch_result);
+
+    mailimap_set_free(set);
+    mailimap_fetch_type_free(fetch_type);
+
+    if (r != MAILIMAP_NO_ERROR) {
+        NSLog(@"❌ [LibEtPan] 抓取 part 失败，UID: %u, part: %@, 错误代码: %d", uid, partPath, r);
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError"
+                                         code:r
+                                     userInfo:@{NSLocalizedDescriptionKey:
+                                                    [NSString stringWithFormat:@"抓取附件 part 失败: %d", r]}];
+        }
+        return nil;
+    }
+
+    if (!fetch_result || clist_begin(fetch_result) == NULL) {
+        NSLog(@"⚠️ [LibEtPan] 抓取 part 返回空，UID: %u, part: %@", uid, partPath);
+        if (fetch_result) mailimap_fetch_list_free(fetch_result);
+        return nil;
+    }
+
+    NSData *partData = nil;
+    clistiter *iter;
+    for (iter = clist_begin(fetch_result); iter != NULL; iter = clist_next(iter)) {
+        struct mailimap_msg_att *msg_att = (struct mailimap_msg_att *)clist_content(iter);
+        clistiter *att_iter;
+        for (att_iter = clist_begin(msg_att->att_list); att_iter != NULL; att_iter = clist_next(att_iter)) {
+            struct mailimap_msg_att_item *item = (struct mailimap_msg_att_item *)clist_content(att_iter);
+            if (item->att_type == MAILIMAP_MSG_ATT_ITEM_STATIC) {
+                struct mailimap_msg_att_static *att_static = item->att_data.att_static;
+                if (att_static->att_type == MAILIMAP_MSG_ATT_BODY_SECTION) {
+                    struct mailimap_msg_att_body_section *bs = att_static->att_data.att_body_section;
+                    if (bs && bs->sec_body_part && bs->sec_length > 0) {
+                        partData = [NSData dataWithBytes:bs->sec_body_part length:bs->sec_length];
+                        break;
+                    }
+                }
+            }
+        }
+        if (partData) break;
+    }
+
+    mailimap_fetch_list_free(fetch_result);
+
+    if (partData) {
+        NSLog(@"✅ [LibEtPan] 抓取 part 成功，UID: %u, part: %@, 大小: %lu 字节",
+              uid, partPath, (unsigned long)partData.length);
+    } else {
+        NSLog(@"⚠️ [LibEtPan] 抓取 part 无内容，UID: %u, part: %@", uid, partPath);
+    }
+    return partData;
+}
+
 - (BOOL)markAsReadWithUID:(uint32_t)uid error:(NSError **)error {
     if (!_imapSession) {
         if (error) {
@@ -1135,6 +1275,242 @@ static void ensureUserInitiatedQoS(void) {
     }
     
     NSLog(@"✅ [LibEtPan] 标记为已读成功，UID: %u", uid);
+    return YES;
+}
+
+// 通用 STORE 工具：sign>0=添加，sign<0=移除，sign==0=覆盖
+- (BOOL)storeFlagWithUID:(uint32_t)uid
+                    flag:(struct mailimap_flag *)flag
+                    sign:(int)sign
+                  action:(NSString *)action
+                   error:(NSError **)error {
+    if (!_imapSession) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError"
+                                         code:-1
+                                     userInfo:@{NSLocalizedDescriptionKey: @"IMAP 会话未初始化"}];
+        }
+        return NO;
+    }
+    ensureUserInitiatedQoS();
+
+    struct mailimap_set *set = mailimap_set_new_single(uid);
+    struct mailimap_flag_list *flag_list = mailimap_flag_list_new_empty();
+    mailimap_flag_list_add(flag_list, flag);
+    struct mailimap_store_att_flags *store_flags = mailimap_store_att_flags_new(sign, 0, flag_list);
+    int r = mailimap_uid_store((mailimap *)_imapSession, set, store_flags);
+    mailimap_set_free(set);
+    mailimap_store_att_flags_free(store_flags);
+
+    if (r != MAILIMAP_NO_ERROR) {
+        NSLog(@"❌ [LibEtPan] %@ 失败，UID: %u, 错误代码: %d", action, uid, r);
+        if (error) {
+            NSString *errorMsg = [NSString stringWithFormat:@"%@ 失败: %d", action, r];
+            *error = [NSError errorWithDomain:@"LibEtPanError"
+                                         code:r
+                                     userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
+        }
+        return NO;
+    }
+    NSLog(@"✅ [LibEtPan] %@ 成功，UID: %u", action, uid);
+    return YES;
+}
+
+- (BOOL)markAsUnreadWithUID:(uint32_t)uid error:(NSError **)error {
+    return [self storeFlagWithUID:uid
+                             flag:mailimap_flag_new_seen()
+                             sign:-1
+                           action:@"标记为未读"
+                            error:error];
+}
+
+- (BOOL)addFlaggedWithUID:(uint32_t)uid error:(NSError **)error {
+    return [self storeFlagWithUID:uid
+                             flag:mailimap_flag_new_flagged()
+                             sign:1
+                           action:@"添加星标"
+                            error:error];
+}
+
+- (BOOL)removeFlaggedWithUID:(uint32_t)uid error:(NSError **)error {
+    return [self storeFlagWithUID:uid
+                             flag:mailimap_flag_new_flagged()
+                             sign:-1
+                           action:@"移除星标"
+                            error:error];
+}
+
+- (BOOL)deleteAndExpungeWithUID:(uint32_t)uid error:(NSError **)error {
+    if (![self storeFlagWithUID:uid
+                            flag:mailimap_flag_new_deleted()
+                            sign:1
+                          action:@"标记为删除"
+                           error:error]) {
+        return NO;
+    }
+    ensureUserInitiatedQoS();
+    int r = mailimap_expunge((mailimap *)_imapSession);
+    if (r != MAILIMAP_NO_ERROR) {
+        NSLog(@"❌ [LibEtPan] EXPUNGE 失败，UID: %u, 错误代码: %d", uid, r);
+        if (error) {
+            NSString *errorMsg = [NSString stringWithFormat:@"EXPUNGE 失败: %d", r];
+            *error = [NSError errorWithDomain:@"LibEtPanError"
+                                         code:r
+                                     userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
+        }
+        return NO;
+    }
+    NSLog(@"✅ [LibEtPan] 删除并 EXPUNGE 成功，UID: %u", uid);
+    return YES;
+}
+
+- (BOOL)moveMessageWithUID:(uint32_t)uid
+            toFolder:(NSString *)destinationFolder
+                error:(NSError **)error {
+    if (!_imapSession) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError"
+                                         code:-1
+                                     userInfo:@{NSLocalizedDescriptionKey: @"IMAP 会话未初始化"}];
+        }
+        return NO;
+    }
+
+    // 目标文件夹名称可能包含中文，需要编码为 Modified UTF-7（与 selectFolder 同样的策略）
+    NSString *encodedDestination = destinationFolder;
+    NSData *utf8Data = [destinationFolder dataUsingEncoding:NSUTF8StringEncoding];
+    BOOL hasNonASCII = NO;
+    for (NSUInteger i = 0; i < utf8Data.length; i++) {
+        if (((unsigned char *)utf8Data.bytes)[i] > 127) {
+            hasNonASCII = YES;
+            break;
+        }
+    }
+    if (hasNonASCII && [destinationFolder rangeOfString:@"&-"].location == NSNotFound) {
+        NSRange ampRange = [destinationFolder rangeOfString:@"&"];
+        if (ampRange.location == NSNotFound) {
+            encodedDestination = [self encodeModifiedUTF7:destinationFolder];
+        } else {
+            NSRange dashRange = [destinationFolder rangeOfString:@"-" options:0
+                                                            range:NSMakeRange(ampRange.location,
+                                                                              destinationFolder.length - ampRange.location)];
+            if (dashRange.location == NSNotFound || dashRange.location == ampRange.location + 1) {
+                encodedDestination = [self encodeModifiedUTF7:destinationFolder];
+            }
+        }
+    }
+
+    ensureUserInitiatedQoS();
+
+    // 第一步：COPY 到目标文件夹
+    struct mailimap_set *set = mailimap_set_new_single(uid);
+    const char *destMb = [encodedDestination UTF8String];
+    int r = mailimap_uid_copy((mailimap *)_imapSession, set, destMb);
+    mailimap_set_free(set);
+
+    if (r != MAILIMAP_NO_ERROR) {
+        NSLog(@"❌ [LibEtPan] COPY 失败，UID: %u, dest: %@, 错误代码: %d", uid, destinationFolder, r);
+        if (error) {
+            NSString *errorMsg = [NSString stringWithFormat:@"COPY 失败: %d", r];
+            *error = [NSError errorWithDomain:@"LibEtPanError"
+                                         code:r
+                                     userInfo:@{NSLocalizedDescriptionKey: errorMsg}];
+        }
+        return NO;
+    }
+
+    // 第二步：在源 mailbox 标记为删除 + EXPUNGE，相当于完成 MOVE
+    if (![self deleteAndExpungeWithUID:uid error:error]) {
+        // COPY 已成功，但 EXPUNGE 失败，目标已有副本、源也仍有副本（未真删）
+        return NO;
+    }
+
+    NSLog(@"✅ [LibEtPan] MOVE 成功，UID: %u, dest: %@", uid, destinationFolder);
+    return YES;
+}
+
+#pragma mark - IDLE
+
+- (BOOL)hasIdleCapability {
+    if (!_imapSession) return NO;
+    return mailimap_has_idle((mailimap *)_imapSession) != 0;
+}
+
+- (BOOL)idleWithError:(NSError **)error {
+    if (!_imapSession) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError"
+                                         code:-1
+                                     userInfo:@{NSLocalizedDescriptionKey: @"IMAP 会话未初始化"}];
+        }
+        return NO;
+    }
+    ensureUserInitiatedQoS();
+    int r = mailimap_idle((mailimap *)_imapSession);
+    if (r != MAILIMAP_NO_ERROR) {
+        NSLog(@"❌ [LibEtPan] IDLE 失败，错误代码: %d", r);
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError"
+                                         code:r
+                                     userInfo:@{NSLocalizedDescriptionKey:
+                                                    [NSString stringWithFormat:@"IDLE 失败: %d", r]}];
+        }
+        return NO;
+    }
+    NSLog(@"✅ [LibEtPan] 进入 IDLE 状态");
+    return YES;
+}
+
+- (BOOL)idleDoneWithError:(NSError **)error {
+    if (!_imapSession) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError"
+                                         code:-1
+                                     userInfo:@{NSLocalizedDescriptionKey: @"IMAP 会话未初始化"}];
+        }
+        return NO;
+    }
+    ensureUserInitiatedQoS();
+    int r = mailimap_idle_done((mailimap *)_imapSession);
+    if (r != MAILIMAP_NO_ERROR) {
+        NSLog(@"❌ [LibEtPan] IDLE DONE 失败，错误代码: %d", r);
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError"
+                                         code:r
+                                     userInfo:@{NSLocalizedDescriptionKey:
+                                                    [NSString stringWithFormat:@"IDLE DONE 失败: %d", r]}];
+        }
+        return NO;
+    }
+    NSLog(@"✅ [LibEtPan] 退出 IDLE 状态");
+    return YES;
+}
+
+- (int)idleFd {
+    if (!_imapSession) return -1;
+    return mailimap_idle_get_fd((mailimap *)_imapSession);
+}
+
+- (BOOL)noopWithError:(NSError **)error {
+    if (!_imapSession) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError"
+                                         code:-1
+                                     userInfo:@{NSLocalizedDescriptionKey: @"IMAP 会话未初始化"}];
+        }
+        return NO;
+    }
+    ensureUserInitiatedQoS();
+    int r = mailimap_noop((mailimap *)_imapSession);
+    if (r != MAILIMAP_NO_ERROR) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LibEtPanError"
+                                         code:r
+                                     userInfo:@{NSLocalizedDescriptionKey:
+                                                    [NSString stringWithFormat:@"NOOP 失败: %d", r]}];
+        }
+        return NO;
+    }
     return YES;
 }
 

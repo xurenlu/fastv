@@ -14,7 +14,27 @@ struct EmailBodyContent {
     let textBody: String?
     let htmlBody: String?
     let containsRemoteResources: Bool
-    
+    /// 服务器返回的原始字节数。若超过阈值并被截断，`wasTruncated == true` 且这里保留原始 size 供 UI 提示。
+    let originalSize: Int
+    let wasTruncated: Bool
+    /// 邮件中所有附件 part 的元信息（partPath/encoding/charset/filename/mime），由 `parseAttachments` 提供。
+    /// 列表内容供 EmailService 按 part 真实下载使用。
+    let attachments: [EmailAttachmentMeta]
+
+    init(textBody: String?,
+         htmlBody: String?,
+         containsRemoteResources: Bool,
+         originalSize: Int = 0,
+         wasTruncated: Bool = false,
+         attachments: [EmailAttachmentMeta] = []) {
+        self.textBody = textBody
+        self.htmlBody = htmlBody
+        self.containsRemoteResources = containsRemoteResources
+        self.originalSize = originalSize
+        self.wasTruncated = wasTruncated
+        self.attachments = attachments
+    }
+
     /// 生成用于列表预览的文本
     var previewText: String {
         let base = textBody ??
@@ -23,6 +43,18 @@ struct EmailBodyContent {
         let trimmed = base.trimmingCharacters(in: .whitespacesAndNewlines)
         return String(trimmed.prefix(200))
     }
+}
+
+/// 附件元信息（仅供按 part 下载使用，不持久化解码后字节）
+struct EmailAttachmentMeta {
+    let partPath: String   // IMAP body section, 例如 "2" 或 "1.2"
+    let filename: String   // 取 Content-Disposition / Content-Type 的 name 参数；若都没有则用 mime + 序号兜底
+    let mimeType: String
+    let size: Int          // 估算字节数（part 解码后的大致大小；用于 UI 显示）
+    let contentId: String? // 内嵌图片用
+    let isInline: Bool
+    let encoding: String?  // base64 / quoted-printable / 7bit / 8bit
+    let charset: String?
 }
 
 /// MIME / 邮件内容解码工具
@@ -181,6 +213,25 @@ enum EmailContentDecoder {
         return text
     }
     
+    /// 从原始邮件字节里扫出附件清单（带 IMAP body section path）。
+    /// 不下载、不解码具体字节，仅供 EmailService.downloadAttachment 后续按 part 抓取。
+    /// 对单 part 邮件返回 []（没有附件）。
+    nonisolated static func parseAttachments(data: Data) -> [EmailAttachmentMeta] {
+        guard var raw = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) else { return [] }
+        raw = raw.replacingOccurrences(of: "\r\n", with: "\n")
+        let components = raw.components(separatedBy: "\n\n")
+        guard components.count >= 2 else { return [] }
+        let headerString = components.first ?? ""
+        let bodyString = components.dropFirst().joined(separator: "\n\n")
+        let headers = parseHeaders(headerString)
+        let contentType = headers["content-type"]?.lowercased() ?? "text/plain"
+        guard contentType.contains("multipart/") else { return [] }
+        var result: [EmailAttachmentMeta] = []
+        // 顶层 multipart 的子 part 用一位数：1, 2, 3 ...
+        walkMultipartForAttachments(body: bodyString, headers: headers, pathPrefix: "", result: &result)
+        return result
+    }
+
     /// 解析 MIME 邮件正文，返回纯文本与 HTML
     nonisolated static func parseBody(data: Data) -> EmailBodyContent {
         guard var raw = String(data: data, encoding: .utf8) ??
@@ -218,18 +269,221 @@ enum EmailContentDecoder {
         }
     }
     
+    // MARK: - 附件清单遍历
+
+    /// 按 boundary 切 multipart body，返回**真实**子 part 列表（已剔除 preamble 与 epilogue）。
+    /// RFC 2046 规定 boundary 之前是 preamble、closing boundary 之后是 epilogue，
+    /// 这两段不属于任何 MIME part，IMAP body section 编号也不计入；之前的实现没剔，
+    /// 在邮件以 "This is a MIME encoded message..." 开头时会把 preamble 当 part 1，
+    /// 后续真正的附件 partPath 全部偏 1，BODY[2] 抓出来的是 part 1。
+    nonisolated private static func splitMultipartSegments(body: String, boundary: String) -> [String] {
+        let delimiter = "--\(boundary)"
+        let pieces = body.components(separatedBy: delimiter)
+        // 去掉首段 preamble（即使是空串也要丢，否则下面 trim 后变成空又被 filter 掉，反而让"无 preamble"和"有 preamble"行为不同）
+        let withoutPreamble = pieces.count >= 1 ? Array(pieces.dropFirst()) : pieces
+        var out: [String] = []
+        for piece in withoutPreamble {
+            let trimmed = piece.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed == "--" { break } // closing boundary "--"，后面是 epilogue，跳过
+            if trimmed.isEmpty { continue }
+            out.append(trimmed)
+        }
+        return out
+    }
+
+    /// 递归扫 multipart 段，把所有"非 text/* 主体"或带 Content-Disposition: attachment 的 part 收为附件。
+    /// pathPrefix 为空时表示根；子 part 路径为 "1", "2", ...；嵌套 multipart 的孙 part 为 "2.1", "2.2"，与 IMAP body section 一致。
+    nonisolated private static func walkMultipartForAttachments(
+        body: String,
+        headers: [String: String],
+        pathPrefix: String,
+        result: inout [EmailAttachmentMeta]
+    ) {
+        guard let boundary = extractBoundary(from: headers["content-type"]) else { return }
+        let segments = splitMultipartSegments(body: body, boundary: boundary)
+
+        var partIndex = 0
+        for segment in segments {
+            partIndex += 1
+            let path = pathPrefix.isEmpty ? "\(partIndex)" : "\(pathPrefix).\(partIndex)"
+
+            // 拆头/体：先尝试 "\n\n"，否则尝试 "\r\n\r\n"，覆盖部分服务器没规范化的情况
+            let (partHeaderString, partBodyString): (String, String) = {
+                if let r = segment.range(of: "\n\n") {
+                    return (String(segment[..<r.lowerBound]),
+                            String(segment[r.upperBound...]))
+                }
+                if let r = segment.range(of: "\r\n\r\n") {
+                    return (String(segment[..<r.lowerBound]),
+                            String(segment[r.upperBound...]))
+                }
+                return (segment, "")
+            }()
+            let partHeaders = parseHeaders(partHeaderString)
+            let partContentType = partHeaders["content-type"]?.lowercased() ?? "text/plain"
+
+            if partContentType.contains("multipart/") {
+                walkMultipartForAttachments(body: partBodyString,
+                                            headers: partHeaders,
+                                            pathPrefix: path,
+                                            result: &result)
+                continue
+            }
+
+            // 判定是不是附件：
+            //  1) Content-Disposition: attachment / inline 且带 filename
+            //  2) 非 text/* 且非 multipart/*（图片/PDF/zip 之类）
+            let disposition = partHeaders["content-disposition"]?.lowercased() ?? ""
+            let hasFilename = disposition.contains("filename=") || (partHeaders["content-type"]?.lowercased().contains("name=") ?? false)
+            let isTextLike = partContentType.hasPrefix("text/")
+            let isAttachment = disposition.contains("attachment")
+                || (hasFilename && !isTextLike)
+                || (!isTextLike && !partContentType.contains("multipart/"))
+
+            guard isAttachment else { continue }
+
+            // 提取 filename
+            let filename = decodeRFC2047String(
+                extractParameter(name: "filename", from: partHeaders["content-disposition"])
+                    ?? extractParameter(name: "name", from: partHeaders["content-type"])
+                    ?? "attachment-\(path)"
+            )
+
+            // 估算大小：取 part body 字节数（编码后），这只是个 UI 显示提示，下载时实际 size = 解码后字节数。
+            let size = partBodyString.lengthOfBytes(using: .utf8)
+
+            // contentId
+            var contentId: String? = partHeaders["content-id"]
+            if let cid = contentId,
+               cid.hasPrefix("<"), cid.hasSuffix(">") {
+                contentId = String(cid.dropFirst().dropLast())
+            }
+
+            let isInline = disposition.contains("inline")
+            let encoding = partHeaders["content-transfer-encoding"]?.lowercased()
+            let charset: String? = {
+                guard isTextLike else { return nil }
+                let cs = extractCharset(from: partHeaders["content-type"])
+                return cs.isEmpty ? nil : cs
+            }()
+
+            let mime = (partHeaders["content-type"]?.components(separatedBy: ";").first ?? "application/octet-stream")
+                .trimmingCharacters(in: .whitespaces)
+
+            result.append(EmailAttachmentMeta(
+                partPath: path,
+                filename: filename,
+                mimeType: mime,
+                size: size,
+                contentId: contentId,
+                isInline: isInline,
+                encoding: encoding,
+                charset: charset
+            ))
+        }
+    }
+
+    /// 通用参数提取：Content-Disposition: attachment; filename="foo.pdf"
+    nonisolated private static func extractParameter(name: String, from header: String?) -> String? {
+        guard let header else { return nil }
+        // 支持 filename="..."、filename=...; 以及 RFC 2231 的 filename*=UTF-8''xxx（先粗暴去掉前缀）
+        let nsHeader = header as NSString
+        let patterns = [
+            "\(name)\\*?=\"([^\"]+)\"",
+            "\(name)\\*?=([^;]+)"
+        ]
+        for p in patterns {
+            if let regex = try? NSRegularExpression(pattern: p, options: .caseInsensitive) {
+                let r = NSRange(location: 0, length: nsHeader.length)
+                if let m = regex.firstMatch(in: header, options: [], range: r),
+                   m.numberOfRanges == 2 {
+                    var v = nsHeader.substring(with: m.range(at: 1)).trimmingCharacters(in: CharacterSet(charactersIn: " \t\""))
+                    if let prefixEnd = v.range(of: "''") {
+                        v = String(v[prefixEnd.upperBound...])
+                    }
+                    if let decoded = v.removingPercentEncoding {
+                        return decoded
+                    }
+                    return v
+                }
+            }
+        }
+        return nil
+    }
+
+    // MARK: - 附件字节解码（按 IMAP 抓回来的 part 内容做 base64 / quoted-printable 解码）
+
+    /// 把 fetch 回的 part 原始字节按 encoding 解码为最终落盘字节。
+    /// 设计要点：
+    ///   - encoding 比对统一 trim + lowercase，能挡 "Base64 " / "QUOTED-PRINTABLE\n" 这种脏数据
+    ///   - base64 优先用 ASCII 解码字节流；ASCII 解不出来时降级到 isoLatin1（base64 字母表是 ASCII
+    ///     子集，但 raw stream 可能混入 BOM / 非 ASCII 注释，isoLatin1 单字节映射保 1:1）
+    ///   - 解不出来或为空时返回原 data，不阻塞用户下载（哪怕拿到原文也比报错强）
+    nonisolated static func decodePartBytes(_ data: Data, encoding: String?) -> Data {
+        guard !data.isEmpty else { return data }
+        let enc = (encoding ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch enc {
+        case "base64":
+            let str = String(data: data, encoding: .ascii)
+                  ?? String(data: data, encoding: .isoLatin1)
+            if let str,
+               let bytes = Data(base64Encoded: str, options: .ignoreUnknownCharacters) {
+                return bytes
+            }
+            return data
+        case "quoted-printable":
+            let str = String(data: data, encoding: .ascii)
+                  ?? String(data: data, encoding: .isoLatin1)
+            if let str {
+                return decodeQuotedPrintableToData(str)
+            }
+            return data
+        case "", "7bit", "8bit", "binary":
+            // raw bytes：原样落盘；二进制附件（图片/PDF/zip）即便服务器标 8bit 也照样能用
+            return data
+        default:
+            // 未知 encoding：保守返回原 data，记一条日志便于线上排查
+            print("⚠️ [EmailContentDecoder] 未知附件编码 '\(enc)'，原样落盘")
+            return data
+        }
+    }
+
+    /// quoted-printable -> 原始字节
+    nonisolated private static func decodeQuotedPrintableToData(_ value: String) -> Data {
+        var cleaned = value.replacingOccurrences(of: "=\r\n", with: "")
+        cleaned = cleaned.replacingOccurrences(of: "=\n", with: "")
+        var bytes: [UInt8] = []
+        var i = cleaned.startIndex
+        while i < cleaned.endIndex {
+            let ch = cleaned[i]
+            if ch == "=" {
+                let n1 = cleaned.index(i, offsetBy: 1, limitedBy: cleaned.endIndex)
+                let n2 = cleaned.index(i, offsetBy: 2, limitedBy: cleaned.endIndex)
+                if let n1, let n2, n2 < cleaned.endIndex {
+                    let hex = String(cleaned[n1...n2])
+                    if let b = UInt8(hex, radix: 16) {
+                        bytes.append(b)
+                        i = cleaned.index(i, offsetBy: 3)
+                        continue
+                    }
+                }
+            }
+            if let scalar = ch.unicodeScalars.first {
+                bytes.append(UInt8(scalar.value & 0xFF))
+            }
+            i = cleaned.index(after: i)
+        }
+        return Data(bytes)
+    }
+
     // MARK: - Private helpers
-    
+
     nonisolated private static func parseMultipart(body: String, headers: [String: String]) -> EmailBodyContent {
         guard let boundary = extractBoundary(from: headers["content-type"]) else {
             return EmailBodyContent(textBody: nil, htmlBody: nil, containsRemoteResources: false)
         }
-        
-        let delimiter = "--\(boundary)"
-        let closingDelimiter = "--\(boundary)--"
-        let segments = body.components(separatedBy: delimiter)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty && $0 != "--" && $0 != closingDelimiter }
+        // 与附件扫描同一套切分逻辑：跳过 boundary 之前的 preamble + closing 之后的 epilogue
+        let segments = splitMultipartSegments(body: body, boundary: boundary)
         
         var textBody: String?
         var htmlBody: String?

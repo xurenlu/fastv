@@ -15,7 +15,8 @@ enum EmailServiceError: LocalizedError {
     case invalidConfiguration(String)
     case networkError(Error)
     case parseError(String)
-    
+    case timedOut(String)
+
     var errorDescription: String? {
         switch self {
         case .connectionFailed(let message):
@@ -28,6 +29,8 @@ enum EmailServiceError: LocalizedError {
             return "网络错误: \(error.localizedDescription)"
         case .parseError(let message):
             return "解析错误: \(message)"
+        case .timedOut(let message):
+            return "请求超时: \(message)"
         }
     }
 }
@@ -59,11 +62,46 @@ struct EmailConnectionTestReport {
 @MainActor
 class EmailService {
     static let shared = EmailService()
-    
+
+    /// 单封邮件正文 / 原始邮件超过该字节数时，截断为 maxBodyBytes，并在 EmailBodyContent 中置 `wasTruncated = true`。
+    /// 默认 10 MB，覆盖绝大多数富文本邮件；超过通常是包含巨型附件或多张高分辨率内嵌图，硬解析会卡 UI 甚至 OOM。
+    nonisolated(unsafe) static let maxBodyBytes: Int = 10 * 1024 * 1024
+
+    /// fetchMessageBody 整体（connect+login+select+fetch+parse）的超时上限。
+    /// 选 45 秒：LibEtPan socket 没有原生 cancel，超时不能切断底层 I/O，但可以把 await 这边松开，
+    /// 让上层把状态切到「加载失败 → 重试」。45 秒覆盖正常网络下绝大多数邮件，又不至于让用户对着 loading 干瞪眼一分钟。
+    nonisolated(unsafe) static let fetchBodyTimeoutSeconds: UInt64 = 45
+
     // nonisolated(unsafe): 允许后台线程访问这些属性
     nonisolated(unsafe) var initialLoadLimit = 1000 // 可配置
+    /// 用 NSLock 保护 backgroundSyncTasks 的所有读写，避免多任务并发改字典桶结构导致崩溃 / 句柄泄漏。
     nonisolated(unsafe) private var backgroundSyncTasks: [UUID: Task<Void, Never>] = [:]
-    
+    nonisolated(unsafe) private let backgroundSyncTasksLock = NSLock()
+
+    /// 取消并移除指定账号的后台同步任务（线程安全）
+    nonisolated private func cancelBackgroundSyncTask(for accountId: UUID) {
+        backgroundSyncTasksLock.lock()
+        let task = backgroundSyncTasks.removeValue(forKey: accountId)
+        backgroundSyncTasksLock.unlock()
+        task?.cancel()
+    }
+
+    /// 设置账号的后台同步任务（线程安全；旧任务会被自动取消）
+    nonisolated private func setBackgroundSyncTask(_ task: Task<Void, Never>, for accountId: UUID) {
+        backgroundSyncTasksLock.lock()
+        let old = backgroundSyncTasks[accountId]
+        backgroundSyncTasks[accountId] = task
+        backgroundSyncTasksLock.unlock()
+        old?.cancel()
+    }
+
+    /// 快照所有账号 id（线程安全）
+    nonisolated private func snapshotBackgroundSyncAccountIds() -> [UUID] {
+        backgroundSyncTasksLock.lock()
+        defer { backgroundSyncTasksLock.unlock() }
+        return Array(backgroundSyncTasks.keys)
+    }
+
     private init() {}
     
     // MARK: - Helper Methods
@@ -392,7 +430,7 @@ class EmailService {
     }
     
     /// 后台同步剩余邮件
-    /// 
+    ///
     /// 重要：后台同步使用独立的 IMAP session，批量处理邮件以提高效率。
     nonisolated private func scheduleBackgroundSync(
         account: EmailAccount,
@@ -400,9 +438,6 @@ class EmailService {
         remainingUIDs: [Any],
         sinceDate: Date?
     ) {
-        // 取消之前的后台任务(如果有)
-        backgroundSyncTasks[account.id]?.cancel()
-        
         let task = Task.detached(priority: .background) {
             print("🔄 [EmailService] 开始后台同步剩余 \(remainingUIDs.count) 封邮件...")
             
@@ -484,14 +519,14 @@ class EmailService {
             
             print("✅ [EmailService] 后台同步完成: \(syncedCount) 封邮件")
         }
-        
-        backgroundSyncTasks[account.id] = task
+
+        // 注册新任务（同时取消同账号上一次未完成的任务）
+        setBackgroundSyncTask(task, for: account.id)
     }
-    
+
     /// 取消后台同步任务
     nonisolated func cancelBackgroundSync(accountId: UUID) {
-        backgroundSyncTasks[accountId]?.cancel()
-        backgroundSyncTasks.removeValue(forKey: accountId)
+        cancelBackgroundSyncTask(for: accountId)
     }
     
     /// 获取邮件正文
@@ -506,18 +541,47 @@ class EmailService {
             print("❌ [EmailService] fetchMessageBody: 邮件 UID 不存在")
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
-        
+
         print("📧 [EmailService] fetchMessageBody: 开始获取正文, folder=\(folder.name), uid=\(uid)")
-        
+
+        // 用 TaskGroup 跑「真正干活」+「计时器」两条腿，谁先回来用谁的结果。
+        // LibEtPan 的阻塞 socket 无法真正取消：超时分支让工作子任务在后台继续跑完 / disconnect / 自然结束，
+        // 上层提前拿到 timedOut，把 UI 切到「加载失败」并放出重试入口。
+        return try await withThrowingTaskGroup(of: EmailBodyContent.self) { group in
+            group.addTask { [weak self] in
+                guard let self else { throw EmailServiceError.connectionFailed("EmailService 已释放") }
+                return try await self.fetchMessageBodyUnchecked(account: account, folder: folder, uid: uid)
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: Self.fetchBodyTimeoutSeconds * 1_000_000_000)
+                throw EmailServiceError.timedOut("拉取邮件正文超过 \(Self.fetchBodyTimeoutSeconds) 秒")
+            }
+            // first 拿第一个返回（成功或失败）的结果，再 cancelAll 把另一条腿掐掉。
+            // 注意：cancelAll 只对 Task.sleep 这种 cancellation-aware 的步骤生效，对 LibEtPan I/O 是 no-op。
+            defer { group.cancelAll() }
+            guard let first = try await group.next() else {
+                throw EmailServiceError.connectionFailed("fetchMessageBody 未返回任何结果")
+            }
+            return first
+        }
+    }
+
+    /// fetchMessageBody 真正干活的部分：建会话 → selectFolder → fetch → parse。
+    /// 抽出来是为了让外层套超时；本函数不感知超时存在。
+    nonisolated private func fetchMessageBodyUnchecked(
+        account: EmailAccount,
+        folder: EmailFolder,
+        uid: UInt32
+    ) async throws -> EmailBodyContent {
         // 创建独立的 IMAP session
         let imap = try await createIMAPSession(account: account)
-        
+
         // 确保操作完成后断开连接
         defer {
             print("🔌 [EmailService] 断开 IMAP 连接 (fetchMessageBody)")
             imap.disconnect()
         }
-        
+
         let bodyData = try await Task.detached(priority: .userInitiated) { [imap] in
             do {
                 try imap.selectFolder(folder.name)
@@ -526,21 +590,42 @@ class EmailService {
                 print("❌ [EmailService] fetchMessageBody: 选择文件夹失败: \(error)")
                 throw EmailServiceError.connectionFailed("选择文件夹失败: \(error.localizedDescription)")
             }
-            
+
             let data = try imap.fetchMessageBody(withUID: uid)
             print("📧 [EmailService] fetchMessageBody: 获取到数据 \(data.count) 字节")
             return data
         }.value
-        
+
         if bodyData.isEmpty {
             print("❌ [EmailService] fetchMessageBody: 邮件正文为空")
             throw EmailServiceError.parseError("未获取到邮件正文")
         }
-        
-        // 解析可以在后台线程执行
-        let content = EmailContentDecoder.parseBody(data: bodyData)
-        print("📧 [EmailService] fetchMessageBody: 解析完成, textBody=\(content.textBody?.count ?? 0)字符, htmlBody=\(content.htmlBody?.count ?? 0)字符, hasRemote=\(content.containsRemoteResources)")
-        
+
+        // 超大邮件保护：超阈值时只解析前 maxBodyBytes，并在 content 上打上 wasTruncated 标记由 UI 提示。
+        let originalSize = bodyData.count
+        let wasTruncated = originalSize > Self.maxBodyBytes
+        let dataToParse: Data
+        if wasTruncated {
+            print("⚠️ [EmailService] fetchMessageBody: 正文大小 \(originalSize) 字节超过阈值 \(Self.maxBodyBytes)，将截断后解析")
+            dataToParse = bodyData.prefix(Self.maxBodyBytes)
+        } else {
+            dataToParse = bodyData
+        }
+
+        let parsed = EmailContentDecoder.parseBody(data: dataToParse)
+        // 附件元信息扫描走**全量** data：附件通常排在邮件后半段，截断后正文虽然只解析前 10MB，
+        // 但附件清单还得对得上服务器实际 MIME 结构；扫描只做字符串遍历，10MB → 50MB 也就多几毫秒。
+        let attachmentMetas = EmailContentDecoder.parseAttachments(data: bodyData)
+        let content = EmailBodyContent(
+            textBody: parsed.textBody,
+            htmlBody: parsed.htmlBody,
+            containsRemoteResources: parsed.containsRemoteResources,
+            originalSize: originalSize,
+            wasTruncated: wasTruncated,
+            attachments: attachmentMetas
+        )
+        print("📧 [EmailService] fetchMessageBody: 解析完成, textBody=\(content.textBody?.count ?? 0)字符, htmlBody=\(content.htmlBody?.count ?? 0)字符, hasRemote=\(content.containsRemoteResources), truncated=\(content.wasTruncated), attachments=\(attachmentMetas.count)")
+
         return content
     }
     
@@ -756,68 +841,64 @@ class EmailService {
     }
     
     /// 删除邮件
-    /// 
-    /// 重要：每次删除操作都会创建独立的 IMAP session，操作完成后自动断开。
+    ///
+    /// IMAP 真实现：STORE +FLAGS (\Deleted) + EXPUNGE。
+    /// 每次操作创建独立 IMAP session，完成后立即断开。
     nonisolated func deleteMessage(account: EmailAccount, message: EmailMessage) async throws {
-        guard message.uid != nil else {
+        guard let uid = message.uid else {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
-        
-        // 获取邮件所在的文件夹
+
         guard let folderId = message.folderId,
               let folder = await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
             throw EmailServiceError.invalidConfiguration("找不到邮件所在文件夹")
         }
-        
-        // 创建独立的 IMAP session
+
         let imap = try await createIMAPSession(account: account)
-        
-        // 确保操作完成后断开连接
         defer {
             print("🔌 [EmailService] 断开 IMAP 连接 (deleteMessage)")
             imap.disconnect()
         }
-        
+
         try await Task.detached(priority: .userInitiated) { [imap] in
             do {
                 try imap.selectFolder(folder.name)
-                // TODO: 使用 LibEtPan 的删除功能（STORE +DELETE 或 MOVE 到 Trash）
-                // 目前先标记为已删除，实际删除功能需要 LibEtPan 支持
-                print("⚠️ [EmailService] 删除邮件功能需要 LibEtPan 支持，当前仅标记为已删除")
+                try imap.deleteAndExpunge(withUID: uid)
             } catch {
                 throw EmailServiceError.networkError(error)
             }
         }.value
     }
-    
+
     /// 切换星标状态
-    /// 
-    /// 重要：每次切换操作都会创建独立的 IMAP session，操作完成后自动断开。
+    ///
+    /// IMAP 真实现：根据当前 `message.isStarred` 推断要 +FLAGS 还是 -FLAGS (\Flagged)。
+    /// 注意：调用方传入的 `message` 应反映 IMAP 切换前的状态，调用方自行 toggle 本地缓存。
     nonisolated func toggleStar(account: EmailAccount, message: EmailMessage) async throws {
-        guard message.uid != nil else {
+        guard let uid = message.uid else {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
-        
+
         guard let folderId = message.folderId,
               let folder = await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
             throw EmailServiceError.invalidConfiguration("找不到邮件所在文件夹")
         }
-        
-        // 创建独立的 IMAP session
+
+        let willBeStarred = !message.isStarred
         let imap = try await createIMAPSession(account: account)
-        
-        // 确保操作完成后断开连接
         defer {
             print("🔌 [EmailService] 断开 IMAP 连接 (toggleStar)")
             imap.disconnect()
         }
-        
+
         try await Task.detached(priority: .userInitiated) { [imap] in
             do {
                 try imap.selectFolder(folder.name)
-                // TODO: 使用 LibEtPan 的 STORE 命令添加/移除 \Flagged 标志
-                // 目前先更新本地状态
-                print("⚠️ [EmailService] 星标功能需要 LibEtPan 支持，当前仅更新本地状态")
+                if willBeStarred {
+                    try imap.addFlagged(withUID: uid)
+                } else {
+                    try imap.removeFlagged(withUID: uid)
+                }
             } catch {
                 throw EmailServiceError.networkError(error)
             }
@@ -855,8 +936,11 @@ class EmailService {
     }
     
     /// 下载附件
-    /// 
-    /// 重要：每次下载操作都会创建独立的 IMAP session，操作完成后自动断开。
+    ///
+    /// 真实现：用 IMAP `BODY.PEEK[<partPath>]` 只抓取目标 part 的原始字节，
+    /// 再按 Content-Transfer-Encoding 解码后写入临时目录。
+    /// 兼容老数据：如果 attachment 没有 partPath（升级前抓的邮件），
+    /// 退回到"取整封邮件 + MIME 解析"路径，并尝试用 filename 匹配。
     nonisolated func downloadAttachment(
         account: EmailAccount,
         folder: EmailFolder,
@@ -866,66 +950,112 @@ class EmailService {
         guard let uid = message.uid else {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
-        
-        // 创建独立的 IMAP session
+
         let imap = try await createIMAPSession(account: account)
-        
-        // 确保操作完成后断开连接
         defer {
             print("🔌 [EmailService] 断开 IMAP 连接 (downloadAttachment)")
             imap.disconnect()
         }
-        
-        let bodyData = try await Task.detached(priority: .userInitiated) { [imap] in
+
+        // 真路径：partPath 已知，直接抓那个 part
+        if let partPath = attachment.partPath, !partPath.isEmpty {
+            let rawPartBytes = try await Task.detached(priority: .userInitiated) { [imap] in
+                try imap.selectFolder(folder.name)
+                return try imap.fetchMessagePart(withUID: uid, partPath: partPath)
+            }.value
+
+            let decoded = EmailContentDecoder.decodePartBytes(rawPartBytes, encoding: attachment.encoding)
+            let fileURL = Self.makeAttachmentFileURL(filename: attachment.filename)
+            try decoded.write(to: fileURL)
+            print("📎 [EmailService] 附件下载完成: mime=\(attachment.mimeType), partPath=\(partPath), bytes=\(decoded.count)")
+            return fileURL
+        }
+
+        // 兼容路径：老附件没有 partPath，回退到拉全文 + 用 filename 匹配。
+        print("ℹ️ [EmailService] downloadAttachment: 没有 partPath，回退到整封邮件解析模式")
+        let rawData = try await Task.detached(priority: .userInitiated) { [imap] in
             try imap.selectFolder(folder.name)
-            
-            // TODO: 使用 LibEtPan 获取附件的具体部分
-            // 目前先获取完整邮件，然后解析附件
             return try imap.fetchMessageBody(withUID: uid)
         }.value
-        
-        // 解析 MIME 结构，提取附件
-        // 这里需要解析 multipart 结构，找到对应的附件部分
-        // 简化实现：保存到临时目录
-        let tempDir = FileManager.default.temporaryDirectory
-        let fileURL = tempDir.appendingPathComponent(attachment.filename)
-        
-        // TODO: 从 bodyData 中提取附件内容
-        // 目前先创建一个占位文件
-        try Data().write(to: fileURL)
-        
-        print("📎 [EmailService] 附件下载完成: \(attachment.filename)")
+
+        let metas = EmailContentDecoder.parseAttachments(data: rawData)
+        guard let meta = metas.first(where: { $0.filename == attachment.filename })
+                       ?? metas.first(where: { $0.mimeType == attachment.mimeType }) else {
+            throw EmailServiceError.parseError("未在邮件中找到附件：\(attachment.filename)")
+        }
+        // 再抓一次 part（这次有 partPath 了）
+        let rawPartBytes = try await Task.detached(priority: .userInitiated) { [imap] in
+            try imap.selectFolder(folder.name)
+            return try imap.fetchMessagePart(withUID: uid, partPath: meta.partPath)
+        }.value
+        let decoded = EmailContentDecoder.decodePartBytes(rawPartBytes, encoding: meta.encoding)
+        let fileURL = Self.makeAttachmentFileURL(filename: meta.filename)
+        try decoded.write(to: fileURL)
+        print("📎 [EmailService] 附件下载完成 (回退路径): mime=\(meta.mimeType), partPath=\(meta.partPath), bytes=\(decoded.count)")
         return fileURL
+    }
+
+    /// 为附件构造一个安全的临时文件名。
+    /// 安全策略：
+    ///   - 不允许路径分隔符 `/` `\`，避免被恶意 filename 越权写到其他目录
+    ///   - 拒绝以 `.` 开头的隐藏文件 / `.` / `..`（避免 dotfile 或目录穿越遗留风险）
+    ///   - 控制字符 (U+0000–U+001F、U+007F)、文件系统保留符 (`:"?*<>|`) 全部替换为 `_`
+    ///   - 字母数字 / CJK / `_` / `-` / `.` 保留；其它"安全"字符也保留（兼容法语 é 等）
+    ///   - 始终前置 UUID 短前缀，使同邮件多附件 + 不同邮件同名附件都不会撞名
+    nonisolated private static func makeAttachmentFileURL(filename: String) -> URL {
+        let cleaned: String = {
+            var s = filename
+            // 1) 取最后一个路径分量（挡 "../../tmp/x" 之类）
+            if let lastSlash = s.range(of: "/", options: .backwards) { s = String(s[lastSlash.upperBound...]) }
+            if let lastBack = s.range(of: "\\", options: .backwards) { s = String(s[lastBack.upperBound...]) }
+            // 2) 控制字符 / 文件系统保留符替换为 `_`
+            let forbidden = CharacterSet.controlCharacters
+                .union(CharacterSet(charactersIn: ":\"?*<>|/\\"))
+            let mapped = String(s.unicodeScalars.map { forbidden.contains($0) ? Character("_") : Character($0) })
+            // 3) trim 空白
+            var trimmed = mapped.trimmingCharacters(in: .whitespacesAndNewlines)
+            // 4) 拒绝以 `.` 开头（隐藏文件、`.` / `..`）；保留扩展名中间的 `.`
+            while trimmed.hasPrefix(".") { trimmed.removeFirst() }
+            // 5) 限长 240 字节，避免触发 macOS 文件名长度上限（255 字节 UTF-8）
+            if trimmed.utf8.count > 240 {
+                trimmed = String(trimmed.prefix(120)) // 简单截，UTF-8 安全粒度
+            }
+            return trimmed.isEmpty ? "attachment.bin" : trimmed
+        }()
+        // 加一段 UUID 前缀，避免不同邮件同名附件互相覆盖
+        let unique = "\(UUID().uuidString.prefix(8))-\(cleaned)"
+        return FileManager.default.temporaryDirectory.appendingPathComponent(unique)
     }
     
     /// 移动邮件到文件夹
-    /// 
-    /// 重要：每次移动操作都会创建独立的 IMAP session，操作完成后自动断开。
+    ///
+    /// IMAP 真实现：UID COPY 到目标 mailbox，再在源 mailbox 上 +FLAGS (\Deleted) + EXPUNGE。
     nonisolated func moveMessage(account: EmailAccount, message: EmailMessage, to folder: EmailFolder) async throws {
-        guard message.uid != nil else {
+        guard let uid = message.uid else {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
-        
+
         guard let folderId = message.folderId,
               let sourceFolder = await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
             throw EmailServiceError.invalidConfiguration("找不到源文件夹")
         }
-        
-        // 创建独立的 IMAP session
+
+        guard sourceFolder.id != folder.id else {
+            // 同文件夹移动等同 no-op，避免误删
+            print("ℹ️ [EmailService] moveMessage 源/目标相同，跳过")
+            return
+        }
+
         let imap = try await createIMAPSession(account: account)
-        
-        // 确保操作完成后断开连接
         defer {
             print("🔌 [EmailService] 断开 IMAP 连接 (moveMessage)")
             imap.disconnect()
         }
-        
+
         try await Task.detached(priority: .userInitiated) { [imap] in
             do {
                 try imap.selectFolder(sourceFolder.name)
-                // TODO: 使用 LibEtPan 的 MOVE 或 COPY + STORE +DELETE 命令
-                // 目前先更新本地状态
-                print("⚠️ [EmailService] 移动邮件功能需要 LibEtPan 支持，当前仅更新本地状态")
+                try imap.moveMessage(withUID: uid, toFolder: folder.name)
             } catch {
                 throw EmailServiceError.networkError(error)
             }
@@ -1028,21 +1158,10 @@ class EmailService {
         attachments: [EmailAttachment] = [],
         readReceipt: Bool = false
     ) async throws {
-        print("📧 [EmailService] 开始发送邮件")
-        print("📧 [EmailService] 发件人: \(account.emailAddress)")
-        print("📧 [EmailService] 收件人: \(to.map { $0.email }.joined(separator: ", "))")
-        if !cc.isEmpty {
-            print("📧 [EmailService] 抄送: \(cc.map { $0.email }.joined(separator: ", "))")
-        }
-        if !bcc.isEmpty {
-            print("📧 [EmailService] 密送: \(bcc.map { $0.email }.joined(separator: ", "))")
-        }
-        print("📧 [EmailService] 主题: \(subject)")
-        print("📧 [EmailService] 正文长度: \(body.count) 字符")
-        if let htmlBody = htmlBody {
-            print("📧 [EmailService] HTML 正文长度: \(htmlBody.count) 字符")
-        }
-        print("📧 [EmailService] 附件数量: \(attachments.count)")
+        // 隐私：不再 print 具体的收件人 / 主题 / 正文，只输出数量与长度等指标。
+        let bodyChars = body.count
+        let htmlChars = htmlBody?.count ?? 0
+        print("📧 [EmailService] 开始发送邮件: to=\(to.count), cc=\(cc.count), bcc=\(bcc.count), attachments=\(attachments.count), bodyChars=\(bodyChars), htmlChars=\(htmlChars)")
         
         // 创建独立的 SMTP session
         let smtp = try await createSMTPSession(account: account)
@@ -1061,13 +1180,14 @@ class EmailService {
             let bccAddresses: [String] = bcc.map { $0.email }
             
             // 准备附件信息（包含 data, filename, mimeType）
+            // 隐私：不再打印附件原始文件名，只打印 mime/size。
             let attachmentInfos: [[String: Any]] = attachments.compactMap { attachment -> [String: Any]? in
                 guard let path = attachment.localPath,
                       let data = NSData(contentsOfFile: path) else {
-                    print("⚠️ [EmailService] 无法读取附件: \(attachment.filename)")
+                    print("⚠️ [EmailService] 无法读取附件 (mime=\(attachment.mimeType))")
                     return nil
                 }
-                print("📎 [EmailService] 附件已加载: \(attachment.filename) (\(attachment.mimeType), \(data.length) 字节)")
+                print("📎 [EmailService] 附件已加载: mime=\(attachment.mimeType), bytes=\(data.length)")
                 return [
                     "data": data as Data,
                     "filename": attachment.filename,
@@ -1120,16 +1240,17 @@ class EmailService {
     }
     
     /// 清理所有后台任务
-    /// 
+    ///
     /// 注意：IMAP/SMTP session 现在都是每次操作独立创建的，不再缓存。
-    /// 这里只需要取消后台同步任务。
+    /// 这里需要取消后台同步任务，以及全部 IDLE 长连接。
     nonisolated func cleanupAllSessions() {
-        // 取消所有后台任务
-        let accountIds = backgroundSyncTasks.keys
-        for accountId in accountIds {
+        for accountId in snapshotBackgroundSyncAccountIds() {
             cancelBackgroundSync(accountId: accountId)
         }
-        print("🧹 [EmailService] 已清理所有后台任务")
+        Task { @MainActor in
+            EmailIdleService.shared.stopAll()
+        }
+        print("🧹 [EmailService] 已清理所有后台任务（含 IDLE）")
     }
     
     // MARK: - Helper Methods

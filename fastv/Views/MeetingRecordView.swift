@@ -15,15 +15,15 @@ struct MeetingRecordView: View {
     @State private var showDeleteConfirm = false
     @State private var recordToDelete: MeetingRecord?
     @State private var searchText = ""
+    /// 缓存的过滤结果：避免每次 body 求值都跑 filter，搜索框与 records 变化时由 onChange 维护
+    @State private var filteredRecords: [MeetingRecord] = []
 
-    private var filteredRecords: [MeetingRecord] {
-        if searchText.isEmpty {
-            return service.records
-        }
-        return service.records.filter {
-            $0.title.localizedCaseInsensitiveContains(searchText) ||
-            $0.originalText.localizedCaseInsensitiveContains(searchText) ||
-            $0.correctedText.localizedCaseInsensitiveContains(searchText)
+    private func recomputeFiltered(records: [MeetingRecord], query: String) -> [MeetingRecord] {
+        if query.isEmpty { return records }
+        return records.filter {
+            $0.title.localizedCaseInsensitiveContains(query) ||
+            $0.originalText.localizedCaseInsensitiveContains(query) ||
+            $0.correctedText.localizedCaseInsensitiveContains(query)
         }
     }
 
@@ -57,6 +57,15 @@ struct MeetingRecordView: View {
             }
         } message: { _ in
             Text("确定要删除这条记录吗？此操作无法撤销。")
+        }
+        .task {
+            filteredRecords = recomputeFiltered(records: service.records, query: searchText)
+        }
+        .onChange(of: service.records) { _, newRecords in
+            filteredRecords = recomputeFiltered(records: newRecords, query: searchText)
+        }
+        .onChange(of: searchText) { _, newQuery in
+            filteredRecords = recomputeFiltered(records: service.records, query: newQuery)
         }
     }
 
@@ -210,10 +219,12 @@ struct MeetingRecordView: View {
                     emptyListPlaceholder
                 } else {
                     ForEach(filteredRecords) { record in
+                        let isThisRecording = service.isRecording && service.currentRecordingId == record.id
                         MeetingRecordRow(
                             record: record,
-                            isRecording: service.isRecording && service.currentRecordingId == record.id,
-                            isSelected: selectedRecordId == record.id
+                            isRecording: isThisRecording,
+                            isSelected: selectedRecordId == record.id,
+                            liveDuration: isThisRecording ? service.recordingDuration : nil
                         )
                         .onTapGesture {
                             selectedRecordId = record.id
@@ -294,7 +305,24 @@ struct MeetingRecordRow: View {
     let record: MeetingRecord
     let isRecording: Bool
     let isSelected: Bool
+    /// 当前录音行的实时时长（非录音时为 nil）。仅这一行会因为 1Hz 时长变化而 diff。
+    let liveDuration: TimeInterval?
     @State private var isHovered = false
+
+    private var displayDuration: String {
+        guard let live = liveDuration else { return record.formattedDuration }
+        if live < 60 {
+            return String(format: "%.0f秒", live)
+        } else if live < 3600 {
+            let minutes = Int(live / 60)
+            let seconds = Int(live.truncatingRemainder(dividingBy: 60))
+            return "\(minutes)分\(seconds)秒"
+        } else {
+            let hours = Int(live / 3600)
+            let minutes = Int((live.truncatingRemainder(dividingBy: 3600)) / 60)
+            return "\(hours)小时\(minutes)分"
+        }
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -319,7 +347,7 @@ struct MeetingRecordRow: View {
                     Text("·")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
-                    Text(record.formattedDuration)
+                    Text(displayDuration)
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                     Spacer(minLength: 4)
@@ -367,6 +395,20 @@ struct MeetingRecordRow: View {
 // MARK: - 记录详情视图
 
 struct MeetingRecordDetailView: View {
+    enum DetailTab: String, CaseIterable, Identifiable {
+        case richDoc = "图文文档"
+        case transcript = "全文"
+        case ai = "AI 整理"
+        var id: String { rawValue }
+        var icon: String {
+            switch self {
+            case .richDoc: return "doc.richtext"
+            case .transcript: return "text.alignleft"
+            case .ai: return "sparkles"
+            }
+        }
+    }
+
     @ObservedObject var service: MeetingRecordService
     let record: MeetingRecord
     @State private var isEditingTitle = false
@@ -374,6 +416,7 @@ struct MeetingRecordDetailView: View {
     @State private var showFullText = true
     @State private var isProcessing = false
     @State private var processingTask: String?
+    @State private var selectedTab: DetailTab = .richDoc
 
     init(record: MeetingRecord, service: MeetingRecordService) {
         self.record = record
@@ -383,27 +426,24 @@ struct MeetingRecordDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
+            VStack(alignment: .leading, spacing: 24) {
                 // 标题 + 元数据
                 headerSection
 
-                // AI 功能区
-                if !record.isRecording {
-                    aiActionsSection
-                }
+                // Tab 切换
+                tabBar
 
-                // 摘要
-                if !record.summary.isEmpty {
-                    summarySection
+                // Tab 内容
+                Group {
+                    switch selectedTab {
+                    case .richDoc:
+                        richDocSection
+                    case .transcript:
+                        textContentSection
+                    case .ai:
+                        aiTabContent
+                    }
                 }
-
-                // 行动项
-                if !record.actionItems.isEmpty {
-                    actionItemsSection
-                }
-
-                // 全文
-                textContentSection
             }
             .padding(28)
         }
@@ -624,6 +664,65 @@ struct MeetingRecordDetailView: View {
         }
     }
 
+    // MARK: - Tab 切换
+
+    private var tabBar: some View {
+        HStack(spacing: 0) {
+            ForEach(DetailTab.allCases) { tab in
+                Button(action: { selectedTab = tab }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: tab.icon).font(.caption.weight(.semibold))
+                        Text(tab.rawValue).font(.subheadline)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(selectedTab == tab ? Color.accentColor.opacity(0.15) : Color.clear)
+                    }
+                    .foregroundStyle(selectedTab == tab ? Color.accentColor : .secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    // MARK: - 实时图文文档
+
+    private var richDocSection: some View {
+        MeetingRichDocSection(
+            recordId: record.id,
+            recordMarkdown: record.richDocumentMarkdown,
+            isRecording: record.isRecording,
+            onRegenerate: { Task { await service.regenerateRichDoc(for: record.id) } }
+        )
+    }
+
+    // MARK: - AI Tab 整体
+
+    @ViewBuilder
+    private var aiTabContent: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            if !record.isRecording {
+                aiActionsSection
+            }
+            if !record.summary.isEmpty {
+                summarySection
+            }
+            if !record.actionItems.isEmpty {
+                actionItemsSection
+            }
+            if record.isRecording && record.summary.isEmpty && record.actionItems.isEmpty {
+                Text("录音结束后即可生成摘要和行动项")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 32)
+            }
+        }
+    }
+
     // MARK: - 文本内容区
 
     private var textContentSection: some View {
@@ -695,4 +794,148 @@ struct MeetingRecordDetailView: View {
 
 #Preview {
     MeetingRecordView()
+}
+
+// MARK: - 实时图文文档子视图
+
+/// 独立订阅 MeetingRichDocPipeline.streamingMarkdown 与节流解析，避免 token-by-token
+/// 触发整个详情页 + 列表重渲染 + 主线程 parseMarkdown。
+private struct MeetingRichDocSection: View {
+    let recordId: UUID
+    let recordMarkdown: String
+    let isRecording: Bool
+    let onRegenerate: () -> Void
+
+    @ObservedObject private var pipeline = MeetingRichDocPipeline.shared
+    @State private var renderedElements: [MarkdownElement] = []
+    @State private var lastParsedSource: String = ""
+    @State private var parseTask: Task<Void, Never>?
+
+    /// 当前应展示的 markdown：流式中那条 record → 用 pipeline.streamingMarkdown
+    private var currentMarkdown: String {
+        pipeline.currentMarkdown(for: recordId, fallback: recordMarkdown)
+    }
+
+    private var isStreaming: Bool {
+        pipeline.streamingRecordId == recordId
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Label("实时图文文档", systemImage: "doc.richtext")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+                if isStreaming {
+                    HStack(spacing: 4) {
+                        Circle().fill(Color.green).frame(width: 6, height: 6).symbolEffect(.pulse)
+                        Text("生成中…").font(.caption).foregroundStyle(Color.green)
+                    }
+                }
+                Spacer()
+                if !currentMarkdown.isEmpty {
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(currentMarkdown, forType: .string)
+                    } label: {
+                        Label("复制 Markdown", systemImage: "doc.on.doc")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                }
+                if !isRecording {
+                    Button {
+                        onRegenerate()
+                    } label: {
+                        Label("重新生成", systemImage: "arrow.clockwise")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.accentColor)
+                }
+            }
+
+            if currentMarkdown.isEmpty {
+                richDocEmptyState
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(Array(renderedElements.enumerated()), id: \.offset) { _, element in
+                        MarkdownElementView(element: element, isTransparentBackground: false)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    if isStreaming {
+                        Text("▋")
+                            .font(.body)
+                            .foregroundStyle(Color.accentColor)
+                    }
+                }
+            }
+        }
+        // 节流：流式期间累积变化时，间隔 150ms 再解析；停流时立刻解析
+        .onChange(of: currentMarkdown) { _, newValue in
+            scheduleParse(newValue, immediate: !isStreaming)
+        }
+        .onChange(of: isStreaming) { _, streaming in
+            if !streaming {
+                scheduleParse(currentMarkdown, immediate: true)
+            }
+        }
+        .task {
+            scheduleParse(currentMarkdown, immediate: true)
+        }
+    }
+
+    private func scheduleParse(_ source: String, immediate: Bool) {
+        parseTask?.cancel()
+        if source == lastParsedSource && !renderedElements.isEmpty { return }
+        if source.isEmpty {
+            renderedElements = []
+            lastParsedSource = ""
+            return
+        }
+        parseTask = Task { @MainActor in
+            if !immediate {
+                try? await Task.sleep(nanoseconds: 150_000_000)
+                if Task.isCancelled { return }
+            }
+            // parseMarkdown 是纯函数，放到后台计算后再回主线程赋值
+            let elements: [MarkdownElement] = await Task.detached(priority: .userInitiated) {
+                parseMarkdown(source)
+            }.value
+            if Task.isCancelled { return }
+            self.renderedElements = elements
+            self.lastParsedSource = source
+        }
+    }
+
+    private var richDocEmptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "doc.richtext")
+                .font(.system(size: 36))
+                .foregroundStyle(.tertiary)
+            if isRecording {
+                Text("正在收集转写片段…")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text("AI 会在累计足够内容或讲者停顿时自动生成结构化文档")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+            } else {
+                Text("还没有图文文档")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Button("立即生成") { onRegenerate() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 48)
+        .background {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.secondary.opacity(0.04))
+        }
+    }
 }

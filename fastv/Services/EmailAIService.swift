@@ -424,8 +424,63 @@ class EmailAIService {
         return polishedText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
+    // MARK: - Translate (纯翻译，保留原结构，不做改写/润色)
+
+    /// 把邮件正文按段翻译成中文（或英文）；保持换行/段落，不增删信息、不做"商务化润色"。
+    /// - Parameters:
+    ///   - text: 原始正文文本（已剥过 HTML）
+    ///   - targetLanguage: "中文" 或 "英文" 等自然语言名
+    /// - Returns: 翻译后的纯文本
+    func translate(text: String, targetLanguage: String = "中文") async throws -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw NSError(domain: "EmailAIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "正文内容为空"])
+        }
+
+        let config = await MainActor.run { preferences.getConfig(for: .aiChat) }
+        let prefs = await MainActor.run { preferences }
+
+        let systemPrompt = """
+        你是一名专业的邮件翻译助手。请把用户提供的邮件正文翻译成「\(targetLanguage)」。
+
+        【严格要求】
+        1. **只做翻译，不改写、不润色、不增删任何内容**；不要加问候/落款等原文没有的内容
+        2. 保留原文的换行、空行、列表符号（如 - / 1. / •）、缩进等结构
+        3. 链接 URL、邮箱地址、代码片段、专有名词（公司/产品/人名）原样保留不翻译
+        4. 引用符号「>」开头的引用行翻译其内容，符号本身保留
+        5. 输出**只包含翻译后的正文本身**，不要任何前后说明、不要写"以下是翻译"等
+        6. 不要用 Markdown 代码块包裹结果
+        """
+
+        let messages: [[String: Any]] = [
+            ["role": "system", "content": systemPrompt],
+            ["role": "user", "content": trimmed],
+        ]
+
+        let result = try await chatAIService.sendMessage(
+            messages: messages,
+            profile: config.profile,
+            model: config.model,
+            timeout: config.timeout,
+            preferences: prefs
+        )
+
+        var translated = result.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 兜底：偶尔模型会用 ```...``` 包裹
+        if translated.hasPrefix("```") {
+            if let firstNewline = translated.firstIndex(of: "\n") {
+                translated = String(translated[translated.index(after: firstNewline)...])
+            }
+            if translated.hasSuffix("```") {
+                translated = String(translated.dropLast(3))
+            }
+            translated = translated.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return translated
+    }
+
     // MARK: - Action Suggestions
-    
+
     /// 生成行动建议
     func generateActionSuggestions(for message: EmailMessage) async throws -> [String] {
         let config = await MainActor.run {

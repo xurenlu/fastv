@@ -517,7 +517,7 @@ enum AIServiceError: LocalizedError {
     case invalidResponse
     case requestFailed(Int, String)
     case networkError(Error)
-    
+
     var errorDescription: String? {
         switch self {
         case .invalidEndpoint:
@@ -529,6 +529,148 @@ enum AIServiceError: LocalizedError {
         case .networkError(let error):
             return "网络错误: \(error.localizedDescription)"
         }
+    }
+}
+
+// MARK: - 流式支持
+
+extension AIServiceAdapter {
+    /// 给请求体加上对应协议的「开启流式」标志
+    func enableStreaming(in body: [String: Any], for profile: AIServiceProfile) -> [String: Any] {
+        var result = body
+        switch profile.protocolType {
+        case .openAI, .azureOpenAI, .someIM, .openRouter, .zhipuAI,
+             .miniMaxCN, .miniMaxGlobal, .custom:
+            result["stream"] = true
+        case .dashScope:
+            let endpoint = profile.effectiveEndpoint.lowercased()
+            let usesOpenAICompatible = endpoint.contains("compatible-mode") || endpoint.contains("/chat/completions")
+            if usesOpenAICompatible {
+                result["stream"] = true
+                // DashScope 兼容模式下需要 stream_options.include_usage 才有 usage 信息，这里不强制
+            } else {
+                // DashScope 原生需要 X-DashScope-SSE: enable 头，且 incremental_output 控制是否增量
+                var parameters = (result["parameters"] as? [String: Any]) ?? [:]
+                parameters["incremental_output"] = true
+                result["parameters"] = parameters
+            }
+        case .claude:
+            result["stream"] = true
+        case .gemini:
+            // Gemini 走原生流式端点（generateContent → streamGenerateContent），由 URL 控制；body 不需要变
+            break
+        case .ollama:
+            // Ollama: stream 默认就是 true，显式置为 true 以防被前面 buildRequestBody 设为 false
+            result["stream"] = true
+        }
+        return result
+    }
+
+    /// 流式调用专用的 URL：Gemini / DashScope 原生需要换路径或加查询参数
+    func buildStreamURL(for profile: AIServiceProfile, model: String? = nil) throws -> URL {
+        let url = try buildAPIURL(for: profile, useChatCompletions: true, model: model)
+        switch profile.protocolType {
+        case .gemini:
+            // 把 :generateContent 改成 :streamGenerateContent，并带 alt=sse
+            var absolute = url.absoluteString
+            if absolute.contains(":generateContent") {
+                absolute = absolute.replacingOccurrences(of: ":generateContent", with: ":streamGenerateContent")
+            }
+            if !absolute.contains("alt=sse") {
+                absolute += absolute.contains("?") ? "&alt=sse" : "?alt=sse"
+            }
+            return URL(string: absolute) ?? url
+        default:
+            return url
+        }
+    }
+
+    /// 流式调用要补的请求头（SSE）
+    func buildStreamHeaders(for profile: AIServiceProfile) -> [String: String] {
+        var headers = buildRequestHeaders(for: profile)
+        headers["Accept"] = "text/event-stream"
+        if profile.protocolType == .dashScope {
+            let endpoint = profile.effectiveEndpoint.lowercased()
+            let usesOpenAICompatible = endpoint.contains("compatible-mode") || endpoint.contains("/chat/completions")
+            if !usesOpenAICompatible {
+                headers["X-DashScope-SSE"] = "enable"
+            }
+        }
+        return headers
+    }
+
+    /// 解析一段 SSE chunk（已剥掉 "data: " 前缀的 JSON 字符串），返回新增的文本增量。
+    /// 流式结束/无内容时返回空字符串。Gemini/Ollama 用每行一个 JSON 的形式，也走这里。
+    func parseStreamChunk(_ jsonString: String, for profile: AIServiceProfile) -> String {
+        let trimmed = jsonString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+        if trimmed == "[DONE]" { return "" }
+        guard let data = trimmed.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return ""
+        }
+
+        switch profile.protocolType {
+        case .openAI, .azureOpenAI, .someIM, .openRouter, .zhipuAI,
+             .miniMaxCN, .miniMaxGlobal, .custom:
+            return extractOpenAIDelta(from: json)
+        case .dashScope:
+            let endpoint = profile.effectiveEndpoint.lowercased()
+            if endpoint.contains("compatible-mode") || endpoint.contains("/chat/completions") {
+                return extractOpenAIDelta(from: json)
+            }
+            // 原生 DashScope：output.text 或 output.choices[0].message.content（开 incremental_output 后是 delta）
+            if let output = json["output"] as? [String: Any] {
+                if let text = output["text"] as? String { return text }
+                if let choices = output["choices"] as? [[String: Any]],
+                   let first = choices.first,
+                   let message = first["message"] as? [String: Any] {
+                    if let content = message["content"] as? String { return content }
+                    if let contentArr = message["content"] as? [[String: Any]] {
+                        return contentArr.compactMap { $0["text"] as? String }.joined()
+                    }
+                }
+            }
+            return ""
+        case .claude:
+            // Claude SSE：每个事件是 {"type": "content_block_delta", "delta": {"type":"text_delta","text": "..."}}
+            if let type = json["type"] as? String,
+               type == "content_block_delta",
+               let delta = json["delta"] as? [String: Any],
+               let text = delta["text"] as? String {
+                return text
+            }
+            return ""
+        case .gemini:
+            // Gemini 流式：candidates[0].content.parts[0].text
+            if let candidates = json["candidates"] as? [[String: Any]],
+               let first = candidates.first,
+               let content = first["content"] as? [String: Any],
+               let parts = content["parts"] as? [[String: Any]] {
+                return parts.compactMap { $0["text"] as? String }.joined()
+            }
+            return ""
+        case .ollama:
+            // Ollama 流式：每行一个 JSON，字段 response
+            return (json["response"] as? String) ?? ""
+        }
+    }
+
+    private func extractOpenAIDelta(from json: [String: Any]) -> String {
+        guard let choices = json["choices"] as? [[String: Any]],
+              let first = choices.first else { return "" }
+        if let delta = first["delta"] as? [String: Any] {
+            if let content = delta["content"] as? String { return content }
+            if let arr = delta["content"] as? [[String: Any]] {
+                return arr.compactMap { $0["text"] as? String }.joined()
+            }
+        }
+        // 个别中转站不严格走 delta，会直接给完整 message
+        if let message = first["message"] as? [String: Any],
+           let content = message["content"] as? String {
+            return content
+        }
+        return ""
     }
 }
 

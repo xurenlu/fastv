@@ -10,8 +10,8 @@ fastv（row1）定位为 macOS 上的个人 AI 助手，核心交互是低打扰
 - AI 语音优化：AI 快捷键可对转写文本进行口语化清理、标点补全和错字修正。
 - AI 上下文回改：识别到“修改上一句”“润色这句”“重写”等语音指令时，读取当前 text input / textarea 的内容，只回改选中文本或光标前最近一句。
 - 智能分段转写：长语音输入时按停顿后台转写，松开后合并输出。
-- 会议记录：支持录音、转写、摘要与导出。
-- AI 服务配置：支持本地 Ollama 与 OpenAI 兼容接口，按场景绑定不同模型。
+- 会议记录：支持录音、转写、摘要与导出；录音同时 AI 流式生成「图文并茂」的结构化 Markdown 文档（要点列表、表格、勾选框行动项、mermaid 思维导图）。
+- AI 服务配置：支持本地 Ollama、OpenAI、Claude、Gemini、DashScope、智谱、MiniMax、OpenRouter 等多种协议；可注册多个 Provider，并按场景（语音输入优化 / 会议转写修订 / 会议摘要 / 会议图文文档 / Todo / AI 聊天）分别绑定不同模型。
 - 邮件、聊天、Todo、视频工具和 MicroAPP 工具集合。
 
 ## 待完成问题
@@ -19,10 +19,28 @@ fastv（row1）定位为 macOS 上的个人 AI 助手，核心交互是低打扰
 - 增加针对常见浏览器 textarea、原生 NSTextView、Electron 输入框的端到端回归测试。
 - 为 AI 上下文回改补充更细粒度的用户提示，例如回写失败时提示当前应用不支持 Accessibility 回写。
 - 梳理现有硬编码文案，逐步统一到本地化资源。
-- 继续拆分超长 Swift 文件，降低维护成本。
+- IMAP IDLE 当前最小可用版只对默认账号 INBOX 监听，未来可扩到全部启用账号 + 用户开关；状态徽章未来加 NSPopover 详情面板（包含最近一次推送时间 / 重连次数）。
+- 多选批量操作（archive / spam / delete）现在是串行 `await` 单条处理；账号内可并行化以提升大批量场景的体验。
+- 邮件正文 WebView 渲染未来可加入 prefers-color-scheme 自适应深色 + 系统字体回退。
+- IDLE 长连接的"最近 PUSH 间隔过长"自检（比如 12h 没有 EXISTS 也没有错误），目前没有兜底，长期跑可考虑加自检并主动 NOOP。
 
 ## 版本记录
 
+- `1.4.3-rc5`：rc4 的「正文加载失败 + 重试按钮」收尾。重试按钮先 `loadFolders` 再 `loadMessageBody`，按钮行为对得上文案；`loadMessageBody` 在 folder 解析失败后扫 `EmailStore.messages` 找同账号同 messageId 的副本借用正文（覆盖 Gmail INBOX + All Mail 双份场景），避免 `folder_id` 被 `ON DELETE SET NULL` 清空后整封邮件死锁。
+- `1.4.3-rc4`：修邮件正文「正在加载正文...」永远转圈的 bug — 两条卡死路径同时堵：(1)「所有邮件」聚合视图 picked 到 ViewModel.folders 没缓存的文件夹时，原本静默 return 不写状态，现在先到 `EmailStore.accounts` 全量文件夹兜底再找，找不到才写失败态；(2) `fetchMessageBody` 加 45s 超时（`withThrowingTaskGroup` + 计时子任务），超时抛 `EmailServiceError.timedOut`。新增 `bodyLoadFailures` 字典与 `retryLoadMessageBody`，UI 失败态展示橙色三角 + 错误原因 + 重试按钮。
+- `1.4.3-rc3`：修翻译时 CSS 被当正文翻译的 bug — `<style>` / `<script>` / `<head>` / 注释 / DOCTYPE 标签整段（含内容）剥离；数字字符引用还原；空白压缩。新增 14 个翻译剥离单测。
+- `1.4.3-rc2`：自查 + 单测 + 补漏。给 stripRemoteImageSources 写 21 个单测一次跑挂 13 个，逼出隐私拦截的覆盖盲区，补：无引号 src / `<picture><source>` / `<input type=image>` / `<video poster>` / `<iframe>` / `<embed>` / `<object>` / `<link rel=stylesheet>` / `background:url 短写法` / `<style>` 内 `@import` 与 url(http) 全部挡掉；早退优化（无 http 直接返回）。延迟标读边界补全（selectAccount 取消）；IDLE statuses 删账号时清。
+- `1.4.3-rc1`：邮件隐私加固两件套。延迟标已读（默认 3 秒，可调 1/3/5/10/立即/仅手动），换邮件自动取消，杜绝键盘浏览时一路误标；真正挡远程图片 + 追踪像素 —— 注入 HTML 前把外链 `<img src>` / `srcset` 改名为 `data-original-src`，WebKit 不再发起请求，1x1 透明追踪像素失效；其余图片显示"🖼 图片已被隐私保护挡住"占位框，点"显示图片"重新注入后图片正常加载。
+- `1.4.2-rc4`：修「所有邮件」启动几秒后列表突然只剩 2 封的 bug。aggregator 改走 DB 直查（新增 `EmailStore.fetchAggregateMessagesFromDatabase`），列表与侧栏数字同源，IMAP 同步 / IDLE 推送 / 后台任务怎么折腾内存 dict 都不会再让列表变少。
+- `1.4.2-rc3`：修「所有邮件」侧栏数字与列表不一致（14 vs 2）—— `showAllMessages` 现在先调 `EmailStore.loadAllFoldersForAggregateView` 把账号下所有非 spam/trash/drafts 文件夹从 DB 并发加载进内存，再 aggregator；顺带刷新各 folder 的 message 数缓存。主菜单侧边栏 tab 的 icon 左 padding 从 6 → 14，紫色选中竖条与 icon 之间留出视觉呼吸感。
+- `1.4.2-rc2`：复审本轮 IDLE / 附件 / 移动改动并修 P0/P1。IDLE 取消路径补 DONE 再 disconnect；onNewMessage 改 NotificationCenter（修跨 actor 数据竞争 + 多 VM 兼容）；服务器不支持 IDLE 时停止 runLoop 不反复重连；spam / restore 合并到 moveMessageInMemory 单次写库；移动保留 uid；MIME 解析跳过 preamble / epilogue；附件解码降级到 isoLatin1 + 文件名白名单安全化；大邮件截断时附件元信息走全量解析。同时把 UI 推到"酷炫"档：邮件详情 hero header 渐变玻璃卡片、列表行选中竖条 + 蓝点 + chip 角标、toolbar IDLE 状态徽章带呼吸光晕。
+- `1.4.2-rc1`：邮件 IMAP IDLE 长连接（默认账号 INBOX 收到新邮件立即推送刷新，25 分钟续期 + 异常指数退避重连）；附件按 MIME part 真实下载（IMAP `BODY.PEEK[<part>]`，按 `Content-Transfer-Encoding` 解码，老数据有 filename 匹配回退）；邮件归档 / 移动 / 标记垃圾 / 取消垃圾后立即从源文件夹移除并加入目标文件夹（新增 `EmailStore.moveMessageInMemory`），不再等下次同步。
+- `1.4.1-rc1`：邮件 IMAP 操作真实现（标星 / 取消标星 / 删除 / 移动走 LibEtPan 真命令，含 COPY+EXPUNGE 模拟 MOVE 与中文文件夹 Modified UTF-7 编码）；新增搜索 / 加载 generation 序列号校验，旧任务不再覆盖新文件夹/新搜索词的 UI 结果；新增超大邮件正文保护（>10MB 截断 + UI 提示横幅）；EmailViewModel 按 AIPolish / Translate / Compose 三段拆为 extension 文件，主文件 3302 → 2443 行脱离 CLAUDE.md 3000 红线。
+- `1.4.0-rc4`：邮件可靠性加固。`EmailService.backgroundSyncTasks` 全部访问改走带 NSLock 的 helper（修复多账号并发同步可能崩溃 / 泄漏 Task 句柄的隐患）；删除账号时同步取消该账号的后台同步任务；AI 翻译 / 排版优化的取消路径不再覆写已切回的原文缓存；`sendMessage` 与正文合并日志去除收件人 / 主题 / 附件名等明文敏感信息。
+- `1.4.0-rc3`：邮件详情新增 AI 翻译按钮（点一次译为中文，再点切回原文，译文按消息 id 缓存）；新增 docs/code-review-2026-06.md 体检报告；清理 5 处死代码 + 4 个废枚举 + 3 个 .backup 文件，并加固 aiScenarioBindings 解码容错。
+- `1.4.0-rc2`：修复工具栏齿轮设置按钮的焦点圈外观问题（`.focusable(false)`）。
+- `1.4.0-rc1`：会议记录新增「实时图文文档」面板，录音过程中 AI 流式输出结构化 Markdown，支持表格、勾选框、mermaid 思维导图；AI 设置新增「会议转写修订」与「会议图文文档」两个独立场景，可分别绑定不同 provider / 模型；统一新增流式（SSE）调用能力，覆盖 OpenAI 兼容、Claude、Gemini、DashScope、Ollama 等协议。
+- `1.3.0-rc6`：优化语音输入响应速度，快捷键按下即预热识别模型，降低录音缓冲延迟，并复用 token 映射减少每次转写的固定开销。
 - `1.3.0-rc5`：修复单元测试宿主退出时 ONNX 语音模型预加载仍在后台初始化导致的崩溃提示，并为启动预加载增加防重入保护。
 - `1.3.0-rc4`：修复内存监控阈值误判与后台持久化并发隐患，同步测试 target 版本配置，提升长期运行稳定性。
 - `1.3.0-rc3`：新增共享测试 scheme、test plan 和命令行单测脚本，并补齐测试 target 依赖搜索路径，让单元测试可在命令行/CI 稳定发现、构建和执行。

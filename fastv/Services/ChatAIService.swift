@@ -6,6 +6,30 @@
 //
 
 import Foundation
+import OSLog
+
+/// 用于 AI 网络日志的 Logger（生产构建里 .private/.sensitive 字段不会被记录）
+private let chatAILogger = Logger(subsystem: "com.fastv.ai", category: "ChatAI")
+
+/// 把响应体截断 + 抹掉常见敏感字段，用于日志输出（仅 DEBUG 才会调用）
+fileprivate func sanitizeResponseBody(_ raw: String, limit: Int = 500) -> String {
+    var s = raw
+    let patterns = [
+        #""(?:api[_-]?key|authorization|token|access[_-]?token|bearer|cookie|set-cookie)"\s*:\s*"[^"]*""#,
+        #"sk-[A-Za-z0-9_\-]{8,}"#,
+        #"Bearer\s+[A-Za-z0-9_\-\.]+"#,
+    ]
+    for pattern in patterns {
+        if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) {
+            let range = NSRange(s.startIndex..., in: s)
+            s = regex.stringByReplacingMatches(in: s, options: [], range: range, withTemplate: "\"<redacted>\"")
+        }
+    }
+    if s.count > limit {
+        s = String(s.prefix(limit)) + "…(+\(s.count - limit) chars)"
+    }
+    return s
+}
 
 /// 聊天AI服务错误
 enum ChatAIError: LocalizedError {
@@ -176,31 +200,148 @@ class ChatAIService {
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         request.timeoutInterval = effectiveTimeout
         
-        print("💬 [ChatAIService] 发送请求到 AI（超时: \(effectiveTimeout)秒），协议: \(profile.protocolType.displayName)")
-        
+        chatAILogger.log("发送请求到 AI（超时: \(effectiveTimeout, privacy: .public)秒），协议: \(profile.protocolType.displayName, privacy: .public)")
+
         let (data, response) = try await URLSession.shared.data(for: request)
-        
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ChatAIError.invalidResponse
         }
-        
-        print("💬 [ChatAIService] 收到响应，状态码: \(httpResponse.statusCode)")
-        if let responseString = String(data: data, encoding: .utf8) {
-            let preview = responseString.count > 2000 ? String(responseString.prefix(2000)) + "..." : responseString
-            print("💬 [ChatAIService] 响应内容预览: \(preview)")
-        } else {
-            print("💬 [ChatAIService] 响应内容无法解析为字符串")
-        }
-        
+
+        chatAILogger.log("收到响应，状态码: \(httpResponse.statusCode, privacy: .public)，长度: \(data.count, privacy: .public)")
+
         guard httpResponse.statusCode == 200 else {
             let errorMessage = String(data: data, encoding: .utf8) ?? "未知错误"
-            print("❌ [ChatAIService] 请求失败: \(errorMessage)")
+            #if DEBUG
+            chatAILogger.error("请求失败 (\(httpResponse.statusCode, privacy: .public)): \(sanitizeResponseBody(errorMessage), privacy: .public)")
+            #else
+            chatAILogger.error("请求失败 (\(httpResponse.statusCode, privacy: .public))")
+            #endif
             throw ChatAIError.requestFailed(httpResponse.statusCode, errorMessage)
         }
-        
+
         return try adapter.parseResponse(data: data, for: profile)
     }
     
+    /// 流式发送聊天消息（SSE）
+    /// - Parameters:
+    ///   - messages: OpenAI 风格的 messages 数组（method 内部会按协议自动转换）
+    ///   - profile: AI 服务配置
+    ///   - model: 模型名称
+    ///   - timeout: 超时（用于 URLRequest.timeoutInterval）
+    ///   - systemPrompt: 仅 Ollama 等需要 system 字段的协议会用到
+    /// - Returns: 文本增量的异步流。每次 yield 都是「相对上次的新增片段」。
+    ///   失败会抛 ChatAIError；如果远端不支持流式，请改用 sendMessage(...)。
+    func sendMessageStream(
+        messages: [[String: Any]],
+        profile: AIServiceProfile,
+        model: String? = nil,
+        timeout: Double? = nil,
+        systemPrompt: String? = nil,
+        preferences: UserPreferences? = nil
+    ) -> AsyncThrowingStream<String, Error> {
+        let effectiveModel = model ?? profile.defaultModel
+        let effectiveTimeout = timeout ?? profile.timeout
+
+        return AsyncThrowingStream { continuation in
+            let task = Task { @MainActor in
+                do {
+                    let adapter = AIServiceAdapter.shared
+
+                    // DashScope 原生模式要把 messages 里的 String content 拍成 [{text: ...}]
+                    let endpoint = profile.effectiveEndpoint.lowercased()
+                    let usesDashScopeCompatibleMode = endpoint.contains("compatible-mode") || endpoint.contains("/chat/completions")
+                    let convertedMessages: [[String: Any]]
+                    if profile.protocolType == .dashScope && !usesDashScopeCompatibleMode {
+                        convertedMessages = messages.map { msg in
+                            var m = msg
+                            if let content = msg["content"] as? String {
+                                m["content"] = [["text": content]]
+                            }
+                            return m
+                        }
+                    } else {
+                        convertedMessages = messages
+                    }
+
+                    let baseBody = adapter.buildRequestBody(
+                        for: profile,
+                        messages: convertedMessages,
+                        model: effectiveModel,
+                        systemPrompt: systemPrompt,
+                        temperature: preferences?.chatTemperature,
+                        topP: preferences?.chatTopP,
+                        maxTokens: preferences?.chatMaxTokens,
+                        additionalParams: buildAdditionalParams(for: profile, preferences: preferences)
+                    )
+                    let body = adapter.enableStreaming(in: baseBody, for: profile)
+
+                    let url = try adapter.buildStreamURL(for: profile, model: effectiveModel)
+                    var request = URLRequest(url: url)
+                    request.httpMethod = "POST"
+                    request.timeoutInterval = effectiveTimeout
+                    for (k, v) in adapter.buildStreamHeaders(for: profile) {
+                        request.setValue(v, forHTTPHeaderField: k)
+                    }
+                    request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+                    let (bytes, response) = try await URLSession.shared.bytes(for: request)
+                    guard let http = response as? HTTPURLResponse else {
+                        throw ChatAIError.invalidResponse
+                    }
+                    guard http.statusCode == 200 else {
+                        // 错误响应是普通 JSON / 文本，攒一下吐出去
+                        var errorBuffer = Data()
+                        for try await byte in bytes {
+                            errorBuffer.append(byte)
+                            if errorBuffer.count > 4096 { break }
+                        }
+                        let errMsg = String(data: errorBuffer, encoding: .utf8) ?? "未知错误"
+                        throw ChatAIError.requestFailed(http.statusCode, errMsg)
+                    }
+
+                    var pendingEvent = ""
+                    for try await line in bytes.lines {
+                        if Task.isCancelled { break }
+                        if line.isEmpty {
+                            // 事件结束
+                            if !pendingEvent.isEmpty {
+                                let chunk = adapter.parseStreamChunk(pendingEvent, for: profile)
+                                if !chunk.isEmpty { continuation.yield(chunk) }
+                                pendingEvent = ""
+                            }
+                            continue
+                        }
+                        // SSE 形式："data: {...}"；Ollama / Gemini(alt=sse) 也是这个模式
+                        if line.hasPrefix("data:") {
+                            let payload = line.dropFirst("data:".count).trimmingCharacters(in: .whitespaces)
+                            if payload == "[DONE]" { break }
+                            pendingEvent = payload
+                        } else if line.hasPrefix(":") || line.hasPrefix("event:") || line.hasPrefix("id:") {
+                            // SSE 注释 / 事件名 / id，忽略
+                            continue
+                        } else {
+                            // 没前缀：Ollama 直接吐 JSONL；按一整行解析
+                            let chunk = adapter.parseStreamChunk(line, for: profile)
+                            if !chunk.isEmpty { continuation.yield(chunk) }
+                        }
+                    }
+                    // 收尾，处理没空行结束的最后一段
+                    if !pendingEvent.isEmpty {
+                        let chunk = adapter.parseStreamChunk(pendingEvent, for: profile)
+                        if !chunk.isEmpty { continuation.yield(chunk) }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+    }
+
     /// 构建额外参数
     private func buildAdditionalParams(for profile: AIServiceProfile, preferences: UserPreferences?) -> [String: Any]? {
         guard let prefs = preferences else { return nil }
@@ -219,365 +360,6 @@ class ChatAIService {
         return params.isEmpty ? nil : params
     }
     
-    /// 发送聊天消息（旧版兼容方法）
-    /// - Parameters:
-    ///   - messages: 消息历史（包含当前消息）
-    ///   - endpoint: API 端点
-    ///   - model: 模型名称
-    ///   - apiToken: API Token（可选）
-    ///   - timeout: 超时时间
-    ///   - preferences: 用户偏好设置（用于获取参数）
-    /// - Returns: AI回复内容和思考过程（如果有）
-    func sendMessageLegacy(
-        messages: [[String: Any]],
-        endpoint: String,
-        model: String,
-        apiToken: String?,
-        timeout: TimeInterval = 30.0,
-        preferences: UserPreferences? = nil
-    ) async throws -> (content: String, thinking: String?) {
-        print("💬 [ChatAIService] 开始发送聊天消息（旧版兼容），消息数量: \(messages.count)")
-        
-        let prefs = preferences ?? UserPreferences.shared
-        let isDashScope = isDashScopeEndpoint(endpoint)
-        let supportsThinkingFeature = supportsThinking(model)
-        
-        // 构建 URL
-        let url: URL
-        if isDashScope {
-            // DashScope API：检测是否有附件，决定使用哪个端点
-            let hasMultimodalContent = messages.contains { msg in
-                if let content = msg["content"] as? [[String: Any]] {
-                    return content.contains { item in
-                        item["image"] != nil || item["video"] != nil || item["audio"] != nil ||
-                        item["image_url"] != nil || item["video_url"] != nil || item["audio_url"] != nil
-                    }
-                }
-                return false
-            }
-            
-            if hasMultimodalContent {
-                // 多模态端点
-                guard let multimodalURL = URL(string: "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation") else {
-                    throw ChatAIError.invalidEndpoint
-                }
-                url = multimodalURL
-            } else {
-                // 文本生成端点
-                guard let textURL = URL(string: "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation") else {
-                    throw ChatAIError.invalidEndpoint
-                }
-                url = textURL
-            }
-        } else {
-            // 使用原有的 URL 构建逻辑
-            url = try AITodoAIService.buildAPIURL(endpoint: endpoint)
-        }
-        
-        // 检测 API 类型
-        let apiType = AITodoAIService.detectAPIType(endpoint: endpoint)
-        
-        // 构建请求体
-        let requestBody: [String: Any]
-        
-        if isDashScope {
-            // DashScope 格式
-            var dashScopeMessages: [[String: Any]] = []
-            
-            for msg in messages {
-                let role = msg["role"] as? String ?? "user"
-                var dashScopeMsg: [String: Any] = ["role": role]
-                
-                if let content = msg["content"] as? String {
-                    // 纯文本
-                    dashScopeMsg["content"] = [["text": content]]
-                } else if let contentArray = msg["content"] as? [[String: Any]] {
-                    // 多模态内容：转换为 DashScope 格式
-                    var dashScopeContent: [[String: Any]] = []
-                    
-                    for item in contentArray {
-                        if let text = item["text"] as? String {
-                            dashScopeContent.append(["text": text])
-                        } else if let imageUrl = item["image_url"] as? [String: Any],
-                                  let urlString = imageUrl["url"] as? String {
-                            // 支持 data URL 和普通 URL
-                            dashScopeContent.append(["image": urlString])
-                        } else if let audioUrl = item["audio_url"] as? [String: Any],
-                                  let urlString = audioUrl["url"] as? String {
-                            // 支持 data URL 和普通 URL
-                            dashScopeContent.append(["audio": urlString])
-                        } else if let videoUrl = item["video_url"] as? [String: Any],
-                                  let urlString = videoUrl["url"] as? String {
-                            // DashScope 视频格式：数组形式
-                            dashScopeContent.append(["video": [urlString]])
-                        } else if let image = item["image"] as? String {
-                            // 直接是 image 字段（DashScope 格式）
-                            dashScopeContent.append(["image": image])
-                        } else if let audio = item["audio"] as? String {
-                            // 直接是 audio 字段（DashScope 格式）
-                            dashScopeContent.append(["audio": audio])
-                        } else if let video = item["video"] as? [String] {
-                            // 直接是 video 字段（DashScope 格式，数组）
-                            dashScopeContent.append(["video": video])
-                        }
-                    }
-                    
-                    dashScopeMsg["content"] = dashScopeContent
-                } else {
-                    // 降级为文本
-                    dashScopeMsg["content"] = [["text": ""]]
-                }
-                
-                dashScopeMessages.append(dashScopeMsg)
-            }
-            
-            var requestBodyDict: [String: Any] = [
-                "model": model,
-                "input": [
-                    "messages": dashScopeMessages
-                ]
-            ]
-            
-            // 添加参数
-            var parameters: [String: Any] = [:]
-            
-            if prefs.chatTemperature > 0 {
-                parameters["temperature"] = prefs.chatTemperature
-            }
-            if prefs.chatTopP > 0 {
-                parameters["top_p"] = prefs.chatTopP
-            }
-            if prefs.chatTopK > 0 {
-                parameters["top_k"] = prefs.chatTopK
-            }
-            if prefs.chatMaxTokens > 0 {
-                // 确保 max_tokens 在有效范围内 [1, 8192]
-                let maxTokens = min(max(prefs.chatMaxTokens, 1), 8192)
-                parameters["max_tokens"] = maxTokens
-            }
-            
-            // 默认启用搜索
-            if prefs.chatEnableSearch {
-                parameters["enable_search"] = true
-            }
-            
-            // 如果模型支持 thinking 且用户启用了 thinking
-            if supportsThinkingFeature && prefs.chatEnableThinking {
-                parameters["thinking"] = true
-            }
-            
-            if !parameters.isEmpty {
-                requestBodyDict["parameters"] = parameters
-            }
-            
-            requestBody = requestBodyDict
-        } else if apiType == .openAI {
-            // OpenAI 兼容格式（使用 messages）
-            var openAIBody: [String: Any] = [
-                "model": model,
-                "messages": messages
-            ]
-            
-            // 添加参数
-            if prefs.chatTemperature > 0 {
-                openAIBody["temperature"] = prefs.chatTemperature
-            }
-            if prefs.chatTopP > 0 {
-                openAIBody["top_p"] = prefs.chatTopP
-            }
-            if prefs.chatMaxTokens > 0 {
-                // 确保 max_tokens 在有效范围内 [1, 8192]
-                let maxTokens = min(max(prefs.chatMaxTokens, 1), 8192)
-                openAIBody["max_tokens"] = maxTokens
-            }
-            
-            requestBody = openAIBody
-        } else {
-            // Ollama 格式 - 需要将 messages 转换为 prompt
-            // 提取最后一条用户消息作为 prompt
-            let lastUserMessage = messages.last { msg in
-                (msg["role"] as? String) == "user"
-            }
-            
-            let prompt = if let content = lastUserMessage?["content"] as? String {
-                content
-            } else if let contentArray = lastUserMessage?["content"] as? [[String: Any]],
-                      let firstContent = contentArray.first,
-                      let text = firstContent["text"] as? String {
-                text
-            } else {
-                ""
-            }
-            
-            // 构建 system prompt（如果有）
-            let systemMessages = messages.filter { msg -> Bool in
-                (msg["role"] as? String) == "system"
-            }
-            let systemPrompt = systemMessages.compactMap { msg -> String? in
-                if let content = msg["content"] as? String {
-                    return content
-                }
-                return nil
-            }.joined(separator: "\n")
-            
-            var ollamaBody: [String: Any] = [
-                "model": model,
-                "prompt": prompt,
-                "stream": false
-            ]
-            
-            if !systemPrompt.isEmpty {
-                ollamaBody["system"] = systemPrompt
-            }
-            
-            var options: [String: Any] = [:]
-            if prefs.chatTemperature > 0 {
-                options["temperature"] = prefs.chatTemperature
-            }
-            if prefs.chatTopP > 0 {
-                options["top_p"] = prefs.chatTopP
-            }
-            if !options.isEmpty {
-                ollamaBody["options"] = options
-            }
-            
-            requestBody = ollamaBody.compactMapValues { $0 }
-        }
-        
-        // 构建请求
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        if let token = apiToken, !token.isEmpty {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-        request.timeoutInterval = timeout
-        
-        // 调试：打印请求体（仅打印消息数量，不打印完整内容以避免日志过长）
-        if let messagesArray = requestBody["messages"] as? [[String: Any]] {
-            print("💬 [ChatAIService] 发送请求到 AI（超时: \(timeout)秒），消息数量: \(messagesArray.count)，API类型: \(apiType == .openAI ? "OpenAI" : "Ollama")")
-            // 打印每条消息的摘要
-            for (index, msg) in messagesArray.enumerated() {
-                let role = msg["role"] as? String ?? "unknown"
-                if let content = msg["content"] as? String {
-                    print("  - 消息 \(index): role=\(role), content长度=\(content.count)")
-                } else if let contentArray = msg["content"] as? [[String: Any]] {
-                    print("  - 消息 \(index): role=\(role), content类型=数组(\(contentArray.count)项)")
-                } else {
-                    print("  - 消息 \(index): role=\(role), content类型=\(type(of: msg["content"]))")
-                }
-            }
-        } else {
-            print("💬 [ChatAIService] 发送请求到 AI（超时: \(timeout)秒），API类型: \(apiType == .openAI ? "OpenAI" : "Ollama")")
-        }
-        
-        // 发送请求
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        // 检查响应状态
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw ChatAIError.invalidResponse
-        }
-        
-        print("💬 [ChatAIService] 收到响应，状态码: \(httpResponse.statusCode)")
-        
-        guard httpResponse.statusCode == 200 else {
-            let errorMessage = String(data: data, encoding: .utf8) ?? "未知错误"
-            print("❌ [ChatAIService] 请求失败: \(errorMessage)")
-            throw ChatAIError.requestFailed(httpResponse.statusCode, errorMessage)
-        }
-        
-        // 解析响应
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            let rawString = String(data: data, encoding: .utf8) ?? "无法转换为字符串"
-            print("❌ [ChatAIService] 无法解析响应 JSON")
-            print("📄 [ChatAIService] 原始响应内容: \(rawString)")
-            throw ChatAIError.invalidResponse
-        }
-        
-        // 打印完整的 JSON 响应（用于调试）
-        if let jsonData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
-           let jsonString = String(data: jsonData, encoding: .utf8) {
-            print("📄 [ChatAIService] 完整响应 JSON:\n\(jsonString)")
-        }
-        
-        let responseText: String
-        var thinking: String? = nil
-        
-        if isDashScope {
-            // DashScope 格式：有两种可能的响应格式
-            // 1. 文本生成端点：output.text
-            // 2. 聊天端点：output.choices[0].message.content
-            if let output = json["output"] as? [String: Any] {
-                // 先检查文本生成端点格式（output.text）
-                if let text = output["text"] as? String {
-                    responseText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                }
-                // 再检查聊天端点格式（output.choices[0].message.content）
-                else if let choices = output["choices"] as? [[String: Any]],
-                        let firstChoice = choices.first,
-                        let message = firstChoice["message"] as? [String: Any] {
-                    
-                    // 提取 content
-                    if let contentArray = message["content"] as? [[String: Any]] {
-                        // 多模态响应：提取文本部分
-                        var textParts: [String] = []
-                        for item in contentArray {
-                            if let text = item["text"] as? String {
-                                textParts.append(text)
-                            }
-                        }
-                        responseText = textParts.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-                    } else if let content = message["content"] as? String {
-                        responseText = content.trimmingCharacters(in: .whitespacesAndNewlines)
-                    } else {
-                        print("❌ [ChatAIService] DashScope 格式响应解析失败：无法找到 content")
-                        print("📄 [ChatAIService] message 对象内容: \(message)")
-                        throw ChatAIError.invalidResponse
-                    }
-                    
-                    // 提取 thinking（如果有）
-                    if let thinkingContent = message["thinking"] as? String {
-                        thinking = thinkingContent.trimmingCharacters(in: .whitespacesAndNewlines)
-                    }
-                } else {
-                    print("❌ [ChatAIService] DashScope 格式响应解析失败：output 中没有 text 或 choices")
-                    print("📄 [ChatAIService] output 对象内容: \(output)")
-                    throw ChatAIError.invalidResponse
-                }
-            } else {
-                print("❌ [ChatAIService] DashScope 格式响应解析失败：json 中没有 output 字段")
-                print("📄 [ChatAIService] json 对象内容: \(json)")
-                throw ChatAIError.invalidResponse
-            }
-        } else if apiType == .openAI {
-            // OpenAI 格式：响应在 choices[0].message.content
-            if let choices = json["choices"] as? [[String: Any]],
-               let firstChoice = choices.first,
-               let message = firstChoice["message"] as? [String: Any],
-               let content = message["content"] as? String {
-                responseText = content.trimmingCharacters(in: .whitespacesAndNewlines)
-            } else {
-                print("❌ [ChatAIService] OpenAI 格式响应解析失败")
-                print("📄 [ChatAIService] json 对象内容: \(json)")
-                throw ChatAIError.invalidResponse
-            }
-        } else {
-            // Ollama 格式：响应在 response 字段
-            guard let responseTextValue = json["response"] as? String else {
-                print("❌ [ChatAIService] Ollama 格式响应解析失败")
-                print("📄 [ChatAIService] json 对象内容: \(json)")
-                throw ChatAIError.invalidResponse
-            }
-            responseText = responseTextValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        
-        print("✅ [ChatAIService] AI 回复成功，长度: \(responseText.count)" + (thinking != nil ? "，思考过程长度: \(thinking!.count)" : ""))
-        return (content: responseText, thinking: thinking)
-    }
     
     /// 构建多模态消息内容（OpenAI 格式）
     /// - Parameters:
@@ -768,7 +550,7 @@ class ChatAIService {
         apiToken: String?,
         timeout: TimeInterval = 30.0
     ) async throws -> String {
-        print("📝 [ChatAIService] 开始生成聊天总结，消息数量: \(messages.count)")
+        chatAILogger.log("开始生成聊天总结，消息数量: \(messages.count, privacy: .public)")
         
         // 只使用用户和助手消息，过滤掉系统消息
         let conversationMessages = messages.filter { $0.role == .user || $0.role == .assistant }
@@ -846,7 +628,7 @@ class ChatAIService {
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         request.timeoutInterval = timeout
         
-        print("📝 [ChatAIService] 发送总结生成请求...")
+        chatAILogger.log("发送总结生成请求")
         
         // 发送请求
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -858,7 +640,11 @@ class ChatAIService {
         
         guard httpResponse.statusCode == 200 else {
             let errorMessage = String(data: data, encoding: .utf8) ?? "未知错误"
-            print("❌ [ChatAIService] 总结生成失败: \(errorMessage)")
+            #if DEBUG
+            chatAILogger.error("总结生成失败: \(sanitizeResponseBody(errorMessage), privacy: .public)")
+            #else
+            chatAILogger.error("总结生成失败 (\(httpResponse.statusCode, privacy: .public))")
+            #endif
             throw ChatAIError.requestFailed(httpResponse.statusCode, errorMessage)
         }
         
@@ -885,7 +671,7 @@ class ChatAIService {
             summaryText = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         
-        print("✅ [ChatAIService] 总结生成成功: \(summaryText)")
+        chatAILogger.log("总结生成成功，长度: \(summaryText.count, privacy: .public)（内容已脱敏不入日志）")
         return summaryText
     }
     
@@ -929,7 +715,7 @@ class ChatAIService {
         apiToken: String?,
         timeout: TimeInterval = 30.0
     ) async throws -> String {
-        print("📝 [ChatAIService] 开始生成聊天标题，消息数量: \(messages.count)")
+        chatAILogger.log("开始生成聊天标题，消息数量: \(messages.count, privacy: .public)")
         
         // 只使用用户和助手消息，过滤掉系统消息
         let conversationMessages = messages.filter { $0.role == .user || $0.role == .assistant }
@@ -1007,7 +793,7 @@ class ChatAIService {
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         request.timeoutInterval = timeout
         
-        print("📝 [ChatAIService] 发送标题生成请求...")
+        chatAILogger.log("发送标题生成请求")
         
         // 发送请求
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -1019,7 +805,11 @@ class ChatAIService {
         
         guard httpResponse.statusCode == 200 else {
             let errorMessage = String(data: data, encoding: .utf8) ?? "未知错误"
-            print("❌ [ChatAIService] 标题生成失败: \(errorMessage)")
+            #if DEBUG
+            chatAILogger.error("标题生成失败: \(sanitizeResponseBody(errorMessage), privacy: .public)")
+            #else
+            chatAILogger.error("标题生成失败 (\(httpResponse.statusCode, privacy: .public))")
+            #endif
             throw ChatAIError.requestFailed(httpResponse.statusCode, errorMessage)
         }
         
@@ -1057,7 +847,7 @@ class ChatAIService {
         // 限制标题长度（最多30个字符）
         let finalTitle = String(cleanedTitle.prefix(30))
         
-        print("✅ [ChatAIService] 标题生成成功: \(finalTitle)")
+        chatAILogger.log("标题生成成功，长度: \(finalTitle.count, privacy: .public)")
         return finalTitle
     }
 }

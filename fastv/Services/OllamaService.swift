@@ -592,32 +592,6 @@ class OllamaService {
         return (optimizedText, duration)
     }
     
-    /// 测试文本优化功能（旧版兼容方法）
-    /// - Parameters:
-    ///   - endpoint: API 端点地址
-    ///   - model: 使用的模型名称
-    ///   - apiToken: API Token（可选）
-    ///   - timeout: 超时时间（秒）
-    ///   - systemPrompt: 系统提示词
-    /// - Returns: (优化后的文本, 耗时)
-    func testOptimizationLegacy(
-        endpoint: String,
-        model: String,
-        apiToken: String?,
-        timeout: TimeInterval,
-        systemPrompt: String
-    ) async throws -> (optimizedText: String, duration: TimeInterval) {
-        let profile = AIServiceProfile(
-            name: "测试配置",
-            protocolType: .ollama,
-            endpoint: endpoint,
-            apiKey: apiToken ?? "",
-            defaultModel: model,
-            timeout: timeout
-        )
-        return try await testOptimization(profile: profile, systemPrompt: systemPrompt)
-    }
-    
     /// 获取可用的模型列表（仅名称，兼容旧调用）
     func fetchModels(endpoint: String, apiToken: String?) async throws -> [String] {
         let models = try await fetchModelsWithDetails(endpoint: endpoint, apiToken: apiToken)

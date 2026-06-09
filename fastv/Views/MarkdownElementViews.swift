@@ -66,14 +66,21 @@ struct MarkdownElementView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 
         case .codeBlock(let language):
-            MarkdownCodeBlockView(
-                code: element.content,
-                language: language,
-                isTransparentBackground: isTransparentBackground,
-                elementBackground: self.elementBackground,
-                secondaryTextColor: self.secondaryTextColor,
-                codeTextColor: self.codeTextColor
-            )
+            if let lang = language, lang.lowercased() == "mermaid" {
+                MermaidBlockView(
+                    source: element.content,
+                    isTransparentBackground: isTransparentBackground
+                )
+            } else {
+                MarkdownCodeBlockView(
+                    code: element.content,
+                    language: language,
+                    isTransparentBackground: isTransparentBackground,
+                    elementBackground: self.elementBackground,
+                    secondaryTextColor: self.secondaryTextColor,
+                    codeTextColor: self.codeTextColor
+                )
+            }
             
         case .bulletList, .numberedList:
             VStack(alignment: .leading, spacing: 4) {

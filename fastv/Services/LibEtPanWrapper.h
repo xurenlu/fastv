@@ -54,8 +54,48 @@ NS_ASSUME_NONNULL_BEGIN
 /// 获取邮件内容
 - (nullable NSData *)fetchMessageBodyWithUID:(uint32_t)uid error:(NSError **)error;
 
+/// 获取单个 MIME part 的原始字节（按 IMAP BODY[<section>] 抓取）。
+/// partPath 形如 "2"、"1.2"，对应 EmailContentDecoder.parseAttachments 给出的 IMAP body section。
+/// 返回的字节仍是 Content-Transfer-Encoding 编码后的原始内容（base64 / quoted-printable / 8bit），由调用方负责解码。
+- (nullable NSData *)fetchMessagePartWithUID:(uint32_t)uid
+                                     partPath:(NSString *)partPath
+                                        error:(NSError **)error;
+
+/// 服务器是否声明支持 IDLE（CAPABILITY 里包含 IDLE）
+- (BOOL)hasIdleCapability;
+
+/// 进入 IDLE 状态（同步阻塞，直到服务器接收 `+ idling` 返回）。
+/// 调用前需先 selectFolder:。后续读 untagged response 应通过 idleFd 上的 select/poll 监听可读事件。
+- (BOOL)idleWithError:(NSError **)error;
+
+/// 退出 IDLE 状态。会消化 IDLE 期间缓存的 untagged response（EXISTS / RECENT / EXPUNGE 等）。
+- (BOOL)idleDoneWithError:(NSError **)error;
+
+/// 当前 IDLE 模式下的底层 socket fd，调用方用 select/poll 监听可读以判断有新事件。
+- (int)idleFd;
+
+/// 发送一次 NOOP 命令（如果服务器不支持 IDLE，可以靠定时 NOOP 维持轮询）
+- (BOOL)noopWithError:(NSError **)error;
+
 /// 标记为已读
 - (BOOL)markAsReadWithUID:(uint32_t)uid error:(NSError **)error;
+
+/// 标记为未读（移除 \Seen 标志）
+- (BOOL)markAsUnreadWithUID:(uint32_t)uid error:(NSError **)error;
+
+/// 添加 \Flagged 标志（IMAP 星标）
+- (BOOL)addFlaggedWithUID:(uint32_t)uid error:(NSError **)error;
+
+/// 移除 \Flagged 标志
+- (BOOL)removeFlaggedWithUID:(uint32_t)uid error:(NSError **)error;
+
+/// 标记为已删除并 EXPUNGE，将邮件从当前 mailbox 物理移除
+- (BOOL)deleteAndExpungeWithUID:(uint32_t)uid error:(NSError **)error;
+
+/// 将邮件 MOVE 到目标文件夹；若服务器不支持 MOVE 扩展则降级为 COPY + STORE +DELETED + EXPUNGE
+- (BOOL)moveMessageWithUID:(uint32_t)uid
+            toFolder:(NSString *)destinationFolder
+                error:(NSError **)error;
 
 /// 断开连接
 - (void)disconnect;

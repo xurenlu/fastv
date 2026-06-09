@@ -134,6 +134,7 @@ struct ContentView: View {
                                 Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
                             }
                             .help(NSLocalizedString("settings", comment: ""))
+                            .focusable(false)
                         }
                     }
             case .meeting:
@@ -144,6 +145,7 @@ struct ContentView: View {
                                 Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
                             }
                             .help(NSLocalizedString("settings", comment: ""))
+                            .focusable(false)
                         }
                     }
             case .aiTodo:
@@ -154,6 +156,7 @@ struct ContentView: View {
                                 Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
                             }
                             .help(NSLocalizedString("settings", comment: ""))
+                            .focusable(false)
                         }
                     }
             case .aiChat:
@@ -164,6 +167,7 @@ struct ContentView: View {
                                 Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
                             }
                             .help(NSLocalizedString("settings", comment: ""))
+                            .focusable(false)
                         }
                     }
             case .email:
@@ -174,6 +178,7 @@ struct ContentView: View {
                                 Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
                             }
                             .help(NSLocalizedString("settings", comment: ""))
+                            .focusable(false)
                         }
                     }
             }
@@ -208,23 +213,26 @@ struct SidebarItemRow: View {
     @State private var isHovered = false
     
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             // 图标
             Image(systemName: item.icon)
                 .font(.system(size: 15, weight: isSelected ? .semibold : .regular))
                 .foregroundStyle(isSelected ? .primary : .secondary)
                 .frame(width: 18, alignment: .center)
                 .symbolEffect(.bounce, value: isSelected)
-            
+
             // 文字
             Text(item.displayName)
                 .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
                 .foregroundStyle(isSelected ? .primary : .secondary)
                 .lineLimit(1)
-            
+
             Spacer(minLength: 4)
         }
-        .padding(.horizontal, 6)
+        // 左侧留给紫色竖条 + gap 的空间（竖条 leading 4 + 宽 3 + gap ≈ 7pt），
+        // 这样选中时竖线与 icon 视觉上明显分开，避免"竖线贴 icon"。
+        .padding(.leading, 14)
+        .padding(.trailing, 6)
         .padding(.vertical, 5)
         .background {
             // 选中：左侧竖条 + 极淡背景，避免整块圆角矩形像「边框」

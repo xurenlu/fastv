@@ -143,6 +143,140 @@ struct EmailBodyWebViewRepresentable: NSViewRepresentable {
         return EmailBodyWebViewRepresentable(htmlBody: "", showImages: false, onHeightChange: { _ in })
             .injectEmailStyles(into: html, showImages: showImages)
     }
+
+    /// 把 HTML 里所有指向**远程** URL（http/https/protocol-relative）的资源加载点位
+    /// 全部改名 / 中和，让 WebKit 在渲染时不发起任何外链请求：追踪像素（1x1 透明 gif）、
+    /// newsletter 里 div 背景图、`<picture>` 响应式 source、`<input type=image>`、
+    /// `<video poster>`、`<iframe>` / `<embed>`、`<link rel="stylesheet">`、
+    /// `<style>` 里的 `@import url(...)` / `background[-image]:url(...)` 等等。
+    ///
+    /// 不动：`cid:xxx` 内嵌附件图、`data:image/...` 已编码图、本地相对路径。
+    /// 用户点"显示图片"后 showImages=true 时这套替换全部跳过，HTML 原样下发。
+    nonisolated static func stripRemoteImageSources(_ html: String) -> String {
+        // 早退：邮件正文里完全没有 http / // 资源，直接返回。
+        // 即使是大邮件，indexOf 也比跑 7 个正则便宜得多。
+        if !html.contains("http") && !html.contains("//") {
+            return html
+        }
+
+        var out = html
+
+        // 远程协议片段，用在多处正则里
+        let remoteProto = "(?:https?:|//)"
+
+        // —— 1) <img src=...> 全面挡：兼容引号 / 单引号 / 无引号 ——
+        applyRegex(
+            to: &out,
+            // 引号包裹
+            pattern: #"(<img\b[^>]*?)\ssrc\s*=\s*(['"])(\s*\#(remoteProto)[^'"]*)\2"#,
+            template: "$1 data-original-src=$2$3$2"
+        )
+        applyRegex(
+            to: &out,
+            // 无引号：`<img src=http://no-quote/>` —— URL 到下一个空白或 `>` 为止
+            pattern: #"(<img\b[^>]*?)\ssrc\s*=\s*(\#(remoteProto)[^\s>]+)"#,
+            template: "$1 data-original-src=\"$2\""
+        )
+
+        // —— 2) <img srcset>（响应式） ——
+        applyRegex(
+            to: &out,
+            pattern: #"(<img\b[^>]*?)\ssrcset\s*=\s*(['"])([^'"]*)\2"#,
+            template: "$1 data-original-srcset=$2$3$2"
+        )
+
+        // —— 3) <picture><source srcset|src>，行为同 img ——
+        applyRegex(
+            to: &out,
+            pattern: #"(<source\b[^>]*?)\s(srcset|src)\s*=\s*(['"])([^'"]*)\3"#,
+            template: "$1 data-original-$2=$3$4$3"
+        )
+
+        // —— 4) <input type="image" src=...> 也会发 GET 请求 ——
+        applyRegex(
+            to: &out,
+            pattern: #"(<input\b[^>]*?type\s*=\s*['"]?image['"]?[^>]*?)\ssrc\s*=\s*(['"])(\s*\#(remoteProto)[^'"]*)\2"#,
+            template: "$1 data-original-src=$2$3$2"
+        )
+
+        // —— 5) <video poster=...> 海报图（同样外链请求） ——
+        applyRegex(
+            to: &out,
+            pattern: #"(<video\b[^>]*?)\sposter\s*=\s*(['"])(\s*\#(remoteProto)[^'"]*)\2"#,
+            template: "$1 data-original-poster=$2$3$2"
+        )
+
+        // —— 6) <iframe src> / <embed src> / <object data> —— 直接砍 src ——
+        applyRegex(
+            to: &out,
+            pattern: #"(<(?:iframe|embed)\b[^>]*?)\ssrc\s*=\s*(['"])(\s*\#(remoteProto)[^'"]*)\2"#,
+            template: "$1 data-original-src=$2$3$2"
+        )
+        applyRegex(
+            to: &out,
+            pattern: #"(<object\b[^>]*?)\sdata\s*=\s*(['"])(\s*\#(remoteProto)[^'"]*)\2"#,
+            template: "$1 data-original-data=$2$3$2"
+        )
+
+        // —— 7) <link rel="stylesheet"> 远程样式表，会发请求且可能内嵌 @import 链 ——
+        applyRegex(
+            to: &out,
+            pattern: #"(<link\b[^>]*?)\shref\s*=\s*(['"])(\s*\#(remoteProto)[^'"]*)\2"#,
+            template: "$1 data-original-href=$2$3$2"
+        )
+
+        // —— 8) inline style="...background[-image]:url(http...);..." ——
+        // 兼容 `background:` 短写法与 `background-image:`；保留 url() 之外的属性。
+        applyRegex(
+            to: &out,
+            pattern: #"background(-image)?\s*:\s*url\((['"]?)(\s*\#(remoteProto)[^)'"]*)\2\)"#,
+            template: "background$1:none /* fastv-blocked */"
+        )
+
+        // —— 9) <style>...</style> 内部的 @import url(http...) 与 url(http...) ——
+        // 直接把 url(http…) 整体改成 url(about:blank)，避免 CSS 引擎发起请求。
+        // 仅在 <style> 标签内做这个替换，避免误伤其它地方的 url() 文本（如 alt 文案）。
+        if let styleRegex = try? NSRegularExpression(
+            pattern: #"<style\b[^>]*>([\s\S]*?)</style>"#,
+            options: [.caseInsensitive]
+        ) {
+            let range = NSRange(out.startIndex..., in: out)
+            // 反向遍历替换，避免下标失效
+            let matches = styleRegex.matches(in: out, options: [], range: range)
+            for match in matches.reversed() {
+                guard match.numberOfRanges >= 2,
+                      let inner = Range(match.range(at: 1), in: out),
+                      let whole = Range(match.range, in: out) else { continue }
+                let innerStr = String(out[inner])
+                let cleaned = innerStr
+                    .replacingOccurrences(
+                        of: #"url\((['"]?)\s*(?:https?:|//)[^)]*\1\)"#,
+                        with: "url(about:blank)",
+                        options: .regularExpression
+                    )
+                    .replacingOccurrences(
+                        of: #"@import\s+(?:url\()?(['"]?)\s*(?:https?:|//)[^)'";]*\1\)?\s*;?"#,
+                        with: "/* fastv-blocked @import */",
+                        options: .regularExpression
+                    )
+                let wholeStr = String(out[whole])
+                let replaced = wholeStr.replacingOccurrences(of: innerStr, with: cleaned)
+                out.replaceSubrange(whole, with: replaced)
+            }
+        }
+
+        return out
+    }
+
+    /// 内部辅助：应用一条正则替换，错误静默跳过（保持原文）。
+    nonisolated private static func applyRegex(to out: inout String, pattern: String, template: String) {
+        guard let regex = try? NSRegularExpression(
+            pattern: pattern,
+            options: [.caseInsensitive, .dotMatchesLineSeparators]
+        ) else { return }
+        let range = NSRange(out.startIndex..., in: out)
+        out = regex.stringByReplacingMatches(in: out, options: [], range: range, withTemplate: template)
+    }
     
     // MARK: - HTML 样式注入
     private func injectEmailStyles(into html: String, showImages: Bool) -> String {
@@ -323,9 +457,32 @@ struct EmailBodyWebViewRepresentable: NSViewRepresentable {
             position: relative;
         }
         
-        /* 根据 showImages 控制图片显示 */
+        /* 不显示图片时：src 已经被 Swift 端剥到 data-original-src，img 没有 src 不会触发请求；
+           这里给"曾经有外链的 img"加一个文字占位，让用户知道这里曾经有张图但被隐私保护挡了。 */
         \(showImages ? "" : """
-        img {
+        img[data-original-src] {
+            display: inline-block;
+            min-width: 60px;
+            min-height: 24px;
+            border: 1px dashed #d1d1d6;
+            border-radius: 4px;
+            background: #fafafa;
+            position: relative;
+            color: transparent; /* 防止 alt 文字干扰 */
+        }
+        img[data-original-src]::after {
+            content: "🖼 图片已被隐私保护挡住";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #8e8e93;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        /* 1x1 追踪像素根本不显示框 —— 通过尺寸特征识别 */
+        img[data-original-src][width="1"][height="1"],
+        img[data-original-src][width="0"][height="0"] {
             display: none !important;
         }
         """)
@@ -475,10 +632,21 @@ struct EmailBodyWebViewRepresentable: NSViewRepresentable {
         
         // 预处理 HTML
         var processedHTML = html
-        
+
         // 移除可能干扰的 body 标签属性
         if let bodyRange = processedHTML.range(of: "<body[^>]*>", options: .regularExpression) {
             processedHTML.replaceSubrange(bodyRange, with: "<body>")
+        }
+
+        // —— 真正挡远程图片（含追踪像素）——
+        // 之前的实现只是 CSS `img { display: none }`，WebKit 仍会发起 HTTP 请求 →
+        // 追踪像素（1x1 transparent gif）依然能让发件人拿到 IP + UA + 打开时间。
+        // 这里在 HTML 注入前把外链 img 的 src / srcset 换成 data-original-src / data-original-srcset；
+        // WebKit 看到 img 没有 src 就根本不发请求。点"显示图片"时由下方的 JS 把
+        // data-original-src 还原回 src，图片才被真正下载。
+        // 内嵌 cid: / data: 图片不动；data:image 是已经编码好的字节，不会触发外链请求。
+        if !showImages {
+            processedHTML = Self.stripRemoteImageSources(processedHTML)
         }
         
         // 注入 CSS

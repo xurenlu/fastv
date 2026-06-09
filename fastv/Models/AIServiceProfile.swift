@@ -244,27 +244,36 @@ enum AIProtocolType: String, Codable, CaseIterable {
 /// AI 服务使用场景
 enum AIScenario: String, Codable, CaseIterable {
     case voiceInputOptimization = "voice_input_optimization"  // 语音输入优化
-    case meetingSummary = "meeting_summary"                    // 会议记录（标题、摘要、行动项）
+    case meetingTranscriptRevision = "meeting_transcript_revision"  // 会议转写文本修订（错别字、断句）
+    case meetingSummary = "meeting_summary"                    // 会议摘要（标题、摘要、行动项）
+    case meetingRichDoc = "meeting_rich_doc"                   // 会议图文文档（实时结构化 Markdown）
     case todoParsing = "todo_parsing"                          // Todo 解析
     case aiChat = "ai_chat"                                     // AI 聊天
     case textCorrection = "text_correction"                     // 文本纠错
     case errorDetection = "error_detection"                    // 错误检测
-    case videoAnalysis = "video_analysis"                       // 视频分析（已移除）
-    case diaryAnalysis = "diary_analysis"                       // 日记分析（已移除）
-    case expenseParsing = "expense_parsing"                     // 记账解析（已移除）
-    case intelGeneration = "intel_generation"                   // 情报生成（已移除）
 
     /// 当前版本仍在使用的场景，仅这些场景在设置中显示 AI 配置
     static var activeScenarios: [AIScenario] {
-        [.voiceInputOptimization, .meetingSummary, .todoParsing, .aiChat]
+        [
+            .voiceInputOptimization,
+            .meetingTranscriptRevision,
+            .meetingSummary,
+            .meetingRichDoc,
+            .todoParsing,
+            .aiChat,
+        ]
     }
 
     var displayName: String {
         switch self {
         case .voiceInputOptimization:
             return "语音输入优化"
+        case .meetingTranscriptRevision:
+            return "会议转写修订"
         case .meetingSummary:
-            return "会议记录"
+            return "会议摘要"
+        case .meetingRichDoc:
+            return "会议图文文档"
         case .todoParsing:
             return "Todo 解析"
         case .aiChat:
@@ -273,14 +282,28 @@ enum AIScenario: String, Codable, CaseIterable {
             return "文本纠错"
         case .errorDetection:
             return "错误检测"
-        case .videoAnalysis:
-            return "视频分析"
-        case .diaryAnalysis:
-            return "日记分析"
-        case .expenseParsing:
-            return "记账解析"
-        case .intelGeneration:
-            return "情报生成"
+        }
+    }
+
+    /// 场景描述，给用户在设置里看的说明
+    var sceneDescription: String {
+        switch self {
+        case .voiceInputOptimization:
+            return "语音转写后做口语化清理、标点补全、错字修正"
+        case .meetingTranscriptRevision:
+            return "对会议录音的转写文本做错别字与断句修订（轻量模型即可）"
+        case .meetingSummary:
+            return "为整场会议生成标题、摘要、行动项"
+        case .meetingRichDoc:
+            return "边录边出图文并茂的结构化 Markdown 文档（含表格、列表、思维导图）"
+        case .todoParsing:
+            return "把自然语言任务解析成结构化的 Todo"
+        case .aiChat:
+            return "通用 AI 对话"
+        case .textCorrection:
+            return "通用文本纠错"
+        case .errorDetection:
+            return "错误检测"
         }
     }
 }

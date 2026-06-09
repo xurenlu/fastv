@@ -49,12 +49,32 @@ struct EmailSettingsTab: View {
                 Text("自动回复")
             }
             
-            // 读回执设置
+            // 读回执 + 标已读时机
             Section {
                 Toggle("发送读回执", isOn: $preferences.emailReadReceiptEnabled)
                     .help("阅读邮件时发送已读回执（默认关闭以保护隐私）")
+
+                Picker("自动标已读", selection: $preferences.emailMarkAsReadDelaySeconds) {
+                    Text("立即").tag(0)
+                    Text("1 秒后").tag(1)
+                    Text("3 秒后").tag(3)
+                    Text("5 秒后").tag(5)
+                    Text("10 秒后").tag(10)
+                    Text("仅手动").tag(-1)
+                }
+                .help("选中邮件后多久自动标已读。默认 3 秒，期间换邮件会自动取消，避免键盘上下浏览时误标整个收件箱。")
             } header: {
-                Text("读回执")
+                Text("读回执 / 标已读")
+            } footer: {
+                if preferences.emailMarkAsReadDelaySeconds == 0 {
+                    Text("⚠️ 立即标已读会让方向键滚动浏览时一路把邮件全标了；服务器上的 \\Seen 标志会同步更新，无法撤销。")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                } else if preferences.emailMarkAsReadDelaySeconds == -1 {
+                    Text("仅手动模式下，邮件永远不会被自动标已读，需要使用菜单或右键手动标读。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             
             // 隐私设置
