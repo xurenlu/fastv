@@ -19,11 +19,12 @@
 // Forward declaration for Swift types
 @class EmailAccount;
 
-/// 设置当前线程的 QoS 为 User Initiated，避免优先级反转
-/// LibEtPan 的 CFStream 操作会在 runloop 中等待，如果 runloop 运行在较低 QoS 的线程上，
-/// 会导致 User Initiated QoS 的线程等待 Default QoS 的线程，产生优先级反转警告
+/// 把当前 IMAP/SMTP 工作线程的 QoS 钉到 Utility。
+/// LibEtPan 内部跑 CFStream runloop 的线程是 Default QoS；如果调用线程被钉到 UserInitiated，
+/// 同步等 runloop 时就会触发 "User-initiated waiting on a lower QoS thread" 的优先级反转告警
+/// （mailstream_cfstream.c:912 wait_runloop）。邮件 I/O 按 Apple QoS 指南本来就该是 utility。
 static void ensureUserInitiatedQoS(void) {
-    pthread_set_qos_class_self_np(QOS_CLASS_USER_INITIATED, 0);
+    pthread_set_qos_class_self_np(QOS_CLASS_UTILITY, 0);
 }
 
 @implementation LibEtPanIMAPSession {

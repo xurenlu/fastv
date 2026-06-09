@@ -130,7 +130,7 @@ class EmailService {
         }
         
         // 在后台线程执行测试，避免阻塞主线程
-        return try await Task.detached(priority: .userInitiated) {
+        return try await Task.detached(priority: .utility) {
             var stages: [EmailConnectionStageResult] = []
             stages.append(self.testIMAPStage(account: account, password: password))
             stages.append(self.testSMTPStage(account: account, password: password))
@@ -246,7 +246,7 @@ class EmailService {
     /// 不要在多个线程之间共享 IMAP session。
     nonisolated private func createIMAPSession(account: EmailAccount) async throws -> LibEtPanIMAPSession {
         // 在后台线程执行 IMAP 操作，避免主线程阻塞
-        return try await Task.detached(priority: .userInitiated) {
+        return try await Task.detached(priority: .utility) {
             print("🔌 [EmailService] 创建新的 IMAP 会话: \(account.emailAddress)")
             
             guard let password = try? EmailCredentialStore.shared.getPassword(accountId: account.id) else {
@@ -304,7 +304,7 @@ class EmailService {
         }
         
         // 在后台线程执行所有 IMAP 操作
-        return try await Task.detached(priority: .userInitiated) { [imap] in
+        return try await Task.detached(priority: .utility) { [imap] in
             
             do {
                 try imap.selectFolder(folder.name)
@@ -582,7 +582,7 @@ class EmailService {
             imap.disconnect()
         }
 
-        let bodyData = try await Task.detached(priority: .userInitiated) { [imap] in
+        let bodyData = try await Task.detached(priority: .utility) { [imap] in
             do {
                 try imap.selectFolder(folder.name)
                 print("📧 [EmailService] fetchMessageBody: 文件夹选择成功")
@@ -653,7 +653,7 @@ class EmailService {
             imap.disconnect()
         }
         
-        let rawData = try await Task.detached(priority: .userInitiated) { [imap] in
+        let rawData = try await Task.detached(priority: .utility) { [imap] in
             do {
                 try imap.selectFolder(folder.name)
                 print("📧 [EmailService] fetchRawMessage: 文件夹选择成功")
@@ -699,7 +699,7 @@ class EmailService {
         }
         
         // 在后台线程执行所有 IMAP 操作
-        return try await Task.detached(priority: .userInitiated) { [imap] in
+        return try await Task.detached(priority: .utility) { [imap] in
             do {
                 try imap.selectFolder(folder.name)
             } catch {
@@ -767,7 +767,7 @@ class EmailService {
             imap.disconnect()
         }
         
-        let folderNames: [String] = try await Task.detached(priority: .userInitiated) { [imap] in
+        let folderNames: [String] = try await Task.detached(priority: .utility) { [imap] in
             do {
                 return try imap.fetchFolders() ?? []
             } catch {
@@ -830,7 +830,7 @@ class EmailService {
             imap.disconnect()
         }
         
-        try await Task.detached(priority: .userInitiated) { [imap] in
+        try await Task.detached(priority: .utility) { [imap] in
             do {
                 try imap.selectFolder(folder.name)
                 try imap.markAsRead(withUID: uid)
@@ -860,7 +860,7 @@ class EmailService {
             imap.disconnect()
         }
 
-        try await Task.detached(priority: .userInitiated) { [imap] in
+        try await Task.detached(priority: .utility) { [imap] in
             do {
                 try imap.selectFolder(folder.name)
                 try imap.deleteAndExpunge(withUID: uid)
@@ -891,7 +891,7 @@ class EmailService {
             imap.disconnect()
         }
 
-        try await Task.detached(priority: .userInitiated) { [imap] in
+        try await Task.detached(priority: .utility) { [imap] in
             do {
                 try imap.selectFolder(folder.name)
                 if willBeStarred {
@@ -959,7 +959,7 @@ class EmailService {
 
         // 真路径：partPath 已知，直接抓那个 part
         if let partPath = attachment.partPath, !partPath.isEmpty {
-            let rawPartBytes = try await Task.detached(priority: .userInitiated) { [imap] in
+            let rawPartBytes = try await Task.detached(priority: .utility) { [imap] in
                 try imap.selectFolder(folder.name)
                 return try imap.fetchMessagePart(withUID: uid, partPath: partPath)
             }.value
@@ -973,7 +973,7 @@ class EmailService {
 
         // 兼容路径：老附件没有 partPath，回退到拉全文 + 用 filename 匹配。
         print("ℹ️ [EmailService] downloadAttachment: 没有 partPath，回退到整封邮件解析模式")
-        let rawData = try await Task.detached(priority: .userInitiated) { [imap] in
+        let rawData = try await Task.detached(priority: .utility) { [imap] in
             try imap.selectFolder(folder.name)
             return try imap.fetchMessageBody(withUID: uid)
         }.value
@@ -984,7 +984,7 @@ class EmailService {
             throw EmailServiceError.parseError("未在邮件中找到附件：\(attachment.filename)")
         }
         // 再抓一次 part（这次有 partPath 了）
-        let rawPartBytes = try await Task.detached(priority: .userInitiated) { [imap] in
+        let rawPartBytes = try await Task.detached(priority: .utility) { [imap] in
             try imap.selectFolder(folder.name)
             return try imap.fetchMessagePart(withUID: uid, partPath: meta.partPath)
         }.value
@@ -1052,7 +1052,7 @@ class EmailService {
             imap.disconnect()
         }
 
-        try await Task.detached(priority: .userInitiated) { [imap] in
+        try await Task.detached(priority: .utility) { [imap] in
             do {
                 try imap.selectFolder(sourceFolder.name)
                 try imap.moveMessage(withUID: uid, toFolder: folder.name)
@@ -1070,7 +1070,7 @@ class EmailService {
     /// 这样可以确保使用最新的账户配置，避免配置更新后仍使用旧连接。
     nonisolated private func createSMTPSession(account: EmailAccount) async throws -> LibEtPanSMTPSession {
         // 在后台线程执行 SMTP 操作，避免主线程阻塞
-        return try await Task.detached(priority: .userInitiated) {
+        return try await Task.detached(priority: .utility) {
             print("📧 [EmailService] 创建新的 SMTP 会话")
             print("📧 [EmailService] SMTP 服务器: \(account.smtpHost):\(account.smtpPort)")
             print("📧 [EmailService] SMTP 加密方式: \(self.encryptionString(from: account.smtpEncryption))")
@@ -1172,7 +1172,7 @@ class EmailService {
             smtp.disconnect()
         }
         
-        try await Task.detached(priority: .userInitiated) { [smtp] in
+        try await Task.detached(priority: .utility) { [smtp] in
             print("📧 [EmailService] 正在准备邮件数据（后台线程）...")
             
             let toAddresses: [String] = to.map { $0.email }

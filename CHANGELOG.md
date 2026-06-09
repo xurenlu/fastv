@@ -2,6 +2,16 @@
 
 所有版本變更記錄。
 
+## [1.4.3-rc6] - 2026-06-09
+
+### 修復（QoS 优先级反转告警）
+
+Xcode runtime 反复刷 `mailstream_cfstream.c:912 [Internal] Thread running at User-initiated quality-of-service class waiting on a lower QoS thread running at Default quality-of-service class.` —— libetpan 的 CFStream 同步等 runloop，而 runloop 跑在 Default QoS 线程上；我们却把 IMAP/SMTP 工作线程钉到了 UserInitiated，于是高优先级线程等低优先级线程，OS 抛优先级反转告警。
+
+- **降级 IMAP/SMTP 工作线程的 QoS 到 Utility**。[`LibEtPanWrapper.m:25`](fastv/Services/LibEtPanWrapper.m:25) 的 `ensureUserInitiatedQoS` 函数体由 `QOS_CLASS_USER_INITIATED` 改为 `QOS_CLASS_UTILITY`（函数名保留，所有 23 个调用点不必动）。
+- **EmailService.swift 中 16 处 `Task.detached(priority: .userInitiated)` 全部降到 `.utility`**：fetchFolders / syncMessages / fetchMessageBody / fetchRawMessage / searchMessages / fetchFolders / markAsRead / deleteMessage / toggleStar / downloadAttachment（两路）/ moveMessage / SMTP createSession / SMTP sendMessage 等全部统一。已是 `.background` 的 [`scheduleBackgroundSync`](fastv/Services/EmailService.swift:441) 保持不动。
+- 按 Apple QoS 指南，邮件 I/O 这种"用户能感知但不会盯着看"的后台任务本来就该是 utility；userInitiated 留给真正的"用户点了某个按钮、必须立刻给反馈"的同步任务。优化后 IMAP 取信、SMTP 发信的体感延迟没有变化（瓶颈是网络往返），但 Console 不再被告警刷屏，CFStream runloop 与调用线程 QoS 对齐。
+
 ## [1.4.3-rc5] - 2026-06-09
 
 ### 修復（邮件正文「找不到文件夹」死胡同）

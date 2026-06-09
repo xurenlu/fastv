@@ -26,6 +26,7 @@ fastv（row1）定位为 macOS 上的个人 AI 助手，核心交互是低打扰
 
 ## 版本记录
 
+- `1.4.3-rc6`：消掉 Xcode runtime 的 `mailstream_cfstream.c:912` 优先级反转告警。libetpan CFStream runloop 跑在 Default QoS，调用线程被钉到 UserInitiated 时会触发 "User-initiated waiting on a lower QoS thread"。`LibEtPanWrapper.m` 的 `ensureUserInitiatedQoS` 函数体改为 `QOS_CLASS_UTILITY`；`EmailService.swift` 中 16 处包 IMAP/SMTP 同步调用的 `Task.detached(priority: .userInitiated)` 全部降为 `.utility`（已存在的 `.background` 后台同步保持不动）。
 - `1.4.3-rc5`：rc4 的「正文加载失败 + 重试按钮」收尾。重试按钮先 `loadFolders` 再 `loadMessageBody`，按钮行为对得上文案；`loadMessageBody` 在 folder 解析失败后扫 `EmailStore.messages` 找同账号同 messageId 的副本借用正文（覆盖 Gmail INBOX + All Mail 双份场景），避免 `folder_id` 被 `ON DELETE SET NULL` 清空后整封邮件死锁。
 - `1.4.3-rc4`：修邮件正文「正在加载正文...」永远转圈的 bug — 两条卡死路径同时堵：(1)「所有邮件」聚合视图 picked 到 ViewModel.folders 没缓存的文件夹时，原本静默 return 不写状态，现在先到 `EmailStore.accounts` 全量文件夹兜底再找，找不到才写失败态；(2) `fetchMessageBody` 加 45s 超时（`withThrowingTaskGroup` + 计时子任务），超时抛 `EmailServiceError.timedOut`。新增 `bodyLoadFailures` 字典与 `retryLoadMessageBody`，UI 失败态展示橙色三角 + 错误原因 + 重试按钮。
 - `1.4.3-rc3`：修翻译时 CSS 被当正文翻译的 bug — `<style>` / `<script>` / `<head>` / 注释 / DOCTYPE 标签整段（含内容）剥离；数字字符引用还原；空白压缩。新增 14 个翻译剥离单测。
