@@ -36,7 +36,9 @@
       "Bash(find ~/Library/Developer/Xcode/DerivedData -name \"GRDB*.framework\" 2>/dev/null | head -5)",
       "Bash(git fetch *)",
       "Bash(grep -v \"^$\")",
-      "Bash(git -C /Users/rocky/Sites/fastv status)"
+      "Bash(git -C /Users/rocky/Sites/fastv status)",
+      "Bash(git log *)",
+      "Bash(plutil -p /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-aybimmutwhhxkmakrmciupvkllbm/Build/Products/Debug/row1.app/Contents/Info.plist)"
     ],
     "deny": [],
     "ask": []

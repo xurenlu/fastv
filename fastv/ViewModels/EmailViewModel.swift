@@ -1864,37 +1864,52 @@ class EmailViewModel: ObservableObject {
         }
     }
 
-    /// 标记为已读
+    /// 标记为已读 — 乐观更新策略
+    ///
+    /// 旧版「IMAP 成功才写本地」是服务端权威：只要 IMAP 因为网络瞬断 / 文件夹名编码差异 /
+    /// 服务端限流抛错，`do/catch` 把异常吞了，本地 isRead=true 就永远不会落库，
+    /// 用户看到的是"点了等了 3 秒还是未读"。
+    ///
+    /// 改成本地优先 + 服务端 best-effort：
+    /// 1. 先把 isRead=true 写进 EmailStore（DB 也跟着写），UI 立刻看到红点变灰。
+    /// 2. 再异步走 IMAP STORE \Seen；失败只记日志，不撤销本地状态。
+    /// 3. 下次 sync 时，[EmailStore.addMessages](fastv/Models/EmailStore.swift) 内部的
+    ///    `updated.isRead = message.isRead ? message.isRead : existing.isRead` OR-合并逻辑
+    ///    会保住本地读态（服务端真说未读时仍按 existing=true，不会回落）。
     func markAsRead(_ message: EmailMessage) async {
         guard let account = currentAccount else { return }
-        
-        // 获取邮件所在的文件夹
+
         let folderId = message.folderId ?? selectedFolderId
         guard let id = folderId,
               let folder = folder(for: id) else {
             print("⚠️ [EmailViewModel] markAsRead: 无法获取邮件所在文件夹")
             return
         }
-        
+
+        // 1) 先本地：从 EmailStore 拿最新副本（保留正文缓存），把 isRead 拍上去。
+        var updated = message
+        if let folderId = message.folderId,
+           let storeMessages = emailStore.messages[folderId],
+           let latestMessage = storeMessages.first(where: { $0.id == message.id }) {
+            updated = latestMessage
+        }
+        if !updated.isRead {
+            updated.isRead = true
+            do {
+                try await emailStore.updateMessage(updated)
+            } catch {
+                // 本地写库失败很罕见，但要让 errorMessage 暴露出来，便于排查。
+                errorMessage = "本地标记已读失败: \(error.localizedDescription)"
+                print("❌ [EmailViewModel] markAsRead 本地写库失败: \(error)")
+                return
+            }
+        }
+
+        // 2) 再服务端：best-effort。IMAP 失败不会把本地撤回（addMessages 的 OR-merge 兜底）。
         do {
             try await emailService.markAsRead(account: account, folder: folder, message: message)
-            
-            // 重要：从 emailStore 获取最新的邮件数据（包含正文缓存）
-            // 避免用没有正文的邮件对象覆盖数据库中已缓存的正文
-            var updated = message
-            if let folderId = message.folderId,
-               let storeMessages = emailStore.messages[folderId],
-               let latestMessage = storeMessages.first(where: { $0.id == message.id }) {
-                updated = latestMessage
-                print("✅ [EmailViewModel] markAsRead: 使用 EmailStore 中的最新邮件数据（保留正文缓存）")
-            } else {
-                print("⚠️ [EmailViewModel] markAsRead: 未找到 EmailStore 中的邮件，使用传入的邮件对象")
-            }
-            
-            updated.isRead = true
-            try await emailStore.updateMessage(updated)
         } catch {
-            errorMessage = error.localizedDescription
+            print("⚠️ [EmailViewModel] markAsRead 服务端同步失败（本地已标记为已读，下次同步若服务器仍未读会按本地 OR-merge 兜底）: \(error.localizedDescription)")
         }
     }
     

@@ -565,14 +565,14 @@
 					"$(SRCROOT)/ThirdParty/libetpan/include/**",
 					/opt/homebrew/include,
 				);
-				INFOPLIST_KEY_CFBundleDisplayName = "若一智能助手";
+				INFOPLIST_KEY_CFBundleDisplayName = "妙打";
 				INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)";
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "若一智能助手 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "妙打 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "若一智能助手 需要访问您的麦克风以进行语音输入和语音转文字功能。";
-				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "若一智能助手 需要访问您的提醒事项以同步待办事项到 AI Todo 功能中。应用只会读取未完成的提醒事项，不会修改或删除您的提醒事项。";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "妙打 需要访问您的麦克风以进行语音输入和语音转文字功能。";
+				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "妙打 需要访问您的提醒事项以同步待办事项到 AI Todo 功能中。应用只会读取未完成的提醒事项，不会修改或删除您的提醒事项。";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -584,7 +584,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "1.4.3-rc8";
+				MARKETING_VERSION = "1.4.3-rc9";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
@@ -625,14 +625,14 @@
 					"$(SRCROOT)/ThirdParty/libetpan/include/**",
 					/opt/homebrew/include,
 				);
-				INFOPLIST_KEY_CFBundleDisplayName = "若一智能助手";
+				INFOPLIST_KEY_CFBundleDisplayName = "妙打";
 				INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)";
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "若一智能助手 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "妙打 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "若一智能助手 需要访问您的麦克风以进行语音输入和语音转文字功能。";
-				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "若一智能助手 需要访问您的提醒事项以同步待办事项到 AI Todo 功能中。应用只会读取未完成的提醒事项，不会修改或删除您的提醒事项。";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "妙打 需要访问您的麦克风以进行语音输入和语音转文字功能。";
+				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "妙打 需要访问您的提醒事项以同步待办事项到 AI Todo 功能中。应用只会读取未完成的提醒事项，不会修改或删除您的提醒事项。";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -644,7 +644,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "1.4.3-rc8";
+				MARKETING_VERSION = "1.4.3-rc9";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
@@ -690,7 +690,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "1.4.3-rc8";
+				MARKETING_VERSION = "1.4.3-rc9";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -729,7 +729,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "1.4.3-rc8";
+				MARKETING_VERSION = "1.4.3-rc9";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -749,7 +749,7 @@
 				CURRENT_PROJECT_VERSION = 16;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "1.4.3-rc8";
+				MARKETING_VERSION = "1.4.3-rc9";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -769,7 +769,7 @@
 				CURRENT_PROJECT_VERSION = 16;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "1.4.3-rc8";
+				MARKETING_VERSION = "1.4.3-rc9";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;

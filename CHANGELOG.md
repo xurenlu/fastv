@@ -2,6 +2,40 @@
 
 所有版本變更記錄。
 
+## [1.4.3-rc9] - 2026-06-09
+
+### 修復（改名遗留 + 邮件标已读真正落地）
+
+用户反馈窗体标题还显示「row1」、点开邮件还是不被标已读。这两个都是历史欠账，这一轮一次性了断。
+
+#### 改名 row1 → MuseType / 若一智能助手 → 妙打
+
+不是 Debug / Release 差异，是 5 个 `Localizable.strings` 里英文 / 简体中文 / 日文的 `app.name` 还停留在旧名字（ko / yue 早就改成 `妙打` 了）。[`AppDelegate.setWindowTitle()`](fastv/fastvApp.swift:478) 把所有 NSWindow.title 设成 `NSLocalizedString("app.name")`，英文系统下窗体就被刷成「row1」。`pbxproj` 里 `INFOPLIST_KEY_CFBundleDisplayName` 也还是「若一智能助手」，菜单栏 / Dock 同步漂着。
+
+- **5 个 `Localizable.strings` 全口径替换**（app.name + onboarding.welcome + welcome.title + 三段权限引导文案，共 6 处/语种）：
+  - en: `row1` → `MuseType`
+  - zh-Hans: `若一智能助手` → `妙打`
+  - ja: `智響（ちきょう / Chikyō）` → `妙打`
+  - ko / yue: 已是 `妙打`，不动
+- **5 个 `InfoPlist.strings` 的 `CFBundleDisplayName`** 全部对齐（en → MuseType；zh-Hans / ja / ko / yue → 妙打）。
+- **[`project.pbxproj`](fastv.xcodeproj/project.pbxproj:568) 4 处**：`INFOPLIST_KEY_CFBundleDisplayName` + 三段 `NSAppleEventsUsageDescription` / `NSMicrophoneUsageDescription` / `NSRemindersFullAccessUsageDescription` 里的「若一智能助手」一次替成「妙打」。
+- **`PRODUCT_NAME` 和 `PRODUCT_BUNDLE_IDENTIFIER` 故意不动**：改 `PRODUCT_NAME` 会换 `.app` 文件名、code-sign 路径；改 bundle id 会让用户已授权的辅助功能 / 麦克风 / 提醒事项权限全部失效，TCC 数据库会把应用当新装的。展示层全部跟着 `CFBundleDisplayName` 与 `app.name` 走，已经够。
+- 验证：`xcodebuild` 后 `plutil -p row1.app/Contents/Info.plist | grep Display` → `CFBundleDisplayName => "妙打"` 实锤。
+
+#### 邮件 markAsRead 改成乐观更新（点开真的会变已读）
+
+rc7 只堵了本地虚拟文件夹这一支路，但 [ViewModel.markAsRead](fastv/ViewModels/EmailViewModel.swift:1860) 老逻辑还是服务端权威：
+```
+do { try await emailService.markAsRead(...) ; updated.isRead = true; updateMessage(updated) }
+catch { errorMessage = ... }
+```
+只要 IMAP 因为任何原因（网络瞬断 / 文件夹名 modified-UTF-7 编码差异 / 服务端 LIMIT / 限流）抛错，`do/catch` 把异常吞了，**本地 `isRead=true` 写库这一行永远走不到**，UI 看上去就是「点了等 3 秒还是红点」。
+
+改成本地优先 + 服务端 best-effort：
+1. **先本地**：从 EmailStore 拿最新副本（保留正文缓存），把 `isRead=true` 写进 DB —— UI 立刻看到红点变灰。
+2. **再服务端**：异步走 IMAP STORE \Seen；失败只 `print` 日志，**不撤销本地状态、不把异常塞进 errorMessage 横幅**。
+3. **下次 sync 兜底**：[`EmailStore.addMessages:327`](fastv/Models/EmailStore.swift:327) 的 OR-merge 逻辑 `updated.isRead = message.isRead ? message.isRead : existing.isRead` 已经天然站在本地读态这边 —— 服务端真说未读时，OR 合并到 `existing=true`，本地读态不会回落。
+
 ## [1.4.3-rc8] - 2026-06-09
 
 ### 修復 & 增強（邮件签名编辑器三连：塞不下、点击没反应、样式不够好看）
