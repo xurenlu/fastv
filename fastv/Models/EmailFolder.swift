@@ -89,6 +89,15 @@ struct EmailFolder: Identifiable, Codable {
 }
 
 extension EmailFolder {
+    /// 是否是「本地虚拟文件夹」（例如「已发送(本地)」）。
+    /// 这种文件夹只存在于本地数据库，不对应任何 IMAP mailbox，
+    /// 因此所有走 IMAP 的入口（select/sync/markAsRead/move/delete/star/fetchBody）
+    /// 都必须先用这个谓词短路，否则会被服务端回 NON_EXISTANT_FOLDER（libetpan 错码 33）。
+    /// 真值判定走 `path` 这个稳定 key，不走可被国际化的 `name`。
+    var isLocal: Bool {
+        return path == kLocalSentFolderPath
+    }
+
     /// 适合展示的名称（去掉 Gmail 前缀等）
     var displayTitle: String {
         if name.contains("/") {

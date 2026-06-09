@@ -34,7 +34,9 @@
       "Bash(swift /tmp/regex_test.swift)",
       "Bash(git stash *)",
       "Bash(find ~/Library/Developer/Xcode/DerivedData -name \"GRDB*.framework\" 2>/dev/null | head -5)",
-      "Bash(git fetch *)"
+      "Bash(git fetch *)",
+      "Bash(grep -v \"^$\")",
+      "Bash(git -C /Users/rocky/Sites/fastv status)"
     ],
     "deny": [],
     "ask": []

@@ -477,6 +477,14 @@ class EmailViewModel: ObservableObject {
                 
                 // 为每个文件夹加载更多邮件
                 for folder in folders {
+                    // 本地虚拟文件夹（如「已发送(本地)」）不存在于 IMAP，
+                    // 走 selectFolder 会被服务端回 NON_EXISTANT_FOLDER（错码 33）。
+                    // EmailService.syncMessages 内部也会兜底返回 [], 这里再过一遍
+                    // 是为了省一次 IMAP 建连和减少日志噪音。
+                    if folder.isLocal {
+                        continue
+                    }
+
                     // 检查当前内存中的邮件数量
                     let currentMessages = await MainActor.run {
                         self.emailStore.messages[folder.id] ?? []

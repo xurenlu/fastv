@@ -2,6 +2,24 @@
 
 所有版本變更記錄。
 
+## [1.4.3-rc7] - 2026-06-09
+
+### 修復（本地「已发送(本地)」文件夹被无差别走 IMAP，触发 NON_EXISTANT_FOLDER 错码 33）
+
+截图里反复出现的 `[LibEtPan] 选择文件夹失败：已发送(本地)，错误代码：33` + `[EmailService] 断开 IMAP 连接 (syncMessages)` + `nw_socket_handle_socket_event ... Connection reset by peer` + `[EmailViewModel] 后台同步失败：已发送(本地) - connectionFailed("选择文件夹失败...")`，根因是后台同步循环把**所有**文件夹喂给 `imap.selectFolder`，但「已发送(本地)」(`path = "__LocalSent__"`) 是个仅存在于本地数据库的虚拟文件夹，用来兜 SMTP 发出的本机副本——服务端根本没这个 mailbox，libetpan 立刻回 NON_EXISTANT_FOLDER。同条链路下，用户点开本地已发送邮件后，3 秒延迟标已读触发 `markAsRead` → `imap.selectFolder` → 同样炸 33 → ViewModel 的 `do { try await emailService.markAsRead(...) } catch { ... }` 把异常吞到 `catch`，**第 1886 行 `updated.isRead = true` 永远跑不到**，UI 一直显示未读。
+
+- **[`EmailFolder`](fastv/Models/EmailFolder.swift:91) 新增 `isLocal` 计算属性**：以稳定 key `path == kLocalSentFolderPath` 判定，不走可被国际化的 `name`。
+- **`EmailService` 所有 IMAP 入口对本地文件夹短路**：
+  - [`syncMessages`](fastv/Services/EmailService.swift:298) 直接返回 `[]`（后台同步循环跳过它）。
+  - [`markAsRead`](fastv/Services/EmailService.swift:833) 直接 `return`（让 ViewModel 继续完成本地 isRead 写库）。
+  - [`deleteMessage`](fastv/Services/EmailService.swift:867) / [`toggleStar`](fastv/Services/EmailService.swift:903) 直接 `return`，本地删/星标交给 `EmailStore`。
+  - [`moveMessage`](fastv/Services/EmailService.swift:1068) 源端或目标端任一为本地时跳过 IMAP COPY/EXPUNGE。
+  - [`fetchMessageBody`](fastv/Services/EmailService.swift:542) / [`fetchRawMessage`](fastv/Services/EmailService.swift:649) / [`downloadAttachment`](fastv/Services/EmailService.swift:975) 抛 `invalidConfiguration("本地文件夹的邮件没有服务端...可拉取")`，提示明确而不是挂死 / 撞 33。
+  - [`searchMessages`](fastv/Services/EmailService.swift:696) 返回 `[]`（关键词过滤交给本地）。
+- **[`EmailViewModel.startBackgroundSyncTask`](fastv/ViewModels/EmailViewModel.swift:479) 循环顶部加 `if folder.isLocal { continue }`**：在进入 `loadMessages` / `syncMessages` 之前就过滤掉本地文件夹，省一次 IMAP 建连、把日志噪音压下去。Service 层的兜底仍然保留，是双保险。
+
+效果：截图里那一坨 LibEtPan + nw_socket 反复刷的告警归零；点开本地已发送邮件后 3 秒会被正确标已读（IMAP no-op，本地 DB 落 `isRead = true`）。
+
 ## [1.4.3-rc6] - 2026-06-09
 
 ### 修復（QoS 优先级反转告警）

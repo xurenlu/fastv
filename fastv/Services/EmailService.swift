@@ -294,6 +294,13 @@ class EmailService {
         limit: Int? = nil,
         batchSize: Int = 20
     ) async throws -> [EmailMessage] {
+        // 本地虚拟文件夹（「已发送(本地)」）不存在于 IMAP 服务端，
+        // 一旦走到 mailimap_select 就会被回错码 33（NON_EXISTANT_FOLDER）。
+        // 直接返回空，让后台同步与「拉新」循环把它当作无事发生跳过。
+        if folder.isLocal {
+            return []
+        }
+
         // 创建独立的 IMAP session
         let imap = try await createIMAPSession(account: account)
         
@@ -537,6 +544,13 @@ class EmailService {
         folder: EmailFolder,
         message: EmailMessage
     ) async throws -> EmailBodyContent {
+        // 本地虚拟文件夹的邮件 (例如「已发送(本地)」中刚 SMTP 发出的副本) 没有服务端原件，
+        // 正文保存时已落本地。万一上层缓存丢了走到这里，直接抛配置错而不是去远端找 UID，
+        // 避免 mailimap_select 在不存在的 mailbox 上回 NON_EXISTANT_FOLDER（错码 33）。
+        if folder.isLocal {
+            throw EmailServiceError.invalidConfiguration("本地文件夹的邮件没有服务端正文可拉取")
+        }
+
         guard let uid = message.uid else {
             print("❌ [EmailService] fetchMessageBody: 邮件 UID 不存在")
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
@@ -637,6 +651,10 @@ class EmailService {
         folder: EmailFolder,
         message: EmailMessage
     ) async throws -> Data {
+        if folder.isLocal {
+            throw EmailServiceError.invalidConfiguration("本地文件夹的邮件没有服务端原始数据可拉取")
+        }
+
         guard let uid = message.uid else {
             print("❌ [EmailService] fetchRawMessage: 邮件 UID 不存在")
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
@@ -688,7 +706,12 @@ class EmailService {
         guard !query.isEmpty else {
             return []
         }
-        
+
+        // 本地虚拟文件夹不走 IMAP SEARCH；调用方应在本地 EmailStore 上做关键字过滤。
+        if folder.isLocal {
+            return []
+        }
+
         // 创建独立的 IMAP session
         let imap = try await createIMAPSession(account: account)
         
@@ -817,10 +840,16 @@ class EmailService {
     /// 
     /// 重要：每次标记操作都会创建独立的 IMAP session，操作完成后自动断开。
     nonisolated func markAsRead(account: EmailAccount, folder: EmailFolder, message: EmailMessage) async throws {
+        // 本地虚拟文件夹的邮件没有服务端副本，IMAP 这一步直接当成功；
+        // 上层 (EmailViewModel.markAsRead) 仍会把本地 isRead 写库，UI 不会卡在未读。
+        if folder.isLocal {
+            return
+        }
+
         guard let uid = message.uid else {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
-        
+
         // 创建独立的 IMAP session
         let imap = try await createIMAPSession(account: account)
         
@@ -845,13 +874,19 @@ class EmailService {
     /// IMAP 真实现：STORE +FLAGS (\Deleted) + EXPUNGE。
     /// 每次操作创建独立 IMAP session，完成后立即断开。
     nonisolated func deleteMessage(account: EmailAccount, message: EmailMessage) async throws {
-        guard let uid = message.uid else {
-            throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
-        }
-
         guard let folderId = message.folderId,
               let folder = await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
             throw EmailServiceError.invalidConfiguration("找不到邮件所在文件夹")
+        }
+
+        // 本地虚拟文件夹的邮件没有服务端副本，IMAP STORE \Deleted + EXPUNGE 无对象可操作；
+        // 调用方在 EmailStore 上自行删除即可。
+        if folder.isLocal {
+            return
+        }
+
+        guard let uid = message.uid else {
+            throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
 
         let imap = try await createIMAPSession(account: account)
@@ -875,13 +910,18 @@ class EmailService {
     /// IMAP 真实现：根据当前 `message.isStarred` 推断要 +FLAGS 还是 -FLAGS (\Flagged)。
     /// 注意：调用方传入的 `message` 应反映 IMAP 切换前的状态，调用方自行 toggle 本地缓存。
     nonisolated func toggleStar(account: EmailAccount, message: EmailMessage) async throws {
-        guard let uid = message.uid else {
-            throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
-        }
-
         guard let folderId = message.folderId,
               let folder = await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
             throw EmailServiceError.invalidConfiguration("找不到邮件所在文件夹")
+        }
+
+        // 本地虚拟文件夹直接放行，让上层只更新本地缓存。
+        if folder.isLocal {
+            return
+        }
+
+        guard let uid = message.uid else {
+            throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
 
         let willBeStarred = !message.isStarred
@@ -947,6 +987,10 @@ class EmailService {
         message: EmailMessage,
         attachment: EmailAttachment
     ) async throws -> URL {
+        if folder.isLocal {
+            throw EmailServiceError.invalidConfiguration("本地文件夹的邮件没有服务端附件可下载")
+        }
+
         guard let uid = message.uid else {
             throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
@@ -1031,10 +1075,6 @@ class EmailService {
     ///
     /// IMAP 真实现：UID COPY 到目标 mailbox，再在源 mailbox 上 +FLAGS (\Deleted) + EXPUNGE。
     nonisolated func moveMessage(account: EmailAccount, message: EmailMessage, to folder: EmailFolder) async throws {
-        guard let uid = message.uid else {
-            throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
-        }
-
         guard let folderId = message.folderId,
               let sourceFolder = await EmailStore.shared.getFolders(for: account.id).first(where: { $0.id == folderId }) else {
             throw EmailServiceError.invalidConfiguration("找不到源文件夹")
@@ -1044,6 +1084,17 @@ class EmailService {
             // 同文件夹移动等同 no-op，避免误删
             print("ℹ️ [EmailService] moveMessage 源/目标相同，跳过")
             return
+        }
+
+        // 源端或目标端任一是本地虚拟文件夹时，跳过 IMAP COPY/EXPUNGE：
+        // 本地 → 远端 没有服务端原件可 COPY；远端 → 本地 目标文件夹在服务端不存在；
+        // 两端的实际"移动"由调用方在 EmailStore 内存/数据库层完成。
+        if sourceFolder.isLocal || folder.isLocal {
+            return
+        }
+
+        guard let uid = message.uid else {
+            throw EmailServiceError.invalidConfiguration("邮件 UID 不存在")
         }
 
         let imap = try await createIMAPSession(account: account)
