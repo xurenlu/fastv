@@ -962,12 +962,7 @@ struct AIProfileEditView: View {
     private func saveProfile() {
                         let effectiveEndpoint = protocolType.endpointEditable ? endpoint : (protocolType.defaultEndpoint ?? "")
                         let profileId = profile?.id ?? UUID()
-                        
-                        print("🔍 [AIProfileEditView] 保存按钮点击")
-                        print("  - 是编辑模式: \(profile != nil)")
-                        print("  - Profile ID: \(profileId)")
-                        print("  - 原始 Profile ID: \(profile?.id.uuidString ?? "无")")
-                        
+
                         let newProfile = AIServiceProfile(
                             id: profileId,
                             name: name.isEmpty ? protocolType.displayName : name,
@@ -980,10 +975,7 @@ struct AIProfileEditView: View {
                             createdAt: profile?.createdAt ?? Date(),
                             updatedAt: Date()
                         )
-                        
-                        print("  - 新 Profile ID: \(newProfile.id)")
-                        print("  - Profile Name: \(newProfile.name)")
-                        
+
                         onSave(newProfile)
     }
 }
