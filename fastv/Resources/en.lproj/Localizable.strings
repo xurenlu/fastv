@@ -432,3 +432,78 @@
 // Model preload hints
 "speech.model.preload.title" = "Initializing speech model...";
 "speech.model.preload.message" = "Loading model on first use, please wait";
+
+// MARK: - AI Service Management / Edit (v1.4.3-rc11)
+"ai.service.title" = "AI Service Settings";
+"ai.service.subtitle" = "Manage your AI service configurations and pick different services for different scenarios";
+"ai.service.empty.title" = "No AI Service Configured";
+"ai.service.empty.subtitle" = "Tap the button below to add your first AI service";
+"ai.service.add" = "Add Service";
+"ai.service.test" = "Test Connection";
+"ai.service.duplicate" = "Duplicate";
+"ai.service.copy.suffix" = " (Copy)";
+"ai.service.set_default" = "Set as Default";
+"ai.service.add.title" = "Add AI Service";
+"ai.service.edit.title" = "Edit AI Service";
+"ai.service.name" = "Service Name";
+"ai.service.protocol" = "Protocol";
+"ai.service.endpoint" = "API Endpoint";
+"ai.service.apikey" = "API Key";
+"ai.service.apikey.prompt" = "Enter your API Key";
+"ai.service.apikey.show" = "Show API Key";
+"ai.service.apikey.hide" = "Hide API Key";
+"ai.service.apply_apikey" = "Get API Key";
+"ai.service.section.basic" = "Basic Info";
+"ai.service.section.basic.footer" = "Give this service an easily recognizable name";
+"ai.service.section.connection" = "Connection";
+"ai.service.timeout" = "Timeout";
+"ai.service.timeout.format" = "%.1f s";
+"ai.service.timeout.hint" = "Cloud APIs are recommended to use 60s or more; long conversations or complex tasks may need longer";
+"ai.service.footer.someim" = "Some.IM uses a fixed API Endpoint; just fill in the API Key.";
+"ai.service.footer.gemini" = "Gemini uses the official Endpoint by default; you can customize it.";
+"ai.service.footer.default" = "Configure the API connection parameters to ensure the service is reachable.";
+"ai.service.delete.confirm.title" = "Confirm Delete";
+"ai.service.delete.confirm.message" = "Delete \"%@\"? This action cannot be undone.";
+"ai.common.edit" = "Edit";
+"ai.common.delete" = "Delete";
+"ai.common.cancel" = "Cancel";
+"ai.common.save" = "Save";
+"ai.model.default" = "Default Model";
+"ai.model.default.prompt" = "Select or enter a model name";
+"ai.model.recommended" = "Recommended Models";
+
+// Test connection results
+"ai.service.test.success" = "✅ Connected successfully";
+"ai.service.test.error.400" = "❌ Bad request (400)";
+"ai.service.test.error.400.detail" = "❌ Bad request (400): %@";
+"ai.service.test.error.401" = "❌ Authentication failed (401): API Key may be invalid";
+"ai.service.test.error.403" = "❌ Access denied (403): API Key may lack permission";
+"ai.service.test.error.404" = "❌ Endpoint not found (404): please check the API Endpoint";
+"ai.service.test.error.500" = "❌ Server error (%d)";
+"ai.service.test.error.status" = "❌ Connection failed (status code: %d)";
+"ai.service.test.error.invalid_response" = "❌ Connection failed: invalid response";
+"ai.service.test.error.timeout" = "❌ Connection timed out: check your network or endpoint";
+"ai.service.test.error.cannot_connect" = "❌ Cannot reach server: check the endpoint address";
+"ai.service.test.error.connection_lost" = "❌ Network connection lost";
+"ai.service.test.error.network" = "❌ Network error: %@";
+"ai.service.test.error.generic" = "❌ Connection failed: %@";
+
+// AI scenario names + descriptions
+"ai.scenario.voice_input_optimization" = "Voice Input Optimization";
+"ai.scenario.voice_input_optimization.desc" = "Clean up colloquialisms, add punctuation and fix typos after voice transcription";
+"ai.scenario.meeting_transcript_revision" = "Transcript Revision";
+"ai.scenario.meeting_transcript_revision.desc" = "Fix typos and sentence breaks in meeting transcripts (a lightweight model is fine)";
+"ai.scenario.meeting_summary" = "Meeting Summary";
+"ai.scenario.meeting_summary.desc" = "Generate a title, summary and action items for the whole meeting";
+"ai.scenario.meeting_rich_doc" = "Rich Meeting Doc";
+"ai.scenario.meeting_rich_doc.desc" = "Produce a structured Markdown document while recording (with tables, lists, mind maps)";
+"ai.scenario.todo_parsing" = "Todo Parsing";
+"ai.scenario.todo_parsing.desc" = "Parse natural-language tasks into structured todos";
+"ai.scenario.ai_chat" = "AI Chat";
+"ai.scenario.ai_chat.desc" = "General AI conversation";
+"ai.scenario.email_translate" = "Email Translation";
+"ai.scenario.email_translate.desc" = "Translate the email body into the target language while keeping the original structure, without rewriting";
+"ai.scenario.text_correction" = "Text Correction";
+"ai.scenario.text_correction.desc" = "General text correction";
+"ai.scenario.error_detection" = "Error Detection";
+"ai.scenario.error_detection.desc" = "Error detection";

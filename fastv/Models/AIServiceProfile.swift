@@ -249,6 +249,7 @@ enum AIScenario: String, Codable, CaseIterable {
     case meetingRichDoc = "meeting_rich_doc"                   // 会议图文文档（实时结构化 Markdown）
     case todoParsing = "todo_parsing"                          // Todo 解析
     case aiChat = "ai_chat"                                     // AI 聊天
+    case emailTranslate = "email_translate"                     // 邮件翻译
     case textCorrection = "text_correction"                     // 文本纠错
     case errorDetection = "error_detection"                    // 错误检测
 
@@ -261,27 +262,30 @@ enum AIScenario: String, Codable, CaseIterable {
             .meetingRichDoc,
             .todoParsing,
             .aiChat,
+            .emailTranslate,
         ]
     }
 
     var displayName: String {
         switch self {
         case .voiceInputOptimization:
-            return "语音输入优化"
+            return NSLocalizedString("ai.scenario.voice_input_optimization", comment: "语音输入优化")
         case .meetingTranscriptRevision:
-            return "会议转写修订"
+            return NSLocalizedString("ai.scenario.meeting_transcript_revision", comment: "会议转写修订")
         case .meetingSummary:
-            return "会议摘要"
+            return NSLocalizedString("ai.scenario.meeting_summary", comment: "会议摘要")
         case .meetingRichDoc:
-            return "会议图文文档"
+            return NSLocalizedString("ai.scenario.meeting_rich_doc", comment: "会议图文文档")
         case .todoParsing:
-            return "Todo 解析"
+            return NSLocalizedString("ai.scenario.todo_parsing", comment: "Todo 解析")
         case .aiChat:
-            return "AI 聊天"
+            return NSLocalizedString("ai.scenario.ai_chat", comment: "AI 聊天")
+        case .emailTranslate:
+            return NSLocalizedString("ai.scenario.email_translate", comment: "邮件翻译")
         case .textCorrection:
-            return "文本纠错"
+            return NSLocalizedString("ai.scenario.text_correction", comment: "文本纠错")
         case .errorDetection:
-            return "错误检测"
+            return NSLocalizedString("ai.scenario.error_detection", comment: "错误检测")
         }
     }
 
@@ -289,21 +293,23 @@ enum AIScenario: String, Codable, CaseIterable {
     var sceneDescription: String {
         switch self {
         case .voiceInputOptimization:
-            return "语音转写后做口语化清理、标点补全、错字修正"
+            return NSLocalizedString("ai.scenario.voice_input_optimization.desc", comment: "")
         case .meetingTranscriptRevision:
-            return "对会议录音的转写文本做错别字与断句修订（轻量模型即可）"
+            return NSLocalizedString("ai.scenario.meeting_transcript_revision.desc", comment: "")
         case .meetingSummary:
-            return "为整场会议生成标题、摘要、行动项"
+            return NSLocalizedString("ai.scenario.meeting_summary.desc", comment: "")
         case .meetingRichDoc:
-            return "边录边出图文并茂的结构化 Markdown 文档（含表格、列表、思维导图）"
+            return NSLocalizedString("ai.scenario.meeting_rich_doc.desc", comment: "")
         case .todoParsing:
-            return "把自然语言任务解析成结构化的 Todo"
+            return NSLocalizedString("ai.scenario.todo_parsing.desc", comment: "")
         case .aiChat:
-            return "通用 AI 对话"
+            return NSLocalizedString("ai.scenario.ai_chat.desc", comment: "")
+        case .emailTranslate:
+            return NSLocalizedString("ai.scenario.email_translate.desc", comment: "")
         case .textCorrection:
-            return "通用文本纠错"
+            return NSLocalizedString("ai.scenario.text_correction.desc", comment: "")
         case .errorDetection:
-            return "错误检测"
+            return NSLocalizedString("ai.scenario.error_detection.desc", comment: "")
         }
     }
 }

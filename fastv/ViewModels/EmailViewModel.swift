@@ -1503,34 +1503,21 @@ class EmailViewModel: ObservableObject {
                 currentMessage = updatedMessage
             }
 
-            // —— 延迟标已读 ——
-            // 之前的实现是"选中即立刻标 \Seen + 写 isRead = true"，用户键盘上下扫
-            // 一遍就会把一堆未读邮件全标了。现在改成等 emailMarkAsReadDelaySeconds 秒，
-            // 期间换邮件 / 取消选择会取消任务，防止误标。
-            //   delay == -1 → 完全手动（永远不自动标）
-            //   delay == 0  → 立即（保留旧行为给重度用户）
-            //   delay >  0  → 等 N 秒
+            // —— 标已读 ——
+            // 鼠标点击邮件是"我要读这封"的明确动作（列表里选中只有 onTapGesture 这一条路径，
+            // 没有方向键被动浏览会触发选中），所以点击即视为打开 → 立刻标已读，UI 当场更新。
+            //   delay == -1 → 仅手动（永不自动标，留给 toolbar / 右键菜单）
+            //   其他值       → 点击即时标已读（markAsRead 内部已做列表乐观更新，无防抖延迟）
             self.pendingMarkAsReadTask?.cancel()
             self.pendingMarkAsReadTask = nil
 
             if !currentMessage.isRead {
                 let delay = self.preferences.emailMarkAsReadDelaySeconds
                 let target = currentMessage
-                if delay == 0 {
+                if delay != -1 {
                     Task { await self.markAsRead(target) }
-                } else if delay > 0 {
-                    self.pendingMarkAsReadTask = Task { [weak self] in
-                        do {
-                            try await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000_000)
-                        } catch { return } // Task.cancel 抛 CancellationError 就静默退出
-                        guard !Task.isCancelled else { return }
-                        // 二次确认：用户可能在 N 秒内换了邮件，但 selectedMessageId 还是这一封时才标
-                        guard let self = self else { return }
-                        guard self.selectedMessageId == target.id else { return }
-                        await self.markAsRead(target)
-                    }
                 }
-                // delay == -1 时什么都不做，由用户自己点 toolbar / 菜单触发
+                // delay == -1（仅手动）时什么都不做
             }
             
             // 加载正文（如果未加载或没有内容）
@@ -1895,6 +1882,12 @@ class EmailViewModel: ObservableObject {
         }
         if !updated.isRead {
             updated.isRead = true
+            // 立刻把列表里这封也拍成已读，避免等 EmailStore 订阅的 0.5s 防抖才刷新
+            // （详情页用 selectedMessage 计算属性直接查 store，本来就实时；列表用的是
+            //  VM 的 messages 副本，需要在这里同步一把，未读圆点/加粗才会当场消失）。
+            if let idx = messages.firstIndex(where: { $0.id == updated.id }) {
+                messages[idx].isRead = true
+            }
             do {
                 try await emailStore.updateMessage(updated)
             } catch {

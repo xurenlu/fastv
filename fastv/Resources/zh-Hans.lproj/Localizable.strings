@@ -429,6 +429,77 @@
 "feature.splash.smart.subtitle" = "边说边转，实时响应";
 "feature.splash.multilang.subtitle" = "支持 6+ 种语言";
 
-// 模型预加载提示
-"speech.model.preload.title" = "正在初始化语音模型...";
-"speech.model.preload.message" = "首次使用需要加载模型，请稍候";
+// MARK: - AI 服务管理 / 编辑（v1.4.3-rc11）
+"ai.service.title" = "AI 服务配置";
+"ai.service.subtitle" = "管理您的 AI 服务配置，为不同场景选择不同的服务";
+"ai.service.empty.title" = "暂无 AI 服务配置";
+"ai.service.empty.subtitle" = "点击下方按钮添加第一个 AI 服务";
+"ai.service.add" = "添加服务";
+"ai.service.test" = "测试连接";
+"ai.service.duplicate" = "复制";
+"ai.service.copy.suffix" = " (副本)";
+"ai.service.set_default" = "设为默认";
+"ai.service.add.title" = "添加 AI 服务";
+"ai.service.edit.title" = "编辑 AI 服务";
+"ai.service.name" = "服务名称";
+"ai.service.protocol" = "协议类型";
+"ai.service.endpoint" = "API Endpoint";
+"ai.service.apikey" = "API Key";
+"ai.service.apikey.prompt" = "输入您的 API Key";
+"ai.service.apikey.show" = "显示 API Key";
+"ai.service.apikey.hide" = "隐藏 API Key";
+"ai.service.apply_apikey" = "申请 API Key";
+"ai.service.section.basic" = "基本信息";
+"ai.service.section.basic.footer" = "为这个服务配置起一个易于识别的名称";
+"ai.service.section.connection" = "连接配置";
+"ai.service.timeout" = "超时时间";
+"ai.service.timeout.format" = "%.1f 秒";
+"ai.service.timeout.hint" = "云端 API 建议设置 60 秒以上，长对话或复杂任务可能需要更长时间";
+"ai.service.footer.someim" = "Some.IM 使用固定的 API Endpoint，只需填写 API Key。";
+"ai.service.footer.gemini" = "Gemini 默认使用官方 Endpoint，可以自定义修改。";
+"ai.service.footer.default" = "配置 API 连接参数，确保服务可以正常访问。";
+"ai.service.delete.confirm.title" = "确认删除";
+"ai.service.delete.confirm.message" = "确定要删除「%@」吗？此操作无法撤销。";
+"ai.common.edit" = "编辑";
+"ai.common.delete" = "删除";
+"ai.common.cancel" = "取消";
+"ai.common.save" = "保存";
+"ai.model.default" = "默认模型";
+"ai.model.default.prompt" = "选择或输入模型名称";
+"ai.model.recommended" = "推荐模型";
+
+// 测试连接结果
+"ai.service.test.success" = "✅ 连接成功";
+"ai.service.test.error.400" = "❌ 请求参数错误（400）";
+"ai.service.test.error.400.detail" = "❌ 请求参数错误（400）: %@";
+"ai.service.test.error.401" = "❌ 认证失败（401）: API Key 可能无效";
+"ai.service.test.error.403" = "❌ 访问被拒绝（403）: API Key 可能无权限";
+"ai.service.test.error.404" = "❌ 端点不存在（404）: 请检查 API Endpoint 配置";
+"ai.service.test.error.500" = "❌ 服务器错误（%d）";
+"ai.service.test.error.status" = "❌ 连接失败（状态码: %d）";
+"ai.service.test.error.invalid_response" = "❌ 连接失败：无效响应";
+"ai.service.test.error.timeout" = "❌ 连接超时：请检查网络或端点地址";
+"ai.service.test.error.cannot_connect" = "❌ 无法连接到服务器：请检查端点地址";
+"ai.service.test.error.connection_lost" = "❌ 网络连接中断";
+"ai.service.test.error.network" = "❌ 网络错误：%@";
+"ai.service.test.error.generic" = "❌ 连接失败：%@";
+
+// AI 场景名称 + 描述
+"ai.scenario.voice_input_optimization" = "语音输入优化";
+"ai.scenario.voice_input_optimization.desc" = "语音转写后做口语化清理、标点补全、错字修正";
+"ai.scenario.meeting_transcript_revision" = "会议转写修订";
+"ai.scenario.meeting_transcript_revision.desc" = "对会议录音的转写文本做错别字与断句修订（轻量模型即可）";
+"ai.scenario.meeting_summary" = "会议摘要";
+"ai.scenario.meeting_summary.desc" = "为整场会议生成标题、摘要、行动项";
+"ai.scenario.meeting_rich_doc" = "会议图文文档";
+"ai.scenario.meeting_rich_doc.desc" = "边录边出图文并茂的结构化 Markdown 文档（含表格、列表、思维导图）";
+"ai.scenario.todo_parsing" = "Todo 解析";
+"ai.scenario.todo_parsing.desc" = "把自然语言任务解析成结构化的 Todo";
+"ai.scenario.ai_chat" = "AI 聊天";
+"ai.scenario.ai_chat.desc" = "通用 AI 对话";
+"ai.scenario.email_translate" = "邮件翻译";
+"ai.scenario.email_translate.desc" = "把邮件正文翻译成目标语言（中英文等），保留原结构，不做改写";
+"ai.scenario.text_correction" = "文本纠错";
+"ai.scenario.text_correction.desc" = "通用文本纠错";
+"ai.scenario.error_detection" = "错误检测";
+"ai.scenario.error_detection.desc" = "错误检测";

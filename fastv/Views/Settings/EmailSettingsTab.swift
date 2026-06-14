@@ -62,16 +62,16 @@ struct EmailSettingsTab: View {
                     Text("10 秒后").tag(10)
                     Text("仅手动").tag(-1)
                 }
-                .help("选中邮件后多久自动标已读。默认 3 秒，期间换邮件会自动取消，避免键盘上下浏览时误标整个收件箱。")
+                .help("点击打开邮件后多久标记已读。点击即视为打开，默认立刻标读；选「仅手动」则永不自动标记。")
             } header: {
                 Text("读回执 / 标已读")
             } footer: {
-                if preferences.emailMarkAsReadDelaySeconds == 0 {
-                    Text("⚠️ 立即标已读会让方向键滚动浏览时一路把邮件全标了；服务器上的 \\Seen 标志会同步更新，无法撤销。")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                } else if preferences.emailMarkAsReadDelaySeconds == -1 {
+                if preferences.emailMarkAsReadDelaySeconds == -1 {
                     Text("仅手动模式下，邮件永远不会被自动标已读，需要使用菜单或右键手动标读。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("点击打开邮件即标记为已读，未读圆点当场消失；服务器上的 \\Seen 标志会同步更新。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

@@ -17,16 +17,17 @@ struct AIServiceManagementView: View {
     @State private var showDeleteAlert = false
     @State private var profileToDelete: AIServiceProfile?
     @State private var testResult: String?
+    @State private var testSucceeded = false
     @State private var isTesting = false
     
     var body: some View {
         VStack(spacing: 0) {
             // 标题区域
             VStack(alignment: .leading, spacing: 4) {
-                Text("AI 服务配置")
+                Text(NSLocalizedString("ai.service.title", comment: "AI 服务配置"))
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(.primary)
-                Text("管理您的 AI 服务配置，为不同场景选择不同的服务")
+                Text(NSLocalizedString("ai.service.subtitle", comment: ""))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -43,9 +44,9 @@ struct AIServiceManagementView: View {
                 VStack(spacing: 16) {
                     Spacer()
                     ContentUnavailableView {
-                        Label("暂无 AI 服务配置", systemImage: "server.rack")
+                        Label(NSLocalizedString("ai.service.empty.title", comment: ""), systemImage: "server.rack")
                             .font(.headline)
-                        Text("点击下方按钮添加第一个 AI 服务")
+                        Text(NSLocalizedString("ai.service.empty.subtitle", comment: ""))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -87,8 +88,8 @@ struct AIServiceManagementView: View {
                 // 测试结果
                 if let testResult = testResult {
                     HStack(spacing: 8) {
-                        Image(systemName: testResult.contains("成功") ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundStyle(testResult.contains("成功") ? .green : .red)
+                        Image(systemName: testSucceeded ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundStyle(testSucceeded ? .green : .red)
                             .font(.caption)
                         Text(testResult)
                             .font(.caption)
@@ -104,7 +105,7 @@ struct AIServiceManagementView: View {
                         editingProfile = nil
                         showEditSheet = true
                     }) {
-                        Label("添加服务", systemImage: "plus.circle.fill")
+                        Label(NSLocalizedString("ai.service.add", comment: ""), systemImage: "plus.circle.fill")
                             .frame(minWidth: 100)
                     }
                     .buttonStyle(.borderedProminent)
@@ -115,7 +116,7 @@ struct AIServiceManagementView: View {
                             editingProfile = selectedProfile
                             showEditSheet = true
                         }) {
-                            Label("编辑", systemImage: "pencil")
+                            Label(NSLocalizedString("ai.common.edit", comment: ""), systemImage: "pencil")
                                 .frame(minWidth: 80)
                         }
                         .buttonStyle(.bordered)
@@ -129,7 +130,7 @@ struct AIServiceManagementView: View {
                                     .scaleEffect(0.7)
                                     .frame(minWidth: 80)
                             } else {
-                                Label("测试连接", systemImage: "network")
+                                Label(NSLocalizedString("ai.service.test", comment: ""), systemImage: "network")
                                     .frame(minWidth: 80)
                             }
                         }
@@ -140,7 +141,7 @@ struct AIServiceManagementView: View {
                         Button(action: {
                             let newProfile = AIServiceProfile(
                                 id: UUID(),
-                                name: selectedProfile.name + " (副本)",
+                                name: selectedProfile.name + NSLocalizedString("ai.service.copy.suffix", comment: " (副本)"),
                                 protocolType: selectedProfile.protocolType,
                                 endpoint: selectedProfile.endpoint,
                                 apiKey: selectedProfile.apiKey,
@@ -149,7 +150,7 @@ struct AIServiceManagementView: View {
                             )
                             preferences.saveProfile(newProfile)
                         }) {
-                            Label("复制", systemImage: "doc.on.doc")
+                            Label(NSLocalizedString("ai.service.duplicate", comment: ""), systemImage: "doc.on.doc")
                                 .frame(minWidth: 80)
                         }
                         .buttonStyle(.bordered)
@@ -198,11 +199,11 @@ struct AIServiceManagementView: View {
                 )
             }
         }
-        .alert("确认删除", isPresented: $showDeleteAlert) {
-            Button("取消", role: .cancel) {
+        .alert(NSLocalizedString("ai.service.delete.confirm.title", comment: ""), isPresented: $showDeleteAlert) {
+            Button(NSLocalizedString("ai.common.cancel", comment: ""), role: .cancel) {
                 profileToDelete = nil
             }
-            Button("删除", role: .destructive) {
+            Button(NSLocalizedString("ai.common.delete", comment: ""), role: .destructive) {
                 if let profile = profileToDelete {
                     preferences.deleteProfile(profile)
                     if selectedProfile?.id == profile.id {
@@ -213,7 +214,7 @@ struct AIServiceManagementView: View {
             }
         } message: {
             if let profile = profileToDelete {
-                Text("确定要删除「\(profile.name)」吗？此操作无法撤销。")
+                Text(String(format: NSLocalizedString("ai.service.delete.confirm.message", comment: ""), profile.name))
             }
         }
         .onAppear {
@@ -226,6 +227,7 @@ struct AIServiceManagementView: View {
     private func testConnection(for profile: AIServiceProfile) {
         isTesting = true
         testResult = nil
+        testSucceeded = false
         
         Task {
             do {
@@ -279,7 +281,8 @@ struct AIServiceManagementView: View {
                     if let httpResponse = response as? HTTPURLResponse {
                         print("🔍 [测试连接] 状态码: \(httpResponse.statusCode)")
                         if httpResponse.statusCode == 200 {
-                            testResult = "✅ 连接成功"
+                            testSucceeded = true
+                            testResult = NSLocalizedString("ai.service.test.success", comment: "")
                         } else if httpResponse.statusCode == 400 {
                             // 尝试解析错误信息
                             if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
@@ -301,29 +304,29 @@ struct AIServiceManagementView: View {
                                 }
                                 
                                 if !errorMessage.isEmpty {
-                                    testResult = "❌ 请求参数错误（400）: \(errorMessage)"
+                                    testResult = String(format: NSLocalizedString("ai.service.test.error.400.detail", comment: ""), errorMessage)
                                 } else {
-                                    testResult = "❌ 请求参数错误（400）"
+                                    testResult = NSLocalizedString("ai.service.test.error.400", comment: "")
                                 }
                             } else if let errorString = String(data: data, encoding: .utf8) {
                                 print("🔍 [测试连接] 错误响应（文本）: \(errorString)")
-                                testResult = "❌ 请求参数错误（400）: \(errorString)"
+                                testResult = String(format: NSLocalizedString("ai.service.test.error.400.detail", comment: ""), errorString)
                             } else {
-                                testResult = "❌ 请求参数错误（400）"
+                                testResult = NSLocalizedString("ai.service.test.error.400", comment: "")
                             }
                         } else if httpResponse.statusCode == 401 {
-                            testResult = "❌ 认证失败（401）: API Key 可能无效"
+                            testResult = NSLocalizedString("ai.service.test.error.401", comment: "")
                         } else if httpResponse.statusCode == 403 {
-                            testResult = "❌ 访问被拒绝（403）: API Key 可能无权限"
+                            testResult = NSLocalizedString("ai.service.test.error.403", comment: "")
                         } else if httpResponse.statusCode == 404 {
-                            testResult = "❌ 端点不存在（404）: 请检查 API Endpoint 配置"
+                            testResult = NSLocalizedString("ai.service.test.error.404", comment: "")
                         } else if httpResponse.statusCode >= 500 {
-                            testResult = "❌ 服务器错误（\(httpResponse.statusCode)）"
+                            testResult = String(format: NSLocalizedString("ai.service.test.error.500", comment: ""), httpResponse.statusCode)
                         } else {
-                            testResult = "❌ 连接失败（状态码: \(httpResponse.statusCode)）"
+                            testResult = String(format: NSLocalizedString("ai.service.test.error.status", comment: ""), httpResponse.statusCode)
                         }
                     } else {
-                        testResult = "❌ 连接失败：无效响应"
+                        testResult = NSLocalizedString("ai.service.test.error.invalid_response", comment: "")
                     }
                     isTesting = false
                 }
@@ -331,19 +334,19 @@ struct AIServiceManagementView: View {
                 await MainActor.run {
                     switch error.code {
                     case .timedOut:
-                        testResult = "❌ 连接超时：请检查网络或端点地址"
+                        testResult = NSLocalizedString("ai.service.test.error.timeout", comment: "")
                     case .cannotFindHost, .cannotConnectToHost:
-                        testResult = "❌ 无法连接到服务器：请检查端点地址"
+                        testResult = NSLocalizedString("ai.service.test.error.cannot_connect", comment: "")
                     case .networkConnectionLost:
-                        testResult = "❌ 网络连接中断"
+                        testResult = NSLocalizedString("ai.service.test.error.connection_lost", comment: "")
                     default:
-                        testResult = "❌ 网络错误：\(error.localizedDescription)"
+                        testResult = String(format: NSLocalizedString("ai.service.test.error.network", comment: ""), error.localizedDescription)
                     }
                     isTesting = false
                 }
             } catch {
                 await MainActor.run {
-                    testResult = "❌ 连接失败：\(error.localizedDescription)"
+                    testResult = String(format: NSLocalizedString("ai.service.test.error.generic", comment: ""), error.localizedDescription)
                     isTesting = false
                 }
             }
@@ -419,15 +422,15 @@ struct ProfileRowView: View {
             Menu {
                 if !profile.isDefault {
                     Button(action: onSetDefault) {
-                        Label("设为默认", systemImage: "star")
+                        Label(NSLocalizedString("ai.service.set_default", comment: ""), systemImage: "star")
                     }
                 }
                 Button(action: onEdit) {
-                    Label("编辑", systemImage: "pencil")
+                    Label(NSLocalizedString("ai.common.edit", comment: ""), systemImage: "pencil")
                 }
                 Divider()
                 Button(role: .destructive, action: onDelete) {
-                    Label("删除", systemImage: "trash")
+                    Label(NSLocalizedString("ai.common.delete", comment: ""), systemImage: "trash")
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
@@ -461,6 +464,7 @@ struct AIProfileEditView: View {
     @State private var protocolType: AIProtocolType
     @State private var endpoint: String
     @State private var apiKey: String
+    @State private var isAPIKeyVisible = false
     @State private var defaultModel: String
     @State private var timeout: Double
     
@@ -503,10 +507,10 @@ struct AIProfileEditView: View {
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
             .padding(.horizontal, 20)
-            .navigationTitle(profile == nil ? "添加 AI 服务" : "编辑 AI 服务")
+            .navigationTitle(profile == nil ? NSLocalizedString("ai.service.add.title", comment: "") : NSLocalizedString("ai.service.edit.title", comment: ""))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消", action: onCancel)
+                    Button(NSLocalizedString("ai.common.cancel", comment: ""), action: onCancel)
                         .keyboardShortcut(.cancelAction)
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -530,10 +534,10 @@ struct AIProfileEditView: View {
     @ViewBuilder
     private var basicInfoSection: some View {
                 Section {
-                    TextField("服务名称", text: $name)
+                    TextField(NSLocalizedString("ai.service.name", comment: ""), text: $name)
                         .textFieldStyle(.roundedBorder)
-                    
-                    Picker("协议类型", selection: $protocolType) {
+
+                    Picker(NSLocalizedString("ai.service.protocol", comment: ""), selection: $protocolType) {
                         ForEach(AIProtocolType.allCases, id: \.self) { type in
                             Text(type.displayName).tag(type)
                         }
@@ -553,11 +557,11 @@ struct AIProfileEditView: View {
                         }
                     }
                 } header: {
-                    Text("基本信息")
+                    Text(NSLocalizedString("ai.service.section.basic", comment: ""))
                         .font(.headline)
                         .padding(.top, 8)
                 } footer: {
-                    Text("为这个服务配置起一个易于识别的名称")
+                    Text(NSLocalizedString("ai.service.section.basic.footer", comment: ""))
                         .font(.caption)
                         .foregroundStyle(.secondary)
         }
@@ -577,7 +581,7 @@ struct AIProfileEditView: View {
             }
             timeoutSlider
         } header: {
-            Text("连接配置")
+            Text(NSLocalizedString("ai.service.section.connection", comment: ""))
                 .font(.headline)
                 .padding(.top, 8)
         } footer: {
@@ -589,11 +593,11 @@ struct AIProfileEditView: View {
     @ViewBuilder
     private var endpointField: some View {
                     if protocolType.endpointEditable {
-                        TextField("API Endpoint", text: $endpoint, prompt: Text("https://api.example.com/v1"))
+                        TextField(NSLocalizedString("ai.service.endpoint", comment: "API Endpoint"), text: $endpoint, prompt: Text(verbatim: "https://api.example.com/v1"))
                             .textFieldStyle(.roundedBorder)
                     } else {
                         HStack {
-                            Text("API Endpoint")
+                            Text(NSLocalizedString("ai.service.endpoint", comment: "API Endpoint"))
                                 .foregroundStyle(.primary)
                             Spacer()
                 let displayEndpoint = endpoint.isEmpty ? (protocolType.defaultEndpoint ?? "") : endpoint
@@ -609,16 +613,35 @@ struct AIProfileEditView: View {
     @ViewBuilder
     private var apiKeyField: some View {
                     if protocolType.requiresAPIKey {
-                        SecureField("API Key", text: $apiKey, prompt: Text("输入您的 API Key"))
+                        HStack(spacing: 8) {
+                            Group {
+                                if isAPIKeyVisible {
+                                    TextField(NSLocalizedString("ai.service.apikey", comment: "API Key"), text: $apiKey, prompt: Text(NSLocalizedString("ai.service.apikey.prompt", comment: "")))
+                                        .autocorrectionDisabled()
+                                } else {
+                                    SecureField(NSLocalizedString("ai.service.apikey", comment: "API Key"), text: $apiKey, prompt: Text(NSLocalizedString("ai.service.apikey.prompt", comment: "")))
+                                }
+                            }
                             .textFieldStyle(.roundedBorder)
-                        
+
+                            // 小眼睛：切换 API Key 明文/密文显示
+                            Button(action: { isAPIKeyVisible.toggle() }) {
+                                Image(systemName: isAPIKeyVisible ? "eye.slash" : "eye")
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 20)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .help(isAPIKeyVisible ? NSLocalizedString("ai.service.apikey.hide", comment: "") : NSLocalizedString("ai.service.apikey.show", comment: ""))
+                        }
+
                         // 申请链接按钮（部分服务显示）
                         if let apiKeyURL = protocolType.apiKeyApplicationURL {
                             Button(action: { openURL(apiKeyURL) }) {
                                 HStack(spacing: 4) {
                                     Image(systemName: "link")
                                         .font(.caption)
-                                    Text("申请API Key")
+                                    Text(NSLocalizedString("ai.service.apply_apikey", comment: ""))
                                         .font(.caption)
                                 }
                                 .foregroundStyle(.blue)
@@ -845,7 +868,7 @@ struct AIProfileEditView: View {
     // MARK: - 模型字段
     @ViewBuilder
     private var modelField: some View {
-                    TextField("默认模型", text: $defaultModel, prompt: Text("选择或输入模型名称"))
+                    TextField(NSLocalizedString("ai.model.default", comment: ""), text: $defaultModel, prompt: Text(NSLocalizedString("ai.model.default.prompt", comment: "")))
                         .textFieldStyle(.roundedBorder)
     }
                     
@@ -854,7 +877,7 @@ struct AIProfileEditView: View {
     private var recommendedModelsView: some View {
                     if !protocolType.recommendedModels.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("推荐模型")
+                            Text(NSLocalizedString("ai.model.recommended", comment: ""))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             ScrollView(.horizontal, showsIndicators: false) {
@@ -893,17 +916,17 @@ struct AIProfileEditView: View {
     private var timeoutSlider: some View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("超时时间")
+                            Text(NSLocalizedString("ai.service.timeout", comment: ""))
                                 .foregroundStyle(.primary)
                             Spacer()
-                Text(String(format: "%.1f 秒", timeout))
+                Text(String(format: NSLocalizedString("ai.service.timeout.format", comment: "%.1f 秒"), timeout))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
                         }
                         Slider(value: $timeout, in: 2.0...180.0, step: 0.5)
                         if protocolType != .ollama {
-                            Text("云端 API 建议设置 60 秒以上，长对话或复杂任务可能需要更长时间")
+                            Text(NSLocalizedString("ai.service.timeout.hint", comment: ""))
                                 .font(.caption2)
                                 .foregroundStyle(.tertiary)
                         }
@@ -914,15 +937,15 @@ struct AIProfileEditView: View {
     @ViewBuilder
     private var connectionFooterText: some View {
                     if protocolType == .someIM {
-                        Text("Some.IM 使用固定的 API Endpoint，只需填写 API Key。")
+                        Text(NSLocalizedString("ai.service.footer.someim", comment: ""))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else if protocolType == .gemini {
-                        Text("Gemini 默认使用官方 Endpoint，可以自定义修改。")
+                        Text(NSLocalizedString("ai.service.footer.gemini", comment: ""))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
-                        Text("配置 API 连接参数，确保服务可以正常访问。")
+                        Text(NSLocalizedString("ai.service.footer.default", comment: ""))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -931,7 +954,7 @@ struct AIProfileEditView: View {
     // MARK: - 保存按钮
     @ViewBuilder
     private var saveButton: some View {
-        Button("保存", action: saveProfile)
+        Button(NSLocalizedString("ai.common.save", comment: ""), action: saveProfile)
             .disabled(name.isEmpty || (protocolType.requiresAPIKey && apiKey.isEmpty))
             .keyboardShortcut(.defaultAction)
                 }

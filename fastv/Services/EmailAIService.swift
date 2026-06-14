@@ -437,7 +437,9 @@ class EmailAIService {
             throw NSError(domain: "EmailAIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "正文内容为空"])
         }
 
-        let config = await MainActor.run { preferences.getConfig(for: .aiChat) }
+        // 翻译走独立的「邮件翻译」场景：用户可在「AI 场景映射」里单独指定服务/模型，
+        // 未绑定时 getConfig 会回退到默认 Profile，再回退到旧版兼容配置。
+        let config = await MainActor.run { preferences.getConfig(for: .emailTranslate) }
         let prefs = await MainActor.run { preferences }
 
         let systemPrompt = """

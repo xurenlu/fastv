@@ -2,6 +2,27 @@
 
 所有版本變更記錄。
 
+## [1.4.3-rc11] - 2026-06-14
+
+### 修復 / 体验（AI 服务编辑 + 邮件标已读 + 翻译）
+
+**AI 服务编辑：API Key 可见性切换**
+- `AIProfileEditView` 的 API Key 输入框旁新增「小眼睛」按钮，点一下在密文（`SecureField`）与明文（`TextField`）之间切换，方便核对粘贴进去的 key 是否正确；默认仍为隐藏态。明文模式下关闭自动纠错，避免 key 被「自作聪明」改掉。
+
+**邮件点击即时标已读**
+- `selectMessage`：鼠标点击邮件视为「明确打开」→ 立刻标已读，不再受默认 3 秒延迟拖累（仅「仅手动 -1」模式保留不自动标）。列表里点击只有 `onTapGesture` 一条路径，没有方向键被动浏览会误标，所以即时是安全的。
+- `markAsRead`：标读时同步乐观更新 VM 的 `messages` 列表副本，消除原本 0.5 秒 EmailStore 订阅防抖滞后——未读圆点/加粗当场消失，列表与详情页同步。
+- `EmailSettingsTab` 的「自动标已读」设置文案同步对齐新行为。
+
+**邮件翻译可单独配 AI**
+- 新增独立的 `emailTranslate`（邮件翻译）AI 场景，加入 `activeScenarios`，可在「AI 场景映射」里为翻译单独指定服务/模型；未绑定时回退默认 Profile，再回退旧版兼容配置。
+- `EmailAIService.translate()` 由硬编码的 `.aiChat` 改为走 `.emailTranslate` 场景——翻译终于不再被迫和「AI 聊天」共用一套配置。
+
+**国际化（i18n）**
+- `AIServiceManagementView`（含编辑表单、测试连接的全部错误文案）此前 26+ 处硬编码中文全部接入 `NSLocalizedString`；测试结果成败判断从 `contains("成功")` 字符串匹配改为独立布尔 `testSucceeded`，避免翻译后判断失效。
+- `AIScenario` 的 `displayName` / `sceneDescription` 全部 i18n。
+- 5 个语言（zh-Hans/en/ja/ko/yue）各补齐 69 条新 key，格式符（`%@`/`%d`/`%.1f`）跨语言对齐。
+
 ## [1.4.3-rc9] - 2026-06-09
 
 ### 修復（改名遗留 + 邮件标已读真正落地）
