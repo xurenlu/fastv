@@ -2,6 +2,13 @@
 
 所有版本變更記錄。
 
+## [1.4.3-rc12] - 2026-06-14
+
+### 修復（i18n 去重）
+
+- 清理 `Localizable.strings` 历史遗留的重复 key：`speech.model.preload.title` / `speech.model.preload.message` 在 zh-Hans、en 两个文件中各出现两次（第 44/45 行与第 433/434 行）。按 .strings「后者生效」规则，此前 zh-Hans/en 实际显示的是晚出现的那份；现统一保留语义更完整、且与 ja/ko/yue 现存唯一一份一致的第 44/45 行版本，删除晚出现的重复项。
+- 用脚本对 5 个语言文件（zh-Hans/en/ja/ko/yue）做了全量重复 key 扫描，确认除上述外无其他重复；清理后复扫均无重复。未触碰任何无关 key。
+
 ## [1.4.3-rc11] - 2026-06-14
 
 ### 修復 / 体验（AI 服务编辑 + 邮件标已读 + 翻译）

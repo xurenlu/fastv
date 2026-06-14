@@ -429,10 +429,6 @@
 "feature.splash.smart.subtitle" = "Real-time transcription";
 "feature.splash.multilang.subtitle" = "Supports 6+ languages";
 
-// Model preload hints
-"speech.model.preload.title" = "Initializing speech model...";
-"speech.model.preload.message" = "Loading model on first use, please wait";
-
 // MARK: - AI Service Management / Edit (v1.4.3-rc11)
 "ai.service.title" = "AI Service Settings";
 "ai.service.subtitle" = "Manage your AI service configurations and pick different services for different scenarios";
