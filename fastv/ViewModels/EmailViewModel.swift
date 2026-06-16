@@ -1459,6 +1459,31 @@ class EmailViewModel: ObservableObject {
             messages[index] = updated
         }
     }
+
+    /// 把「最新的用户态标志位」刷进一条即将整体回写的邮件副本里。
+    ///
+    /// 背景：selectMessage 会并发起 markAsRead 与 loadMessageBody。loadMessageBody 捕获的
+    /// 是点击那一刻的副本（isRead=false），正文抓取完成后用 `replaceMessageInList` /
+    /// `EmailStore.updateMessage` **整条覆盖**写回——会把 markAsRead 刚标好的 isRead=true
+    /// 拍回 false（缓存命中几乎必中，网络路径表现为「闪一下已读又变回未读」）。
+    ///
+    /// 正文加载本就不该改用户态，这里在回写前从最新副本（EmailStore 优先，退回 VM.messages）
+    /// 同步 isRead / isStarred / isSpam / isDeleted，避免覆盖竞态。
+    private func refreshVolatileFlags(_ message: inout EmailMessage) {
+        let latest: EmailMessage? = {
+            if let folderId = message.folderId,
+               let storeMessages = emailStore.messages[folderId],
+               let hit = storeMessages.first(where: { $0.id == message.id }) {
+                return hit
+            }
+            return messages.first(where: { $0.id == message.id })
+        }()
+        guard let latest = latest else { return }
+        message.isRead = latest.isRead
+        message.isStarred = latest.isStarred
+        message.isSpam = latest.isSpam
+        message.isDeleted = latest.isDeleted
+    }
     
     /// 选择邮件
     /// 选择线程
@@ -1663,6 +1688,7 @@ class EmailViewModel: ObservableObject {
                 if !message.isBodyLoaded {
                     var updated = message
                     updated.isBodyLoaded = true
+                    refreshVolatileFlags(&updated)
                     replaceMessageInList(with: updated)
                     // 后台更新数据库
                     Task(priority: .background) {
@@ -1736,6 +1762,7 @@ class EmailViewModel: ObservableObject {
                     }
                     updated.isBodyLoaded = true
                     updated.bodyCachedAt = Date()
+                    refreshVolatileFlags(&updated)
                     replaceMessageInList(with: updated)
                     Task(priority: .background) {
                         do {
@@ -1814,6 +1841,8 @@ class EmailViewModel: ObservableObject {
             }
             
             // 立即更新UI（使用 htmlBody 渲染，不需要等待 textBody）
+            // markAsRead 与本方法并发执行，回写前刷新用户态标志位，避免把 isRead=true 覆盖回 false
+            refreshVolatileFlags(&updated)
             replaceMessageInList(with: updated)
             print("📝 [EmailViewModel] 已更新 ViewModel 邮件列表，邮件: \(updated.subject), folderId: \(updated.folderId?.uuidString ?? "nil")")
             

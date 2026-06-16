@@ -2,6 +2,12 @@
 
 所有版本變更記錄。
 
+## [1.4.3-rc14] - 2026-06-16
+
+### 修复
+
+- **打开邮件正文后仍不标已读**：`selectMessage` 会并发起 `markAsRead`（标已读）和 `loadMessageBody`（加载正文）两个任务；正文加载分支用点击瞬间捕获的旧副本（`isRead=false`）整条回写列表与 `EmailStore`，把刚标好的 `isRead=true` 覆盖回 `false`——正文已缓存时几乎必中（永远标不上），首次打开走网络时表现为「闪一下已读又变回未读」。修复：新增 `refreshVolatileFlags`，在三条正文回写分支（缓存命中 / orphan 救援 / 网络抓取）回写前，从最新副本同步 `isRead / isStarred / isSpam / isDeleted`，正文加载不再误改用户态标志位。
+
 ## [1.4.3-rc13] - 2026-06-14
 
 ### 清理
