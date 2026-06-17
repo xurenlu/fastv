@@ -10,6 +10,10 @@
 "settings.section.general" = "General";
 "hide.dock.icon" = "Hide icon in Dock";
 "hide.dock.icon.description" = "When enabled, the app stays only in the menu bar with no Dock icon. Reopen the window anytime from the menu bar icon.";
+"statusbar.activity.recording" = "Recording…";
+"statusbar.activity.transcribing" = "Transcribing…";
+"statusbar.activity.polishing" = "Polishing with AI…";
+"quit" = "Quit";
 "ok" = "OK";
 "cancel" = "Cancel";
 "save" = "Save";

@@ -10,6 +10,10 @@
 "settings.section.general" = "一般";
 "hide.dock.icon" = "Dock のアイコンを隠す";
 "hide.dock.icon.description" = "有効にすると、Dock にアイコンを表示せずメニューバーに常駐します。メニューバーのアイコンからいつでもウインドウを開けます。";
+"statusbar.activity.recording" = "録音中…";
+"statusbar.activity.transcribing" = "文字起こし中…";
+"statusbar.activity.polishing" = "AI 最適化中…";
+"quit" = "終了";
 "ok" = "OK";
 "cancel" = "キャンセル";
 "save" = "保存";

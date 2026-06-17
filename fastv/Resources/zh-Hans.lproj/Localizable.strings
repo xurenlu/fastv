@@ -10,6 +10,10 @@
 "settings.section.general" = "通用";
 "hide.dock.icon" = "在 Dock 中隐藏图标";
 "hide.dock.icon.description" = "开启后仅在菜单栏常驻，Dock 不再显示图标。需要时可从菜单栏图标重新打开窗口。";
+"statusbar.activity.recording" = "正在录音…";
+"statusbar.activity.transcribing" = "正在转写…";
+"statusbar.activity.polishing" = "AI 优化中…";
+"quit" = "退出";
 "ok" = "确定";
 "cancel" = "取消";
 "save" = "保存";
