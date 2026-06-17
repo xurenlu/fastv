@@ -14,6 +14,15 @@
 "statusbar.activity.transcribing" = "轉緊文字…";
 "statusbar.activity.polishing" = "AI 執緊靚…";
 "quit" = "離開";
+"about.privacy.title" = "私隱承諾";
+"about.privacy.body" = "語音轉文字全部喺呢部機度搞掂，唔使聯網。錄音絕對唔會傳去任何伺服器。用 AI 執靚嘅時候都淨係傳轉好嘅文字（仲可以閂咗佢）。冇網都照用得。";
+"settings.privacy.local.processing" = "語音轉文字喺呢部機度做晒，唔使聯網。";
+"onboarding.complete.title" = "搞掂晒";
+"onboarding.complete.subtitle" = "撳實快捷鍵開口講嘢，放手就會自動轉文字插入而家嘅輸入框。";
+"onboarding.complete.hint.shortcut" = "預設快捷鍵已經設定好（喺設定度可以改）";
+"onboarding.complete.hint.language" = "識別語言跟住系統語言（喺設定度可以改）";
+"onboarding.complete.hint.ai" = "AI 執靚預設冇開（去設定填 API Key 就用得）";
+"onboarding.complete.hint.privacy" = "語音識別完全喺呢部機度做，唔使聯網";
 "ok" = "確定";
 "cancel" = "取消";
 "save" = "儲存";

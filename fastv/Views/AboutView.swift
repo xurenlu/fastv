@@ -76,7 +76,26 @@ struct AboutView: View {
                     }
                     
                     Divider()
-                    
+
+                    // 隐私承诺：本地处理是核心差异点，也是稳定性的可见证据
+                    // 设计动机：竞品 Wispr Flow / Typeless 全部云端，Typeless 还在「on-device」措辞上翻车被用户揭穿。
+                    // 我们真的本地，就把这条放在用户每次想起「这工具到底安不安全」时能看到的位置。
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "lock.shield.fill")
+                                .foregroundStyle(.green)
+                            Text(NSLocalizedString("about.privacy.title", comment: ""))
+                                .font(.headline)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(NSLocalizedString("about.privacy.body", comment: ""))
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Divider()
+
                     // 版权信息
                     VStack(alignment: .leading, spacing: 8) {
                         Text(NSLocalizedString("about.copyright", comment: ""))

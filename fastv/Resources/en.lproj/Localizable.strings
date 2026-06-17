@@ -14,6 +14,15 @@
 "statusbar.activity.transcribing" = "Transcribing…";
 "statusbar.activity.polishing" = "Polishing with AI…";
 "quit" = "Quit";
+"about.privacy.title" = "Privacy promise";
+"about.privacy.body" = "Speech-to-text happens entirely on this device. Recordings are never uploaded. AI polishing (if enabled) only sends the transcribed text, never the audio. Works offline.";
+"settings.privacy.local.processing" = "Speech-to-text runs on this device. No network required.";
+"onboarding.complete.title" = "You're all set";
+"onboarding.complete.subtitle" = "Hold the shortcut and start talking. Release it, and the transcribed text drops into your current input.";
+"onboarding.complete.hint.shortcut" = "Default shortcut is configured (changeable in Settings)";
+"onboarding.complete.hint.language" = "Recognition language follows your system language (changeable in Settings)";
+"onboarding.complete.hint.ai" = "AI polishing is off by default (enable it in Settings with your API key)";
+"onboarding.complete.hint.privacy" = "Speech recognition runs entirely on this device — no network required";
 "ok" = "OK";
 "cancel" = "Cancel";
 "save" = "Save";

@@ -2,6 +2,18 @@
 
 所有版本變更記錄。
 
+## [2.0.0-rc3] - 2026-06-17
+
+竞品调研驱动的「四件套」打磨：易用性、准确性、稳定性、美观一锅端。
+
+### 改进
+
+- **隐私锚点（about + settings）**：版本信息上方和设置「通用」section 顶部都加上「语音转写在本机完成，无需联网」的绿色徽章。竞品调研反推：Wispr Flow / Typeless 都是云端，Typeless 还在「on-device」措辞上翻车；我们真的本地，要让用户看得到。5 语言 i18n。
+- **波形窗口「极简模式」**：`WaveformWindowStyle` 新增 `.minimal` 一档，录音中只显示一个 8pt 的呼吸光点（随音量缩放 0.6×~1.2×），不画波形 bars。窗口尺寸缩到 24×24。适合写作 / 演示 / 录屏不被打扰的场景。状态颜色随状态切换（录音红 / 转写蓝 / AI 紫）与菜单栏徽章对齐。
+- **中文 AI 优化提示词打磨**：默认 system prompt 新增三块：(1)「改口识别」专章，命中"不是 X 是 Y"/"等等重说"等模式时丢前半段保后半段；(2)「中英混合规则」明确中英文间留半角空格、专有名词保留原大小写（iPhone/macOS/GitHub 不要写成 Iphone/Macos/Github）、数字与单位间留空格；(3) 填充词列表扩展到 30+ 词（"那种""的话""然后呢""怎么说呢"等）。安全规则原封不动（反 prompt injection 那块）。
+- **Onboarding 5 步精简为 2 步**：模型下载 → 完成页。语言 / 快捷键 / AI Config 全部走默认值（语言跟系统、快捷键已预设、AI 优化默认关），用户首次成功转写后再去设置自定义。竞品调研反推：SuperWhisper「15-30 分钟配置劝退」是反面教材，目标 = **默认值敢拍板**。原来的 LanguageSelectionStep / ShortcutSetupStep / AIConfigurationStep / UsageGuideStep 代码保留未删（供设置页或未来「重新引导」复用）。新增 OnboardingCompletionStep，4 行 hint 指路到设置。
+- **WaveformView 录音渲染补 Group 包裹**：minimal/经典两个分支共用 `.transition(.asymmetric(...))`，编译稳定。
+
 ## [2.0.0-rc2] - 2026-06-17
 
 ### 改进

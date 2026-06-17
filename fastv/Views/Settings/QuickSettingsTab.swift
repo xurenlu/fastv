@@ -17,6 +17,16 @@ struct QuickSettingsTab: View {
         Form {
             // 通用 / 外观
             Section {
+                // 隐私锚点：让用户在每天最常去的设置入口也能看到「本地处理」承诺。
+                HStack(spacing: 8) {
+                    Image(systemName: "lock.shield.fill")
+                        .foregroundStyle(.green)
+                    Text(NSLocalizedString("settings.privacy.local.processing", comment: ""))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+
                 Toggle(NSLocalizedString("hide.dock.icon", comment: ""), isOn: $preferences.hideDockIcon)
                 Text(NSLocalizedString("hide.dock.icon.description", comment: ""))
                     .font(.caption)

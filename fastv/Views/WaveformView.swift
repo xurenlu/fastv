@@ -358,34 +358,59 @@ struct WaveformView: View {
             Group {
                 switch state {
                 case .recording:
-                    // 录音中：显示音量波形动画 - 更协调的波形
-                    HStack(spacing: style.barSpacing) {
-                        ForEach(0..<bars.count, id: \.self) { index in
-                            RoundedRectangle(cornerRadius: style.barWidth / 2, style: .continuous)
+                    // 录音中
+                    Group {
+                        if style.isMinimal {
+                            // 极简模式：单个呼吸光点。
+                            // 大小随 audioLevel 缩放（0.6×~1.2×），让用户依然能瞥见「有没有在收音」，
+                            // 但不被随机抖动的波形数据吸走注意力。
+                            let scale = 0.6 + CGFloat(manager.audioLevel) * 0.6
+                            Circle()
                                 .fill(
-                                    // 更丰富的渐变层次
-                                    LinearGradient(
-                                        colors: [
-                                            barColor.opacity(0.9),
-                                            barColor.opacity(0.7),
-                                            barColor.opacity(0.5)
-                                        ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
+                                    RadialGradient(
+                                        colors: [barColor, barColor.opacity(0.6)],
+                                        center: .center,
+                                        startRadius: 0,
+                                        endRadius: 6
                                     )
                                 )
-                                .frame(width: style.barWidth, height: bars[index] * style.maxBarHeight)
-                                // 添加微妙的发光效果
-                                .shadow(color: barColor.opacity(0.3), radius: 2, x: 0, y: 0)
+                                .frame(width: 8, height: 8)
+                                .scaleEffect(scale)
+                                .shadow(color: barColor.opacity(0.5), radius: 3, x: 0, y: 0)
+                                .animation(.easeOut(duration: 0.12), value: manager.audioLevel)
+                                .padding(.horizontal, style.horizontalPadding)
+                                .padding(.vertical, style.verticalPadding)
+                        } else {
+                            // 经典波形：多条 bar
+                            HStack(spacing: style.barSpacing) {
+                                ForEach(0..<bars.count, id: \.self) { index in
+                                    RoundedRectangle(cornerRadius: style.barWidth / 2, style: .continuous)
+                                        .fill(
+                                            // 更丰富的渐变层次
+                                            LinearGradient(
+                                                colors: [
+                                                    barColor.opacity(0.9),
+                                                    barColor.opacity(0.7),
+                                                    barColor.opacity(0.5)
+                                                ],
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            )
+                                        )
+                                        .frame(width: style.barWidth, height: bars[index] * style.maxBarHeight)
+                                        // 添加微妙的发光效果
+                                        .shadow(color: barColor.opacity(0.3), radius: 2, x: 0, y: 0)
+                                }
+                            }
+                            .padding(.horizontal, style.horizontalPadding)
+                            .padding(.vertical, style.verticalPadding)
+                            .onAppear {
+                                animateBars()
+                            }
+                            .onChange(of: manager.audioLevel) { _, newLevel in
+                                updateBars(with: newLevel)
+                            }
                         }
-                    }
-                    .padding(.horizontal, style.horizontalPadding)
-                    .padding(.vertical, style.verticalPadding)
-                    .onAppear {
-                        animateBars()
-                    }
-                    .onChange(of: manager.audioLevel) { _, newLevel in
-                        updateBars(with: newLevel)
                     }
                     // 更自然的过渡效果
                     .transition(.asymmetric(

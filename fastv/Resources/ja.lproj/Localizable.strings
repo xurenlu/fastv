@@ -14,6 +14,15 @@
 "statusbar.activity.transcribing" = "文字起こし中…";
 "statusbar.activity.polishing" = "AI 最適化中…";
 "quit" = "終了";
+"about.privacy.title" = "プライバシーの約束";
+"about.privacy.body" = "音声認識はすべてこのデバイス上で行われ、ネットワーク接続は不要です。録音データはサーバーに送信されません。AI 最適化を使う場合も、送信するのは文字起こし結果のテキストのみ（オフにもできます）。オフラインでも動作します。";
+"settings.privacy.local.processing" = "音声認識はこのデバイスで完結します。ネット接続は不要です。";
+"onboarding.complete.title" = "準備完了";
+"onboarding.complete.subtitle" = "ショートカットを押しながら話してください。離すと文字起こし結果が現在の入力欄に挿入されます。";
+"onboarding.complete.hint.shortcut" = "デフォルトのショートカットを設定済み（設定で変更可）";
+"onboarding.complete.hint.language" = "認識言語はシステム言語に従います（設定で変更可）";
+"onboarding.complete.hint.ai" = "AI 最適化は既定でオフ（設定で API キーを入れて有効化）";
+"onboarding.complete.hint.privacy" = "音声認識はすべてこのデバイス上で実行されます。ネット接続不要";
 "ok" = "OK";
 "cancel" = "キャンセル";
 "save" = "保存";

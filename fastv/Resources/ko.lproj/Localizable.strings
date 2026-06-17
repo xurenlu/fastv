@@ -14,6 +14,15 @@
 "statusbar.activity.transcribing" = "변환 중…";
 "statusbar.activity.polishing" = "AI 다듬는 중…";
 "quit" = "종료";
+"about.privacy.title" = "프라이버시 약속";
+"about.privacy.body" = "음성 인식은 모두 이 기기에서 처리되며 네트워크가 필요하지 않습니다. 녹음 데이터는 어떤 서버로도 전송되지 않습니다. AI 다듬기를 사용할 때도 텍스트만 전송되며 음성은 전송되지 않습니다(끌 수도 있습니다). 오프라인에서도 정상 작동합니다.";
+"settings.privacy.local.processing" = "음성 인식은 이 기기에서 처리됩니다. 인터넷이 필요 없습니다.";
+"onboarding.complete.title" = "준비 완료";
+"onboarding.complete.subtitle" = "단축키를 누른 채로 말하세요. 손을 떼면 변환된 텍스트가 현재 입력란에 자동으로 들어갑니다.";
+"onboarding.complete.hint.shortcut" = "기본 단축키가 설정되어 있습니다 (설정에서 변경 가능)";
+"onboarding.complete.hint.language" = "인식 언어는 시스템 언어를 따릅니다 (설정에서 변경 가능)";
+"onboarding.complete.hint.ai" = "AI 다듬기는 기본적으로 꺼져 있습니다 (설정에서 API 키와 함께 활성화)";
+"onboarding.complete.hint.privacy" = "음성 인식은 모두 이 기기에서 실행됩니다 — 인터넷 불필요";
 "ok" = "확인";
 "cancel" = "취소";
 "save" = "저장";

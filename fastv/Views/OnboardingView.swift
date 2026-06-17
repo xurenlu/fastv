@@ -15,16 +15,28 @@ struct OnboardingView: View {
     @State private var downloadProgress: Double = 0.0
     @State private var downloadStatus: String = ""
     @State private var downloadError: Error?
-    @State private var aiConfigHasAPIKey = false // 跟踪AI配置步骤是否有API Key
-    
+
     @ObservedObject private var preferences = UserPreferences.shared
     @ObservedObject private var downloader = ModelDownloader.shared
-    
+
+    /// v2.0.0-rc3 精简：5 步 → 2 步。
+    ///
+    /// 设计动机来自竞品调研：SuperWhisper 因「15-30 分钟配置劝退新用户」吃了苦头。
+    /// 我们的策略 = **默认值敢拍板**：
+    /// - 输入语言：默认系统语言（中文环境用 zh，其它用 auto）
+    /// - 快捷键：默认值已存在（在 UserPreferences 初始化时）
+    /// - AI 优化：默认关（不强求 API Key，避免没配 key 报错的首次体验崩盘）
+    ///
+    /// 用户首次启动只需走 2 步：模型下载 → 完成。其它配置在「设置」里随时可改。
+    /// 旧的 LanguageSelectionStep / ShortcutSetupStep / AIConfigurationStep /
+    /// UsageGuideStep 代码保留（未删），供未来「重新引导」或 settings 复用。
+    private static let totalSteps = 2
+
     var body: some View {
         VStack(spacing: 0) {
             // 步骤指示器
             HStack(spacing: 8) {
-                ForEach(0..<5) { index in
+                ForEach(0..<Self.totalSteps, id: \.self) { index in
                     Circle()
                         .fill(index <= currentStep ? Color.accentColor : Color.gray.opacity(0.3))
                         .frame(width: 8, height: 8)
@@ -32,35 +44,32 @@ struct OnboardingView: View {
             }
             .padding(.top, 30)
             .padding(.bottom, 20)
-            
+
             // 内容区域
             ScrollView {
                 Group {
                     switch currentStep {
                     case 0:
-                        LanguageSelectionStep()
-                    case 1:
-                        ShortcutSetupStep()
-                    case 2:
                         ModelDownloadStep(
                             isDownloading: $isDownloading,
                             downloadProgress: $downloadProgress,
                             downloadStatus: $downloadStatus,
                             downloadError: $downloadError
                         )
-                    case 3:
-                        AIConfigurationStep(onAPIKeyChanged: { hasAPIKey in
-                            aiConfigHasAPIKey = hasAPIKey
-                        })
-                    case 4:
-                        UsageGuideStep()
+                    case 1:
+                        OnboardingCompletionStep()
                     default:
-                        LanguageSelectionStep()
+                        ModelDownloadStep(
+                            isDownloading: $isDownloading,
+                            downloadProgress: $downloadProgress,
+                            downloadStatus: $downloadStatus,
+                            downloadError: $downloadError
+                        )
                     }
                 }
                 .transition(.opacity)
             }
-            
+
             // 底部按钮
             HStack {
                 if currentStep > 0 {
@@ -71,66 +80,40 @@ struct OnboardingView: View {
                     }
                     .buttonStyle(.bordered)
                 }
-                
+
                 Spacer()
-                
-                // AI配置步骤（步骤3）的特殊按钮逻辑
-                if currentStep == 3 {
-                    // 跳过按钮
-                    Button(NSLocalizedString("onboarding.skip", comment: "")) {
+
+                Button(currentStep == Self.totalSteps - 1
+                       ? NSLocalizedString("onboarding.complete", comment: "")
+                       : NSLocalizedString("onboarding.next", comment: "")) {
+                    if currentStep == Self.totalSteps - 1 {
+                        // 完成引导
+                        preferences.markOnboardingCompleted()
+                        dismiss()
+                    } else if currentStep == 0 {
+                        // 从模型下载步骤进入完成页之前，异步确认模型确实在
+                        Task { @MainActor in
+                            let modelExists = await ModelDownloader.shared.checkModelFilesExistAsync()
+                            if modelExists {
+                                preferences.isModelDownloaded = true
+                            }
+                            withAnimation {
+                                currentStep += 1
+                            }
+                        }
+                    } else {
                         withAnimation {
                             currentStep += 1
                         }
                     }
-                    .buttonStyle(.bordered)
-                    
-                    // 完成或下一步按钮
-                    Button(aiConfigHasAPIKey ? NSLocalizedString("onboarding.complete", comment: "") : NSLocalizedString("onboarding.next", comment: "")) {
-                        if aiConfigHasAPIKey {
-                            // 如果已配置API Key，直接完成引导
-                            preferences.markOnboardingCompleted()
-                            dismiss()
-                        } else {
-                            // 否则进入下一步
-                            withAnimation {
-                                currentStep += 1
-                            }
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                } else {
-                    // 其他步骤的按钮逻辑
-                    Button(currentStep == 4 ? NSLocalizedString("onboarding.complete", comment: "") : NSLocalizedString("onboarding.next", comment: "")) {
-                        if currentStep == 4 {
-                            // 完成引导
-                            preferences.markOnboardingCompleted()
-                            dismiss()
-                        } else if currentStep == 2 {
-                            // 从模型下载步骤进入下一步时，异步检查模型是否已下载
-                            Task { @MainActor in
-                                let modelExists = await ModelDownloader.shared.checkModelFilesExistAsync()
-                                if modelExists {
-                                    preferences.isModelDownloaded = true
-                                }
-                                withAnimation {
-                                    currentStep += 1
-                                }
-                            }
-                        } else {
-                            withAnimation {
-                                currentStep += 1
-                            }
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .disabled(currentStep == 2 && !preferences.isModelDownloaded)
                 }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(currentStep == 0 && !preferences.isModelDownloaded)
             }
             .padding(20)
         }
-        .frame(width: 720, height: 600)
+        .frame(width: 720, height: 560)
         .onAppear {
             // 初始化识别语言设置（如果还没有选择，默认为中文）
             if preferences.voiceInputLanguage.isEmpty || preferences.voiceInputLanguage == "auto" {
@@ -1052,6 +1035,70 @@ struct ModelDownloadStatusContentView: View {
                 preferences.isModelDownloaded = true
             }
         }
+    }
+}
+
+// MARK: - 步骤2: 完成页
+//
+// v2.0.0-rc3 新增。代替原来的 5 步流程末页 UsageGuideStep。
+// 内容只做三件事：1) 庆祝 2) 一句话说明默认行为 3) 指路到设置去自定义。
+// 不再罗列"如何使用"——用户自己按住快捷键说一句话就知道了。
+struct OnboardingCompletionStep: View {
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(.green)
+                .symbolRenderingMode(.hierarchical)
+
+            Text(NSLocalizedString("onboarding.complete.title", comment: ""))
+                .font(.title)
+                .fontWeight(.bold)
+
+            Text(NSLocalizedString("onboarding.complete.subtitle", comment: ""))
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    Image(systemName: "keyboard")
+                        .foregroundStyle(.tint)
+                        .frame(width: 20)
+                    Text(NSLocalizedString("onboarding.complete.hint.shortcut", comment: ""))
+                        .font(.callout)
+                }
+                HStack(spacing: 10) {
+                    Image(systemName: "globe")
+                        .foregroundStyle(.tint)
+                        .frame(width: 20)
+                    Text(NSLocalizedString("onboarding.complete.hint.language", comment: ""))
+                        .font(.callout)
+                }
+                HStack(spacing: 10) {
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(.tint)
+                        .frame(width: 20)
+                    Text(NSLocalizedString("onboarding.complete.hint.ai", comment: ""))
+                        .font(.callout)
+                }
+                HStack(spacing: 10) {
+                    Image(systemName: "lock.shield.fill")
+                        .foregroundStyle(.green)
+                        .frame(width: 20)
+                    Text(NSLocalizedString("onboarding.complete.hint.privacy", comment: ""))
+                        .font(.callout)
+                }
+            }
+            .padding(20)
+            .background {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.gray.opacity(0.08))
+            }
+            .padding(.horizontal, 40)
+        }
+        .padding(40)
     }
 }
 
