@@ -138,10 +138,21 @@ class UserPreferences: ObservableObject {
         static let watermarkFontHistory = "watermarkFontHistory" // 字体文件历史记录（最近3个）
         static let lastWatermarkText = "lastWatermarkText" // 上次使用的文字水印
         static let lastWatermarkFontURL = "lastWatermarkFontURL" // 上次使用的字体文件路径
+        // 通用 / 外观
+        static let hideDockIcon = "hideDockIcon" // 在 Dock 中隐藏图标（仅保留菜单栏图标常驻）
     }
     
     // MARK: - Published Properties
     
+    /// 在 Dock 中隐藏图标。开启后 App 仅以菜单栏常驻（.accessory），关闭则正常显示 Dock 图标（.regular）。
+    /// 切换时通过 NotificationCenter 通知 AppDelegate 即时应用，无需重启。
+    @Published var hideDockIcon: Bool {
+        willSet {
+            defaults.set(newValue, forKey: Keys.hideDockIcon)
+            NotificationCenter.default.post(name: .hideDockIconPreferenceChanged, object: newValue)
+        }
+    }
+
     @Published var extractFirstFrame: Bool {
         willSet { defaults.set(newValue, forKey: Keys.extractFirstFrame) }
     }
@@ -546,6 +557,7 @@ class UserPreferences: ObservableObject {
     
     private init() {
         // 加载默认值
+        hideDockIcon = defaults.object(forKey: Keys.hideDockIcon) as? Bool ?? false
         extractFirstFrame = defaults.object(forKey: Keys.extractFirstFrame) as? Bool ?? true
         extractLastFrame = defaults.object(forKey: Keys.extractLastFrame) as? Bool ?? true
         extractAudio = defaults.object(forKey: Keys.extractAudio) as? Bool ?? true

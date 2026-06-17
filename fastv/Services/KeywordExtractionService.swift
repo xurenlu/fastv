@@ -92,47 +92,6 @@ class KeywordExtractionService {
         return (keywords, entities)
     }
     
-    /// 批量分析多条情报，提取高频关键词
-    /// - Parameters:
-    ///   - entries: 情报条目数组
-    ///   - dateRange: 日期范围（可选）
-    /// - Returns: 关键词频率字典
-    func analyzeKeywordFrequency(from entries: [IntelEntry], dateRange: (from: Date, to: Date)? = nil) -> [String: Int] {
-        var frequency: [String: Int] = [:]
-        
-        let calendar = Calendar.current
-        let filteredEntries: [IntelEntry]
-        
-        if let range = dateRange {
-            filteredEntries = entries.filter { entry in
-                let entryDate = calendar.startOfDay(for: entry.date)
-                let fromDate = calendar.startOfDay(for: range.from)
-                let toDate = calendar.startOfDay(for: range.to)
-                return entryDate >= fromDate && entryDate <= toDate
-            }
-        } else {
-            filteredEntries = entries
-        }
-        
-        // 统计所有关键词的频率
-        for entry in filteredEntries {
-            // 使用已提取的关键词
-            for keyword in entry.keywords {
-                frequency[keyword, default: 0] += 1
-            }
-            
-            // 如果没有关键词，临时提取
-            if entry.keywords.isEmpty {
-                let (keywords, _) = extractKeywordsAndEntities(from: "\(entry.summary) \(entry.body)")
-                for keyword in keywords {
-                    frequency[keyword, default: 0] += 1
-                }
-            }
-        }
-        
-        return frequency
-    }
-    
     /// 判断是否为常见词（停用词）
     private func isCommonWord(_ word: String) -> Bool {
         let commonWords: Set<String> = [
@@ -142,21 +101,5 @@ class KeywordExtractionService {
         return commonWords.contains(word.lowercased())
     }
     
-    /// 为情报条目提取并更新关键词（后台执行）
-    func extractKeywordsForEntry(_ entry: IntelEntry) async -> IntelEntry {
-        return await Task.detached {
-            let text = "\(entry.summary) \(entry.body)"
-            let (keywords, entities) = await MainActor.run {
-                KeywordExtractionService.shared.extractKeywordsAndEntities(from: text)
-            }
-            
-            var updatedEntry = entry
-            updatedEntry.keywords = keywords
-            updatedEntry.entities = entities
-            updatedEntry.updatedAt = Date()
-            
-            return updatedEntry
-        }.value
-    }
 }
 

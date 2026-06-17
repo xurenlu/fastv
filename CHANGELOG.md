@@ -2,6 +2,16 @@
 
 所有版本變更記錄。
 
+## [2.0.0-rc1] - 2026-06-17
+
+### 重大变更
+
+- **产品线拆分**：妙打（MuseType）收敛为纯语音输入工具。邮件客户端拆分为独立产品 museMail（~/Sites/musemail），会议记录拆分为独立产品 museNote（~/Sites/musenote）。
+- **砍除模块**：移除邮件、会议记录、AI Todo、AI Chat、视频工具、MicroAPP 等所有非语音输入模块的代码与界面（约 70 个源文件）。侧边栏仅保留「语音输入」。设置页移除「邮箱」标签页。
+- **Dock 图标隐藏**：三个 app 统一新增「在 Dock 中隐藏图标」开关（设置 → 通用），开启后仅菜单栏常驻，运行时即时切换无需重启。i18n 覆盖中/英/日/韩/粤五种语言。
+- 移除 AppleScript 邮件脚本支持（.sdef + FastVScriptingApplication）。
+- 清理桥接头文件，移除 LibEtPanWrapper / LuaWrapper 引用。
+
 ## [1.4.3-rc14] - 2026-06-16
 
 ### 修复

@@ -7,6 +7,9 @@
 
 // 一般
 "app.name" = "妙打";
+"settings.section.general" = "一般";
+"hide.dock.icon" = "Dock のアイコンを隠す";
+"hide.dock.icon.description" = "有効にすると、Dock にアイコンを表示せずメニューバーに常駐します。メニューバーのアイコンからいつでもウインドウを開けます。";
 "ok" = "OK";
 "cancel" = "キャンセル";
 "save" = "保存";

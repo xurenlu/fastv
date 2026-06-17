@@ -48,8 +48,10 @@ enum SidebarItem: Identifiable, Hashable {
         }
     }
 
+    // 妙打 = 纯语音输入。会议记录拆分到 museNote，邮件拆分到 museMail，
+    // Todo / Chat 已下线。其余模块代码将在后续阶段移除（Phase 2）。
     static var builtInItems: [SidebarItem] {
-        [.voiceInput, .meeting, .aiTodo, .aiChat, .email]
+        [.voiceInput]
     }
 }
 
@@ -137,50 +139,8 @@ struct ContentView: View {
                             .focusable(false)
                         }
                     }
-            case .meeting:
-                MeetingRecordView()
-                    .toolbar {
-                        ToolbarItem(placement: .automatic) {
-                            Button(action: { showSettings = true }) {
-                                Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
-                            }
-                            .help(NSLocalizedString("settings", comment: ""))
-                            .focusable(false)
-                        }
-                    }
-            case .aiTodo:
-                AITodoView()
-                    .toolbar {
-                        ToolbarItem(placement: .automatic) {
-                            Button(action: { showSettings = true }) {
-                                Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
-                            }
-                            .help(NSLocalizedString("settings", comment: ""))
-                            .focusable(false)
-                        }
-                    }
-            case .aiChat:
-                AIChatView()
-                    .toolbar {
-                        ToolbarItem(placement: .automatic) {
-                            Button(action: { showSettings = true }) {
-                                Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
-                            }
-                            .help(NSLocalizedString("settings", comment: ""))
-                            .focusable(false)
-                        }
-                    }
-            case .email:
-                EmailView()
-                    .toolbar {
-                        ToolbarItem(placement: .automatic) {
-                            Button(action: { showSettings = true }) {
-                                Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
-                            }
-                            .help(NSLocalizedString("settings", comment: ""))
-                            .focusable(false)
-                        }
-                    }
+            default:
+                EmptyView()
             }
         }
         .sheet(isPresented: $showSettings) {

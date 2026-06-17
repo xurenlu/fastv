@@ -13,6 +13,8 @@ import AppKit
 // 自定义通知名称
 extension Notification.Name {
     static let shortcutConfigDidChange = Notification.Name("shortcutConfigDidChange")
+    /// 「在 Dock 中隐藏图标」偏好变化，object 为新的 Bool 值
+    static let hideDockIconPreferenceChanged = Notification.Name("hideDockIconPreferenceChanged")
 }
 
 // 语音输入时长阈值（秒）
@@ -316,8 +318,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsShortcutObserver: Any?
     private var appIsActiveObserver: NSObjectProtocol?
 
-    // AppleScript 支持
-    private var scriptingAppInstance: FastVScriptingApplication?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // 一次性清除已保存的窗口状态，解决「侧边栏被持久化为折叠」导致看不到菜单的问题
@@ -329,11 +329,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("📱 [AppDelegate] 应用启动完成，初始化状态栏")
         StatusBarManager.shared.show()
 
-        // 初始化 AppleScript 支持
-        setupAppleScriptSupport()
 
         // 设置应用不自动退出（关闭窗口时保留在后台）
-        NSApplication.shared.setActivationPolicy(.regular)
+        // Dock 图标显隐由用户偏好决定：隐藏时用 .accessory（仅菜单栏常驻），否则 .regular。
+        AppDelegate.applyDockIconPolicy()
+        // 监听偏好变化，运行时即时切换，无需重启
+        NotificationCenter.default.addObserver(
+            forName: .hideDockIconPreferenceChanged,
+            object: nil,
+            queue: .main
+        ) { _ in
+            AppDelegate.applyDockIconPolicy()
+        }
 
         // 设置 Cmd+, 快捷键打开设置窗口
         setupSettingsShortcut()
@@ -346,6 +353,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 延迟设置，确保 fastvApp 已初始化
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.setupNotificationObservers()
+        }
+    }
+
+    /// 按用户偏好应用 Dock 图标显隐策略。
+    /// - 隐藏：`.accessory`（Dock 无图标，仅菜单栏 StatusBar 常驻）。
+    /// - 显示：`.regular`，并激活 App 让窗口回到前台（从 accessory 切回时需要）。
+    static func applyDockIconPolicy() {
+        let hide = UserPreferences.shared.hideDockIcon
+        let policy: NSApplication.ActivationPolicy = hide ? .accessory : .regular
+        NSApplication.shared.setActivationPolicy(policy)
+        if !hide {
+            NSApplication.shared.activate(ignoringOtherApps: true)
         }
     }
 
@@ -384,32 +403,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func openSettingsWindow() {
         // 发送通知打开设置窗口
         NotificationCenter.default.post(name: .openSettings, object: nil)
-    }
-
-    /// 初始化 AppleScript 支持
-    private func setupAppleScriptSupport() {
-        print("📜 [AppDelegate] 初始化 AppleScript 支持...")
-
-        // 创建 AppleScript 应用实例
-        scriptingAppInstance = FastVScriptingApplication()
-
-        // 设置 AppleScript 事件委托
-        NSAppleEventManager.shared().setEventHandler(
-            self,
-            andSelector: #selector(handleAppleEvent(_:replyEvent:)),
-            forEventClass: AEEventClass(kCoreEventClass),
-            andEventID: AEEventID(kAEOpenDocuments)
-        )
-
-        print("✅ [AppDelegate] AppleScript 支持已启用")
-    }
-
-    /// 处理 AppleScript 事件
-    @objc private func handleAppleEvent(_ event: NSAppleEventDescriptor, replyEvent: NSAppleEventDescriptor) {
-        print("📜 [AppDelegate] 收到 AppleScript 事件")
-
-        // 这里可以处理特定的 AppleScript 事件
-        // 大部分命令将通过 .sdef 定义的接口直接处理
     }
 
     /// 设置通知观察者（由 AppDelegate 统一管理）
@@ -526,9 +519,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         WaveformWindowManager.shared.cleanup()
         StatusBarManager.shared.cleanup()
-
-        // 关闭邮件相关后台任务（含 IMAP IDLE 长连接）
-        EmailService.shared.cleanupAllSessions()
     }
 
     deinit {

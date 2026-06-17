@@ -18,7 +18,6 @@ struct SettingsView: View {
     enum SettingsTab: String, CaseIterable, Identifiable {
         case quick = "快速配置"
         case aiModel = "AI与模型"
-        case email = "邮箱"
         case data = "数据与其他"
 
         var id: String { rawValue }
@@ -27,7 +26,6 @@ struct SettingsView: View {
             switch self {
             case .quick: return "bolt.fill"
             case .aiModel: return "cpu"
-            case .email: return "envelope.fill"
             case .data: return "folder.fill"
             }
         }
@@ -83,9 +81,6 @@ struct SettingsView: View {
         case .aiModel:
             AIModelSettingsTab()
                 .id("aiModel")
-        case .email:
-            EmailSettingsTab()
-                .id("email")
         case .data:
             DataOtherSettingsTab()
                 .id("data")

@@ -15,6 +15,16 @@ struct QuickSettingsTab: View {
     
     var body: some View {
         Form {
+            // 通用 / 外观
+            Section {
+                Toggle(NSLocalizedString("hide.dock.icon", comment: ""), isOn: $preferences.hideDockIcon)
+                Text(NSLocalizedString("hide.dock.icon.description", comment: ""))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text(NSLocalizedString("settings.section.general", comment: ""))
+            }
+
             // 语音输入配置
             Section {
                 Toggle(NSLocalizedString("enable.voice.input", comment: ""), isOn: $preferences.enableVoiceInput)
