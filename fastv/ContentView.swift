@@ -32,6 +32,10 @@ struct ContentView: View {
             Color.clear.frame(width: 1, height: 1)
         } else {
             mainBody
+                // 装 sentinel：给主窗口打 identifier、拦截关闭按钮改为 orderOut，
+                // 这样系统托盘的「显示妙打」/ Dock 点击 / applicationShouldHandleReopen
+                // 能可靠找回主窗口，不再误打到 NSStatusBarWindow。
+                .background(MainWindowSentinel())
         }
     }
 

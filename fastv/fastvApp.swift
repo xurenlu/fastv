@@ -574,12 +574,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        // 当用户点击 Dock 图标时，显示主窗口
+        // 用户点 Dock 图标，且当前没有可见内容窗口时，走统一 helper 找回主窗口。
+        // 共享 StatusBarManager「显示妙打」相同的恢复链路。
         if !flag {
-            // 如果没有可见窗口，显示主窗口
-            if let window = NSApplication.shared.windows.first {
-                window.makeKeyAndOrderFront(nil)
-                NSApplication.shared.activate(ignoringOtherApps: true)
+            Task { @MainActor in
+                _ = MainWindowPresenter.bringToFront()
             }
         }
         return true

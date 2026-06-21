@@ -128,15 +128,25 @@ class StatusBarManager: NSObject, ObservableObject {
 
     private func applyActivity(_ activity: Activity, to button: NSStatusBarButton) {
         let tooltip = NSLocalizedString(activity.tooltipKey, comment: "")
-        let image = NSImage(systemSymbolName: activity.symbolName, accessibilityDescription: tooltip)
-        if let tint = activity.tintColor {
-            // 上色：必须关掉 template，否则 contentTintColor 会被忽略。
-            image?.isTemplate = false
-            button.contentTintColor = tint
-        } else {
-            // 闲置：恢复模板色，跟随菜单栏深浅模式。
-            image?.isTemplate = true
+
+        // 闲置态用品牌脉冲麦克风图标（与 AppIcon 视觉一致，模板渲染跟随
+        // 菜单栏明暗自动取色）；录音 / 转写 / AI 优化三个功能态保留 SF Symbol，
+        // 颜色编码状态语义（红 / 蓝 / 紫），不让品牌图标混淆「正在做什么」。
+        let image: NSImage?
+        if activity == .idle, let brand = NSImage(named: "MenuBarIcon") {
+            brand.isTemplate = true
+            image = brand
             button.contentTintColor = nil
+        } else {
+            image = NSImage(systemSymbolName: activity.symbolName, accessibilityDescription: tooltip)
+            if let tint = activity.tintColor {
+                // 上色：必须关掉 template，否则 contentTintColor 会被忽略。
+                image?.isTemplate = false
+                button.contentTintColor = tint
+            } else {
+                image?.isTemplate = true
+                button.contentTintColor = nil
+            }
         }
         button.image = image
         button.toolTip = tooltip
@@ -170,14 +180,11 @@ class StatusBarManager: NSObject, ObservableObject {
     }
 
     @objc private func showMainWindow(_ sender: NSMenuItem) {
-        if let window = NSApplication.shared.windows.first {
-            window.makeKeyAndOrderFront(nil)
-            NSApplication.shared.activate(ignoringOtherApps: true)
-        } else {
-            NSApplication.shared.windows.forEach { window in
-                window.makeKeyAndOrderFront(nil)
-            }
-            NSApplication.shared.activate(ignoringOtherApps: true)
+        // 走统一 helper：identifier 优先 → 过滤 NSStatusBarWindow → 兜底重激活。
+        // 不再误打到 status item 自己的 NSStatusBarWindow 上（这条会输出
+        // `makeKeyWindow ... canBecomeKeyWindow returned NO` 警告）。
+        Task { @MainActor in
+            _ = MainWindowPresenter.bringToFront()
         }
     }
 

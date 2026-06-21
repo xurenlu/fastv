@@ -2,6 +2,52 @@
 
 所有版本變更記錄。
 
+## [2.1.1-rc1] - 2026-06-21
+
+### 修复
+
+- **菜单栏图标与 AppIcon 品牌不一致**：闲置态原本是 SF Symbol `bolt.fill`
+  闪电，与 rc5 上线的 MuseType 脉冲麦克风 AppIcon 视觉脱节。新增
+  [`fastv/Assets.xcassets/MenuBarIcon.imageset/`](fastv/Assets.xcassets/MenuBarIcon.imageset/Contents.json)
+  含 1x/2x/3x 三档 PNG（取自 `assets/brand/png/musetype-logo-pulse-mic-{16,32,64}.png`），
+  在 Contents.json 标 `template-rendering-intent: template` 让系统跟随菜单栏明暗自动取色。
+  `StatusBarManager.applyActivity(_:to:)` 仅闲置态切到 `MenuBarIcon`，
+  录音/转写/AI 优化三个功能态保留 SF Symbol（红 mic / 蓝 waveform / 紫 sparkles），
+  品牌图标与状态指示职责分明。
+- **系统托盘「显示妙打」失效**：用户红 × 关闭主窗口后，SwiftUI 在
+  `.accessory` 激活模式下会销毁 `WindowGroup` 的窗口对象，`NSApp.windows`
+  里只剩 `NSStatusBarWindow`（状态栏 status item 自己的容器）；
+  `StatusBarManager.showMainWindow` 与 `applicationShouldHandleReopen` 之前
+  都是直接取 `windows.first` + `makeKeyAndOrderFront(nil)`，刚好误打到那个
+  状态栏窗口上，控制台报
+  `makeKeyWindow ... canBecomeKeyWindow returned NO` 警告，主窗口当然
+  也不会出现。
+- 新增 [`fastv/Views/MainWindowSentinel.swift`](fastv/Views/MainWindowSentinel.swift)：
+  - `MainWindowSentinel` 挂在 [`fastv/ContentView.swift`](fastv/ContentView.swift)
+    的 `.background`，第一次出现就给主窗口打 identifier
+    `museTypeMainContentWindow`，并把红色关闭按钮的 `target` / `action`
+    重定向到 `MainWindowCloseInterceptor.hideMainWindow(_:)`（执行
+    `orderOut(nil)` 而非真正 close），让窗口对象常驻 `NSApp.windows`。
+  - `MainWindowPresenter.bringToFront()` 是新加的统一恢复链：
+    activate App → identifier 命中 → 退一步过滤 NSStatusBarWindow /
+    borderless 的真内容窗口 → 兜底切 `.regular` 激活策略让 SwiftUI 有机会
+    重建场景（用户偏好「隐藏 Dock 图标」的话，等窗口出来后再切回
+    `.accessory`）。
+- [`fastv/Services/StatusBarManager.swift`](fastv/Services/StatusBarManager.swift)
+  的 `showMainWindow(_:)` 与 [`fastv/fastvApp.swift`](fastv/fastvApp.swift)
+  的 `applicationShouldHandleReopen(_:hasVisibleWindows:)` 改为统一走
+  `MainWindowPresenter.bringToFront()`。
+- 注：不替换 SwiftUI 内部 NSWindowDelegate（避免破坏框架内部观察），
+  因此 Cmd+W 仍会让 SwiftUI 走真 close 路径；此时由
+  `MainWindowPresenter.bringToFront()` 的兜底重激活分支兜住，最差情况会有
+  Dock 图标短暂闪现。
+
+### 工程
+
+- 版本号 `2.1.0` → `2.1.1-rc1`（bugfix，递增补丁版本号）。
+- 同步 `fastv.xcodeproj/project.pbxproj` 6 处 `MARKETING_VERSION` 与
+  `fastv/Info.plist` 的 `CFBundleShortVersionString`。
+
 ## [2.1.0] - 2026-06-21
 
 竞品调研驱动的「四件套」补齐汇总版。从 `2.0.0-rc14` 起步，经 rc1 → rc6
