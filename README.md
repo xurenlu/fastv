@@ -1,166 +1,140 @@
-# 妙打 (FastV) - 智能语音输入法
+# 妙打 MuseType — macOS 上的「光标即输入框」语音输入工具
 
-妙打是一款**聚焦语音输入与本地语音转文字**的 macOS 应用。按住快捷键说话，实时将语音转换为文字并自动输入到当前应用的输入框中。支持多语言识别，内置快速纠错与可选 AI 优化，识别准确、响应快速，数据本地处理，保护隐私安全。
+妙打是一款定位极简的 macOS 语音输入工具：**按住快捷键说话 → 松开转写 → 直接落到当前输入框**。完全本地识别，菜单栏常驻、零打扰；可选接 AI 后处理做去口水词、加标点、按场景换语气。
 
-当前主线功能为：**语音输入**与 **IMAP 邮箱客户端**。
-
-**能力暴露**：除 macOS 应用外，还提供 [STT API 服务](stt-api/README.md)，通过 HTTP 和 WebSocket 将语音转文字能力暴露给外部调用。
+> v2.0.0 起，妙打收敛为**纯语音输入工具**；邮箱、视频、Todo 等历史产品线已不在主线。
+>
+> 当前版本：**v2.1.0**（hotfix `v2.1.1-rc1` 已发）。最近一轮按 VoiceInk / Superwhisper / TypeWhisper / Wispr Flow / VocaMac 做了竞品调研，补齐了**热键三模式 / 术语包 / Power Mode / 跟随光标**四件套。
 
 ## ✨ 核心功能
 
-### 🎤 语音输入（又快又准）
+### 🎤 语音输入（本地、低延迟）
+- **全局快捷键**：默认 `⌥ + V` 触发普通语音输入；`FN + ⌃` 触发「语音 + AI 校正」
+- **触发方式三选**（v2.1.0 新增）：
+  - `按住录音 Push-to-Talk`（默认，按下开始、松开结束）
+  - `按一下切换 Toggle`（按一次开/再按一次关，适合长段口述）
+  - `混合 Hybrid`（短按 = 切换、长按 ≥ 0.25s = 按住录音）
+- **智能分段**：检测到停顿（默认 0.8s）自动分段转写，边说边输出
+- **多语言**：中文 / 英文 / 日文 / 韩文 / 粤语，本地 [SenseVoice-Small](https://github.com/alibaba-damo-academy/FunASR) ONNX 推理
+- **菜单栏常驻**：四态徽章（闲置 / 录音 / 转写 / AI 优化），可选「跟随光标」悬浮指示器
 
-- **全局快捷键**：在其他应用的输入框中按下快捷键（默认 FN），开始语音输入
-- **实时转文字**：按住快捷键说话，松开后自动将语音转换为文字并插入
-- **智能分段**：检测到停顿（默认 0.8 秒）时自动分段转文字，边说边转，无需等待松开
-- **双路径策略**：
-  - **快路径**：停顿即转写，即时反馈
-  - **准路径**：多段音频拼接后二次转写，长音频准确率更高
-- **动态规划分批**：每批至少 3 段、至少 3 秒，避免过短片段，松键时优先用准路径结果替换零碎结果
-- **多语言支持**：支持中文、英文、日文、韩文、粤语等多种语言识别
+### 🧠 术语包（v2.1.0 新增）
+专有名词、产品名、技术术语优先生效且**大小写不敏感**。说「open ai」也能输出「OpenAI」，说「k8s」直接拼成「Kubernetes」。
 
-### ✉️ 邮箱
+### 🎯 Power Mode — 上下文感知 prompt（v2.1.0 新增）
+按**前台 App / 浏览器 URL**自动切换 AI 后处理 prompt 模板。出厂内置 4 套预设：
 
-- **IMAP 邮件**：多账户、文件夹、阅读与编写邮件（详见应用内「邮箱」与设置中的邮箱页）
+| 场景 | 触发条件 | 效果 |
+|---|---|---|
+| 邮件正式 | Mail / Outlook / Spark / `*mail.google.com/*` | 加敬语、拆段、书面化 |
+| Slack | slackmacgap / `*.slack.com/*` | 简短、加 - 项目符号 / 代码块 |
+| IM 口语 | 微信 / Discord / Telegram / WhatsApp | 保留语气、不硬塞书面语 |
+| 代码 / IDE | Xcode / VS Code / Cursor / JetBrains | 默认 `// ` 开头的英文注释 |
 
-### ⚡ 辅助能力（设置中可选）
+支持自定义场景，三种匹配规则（bundleId / URL 通配 / App 名 contains）任意组合。
 
-- **常用词 / 水词修正**：自定义规则与自动纠错
-- **AI 优化**：配置 AI 服务后，可在语音输入流程中使用（如 FN+Control 触发优化）
+### 🤖 AI 后处理（可选）
+按 `FN + ⌃`（或自定义热键）走 AI 优化路径：去口水词、补标点、修错别字、按场景调语气。
+
+**支持的 AI Provider**：Ollama（本地）、OpenAI、Claude、Gemini、DashScope、智谱、MiniMax（国内/国际）、OpenRouter、Some.IM，以及任意 OpenAI 兼容中转站。
 
 ## 🚀 快速开始
 
-### 1. 安装应用
-
-从 [GitHub Releases](https://github.com/xurenlu/fastv/releases) 下载最新版本，或使用 Xcode 编译：
+### 1. 安装
+从 [GitHub Releases](https://github.com/xurenlu/fastv/releases) 下载，或从源码编译：
 
 ```bash
 git clone https://github.com/xurenlu/fastv.git
 cd fastv
-open fastv.xcworkspace   # 使用 workspace（含 CocoaPods）
-# 或 open fastv.xcodeproj
+pod install
+open fastv.xcworkspace
 ```
 
-### 2. 配置权限
+### 2. 授权
+首次启动需要在系统设置里授权：
+- **麦克风** — 录音
+- **辅助功能** — 全局快捷键监听 + Power Mode 抽前台 App / 浏览器 URL + 跟随光标取 caret
 
-首次运行时，需要在系统设置中授权：
+### 3. 使用
+1. 在任意 App 的输入框点一下（让光标进去）
+2. 按下默认快捷键 `⌥ + V` 开始说话
+3. 松开 → 文字自动落到光标位置
 
-- **麦克风权限**：用于语音输入
-- **辅助功能权限**：用于全局快捷键和文本插入
+想用 AI 校正：按 `FN + ⌃` 即可。可在「设置 → 语音输入与快捷键」里改成 toggle / hybrid 模式。
 
-### 3. 设置快捷键
+## 🎛️ 设置入口
 
-1. 打开应用设置（⌘+,）
-2. 在「语音输入法」部分配置快捷键（默认 FN）
-3. 确保「启用语音输入法」已勾选
+| 入口 | 功能 |
+|---|---|
+| 快速配置 | 快捷键、触发方式、识别语言、悬浮指示器（位置 / 跟随光标 / 样式 / 颜色） |
+| AI 与模型 | AI Provider 配置、场景映射、**Power Mode**（场景 Profile 编辑）、纠错规则管理（含术语包） |
+| 数据与其他 | 历史记录、模型下载、关于 |
 
-### 4. 开始使用
+## 🔌 STT API（独立子项目）
 
-1. 打开任意应用的输入框（如备忘录、微信、浏览器等）
-2. 按下设置的快捷键（默认 FN）
-3. 开始说话，松开快捷键后自动转文字并插入
-
-## 📖 使用技巧
-
-### 智能分段转文字（又快又准）
-
-启用「智能分段转文字」功能后：
-
-- 检测到停顿（默认 0.8 秒）时，立即将前面的音频转文字并缓存
-- 无需等待松开快捷键，实现边说边转的效果
-- 累积 3 段以上时，后台自动将多段音频拼接后二次转写，准确率更高
-- 松键时：若二次转写已完成，则用其替换零碎结果；否则用零碎结果，保证不卡顿
-- 可在设置中调整停顿阈值（0.5～2.0 秒）
-
-### AI 优化（可选）
-
-配置 AI 服务后：
-
-- 按住快捷键时同时按住 ⌃（Control）键，可启用 AI 优化
-- 优化后的文本可自动去除水词、添加标点、修正错别字（取决于模型与提示词）
-
-## 🔌 STT API 服务
-
-将语音转文字能力暴露为可调用的 API，供外部系统集成：
-
-| 接口 | 说明 |
-|------|------|
-| `POST /api/v1/transcribe` | 上传音频文件（MP3/WAV/M4A）转文字 |
-| `WS /ws/transcribe` | 流式边说边转，停顿检测自动分段 |
-
-详见 [stt-api/README.md](stt-api/README.md)。
+把语音转文字能力暴露成 HTTP / WebSocket 接口，供外部系统集成：
 
 ```bash
 cd stt-api && pip install -r requirements.txt && python stt_api.py --port 50002
 ```
 
-## 🛠️ 技术架构
+详见 [stt-api/README.md](stt-api/README.md)。
 
-- **开发语言**：Swift 5.9+（macOS 应用）、Python（STT API）
-- **UI 框架**：SwiftUI
-- **音频处理**：AVFoundation, Accelerate
-- **语音识别**：SenseVoice Small 模型（本地 ONNX 推理）
-- **音频特征提取**：Kaldi Native FBank
-- **平台要求**：macOS 14.6+
+## 🛠️ 技术栈
 
-## 📦 依赖库
+| 层 | 技术 |
+|---|---|
+| 平台 | macOS 14.6+（开发 / 测试在 macOS 26） |
+| 语言 | Swift 5.9+，部分 Python（STT API） |
+| UI | SwiftUI + AppKit 桥接（菜单栏、全局热键、悬浮窗口） |
+| 音频 | AVFoundation、Accelerate |
+| ASR | [SenseVoice-Small](https://github.com/alibaba-damo-academy/FunASR) ONNX，本地推理 |
+| 特征提取 | [Kaldi Native FBank](https://github.com/kaldi-asr/kaldi) |
+| 上下文 | NSWorkspace + AX（前台 App / 浏览器 URL / 文本 caret） |
 
-本项目使用了以下优秀的开源库，在此表示感谢：
+### 关键文件速查
+- `fastv/Services/GlobalShortcutMonitor.swift` + `fastv/Services/HotkeyTriggerStateMachine.swift` — 全局快捷键监听 + 三模式触发状态机
+- `fastv/Services/AppContextResolver.swift` + `fastv/Models/ContextProfileManager.swift` — Power Mode 上下文路由
+- `fastv/Models/CommonMistakeManager.swift` — 术语包 + 错字纠正管线
+- `fastv/Views/WaveformView.swift` + `fastv/Services/CursorPositionLocator.swift` — 悬浮指示器 + 跟随光标
+- `fastv/Services/OllamaService.swift` + `fastv/Services/AIServiceAdapter.swift` — AI Provider 适配层
+- `fastv/Services/SpeechTranscriber.swift` — SenseVoice ONNX 推理入口
 
-### ONNX Runtime
+## 📦 测试
 
-- **项目地址**：https://github.com/microsoft/onnxruntime
-- **授权协议**：MIT License
-- **用途**：用于运行 SenseVoice 语音识别模型
-- **感谢**：感谢 Microsoft 提供强大的 ONNX 运行时支持
+```bash
+bash scripts/run_unit_tests.sh
+```
 
-### SenseVoice (FunASR)
+当前共 **41 个单测 / 6 个 suite**，覆盖：热键状态机、术语包优先级与大小写命中、ContextProfile 匹配优先级与占位符渲染、CursorPositionLocator clamp 数学、AIScenario 与 Markdown 解析等。
 
-- **项目地址**：https://github.com/alibaba-damo-academy/FunASR
-- **授权协议**：Apache 2.0 License
-- **用途**：提供多语言语音识别模型
-- **感谢**：感谢阿里巴巴达摩院开源 SenseVoice 模型，使本地化语音识别成为可能
+## 🧩 依赖与致谢
 
-### Kaldi Native FBank
+- [Microsoft ONNX Runtime](https://github.com/microsoft/onnxruntime) — MIT，本地 ONNX 推理
+- [SenseVoice (FunASR)](https://github.com/alibaba-damo-academy/FunASR) — Apache 2.0，多语种 ASR 模型
+- [Kaldi Native FBank](https://github.com/kaldi-asr/kaldi) — Apache 2.0，音频特征提取
+- Apple Swift / SwiftUI / Accessibility
 
-- **项目地址**：https://github.com/kaldi-asr/kaldi
-- **授权协议**：Apache 2.0 License
-- **用途**：音频特征提取（Mel 频谱图）
-- **感谢**：感谢 Kaldi 项目提供高效的音频特征提取库
+## 📚 相关文章 / 文档
 
-## 📄 授权协议
+- [从零到一：打造一款高效的语音转文字输入法](https://83d.me/2025/11/22/voice-input-method-from-scratch) — 技术选型、ONNX 集成、特征提取、标点支持
+- [语音转写「又快又准」策略实现详解](docs/语音转写快准策略实现详解.md) — 双路径并行 / 动态规划分批 / 松键合并
+- [CHANGELOG.md](CHANGELOG.md) — 全部版本变更
+- [product-overview.md](product-overview.md) — 设计思路 + 功能清单 + 未完成项
 
-本项目遵循 MIT License。详见 [LICENSE](LICENSE) 文件。
+## 🗺️ Roadmap（短期）
 
-## 🙏 致谢
+- **Batch 4 — 语音指令编辑**（计划中）：在现有「修改 / 润色 / 重写最近一句」基础上扩展「删掉这句 / 换行 / 加粗这段 / 撤销」等编辑指令，对标 Wispr Flow Command Mode
 
-感谢所有开源社区和开发者为本项目提供的支持：
+## 📄 协议
 
-- **Microsoft** - ONNX Runtime
-- **阿里巴巴达摩院** - SenseVoice 模型
-- **Kaldi 团队** - 音频特征提取库
-- **Apple** - Swift 和 SwiftUI 框架
+MIT。详见 [LICENSE](LICENSE)。
 
-## 📚 技术文档
+## 🤝 反馈
 
-本项目的核心技术实现细节已记录在以下文章中：
-
-- **[从零到一：打造一款高效的语音转文字输入法](https://83d.me/2025/11/22/voice-input-method-from-scratch)** - 详细记录了项目的技术选型、ONNX Runtime 集成、音频特征提取、标点符号支持等核心技术实现过程
-- **[语音转写「又快又准」策略实现详解](docs/语音转写快准策略实现详解.md)** - 双路径并行、动态规划分批、松键合并等实现细节
-
-## 📝 更新日志
-
-详见 [CHANGELOG.md](CHANGELOG.md)。
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 📧 联系方式
-
-- **GitHub Issues**：https://github.com/xurenlu/fastv/issues
-- **技术博客**：https://83d.me/2025/11/22/voice-input-method-from-scratch
+- Issues：https://github.com/xurenlu/fastv/issues
+- 博客：https://83d.me
 
 ---
 
-**注意**：本项目仅供学习和研究使用。使用第三方库时请遵守相应的授权协议。
+**项目身份说明**：仓库名仍是 `fastv`（向后兼容历史链接）；应用产品名与 Bundle 已迁移到 **MuseType / 妙打**（v2.0.0-rc8 起）。
