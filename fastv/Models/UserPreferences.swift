@@ -220,6 +220,8 @@ class UserPreferences: ObservableObject {
         // 語音輸入+AI校正快捷鍵（第二個快捷鍵）
         static let voiceInputWithAIShortcutKeyCode = "voiceInputWithAIShortcutKeyCode"
         static let voiceInputWithAIShortcutModifiers = "voiceInputWithAIShortcutModifiers"
+        // 热键触发模式（pushToTalk / toggle / hybrid）
+        static let hotkeyTriggerMode = "hotkeyTriggerMode"
         static let voiceInputLanguage = "voiceInputLanguage"
         static let transcriptLanguage = "transcriptLanguage"
         static let waveformWindowPosition = "waveformWindowPosition"
@@ -403,9 +405,18 @@ class UserPreferences: ObservableObject {
     @Published var voiceInputWithAIShortcutKeyCode: UInt16 {
         willSet { defaults.set(newValue, forKey: Keys.voiceInputWithAIShortcutKeyCode) }
     }
-    
+
     @Published var voiceInputWithAIShortcutModifiers: NSEvent.ModifierFlags {
         willSet { defaults.set(newValue.rawValue, forKey: Keys.voiceInputWithAIShortcutModifiers) }
+    }
+
+    /// 热键触发模式：按住 / 切换 / 混合。默认 pushToTalk 与历史版本一致。
+    /// 切换后通过 NotificationCenter 通知 fastvApp 同步到 GlobalShortcutMonitor。
+    @Published var hotkeyTriggerMode: HotkeyTriggerMode {
+        willSet {
+            defaults.set(newValue.rawValue, forKey: Keys.hotkeyTriggerMode)
+            NotificationCenter.default.post(name: .hotkeyTriggerModePreferenceChanged, object: newValue)
+        }
     }
     
     @Published var voiceInputLanguage: String {
@@ -809,7 +820,15 @@ class UserPreferences: ObservableObject {
             // 默認使用 Control 修飾鍵（即 FN+Control）
             voiceInputWithAIShortcutModifiers = .control
         }
-        
+
+        // 热键触发模式，默认 pushToTalk 与历史版本一致
+        if let savedMode = defaults.string(forKey: Keys.hotkeyTriggerMode),
+           let mode = HotkeyTriggerMode(rawValue: savedMode) {
+            hotkeyTriggerMode = mode
+        } else {
+            hotkeyTriggerMode = .pushToTalk
+        }
+
         voiceInputLanguage = defaults.string(forKey: Keys.voiceInputLanguage) ?? "auto"
         
         // 文本稿语言设置，默认为自动检测

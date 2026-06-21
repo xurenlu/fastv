@@ -2,6 +2,42 @@
 
 所有版本變更記錄。
 
+## [2.1.0-rc2] - 2026-06-21
+
+清理 v2.0.0-rc1 产品收敛后遗留的废测试，让 `fastvTests` target 恢复无屏蔽编译。
+
+### 修复
+
+- 删除 [`fastvTests/EmailRemoteImageBlockingTests.swift`](fastvTests/EmailRemoteImageBlockingTests.swift) 与 [`fastvTests/EmailTranslateStripTests.swift`](fastvTests/EmailTranslateStripTests.swift)：两文件分别引用已随邮件管线一并删除的 `EmailBodyWebViewRepresentable.stripRemoteImageSources` 与 `EmailViewModel.stripHTMLTagsForTranslate`，2.1.0-rc1 临时整文件 `#if false` 包裹绕过编译失败，现确认妙打不再恢复邮件功能，直接删除。
+- 清理 [`fastvTests/MeetingRichDocTests.swift`](fastvTests/MeetingRichDocTests.swift) 顶部 6 个 `#if false` 包裹的 `decideRichDocTrigger` 用例（依赖随 `MeetingRichDocPipeline.swift` 一并删掉的 `RichDocTriggerInput` / `RichDocTriggerConfig`），保留下方 Markdown 解析与 `AIScenario` 4 个仍然有效的用例。
+- 至此 `fastvTests` 目录里不再有任何 `#if false` 临时屏蔽段。
+
+### 工程
+
+- 版本号 `2.1.0-rc1` → `2.1.0-rc2`（bugfix，仅递增 rc 号）。
+
+## [2.1.0-rc1] - 2026-06-21
+
+竞品调研驱动的首批补齐：补上头部产品（VoiceInk / Superwhisper / TypeWhisper / Wispr Flow）已经把战场推到的两个入场门槛 —— **多触发模式** 与 **术语包**。
+
+### 新增
+
+- **热键触发模式可选**：设置 → 语音输入与快捷键 新增「触发方式」分段控件，提供
+  - `按住录音`（Push-to-Talk）：v1 行为，按下即录、松开即停，适合短句。
+  - `按一下切换`（Toggle）：按一次开始、再按一次停止，适合长段口述，手指无需一直按住。
+  - `混合`（Hybrid）：短按 = 切换；按住超过 0.25 秒 = 按住录音。两种习惯一键兼顾。
+  - 实现层引入独立的 `HotkeyTriggerStateMachine`（`fastv/Services/HotkeyTriggerStateMachine.swift`），把"原始按键 press/release"翻译成"有效录音 start/stop"，与 NSEvent 解耦便于单测；FN / Control / 普通键三条按键检测路径统一走 `dispatchRawPress` / `dispatchRawRelease` 分派。
+- **术语包（专有名词）**：常错词管理顶部新增「错字纠正 / 术语包」分段；术语条目在替换管线中享受两项特殊待遇：
+  - 优先于一般错字纠正生效（`getSortedMistakes` 排序 terminology 在前）；
+  - 大小写不敏感匹配（正则使用 `.caseInsensitive`，"open ai" / "OPEN AI" 都能命中 "OpenAI"）。
+  - `CorrectionCategory` 增加 `.terminology` 值，`addOrUpdate` 增加 `category` 参数；
+  - 5 语种 i18n（en / zh-Hans / ja / ko / yue）。
+
+### 工程
+
+- 版本号从 `2.0.0-rc14` 升至 `2.1.0-rc1`（按用户全局规则，功能新增升次版本）。
+- 新增单测 `fastvTests/HotkeyTriggerStateMachineTests.swift`（覆盖三模式状态机）与 `fastvTests/TerminologyCorrectionTests.swift`（覆盖术语优先 + 大小写命中）。
+
 ## [2.0.0-rc14] - 2026-06-21
 
 ### 改进

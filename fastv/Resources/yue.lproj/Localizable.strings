@@ -68,6 +68,16 @@
 "press.to.capture.shortcut" = "請按下快捷鍵...";
 "set.shortcut" = "設定快捷鍵";
 "language" = "語言";
+"hotkey.trigger.mode.title" = "觸發方式";
+"hotkey.trigger.mode.push.to.talk" = "撳住錄音";
+"hotkey.trigger.mode.toggle" = "撳一下切換";
+"hotkey.trigger.mode.hybrid" = "混合";
+"hotkey.trigger.mode.push.to.talk.description" = "撳住快捷鍵就開始錄，鬆手即停。啱講啲短嘢。";
+"hotkey.trigger.mode.toggle.description" = "撳一下開始錄，再撳一下停。啱長段口述，唔使手指一直撳住。";
+"hotkey.trigger.mode.hybrid.description" = "短撳 = 開/關切換；撳住超過 0.25 秒 = 撳住錄音。兩種習慣都啱。";
+"terminology.tab.mistakes" = "錯字糾正";
+"terminology.tab.terminology" = "術語庫";
+"terminology.tab.terminology.description" = "加入專有名詞、產品名、技術術語，識別時優先生效，唔分大細楷。講「open ai」都認得到「OpenAI」。";
 "recognition.language" = "識別語言";
 "default.language" = "預設語言";
 "auto.detect" = "自動檢測";

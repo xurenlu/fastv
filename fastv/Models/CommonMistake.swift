@@ -16,9 +16,15 @@ enum CorrectionCategory: String, Codable, CaseIterable {
     case time = "时间"
     case location = "地点"
     case pronoun = "人称"
+    case terminology = "术语"
     case other = "其他"
-    
+
     var displayName: String { rawValue }
+
+    /// 是否属于「术语包」语义（专有名词、产品名、技术词等）。
+    /// 术语类条目在替换管线中优先级高于普通错字纠正，且采用大小写不敏感匹配，
+    /// 这样用户说 "open ai" 也能命中 "OpenAI" 这条术语。
+    var isTerminology: Bool { self == .terminology }
 }
 
 /// 常错词/纠错规则

@@ -68,6 +68,16 @@
 "press.to.capture.shortcut" = "ショートカットを押してください...";
 "set.shortcut" = "ショートカットを設定";
 "language" = "言語";
+"hotkey.trigger.mode.title" = "トリガー方式";
+"hotkey.trigger.mode.push.to.talk" = "押している間";
+"hotkey.trigger.mode.toggle" = "トグル";
+"hotkey.trigger.mode.hybrid" = "ハイブリッド";
+"hotkey.trigger.mode.push.to.talk.description" = "ショートカットを押している間だけ録音し、離すと終了。短文に最適。";
+"hotkey.trigger.mode.toggle.description" = "1回押すと開始、もう1回押すと停止。長文の口述に最適で、指を押し続ける必要なし。";
+"hotkey.trigger.mode.hybrid.description" = "短く押す＝オン/オフ切替、0.25秒以上長押し＝押している間モード。両方を兼ね備える。";
+"terminology.tab.mistakes" = "誤字修正";
+"terminology.tab.terminology" = "用語集";
+"terminology.tab.terminology.description" = "固有名詞・製品名・専門用語を登録すると優先的に置換され、大文字小文字を区別しません。「open ai」と話しても「OpenAI」と認識されます。";
 "recognition.language" = "認識言語";
 "default.language" = "デフォルト言語";
 "auto.detect" = "自動検出";

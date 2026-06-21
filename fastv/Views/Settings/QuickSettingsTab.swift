@@ -143,7 +143,39 @@ struct QuickSettingsTab: View {
                     }
                     
                     Divider()
-                    
+
+                    // 触发方式：按住 / 切换 / 混合
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text(NSLocalizedString("hotkey.trigger.mode.title", comment: ""))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                        }
+
+                        Picker("", selection: $preferences.hotkeyTriggerMode) {
+                            Text(NSLocalizedString("hotkey.trigger.mode.push.to.talk", comment: ""))
+                                .tag(HotkeyTriggerMode.pushToTalk)
+                            Text(NSLocalizedString("hotkey.trigger.mode.toggle", comment: ""))
+                                .tag(HotkeyTriggerMode.toggle)
+                            Text(NSLocalizedString("hotkey.trigger.mode.hybrid", comment: ""))
+                                .tag(HotkeyTriggerMode.hybrid)
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+
+                        HStack(spacing: 6) {
+                            Image(systemName: "info.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                            Text(triggerModeDescription(preferences.hotkeyTriggerMode))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Divider()
+
                     // 识别语言设置
                     Picker(NSLocalizedString("recognition.language", comment: ""), selection: $preferences.voiceInputLanguage) {
                         Text(NSLocalizedString("auto.detect", comment: "")).tag("auto")
@@ -538,6 +570,17 @@ struct QuickSettingsTab: View {
         
         parts.append(keyName)
         return parts.joined(separator: "+")
+    }
+
+    private func triggerModeDescription(_ mode: HotkeyTriggerMode) -> String {
+        switch mode {
+        case .pushToTalk:
+            return NSLocalizedString("hotkey.trigger.mode.push.to.talk.description", comment: "")
+        case .toggle:
+            return NSLocalizedString("hotkey.trigger.mode.toggle.description", comment: "")
+        case .hybrid:
+            return NSLocalizedString("hotkey.trigger.mode.hybrid.description", comment: "")
+        }
     }
 }
 

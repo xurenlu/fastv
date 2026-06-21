@@ -22,17 +22,24 @@ struct CommonMistakeManagementView: View {
     @State private var sortOption: SortOption = .frequency
     @State private var filterType: FilterType = .all
     @State private var selectedCategory: CorrectionCategory? = nil
-    
+    @State private var topMode: TopMode = .mistakes
+
     enum SortOption: String, CaseIterable {
         case frequency = "出现次数"
         case confidence = "置信度"
         case alphabetical = "字母顺序"
     }
-    
+
     enum FilterType: String, CaseIterable {
         case all = "全部"
         case builtIn = "内置规则"
         case custom = "自定义"
+    }
+
+    /// 顶部分栏：「错字纠正」（默认，沿用历史行为）/「术语包」（仅显示并新增 .terminology 条目）。
+    enum TopMode: String, CaseIterable {
+        case mistakes
+        case terminology
     }
     
     @State private var filteredMistakesCache: [CommonMistake] = []
@@ -48,7 +55,15 @@ struct CommonMistakeManagementView: View {
         }
         
         var mistakes = mistakeManager.mistakes
-        
+
+        // 顶部分栏（术语 vs 错字）
+        switch topMode {
+        case .mistakes:
+            mistakes = mistakes.filter { !$0.category.isTerminology }
+        case .terminology:
+            mistakes = mistakes.filter { $0.category.isTerminology }
+        }
+
         // 类型过滤
         switch filterType {
         case .all:
@@ -58,7 +73,7 @@ struct CommonMistakeManagementView: View {
         case .custom:
             mistakes = mistakes.filter { !$0.isBuiltIn }
         }
-        
+
         // 类别过滤
         if let category = selectedCategory {
             mistakes = mistakes.filter { $0.category == category }
@@ -91,6 +106,32 @@ struct CommonMistakeManagementView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            // 顶部分栏：术语包 / 错字纠正
+            Picker("", selection: $topMode) {
+                Text(NSLocalizedString("terminology.tab.mistakes", comment: ""))
+                    .tag(TopMode.mistakes)
+                Text(NSLocalizedString("terminology.tab.terminology", comment: ""))
+                    .tag(TopMode.terminology)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .onChange(of: topMode) { _, _ in
+                // 切换分栏时清除子级筛选，避免上一档残留
+                selectedCategory = nil
+                filteredMistakesCache = []
+                lastCacheUpdate = nil
+            }
+
+            if topMode == .terminology {
+                HStack(spacing: 6) {
+                    Image(systemName: "text.book.closed")
+                        .foregroundStyle(.blue)
+                    Text(NSLocalizedString("terminology.tab.terminology.description", comment: ""))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             // 统计信息和开关
             HStack(spacing: 24) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -316,7 +357,12 @@ struct CommonMistakeManagementView: View {
                 correct: $newCorrect,
                 onSave: {
                     if !newWrong.isEmpty && !newCorrect.isEmpty {
-                        mistakeManager.addOrUpdate(wrong: newWrong, correct: newCorrect)
+                        let category: CorrectionCategory = (topMode == .terminology) ? .terminology : .other
+                        mistakeManager.addOrUpdate(
+                            wrong: newWrong,
+                            correct: newCorrect,
+                            category: category
+                        )
                         newWrong = ""
                         newCorrect = ""
                     }

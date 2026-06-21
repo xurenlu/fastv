@@ -68,6 +68,16 @@
 "press.to.capture.shortcut" = "단축키를 누르세요...";
 "set.shortcut" = "단축키 설정";
 "language" = "언어";
+"hotkey.trigger.mode.title" = "트리거 방식";
+"hotkey.trigger.mode.push.to.talk" = "누르고 있기";
+"hotkey.trigger.mode.toggle" = "토글";
+"hotkey.trigger.mode.hybrid" = "하이브리드";
+"hotkey.trigger.mode.push.to.talk.description" = "단축키를 누르고 있는 동안 녹음, 놓으면 종료. 짧은 문장에 적합.";
+"hotkey.trigger.mode.toggle.description" = "한 번 누르면 시작, 다시 누르면 종료. 긴 받아쓰기에 적합 — 손가락을 계속 누를 필요 없음.";
+"hotkey.trigger.mode.hybrid.description" = "짧게 누르기 = 켜기/끄기 토글, 0.25초 이상 누르기 = 누르고 있는 모드. 두 가지 모두 지원.";
+"terminology.tab.mistakes" = "오자 교정";
+"terminology.tab.terminology" = "용어집";
+"terminology.tab.terminology.description" = "고유명사·제품명·전문용어를 등록하면 우선 적용되며 대소문자를 구분하지 않습니다. 'open ai'라고 말해도 'OpenAI'로 인식됩니다.";
 "recognition.language" = "인식 언어";
 "default.language" = "기본 언어";
 "auto.detect" = "자동 감지";

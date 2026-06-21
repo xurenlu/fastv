@@ -17,21 +17,31 @@ enum ShortcutType {
 /// 全局快捷键监听器
 class GlobalShortcutMonitor {
     static let shared = GlobalShortcutMonitor()
-    
+
     private var globalEventMonitor: Any?
     private var localEventMonitor: Any?
-    
+
     var onShortcutPressed: (() -> Void)?
     var onShortcutReleased: (() -> Void)?
-    
+
     // 带Ctrl键状态的回调（舊版，保留兼容）
     var onShortcutPressedWithCtrl: ((Bool) -> Void)?
     var onShortcutReleasedWithCtrl: ((Bool) -> Void)?
-    
+
     // 新版回調：帶快捷鍵類型
     var onShortcutPressedWithType: ((ShortcutType) -> Void)?
     var onShortcutReleasedWithType: ((ShortcutType) -> Void)?
-    
+
+    /// 触发模式（pushToTalk / toggle / hybrid）。由 fastvApp 从 UserPreferences 同步。
+    /// 默认 pushToTalk 保持与历史版本一致。
+    var triggerMode: HotkeyTriggerMode {
+        get { triggerStateMachine.mode }
+        set { triggerStateMachine.mode = newValue }
+    }
+
+    /// 物理按键 → 有效录音事件的状态机。
+    private let triggerStateMachine = HotkeyTriggerStateMachine()
+
     private var isKeyPressed = false
     private var targetKeyCode: UInt16?
     private var targetModifiers: NSEvent.ModifierFlags?
@@ -59,7 +69,49 @@ class GlobalShortcutMonitor {
     // 设置为 5 分钟，避免正常录音被中断，同时防止无限录音
     private let fnKeySafetyTimeout: TimeInterval = 300.0
     
-    private init() {}
+    private init() {
+        // 状态机回调统一走 fireXxxCallback；
+        // 所有底层按键检测路径只调用 triggerStateMachine.handleRawPress/Release，
+        // 由状态机决定是否触发录音 start/stop。
+        triggerStateMachine.onPress = { [weak self] type, hasCtrl in
+            self?.firePressCallback(type: type, hasCtrl: hasCtrl)
+        }
+        triggerStateMachine.onRelease = { [weak self] type, hasCtrl in
+            self?.fireReleaseCallback(type: type, hasCtrl: hasCtrl)
+        }
+    }
+
+    /// 触发原始 press（按 trigger 模式分流为录音 start 或 toggle 翻转）
+    private func dispatchRawPress(type: ShortcutType, hasCtrl: Bool) {
+        triggerStateMachine.handleRawPress(type: type, hasCtrl: hasCtrl)
+    }
+
+    /// 触发原始 release（pushToTalk 直通，toggle 忽略，hybrid 看阈值）
+    private func dispatchRawRelease(type: ShortcutType, hasCtrl: Bool) {
+        triggerStateMachine.handleRawRelease(type: type, hasCtrl: hasCtrl)
+    }
+
+    /// 实际 fire press 回调（按优先级选择最具体的可用 closure）
+    private func firePressCallback(type: ShortcutType, hasCtrl: Bool) {
+        if let callback = onShortcutPressedWithType {
+            callback(type)
+        } else if let callback = onShortcutPressedWithCtrl {
+            callback(hasCtrl || type == .voiceInputWithAI)
+        } else {
+            onShortcutPressed?()
+        }
+    }
+
+    /// 实际 fire release 回调
+    private func fireReleaseCallback(type: ShortcutType, hasCtrl: Bool) {
+        if let callback = onShortcutReleasedWithType {
+            callback(type)
+        } else if let callback = onShortcutReleasedWithCtrl {
+            callback(hasCtrl || type == .voiceInputWithAI)
+        } else {
+            onShortcutReleased?()
+        }
+    }
     
     /// 開始監聽快捷鍵（雙快捷鍵版本）
     /// - Parameters:
@@ -164,6 +216,7 @@ class GlobalShortcutMonitor {
         fnKeySafetyTimer = nil
         lastFNKeyEventTime = nil
         hasOtherKeyPressedWithFN = false
+        triggerStateMachine.reset()
     }
     
     /// 判断是否应该消费事件（阻止事件传递给其他处理者）
@@ -253,28 +306,18 @@ class GlobalShortcutMonitor {
             if event.keyCode == targetKeyCode && eventModifiersWithoutCtrl == targetModifiersWithoutCtrl && !isKeyPressed {
                 // 检查是否额外按下了 Ctrl 键（即使 Ctrl 不在目标修饰键中）
                 let hasCtrl = event.modifierFlags.contains(.control)
-                print("✅ [GlobalShortcutMonitor] 快捷键按下匹配！触发 onShortcutPressed（Ctrl: \(hasCtrl), 事件modifiers: \(eventModifiers.rawValue), 目标modifiers: \(targetModifiersFiltered.rawValue)）")
+                print("✅ [GlobalShortcutMonitor] 快捷键按下匹配！分派至触发状态机（mode=\(triggerStateMachine.mode), Ctrl: \(hasCtrl), 事件modifiers: \(eventModifiers.rawValue), 目标modifiers: \(targetModifiersFiltered.rawValue)）")
                 isKeyPressed = true
-                // 同步调用回调，减少延迟（防止首字丢失）
-                // 回调内部会使用 MainActor 确保线程安全
-                if let callback = onShortcutPressedWithCtrl {
-                    callback(hasCtrl)
-                } else {
-                    onShortcutPressed?()
-                }
+                let detectedType: ShortcutType = hasCtrl ? .voiceInputWithAI : .voiceInput
+                dispatchRawPress(type: detectedType, hasCtrl: hasCtrl)
             }
         } else if event.type == .keyUp {
             if event.keyCode == targetKeyCode && isKeyPressed {
-                // 检查是否同时按下了 Ctrl 键
                 let hasCtrl = event.modifierFlags.contains(.control)
-                print("✅ [GlobalShortcutMonitor] 快捷键释放匹配！触发 onShortcutReleased（Ctrl: \(hasCtrl)）")
+                print("✅ [GlobalShortcutMonitor] 快捷键释放匹配！分派至触发状态机（mode=\(triggerStateMachine.mode), Ctrl: \(hasCtrl)）")
                 isKeyPressed = false
-                // 同步调用回调，减少延迟
-                if let callback = onShortcutReleasedWithCtrl {
-                    callback(hasCtrl)
-                } else {
-                    onShortcutReleased?()
-                }
+                let detectedType: ShortcutType = hasCtrl ? .voiceInputWithAI : .voiceInput
+                dispatchRawRelease(type: detectedType, hasCtrl: hasCtrl)
             }
         }
     }
@@ -358,14 +401,8 @@ class GlobalShortcutMonitor {
                 }
 
                 let shortcutType = detectedType
-                // 同步调用回调，立即开始录音
-                if let callback = onShortcutPressedWithType {
-                    callback(shortcutType)
-                } else if let callback = onShortcutPressedWithCtrl {
-                    callback(shortcutType == .voiceInputWithAI)
-                } else {
-                    onShortcutPressed?()
-                }
+                // 经状态机分派（pushToTalk 直通、toggle 切换、hybrid 进入未决期）
+                dispatchRawPress(type: shortcutType, hasCtrl: hasCtrl)
             } else {
                 // 更新 Ctrl 鍵狀態和類型
                 isCtrlPressedWithFN = hasCtrl
@@ -405,12 +442,8 @@ class GlobalShortcutMonitor {
                     self.triggerFNRelease()
                 }
 
-                // 同步调用回调，减少延迟
-                if let callback = onShortcutPressedWithType {
-                    callback(.voiceInput)
-                } else {
-                    onShortcutPressed?()
-                }
+                // 经状态机分派
+                dispatchRawPress(type: .voiceInput, hasCtrl: false)
             }
 
         case .keyUp:
@@ -438,21 +471,15 @@ class GlobalShortcutMonitor {
         fnKeySafetyTimer?.invalidate()
         fnKeySafetyTimer = nil
 
-        // 只有在没有按其他键的情况下才触发释放事件
+        // 只有在没有按其他键的情况下才分派释放事件给状态机
         if !hasOtherKeyPressedWithFN {
             let shortcutType = currentShortcutType
-            print("✅ [GlobalShortcutMonitor] FN鍵釋放（類型: \(shortcutType)），觸發 onShortcutReleased")
+            print("✅ [GlobalShortcutMonitor] FN鍵釋放（類型: \(shortcutType)），分派至觸發狀態機")
             isKeyPressed = false
             lastFNKeyEventTime = nil
             hasOtherKeyPressedWithFN = false
-            // 同步调用回调，减少延迟
-            if let callback = onShortcutReleasedWithType {
-                callback(shortcutType)
-            } else if let callback = onShortcutReleasedWithCtrl {
-                callback(shortcutType == .voiceInputWithAI)
-            } else {
-                onShortcutReleased?()
-            }
+            let hasCtrl = (shortcutType == .voiceInputWithAI)
+            dispatchRawRelease(type: shortcutType, hasCtrl: hasCtrl)
             // 重置狀態
             isCtrlPressedWithFN = false
             currentShortcutType = .voiceInput
@@ -492,10 +519,11 @@ class GlobalShortcutMonitor {
                     controlKeyReleaseTimer?.invalidate()
                     controlKeyReleaseTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: false) { [weak self] _ in
                         // 定时器仅用于取消误触，不影响正常触发
+                        _ = self
                     }
 
-                    // 同步调用回调，立即开始录音
-                    onShortcutPressed?()
+                    // 经状态机分派
+                    dispatchRawPress(type: .voiceInput, hasCtrl: false)
                 } else {
                     // 更新最后事件时间
                     lastControlKeyEventTime = Date()
@@ -508,13 +536,12 @@ class GlobalShortcutMonitor {
                 controlKeyReleaseTimer?.invalidate()
                 controlKeyReleaseTimer = nil
 
-                // 只有在没有按其他键的情况下才触发释放事件
+                // 只有在没有按其他键的情况下才分派释放事件
                 if !hasOtherKeyPressed {
-                    print("✅ [GlobalShortcutMonitor] Control键释放（单独），触发 onShortcutReleased")
+                    print("✅ [GlobalShortcutMonitor] Control键释放（单独），分派至触发状态机")
                     isKeyPressed = false
                     lastControlKeyEventTime = nil
-                    // 同步调用回调，减少延迟
-                    onShortcutReleased?()
+                    dispatchRawRelease(type: .voiceInput, hasCtrl: false)
                 } else {
                     print("ℹ️ [GlobalShortcutMonitor] Control键释放，但之前按了其他键，不触发释放事件")
                     isKeyPressed = false

@@ -68,6 +68,16 @@
 "press.to.capture.shortcut" = "请按下快捷键...";
 "set.shortcut" = "设置快捷键";
 "language" = "语言";
+"hotkey.trigger.mode.title" = "触发方式";
+"hotkey.trigger.mode.push.to.talk" = "按住录音";
+"hotkey.trigger.mode.toggle" = "按一下切换";
+"hotkey.trigger.mode.hybrid" = "混合";
+"hotkey.trigger.mode.push.to.talk.description" = "按住快捷键开始录音，松开即结束。适合短句快速说一句。";
+"hotkey.trigger.mode.toggle.description" = "按一下开始录、再按一下停止。适合长段口述，手指不用一直按着。";
+"hotkey.trigger.mode.hybrid.description" = "短按 = 切换开/关；按住超过 0.25 秒 = 按住录音。两种习惯兼顾。";
+"terminology.tab.mistakes" = "错字纠正";
+"terminology.tab.terminology" = "术语包";
+"terminology.tab.terminology.description" = "添加专有名词、产品名、技术术语，识别时优先生效且大小写不敏感。说「open ai」也能命中「OpenAI」。";
 "recognition.language" = "识别语言";
 "default.language" = "默认语言";
 "auto.detect" = "自动检测";

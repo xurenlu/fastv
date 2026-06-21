@@ -33,7 +33,13 @@ class CommonMistakeManager: ObservableObject {
     }
     
     /// 添加或更新常错词
-    func addOrUpdate(wrong: String, correct: String, frequency: Int = 1, confidence: Double = 0.5) {
+    func addOrUpdate(
+        wrong: String,
+        correct: String,
+        frequency: Int = 1,
+        confidence: Double = 0.5,
+        category: CorrectionCategory = .other
+    ) {
         // 查找是否已存在
         if let index = mistakes.firstIndex(where: { $0.wrong == wrong && $0.correct == correct }) {
             // 更新现有记录
@@ -41,6 +47,10 @@ class CommonMistakeManager: ObservableObject {
             let newFrequency = mistake.frequency + frequency
             let newConfidence = max(mistake.confidence, confidence)
             mistake.update(frequency: newFrequency, confidence: newConfidence)
+            // 如果显式传入了术语类别，把已有条目升级为术语
+            if category == .terminology {
+                mistake.category = .terminology
+            }
             mistakes[index] = mistake
         } else {
             // 添加新记录
@@ -48,11 +58,12 @@ class CommonMistakeManager: ObservableObject {
                 wrong: wrong,
                 correct: correct,
                 frequency: frequency,
-                confidence: confidence
+                confidence: confidence,
+                category: category
             )
             mistakes.append(mistake)
         }
-        
+
         invalidateCaches()
         saveMistakes()
     }
@@ -103,16 +114,18 @@ class CommonMistakeManager: ObservableObject {
         
         for mistake in mistakesToProcess {
             // 只替换完整的词（避免误替换）
-            // 使用缓存的正则表达式
-            let regex = getOrCreateRegex(for: mistake.wrong)
+            // 术语类条目使用大小写不敏感匹配（"open ai" → "OpenAI"）
+            let regex = getOrCreateRegex(for: mistake.wrong, caseInsensitive: mistake.category.isTerminology)
             let range = NSRange(location: 0, length: result.utf16.count)
+            // 术语类还需要把正则模板中可能存在的 $1/$2 等转义掉（虽然术语极少含 $，但保险）
+            let template = NSRegularExpression.escapedTemplate(for: mistake.correct)
             let newResult = regex.stringByReplacingMatches(
                 in: result,
                 options: [],
                 range: range,
-                withTemplate: mistake.correct
+                withTemplate: template
             )
-            
+
             // 如果替换成功，更新结果
             if newResult != result {
                 result = newResult
@@ -123,23 +136,34 @@ class CommonMistakeManager: ObservableObject {
     }
     
     /// 获取排序后的常错词（使用缓存）
+    /// 术语类（.terminology）始终排在最前，确保 "OpenAI"/"GitHub" 这种专有名词
+    /// 优先于一般的错字纠正生效；同类内部仍按 confidence 降序。
     private func getSortedMistakes() -> [CommonMistake] {
         if let cached = sortedMistakesCache {
             return cached
         }
-        let sorted = mistakes.sorted { $0.confidence > $1.confidence }
+        let sorted = mistakes.sorted { lhs, rhs in
+            if lhs.category.isTerminology != rhs.category.isTerminology {
+                return lhs.category.isTerminology
+            }
+            return lhs.confidence > rhs.confidence
+        }
         sortedMistakesCache = sorted
         return sorted
     }
-    
-    /// 获取或创建正则表达式（使用缓存）
-    private func getOrCreateRegex(for pattern: String) -> NSRegularExpression {
-        if let cached = regexCache[pattern] {
+
+    /// 获取或创建正则表达式（使用缓存）。
+    /// `caseInsensitive=true` 用于术语包：用户说 "open ai" / "Open AI" 都能命中术语 "OpenAI"。
+    private func getOrCreateRegex(for pattern: String, caseInsensitive: Bool = false) -> NSRegularExpression {
+        let cacheKey = caseInsensitive ? "ci::\(pattern)" : pattern
+        if let cached = regexCache[cacheKey] {
             return cached
         }
         let escapedPattern = "\\b\(NSRegularExpression.escapedPattern(for: pattern))\\b"
-        if let regex = try? NSRegularExpression(pattern: escapedPattern, options: []) {
-            regexCache[pattern] = regex
+        var options: NSRegularExpression.Options = []
+        if caseInsensitive { options.insert(.caseInsensitive) }
+        if let regex = try? NSRegularExpression(pattern: escapedPattern, options: options) {
+            regexCache[cacheKey] = regex
             return regex
         }
         // 如果创建失败，返回一个不会匹配任何内容的正则

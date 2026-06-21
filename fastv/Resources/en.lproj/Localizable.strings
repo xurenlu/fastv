@@ -68,6 +68,16 @@
 "press.to.capture.shortcut" = "Press shortcut...";
 "set.shortcut" = "Set Shortcut";
 "language" = "Language";
+"hotkey.trigger.mode.title" = "Trigger Mode";
+"hotkey.trigger.mode.push.to.talk" = "Push-to-Talk";
+"hotkey.trigger.mode.toggle" = "Toggle";
+"hotkey.trigger.mode.hybrid" = "Hybrid";
+"hotkey.trigger.mode.push.to.talk.description" = "Hold to record, release to transcribe. Best for short bursts.";
+"hotkey.trigger.mode.toggle.description" = "Tap once to start, tap again to stop. Best for long dictation — your fingers can rest.";
+"hotkey.trigger.mode.hybrid.description" = "Short tap = toggle on/off; hold longer than 0.25s = push-to-talk. Combines both worlds.";
+"terminology.tab.mistakes" = "Mistake Corrections";
+"terminology.tab.terminology" = "Terminology";
+"terminology.tab.terminology.description" = "Add proper nouns, product names, technical terms. Case-insensitive and prioritized — saying 'open ai' will match 'OpenAI'.";
 "recognition.language" = "Recognition Language";
 "default.language" = "Default Language";
 "auto.detect" = "Auto Detect";

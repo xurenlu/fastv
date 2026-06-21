@@ -15,6 +15,8 @@ extension Notification.Name {
     static let shortcutConfigDidChange = Notification.Name("shortcutConfigDidChange")
     /// 「在 Dock 中隐藏图标」偏好变化，object 为新的 Bool 值
     static let hideDockIconPreferenceChanged = Notification.Name("hideDockIconPreferenceChanged")
+    /// 「热键触发模式」偏好变化，object 为新的 HotkeyTriggerMode 值
+    static let hotkeyTriggerModePreferenceChanged = Notification.Name("hotkeyTriggerModePreferenceChanged")
 }
 
 // 语音输入时长阈值（秒）
@@ -345,6 +347,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ) { _ in
             AppDelegate.applyDockIconPolicy()
         }
+
+        // 监听热键触发模式偏好变化，即时同步到 GlobalShortcutMonitor
+        NotificationCenter.default.addObserver(
+            forName: .hotkeyTriggerModePreferenceChanged,
+            object: nil,
+            queue: .main
+        ) { note in
+            if let newMode = note.object as? HotkeyTriggerMode {
+                GlobalShortcutMonitor.shared.triggerMode = newMode
+                print("🔄 [AppDelegate] 热键触发模式更新为 \(newMode.rawValue)")
+            }
+        }
+        // 应用启动时同步一次（覆盖默认 pushToTalk → 用户上次选择）
+        GlobalShortcutMonitor.shared.triggerMode = UserPreferences.shared.hotkeyTriggerMode
 
         // 设置 Cmd+, 快捷键打开设置窗口
         setupSettingsShortcut()
