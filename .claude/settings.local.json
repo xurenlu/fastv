@@ -40,7 +40,9 @@
       "Bash(git log *)",
       "Bash(plutil -p /Users/rocky/Library/Developer/Xcode/DerivedData/fastv-aybimmutwhhxkmakrmciupvkllbm/Build/Products/Debug/row1.app/Contents/Info.plist)",
       "Bash(grep -n '$messages\\\\|messages.*sink\\\\|messages.*assign' /Users/rocky/Sites/fastv/fastv/ViewModels/EmailViewModel.swift)",
-      "Bash(awk ' *)"
+      "Bash(awk ' *)",
+      "Bash(find . -name \"Package.resolved\" 2>/dev/null; echo \"---\"; ls -la ~/Library/Developer/Xcode/DerivedData/fastv-bsagblddbizlhxceqjtyzxtsgyzo/SourcePackages/checkouts/ 2>/dev/null | head; echo \"---git stash test: is GRDB referenced via SPM?---\"; grep -n \"GRDB\" fastv.xcodeproj/project.pbxproj | head)",
+      "Bash(git reset *)"
     ],
     "deny": [],
     "ask": []

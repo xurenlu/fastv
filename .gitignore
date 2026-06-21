@@ -9,6 +9,8 @@ DerivedData/
 *.ipa
 *.dSYM.zip
 *.dSYM
+# LLVM coverage 输出（xcodebuild 在仓库根扔出来的临时 profile 文件）
+*.profraw
 
 # CocoaPods
 Pods/
