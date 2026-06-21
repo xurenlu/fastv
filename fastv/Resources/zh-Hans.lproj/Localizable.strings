@@ -105,6 +105,13 @@
 "context.profile.builtin.slack" = "Slack";
 "context.profile.builtin.im" = "即时通讯（口语）";
 "context.profile.builtin.code" = "代码 / IDE";
+"waveform.position.topLeft" = "左上角";
+"waveform.position.topRight" = "右上角";
+"waveform.position.bottomLeft" = "左下角";
+"waveform.position.bottomRight" = "右下角";
+"waveform.position.bottomCenter" = "正中间下方";
+"waveform.position.followCursor" = "跟随光标";
+"waveform.position.followCursor.hint" = "悬浮指示器贴着输入光标移动（无辅助功能权限时回退到鼠标位置）。";
 "recognition.language" = "识别语言";
 "default.language" = "默认语言";
 "auto.detect" = "自动检测";

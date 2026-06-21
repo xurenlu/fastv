@@ -26,6 +26,10 @@ class WaveformWindowManager: ObservableObject {
     private var window: NSWindow?
     private var hostingView: NSHostingView<WaveformView>?
     private var cleanupTask: DispatchWorkItem?
+    /// 跟随光标 timer：当 waveformWindowPosition == .followCursor 时启动，
+    /// 每 50ms 重算 origin 让窗口跟着 caret / 鼠标走。
+    private var followCursorTimer: Timer?
+    private let followCursorInterval: TimeInterval = 0.05
     
     @Published var audioLevel: Float = 0.0
     @Published var isVisible = false
@@ -111,8 +115,39 @@ class WaveformWindowManager: ObservableObject {
         print("   - screen: \(window.screen?.localizedName ?? "nil")")
         
         isVisible = true
-        
+
+        // 跟随光标模式：启动 50ms 重定位 timer。其它静态位置无需。
+        startFollowCursorTimerIfNeeded()
+
         print("✅ [WaveformWindowManager] 波形窗口已显示，isVisible=\(isVisible)")
+    }
+
+    /// 按当前偏好启动 / 停止 followCursor timer。
+    private func startFollowCursorTimerIfNeeded() {
+        followCursorTimer?.invalidate()
+        followCursorTimer = nil
+
+        let pref = UserPreferences.shared.waveformWindowPosition
+        guard pref.isFollowingCursor, let window = window else { return }
+
+        let windowSize = UserPreferences.shared.waveformWindowStyle.size
+        followCursorTimer = Timer.scheduledTimer(
+            withTimeInterval: followCursorInterval,
+            repeats: true
+        ) { [weak self, weak window] _ in
+            guard let _ = self, let window = window, window.isVisible else { return }
+            let anchor = CursorPositionLocator.resolveAnchorPoint()
+            let frame = CursorPositionLocator.windowFrame(anchor: anchor, windowSize: windowSize)
+            // 避免无谓的 layout：origin 没变就跳过
+            if window.frame.origin != frame.origin {
+                window.setFrameOrigin(frame.origin)
+            }
+        }
+    }
+
+    private func stopFollowCursorTimer() {
+        followCursorTimer?.invalidate()
+        followCursorTimer = nil
     }
     
     /// 隐藏波形窗口
@@ -122,13 +157,16 @@ class WaveformWindowManager: ObservableObject {
         // 取消之前的清理任务
         cleanupTask?.cancel()
         cleanupTask = nil
-        
+
+        // 停掉跟随光标 timer（不管之前有没有启动）
+        stopFollowCursorTimer()
+
         guard let window = window else {
             print("ℹ️ [WaveformWindowManager] 窗口不存在，无需关闭")
             isVisible = false
             return
         }
-        
+
         print("📊 [WaveformWindowManager] 关闭窗口...")
         
         // 先移除 contentView，避免在窗口关闭时出现问题
@@ -233,7 +271,8 @@ class WaveformWindowManager: ObservableObject {
         // 取消所有延迟任务
         cleanupTask?.cancel()
         cleanupTask = nil
-        
+        stopFollowCursorTimer()
+
         guard let window = window else {
             print("ℹ️ [WaveformWindowManager] 窗口不存在，无需清理")
             isVisible = false
@@ -298,8 +337,15 @@ class WaveformWindowManager: ObservableObject {
         case .bottomCenter:
             x = screenFrame.midX - windowWidth / 2
             y = screenFrame.minY + margin
+        case .followCursor:
+            // 首次显示落到当前光标旁；timer 启动后会持续重定位
+            let anchor = CursorPositionLocator.resolveAnchorPoint()
+            return CursorPositionLocator.windowFrame(
+                anchor: anchor,
+                windowSize: CGSize(width: windowWidth, height: windowHeight)
+            )
         }
-        
+
         return NSRect(x: x, y: y, width: windowWidth, height: windowHeight)
     }
 }

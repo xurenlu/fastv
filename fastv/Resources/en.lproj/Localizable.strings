@@ -105,6 +105,13 @@
 "context.profile.builtin.slack" = "Slack";
 "context.profile.builtin.im" = "IM / Chat (Casual)";
 "context.profile.builtin.code" = "Code / IDE";
+"waveform.position.topLeft" = "Top Left";
+"waveform.position.topRight" = "Top Right";
+"waveform.position.bottomLeft" = "Bottom Left";
+"waveform.position.bottomRight" = "Bottom Right";
+"waveform.position.bottomCenter" = "Bottom Center";
+"waveform.position.followCursor" = "Follow Cursor";
+"waveform.position.followCursor.hint" = "Floats next to your text cursor (falls back to mouse position if accessibility access is unavailable).";
 "recognition.language" = "Recognition Language";
 "default.language" = "Default Language";
 "auto.detect" = "Auto Detect";

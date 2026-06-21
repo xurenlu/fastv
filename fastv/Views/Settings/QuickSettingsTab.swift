@@ -250,7 +250,19 @@ struct QuickSettingsTab: View {
                                 Text(position.displayName).tag(position)
                             }
                         }
-                        
+
+                        if preferences.waveformWindowPosition.isFollowingCursor {
+                            HStack(spacing: 6) {
+                                Image(systemName: "info.circle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.blue)
+                                Text(NSLocalizedString("waveform.position.followCursor.hint", comment: ""))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.leading, 20)
+                        }
+
                         // 悬浮工具条样式设置
                         Picker(NSLocalizedString("waveform.window.size", comment: ""), selection: $preferences.waveformWindowStyle) {
                             ForEach(WaveformWindowStyle.allCases, id: \.self) { style in

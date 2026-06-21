@@ -105,6 +105,13 @@
 "context.profile.builtin.slack" = "Slack";
 "context.profile.builtin.im" = "IM / チャット（口語）";
 "context.profile.builtin.code" = "コード / IDE";
+"waveform.position.topLeft" = "左上";
+"waveform.position.topRight" = "右上";
+"waveform.position.bottomLeft" = "左下";
+"waveform.position.bottomRight" = "右下";
+"waveform.position.bottomCenter" = "下中央";
+"waveform.position.followCursor" = "カーソルに追従";
+"waveform.position.followCursor.hint" = "入力カーソルに沿ってフローティング表示（アクセシビリティ未許可ならマウス位置にフォールバック）。";
 "recognition.language" = "認識言語";
 "default.language" = "デフォルト言語";
 "auto.detect" = "自動検出";

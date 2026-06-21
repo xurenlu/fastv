@@ -105,6 +105,13 @@
 "context.profile.builtin.slack" = "Slack";
 "context.profile.builtin.im" = "IM / 채팅 (구어)";
 "context.profile.builtin.code" = "코드 / IDE";
+"waveform.position.topLeft" = "왼쪽 위";
+"waveform.position.topRight" = "오른쪽 위";
+"waveform.position.bottomLeft" = "왼쪽 아래";
+"waveform.position.bottomRight" = "오른쪽 아래";
+"waveform.position.bottomCenter" = "아래 중앙";
+"waveform.position.followCursor" = "커서 따라가기";
+"waveform.position.followCursor.hint" = "입력 커서 옆에 떠 있습니다 (접근성 미허가 시 마우스 위치로 폴백).";
 "recognition.language" = "인식 언어";
 "default.language" = "기본 언어";
 "auto.detect" = "자동 감지";

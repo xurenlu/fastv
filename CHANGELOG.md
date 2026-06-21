@@ -2,6 +2,55 @@
 
 所有版本變更記錄。
 
+## [2.1.0-rc6] - 2026-06-21
+
+竞品调研第三批：**光标旁悬浮指示器（Follow Cursor）**。对标 VocaMac /
+VoiceInk「悬浮在输入光标旁的小指示器」体验，让用户视线不必离开输入框去看
+菜单栏徽章。
+
+### 新增
+
+- [`fastv/Models/WaveformWindowPosition.swift`](fastv/Models/WaveformWindowPosition.swift)
+  新增 `.followCursor` case 与 `isFollowingCursor` helper；`displayName` 改用
+  `NSLocalizedString(_:value:comment:)`，保持中文兜底的同时打开 5 语种 i18n 通道。
+- [`fastv/Services/CursorPositionLocator.swift`](fastv/Services/CursorPositionLocator.swift)：
+  AX 优先链 — `AXFocusedUIElement` → `AXSelectedTextRange` →
+  `AXBoundsForRangeParameterizedAttribute` 拿 caret bounds，Quartz/AppKit 坐标系
+  正确翻转；失败回退 focused element 自身 frame；再失败回退 `NSEvent.mouseLocation`。
+  `clampedRect(origin:size:into:margin:)` 是纯函数，已加单测覆盖多屏 / 负坐标 /
+  屏幕比窗口窄等边界。
+- [`fastv/Views/WaveformView.swift`](fastv/Views/WaveformView.swift):
+  `WaveformWindowManager` 加 `followCursorTimer`（50ms 间隔），仅在
+  `waveformWindowPosition == .followCursor` 时启动，`hide()` / `cleanup()` 立即
+  销毁。origin 没变就跳过 `setFrameOrigin`，避免无谓的 layout。
+  `calculateWindowFrame()` 的 switch 加 `.followCursor` 分支，首次显示就落到光标旁。
+- [`fastv/Views/Settings/QuickSettingsTab.swift`](fastv/Views/Settings/QuickSettingsTab.swift)：
+  现有 position picker 通过 `ForEach(allCases)` 自动新增「跟随光标」选项；选中后
+  下方多一行 hint 解释 AX 权限要求。
+- 5 语种 i18n（en / zh-Hans / ja / ko / yue）补齐 6 个位置 displayName + 1 个
+  followCursor hint，共 7 × 5 = 35 个 key。
+
+### 测试
+
+- 新增 [`fastvTests/CursorPositionLocatorTests.swift`](fastvTests/CursorPositionLocatorTests.swift) 6 例：
+  锚点在屏内 → 原样；右溢出 / 左下溢出 → clamp 到 margin；屏幕小于窗口 → 居中；
+  副屏负坐标空间；enum 暴露面校验。
+
+### 工程
+
+- 版本号 `2.1.0-rc5` → `2.1.0-rc6`（功能新增，递增 rc 号）。
+
+## [2.1.0-rc5] - 2026-06-21
+
+### 改进
+
+- **应用与 DMG 图标统一为 MuseType 新品牌**：替换 `AppIcon.appiconset` 全尺寸图标为脉冲麦克风 Logo；新增 `assets/brand/musetype-dmg-volume.icns`，`create_dmg.sh` 与 `package_for_distribution.sh` 在创建 DMG 时写入 `.VolumeIcon.icns` 并设置卷标自定义图标。
+- **品牌资产入库**：保留 MuseType / 妙打图形标、深浅色版本、中英文组合字标，以及常用 PNG 尺寸导出，后续官网、文档和安装包可复用同一套资产。
+
+### 工程
+
+- 版本号 `2.1.0-rc4` → `2.1.0-rc5`，同步 STT API `X-API-Version`。
+
 ## [2.1.0-rc4] - 2026-06-21
 
 竞品调研第二批：**Power Mode（上下文感知 prompt 模板）**。对标

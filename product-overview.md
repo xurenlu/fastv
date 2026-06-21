@@ -9,6 +9,7 @@ MuseType（妙打）定位为 macOS 上的低打扰语音输入工具。应用�
 - 语音输入法：默认按住快捷键录音、松开转写并插入当前输入框；设置 → 触发方式 还可切换「按一下切换」（toggle）或「混合」（短按 = 切换、长按 ≥ 0.25s = 按住录音），覆盖长段口述与短句两类场景。
 - 术语包：常错词管理新增「术语包」分栏。专有名词、产品名、技术术语在替换管线中优先生效且大小写不敏感，说「open ai」也能输出「OpenAI」。
 - Power Mode（场景感知 prompt）：按前台 App / 浏览器 URL 自动切换 AI 后处理 prompt 模板。出厂内置 4 套预设（邮件正式 / Slack 简短 / IM 口语 / IDE 代码注释），用户可加自定义场景（bundleId / URL 通配 / App 名 contains 三种匹配规则 OR 组合）。AX 抽 Safari/Chrome/Arc/Brave/Edge/Firefox 当前 tab URL，1s 缓存。
+- 悬浮指示器位置：除「左上 / 右上 / 左下 / 右下 / 正中下方」5 个固定位置之外，新增「跟随光标」—— 录音期间小指示器贴着输入光标移动（AX 拿 caret bounds 优先，失败兜底鼠标位置）。
 - 主窗口界面皮肤：可在设置中切换系统默认、清爽浅色、纸感与多套深色风格；深色皮肤使用浅色文字，保证暗背景可读。
 - AI 语音优化：AI 快捷键可对转写文本进行口语化清理、标点补全和错字修正。
 - AI 上下文回改：识别到“修改上一句”“润色这句”“重写”等语音指令时，读取当前 text input / textarea 的内容，只回改选中文本或光标前最近一句。
@@ -29,6 +30,8 @@ MuseType（妙打）定位为 macOS 上的低打扰语音输入工具。应用�
 
 ## 版本记录
 
+- `2.1.0-rc6`：竞品调研第三批 — **光标旁悬浮指示器（Follow Cursor）**。`WaveformWindowPosition` 新增 `.followCursor` 枚举；`Services/CursorPositionLocator.swift` AX 优先链（`AXFocusedUIElement` → `AXSelectedTextRange` → `AXBoundsForRangeParameterizedAttribute` 拿 caret bounds，失败回退 focused element frame，再失败回退 `NSEvent.mouseLocation`）；`WaveformWindowManager` 加 50ms `followCursorTimer`，仅 followCursor 模式启动、hide / cleanup 即销毁。新增 `CursorPositionLocatorTests` 6 例（clamp 数学 + 多屏 + 负坐标）。5 语种 i18n 补齐 6 个位置 displayName + 1 个 hint。
+- `2.1.0-rc5`：应用与 DMG 图标统一到 MuseType 新品牌。`AppIcon.appiconset` 全尺寸替换为脉冲麦克风 Logo；新增 `assets/brand/musetype-dmg-volume.icns`，打包脚本创建 DMG 时写入 `.VolumeIcon.icns` 并设置卷标自定义图标；品牌资产目录保留深浅色图形标、中英文组合字标与 PNG 尺寸导出。
 - `2.1.0-rc4`：竞品调研第二批 — **Power Mode（上下文感知 prompt 模板）**。新增 `AppContextResolver`（NSWorkspace.frontmost + AX 抽浏览器 URL，1s 缓存）、`ContextProfile` / `MatchRule` 模型（bundleId 100 / urlPattern 50 / appNameContains 10 三档优先级 + `*` 通配）、`ContextProfileManager`（UserDefaults 持久化 + 出厂 4 内置预设：邮件 / Slack / IM / IDE）。`fastvApp.swift` 两个 polish 调用点注入 `resolveSystemPrompt(...)`，未启用 / 未命中走默认 `aiSystemPrompt`。设置 → AI 与模型 新增 Power Mode section 与 `ContextProfileEditorView` 编辑面板。5 语种 i18n。
 - `2.1.0-rc2`：清理 v2.0.0-rc1 产品收敛后遗留的 3 个废测试。`EmailRemoteImageBlockingTests.swift` 与 `EmailTranslateStripTests.swift` 整文件删除（引用已不存在的 `EmailBodyWebViewRepresentable.stripRemoteImageSources` / `EmailViewModel.stripHTMLTagsForTranslate`），`MeetingRichDocTests.swift` 顶部 6 个引用已删 `decideRichDocTrigger` 的用例删除，保留下方 Markdown / `AIScenario` 4 个仍然有效的用例。`fastvTests` 目录里不再有 `#if false` 临时屏蔽段。
 - `2.1.0-rc1`：竞品调研驱动的首批补齐。

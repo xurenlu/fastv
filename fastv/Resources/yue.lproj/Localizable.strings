@@ -105,6 +105,13 @@
 "context.profile.builtin.slack" = "Slack";
 "context.profile.builtin.im" = "IM / 傾偈（口語）";
 "context.profile.builtin.code" = "代碼 / IDE";
+"waveform.position.topLeft" = "左上角";
+"waveform.position.topRight" = "右上角";
+"waveform.position.bottomLeft" = "左下角";
+"waveform.position.bottomRight" = "右下角";
+"waveform.position.bottomCenter" = "正中間下方";
+"waveform.position.followCursor" = "跟住光標";
+"waveform.position.followCursor.hint" = "懸浮指示器跟住輸入光標走（冇輔助功能權限就用滑鼠位置兜底）。";
 "recognition.language" = "識別語言";
 "default.language" = "預設語言";
 "auto.detect" = "自動檢測";
