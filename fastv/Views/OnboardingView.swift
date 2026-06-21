@@ -220,39 +220,37 @@ struct ShortcutSetupStep: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             
-            if preferences.enableVoiceInput {
-                VStack(spacing: 8) {
-                    Text("current.shortcut")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    
-                    HStack(spacing: 4) {
-                        if preferences.voiceInputShortcutModifiers.contains(.control) {
-                            Text("⌃")
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        if preferences.voiceInputShortcutModifiers.contains(.option) {
-                            Text("⌥")
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        if preferences.voiceInputShortcutModifiers.contains(.shift) {
-                            Text("⇧")
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        if preferences.voiceInputShortcutModifiers.contains(.command) {
-                            Text("⌘")
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        
-                        Text(keyCodeToString(preferences.voiceInputShortcutKeyCode))
+            VStack(spacing: 8) {
+                Text("current.shortcut")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                
+                HStack(spacing: 4) {
+                    if preferences.voiceInputShortcutModifiers.contains(.control) {
+                        Text("⌃")
                             .font(.system(size: 14, weight: .medium))
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color.gray.opacity(0.1))
+                    if preferences.voiceInputShortcutModifiers.contains(.option) {
+                        Text("⌥")
+                            .font(.system(size: 14, weight: .medium))
                     }
+                    if preferences.voiceInputShortcutModifiers.contains(.shift) {
+                        Text("⇧")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    if preferences.voiceInputShortcutModifiers.contains(.command) {
+                        Text("⌘")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    
+                    Text(keyCodeToString(preferences.voiceInputShortcutKeyCode))
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.gray.opacity(0.1))
                 }
             }
             
@@ -273,10 +271,7 @@ struct ShortcutSetupStep: View {
                 ),
                 modifiers: Binding(
                     get: { preferences.voiceInputShortcutModifiers },
-                    set: { 
-                        preferences.voiceInputShortcutModifiers = $0
-                        preferences.enableVoiceInput = true
-                    }
+                    set: { preferences.voiceInputShortcutModifiers = $0 }
                 ),
                 onDismiss: {
                     isCapturing = false
@@ -1105,4 +1100,3 @@ struct OnboardingCompletionStep: View {
 #Preview {
     OnboardingView()
 }
-

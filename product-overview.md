@@ -2,11 +2,12 @@
 
 ## 当前设计思路
 
-fastv（row1）定位为 macOS 上的个人 AI 助手，核心交互是低打扰的系统级能力：语音输入、AI 文本优化、会议记录、邮件与轻量工具集合。应用优先保持后台常驻，通过全局快捷键、悬浮工具条和系统权限能力，把 AI 能力送到用户正在使用的输入场景里。
+MuseType（妙打）定位为 macOS 上的低打扰语音输入工具。应用优先保持后台常驻，通过全局快捷键、悬浮波形和本地语音转写能力，把 AI 语音输入送到用户正在使用的输入场景里。
 
 ## 主要功能
 
 - 语音输入法：按住快捷键录音，松开后转写并插入当前输入框。
+- 主窗口界面皮肤：可在设置中切换系统默认、清爽浅色、纸感与多套深色风格；深色皮肤使用浅色文字，保证暗背景可读。
 - AI 语音优化：AI 快捷键可对转写文本进行口语化清理、标点补全和错字修正。
 - AI 上下文回改：识别到“修改上一句”“润色这句”“重写”等语音指令时，读取当前 text input / textarea 的内容，只回改选中文本或光标前最近一句。
 - 智能分段转写：长语音输入时按停顿后台转写，松开后合并输出。
@@ -26,7 +27,18 @@ fastv（row1）定位为 macOS 上的个人 AI 助手，核心交互是低打扰
 
 ## 版本记录
 
-- `1.4.3-rc9`：改名遗留收尾 + 邮件点开真正变已读。(1) 5 个 `Localizable.strings`（en/zh-Hans/ja/ko/yue）的 `app.name` 与所有 `onboarding.welcome` / `welcome.title` / 权限引导文案，外加 5 个 `InfoPlist.strings` 的 `CFBundleDisplayName`，外加 `pbxproj` 里 `INFOPLIST_KEY_CFBundleDisplayName` + 三段权限描述，一次性全部统一为 `MuseType`（en）/ `妙打`（zh-Hans/ja/ko/yue）。`PRODUCT_NAME=row1` 和 bundle id 故意不动，避免 TCC 权限失效。(2) `EmailViewModel.markAsRead` 改成乐观更新：先把 isRead=true 写进 EmailStore（UI 立即变已读），再异步走 IMAP STORE \Seen，IMAP 失败只记日志不回滚本地，依赖 `EmailStore.addMessages` 的 `isRead = server ? server : existing` OR-merge 兜底保住本地读态。
+- `2.0.0-rc14`：CTC 去重改为标准保守流程。启用时先合并连续重复帧，再移除 blank token，尽量保留「谢谢」「我看看」「100」等 blank 分隔的正常重复；设置页文案改为实验性保守去重，并补充单测覆盖叠词与连续数字。
+- `2.0.0-rc13`：设置窗口底部移除版本号 footer，避免版本号压在底部分隔线上；版本信息保留在「数据与其他」→「关于」弹窗中。
+- `2.0.0-rc12`：语音输入法作为唯一主功能固定启用。设置页移除「启用语音输入法」开关，历史版本保存过关闭状态的用户升级后会自动恢复启用，快捷键注册不再依赖该旧开关。
+- `2.0.0-rc11`：主窗口默认皮肤改为「淡雅雾林」。未设置过界面皮肤的新用户默认进入该风格，已手动选择过皮肤的用户保持原选择不变。
+- `2.0.0-rc10`：修主窗口启动被语音模型预加载拖慢的问题。主窗口先显示并完成快捷键初始化，ONNX 语音模型延后 1.5 秒静默预热；启动预热优先级从 `.userInitiated` 降为 `.utility`，按下语音快捷键时仍保留即时预热路径。
+- `2.0.0-rc9`：主窗口新增界面皮肤选择器，提供系统默认、淡雅雾林、水墨宣纸、科幻光栅、午夜岩蓝、极光暗夜、熔火石墨 7 套风格；主窗口背景、输入区、统计卡片、历史列表即时换肤。深色风格使用专门的浅色文字 token，并补齐中 / 英 / 日 / 韩 / 粤 5 语言文案。
+- `2.0.0-rc8`：工程身份收尾到 `musetype`。Xcode app target、共享 scheme、test plan、CocoaPods target、测试宿主路径、`PRODUCT_NAME`、主 Bundle ID、构建/打包脚本产物名统一迁移，编译产物改为 `musetype.app` / `musetype.dmg`；单测导入同步为 `@testable import musetype`。
+- `2.0.0-rc7`：回滚 rc6 的 ONNX `IntraOp=1` 实验。`ONNXRuntimeWrapper.numThreads` 恢复 `max(4, activeProcessorCount)`，删 `intraOpNumThreads` 常量。rc5 关掉的二次拼接保留。
+- `2.0.0-rc6`：实验性把 ONNX `SetIntraOpNumThreads` 从 `max(4, activeProcessorCount)` 改为 `1`，验证「多 ONNX 推理互抢线程」假设。注意 IntraOp 控制单次推理内部并行，不是 session 并发，理论上单次推理时间会数倍上升。常量 `ONNXRuntimeWrapper.intraOpNumThreads` 提到类顶部方便一行回滚。
+- `2.0.0-rc5`：关掉 AI 模式下的「二次拼接转写」。原机制在录音中累计 ≥3 段后会把音频合并再跑一遍 ONNX 提准，但它和前台分段转写抢 ONNX session，让分段感觉变慢；AI 模式本来就有 AI Polish 文本兜底，边际收益不值这个 CPU。新增 `enableBatchRefinementTranscription = false` 编译开关 short-circuit 掉触发点，相关代码（scheduleBatchRefinementTranscription / runBatchRefinementTranscription / partitionSegmentsForBatchRefinement）保留以备 A/B 或回滚。普通快捷键走实时插入分支，本就不触发，不受影响。
+- `2.0.0-rc4`：去掉主窗口左右分栏。妙打收敛为纯语音输入工具后，左侧 160pt 的「功能」侧栏只剩 `voiceInput` 一个孤零零的入口，视觉负担大于信息密度。`ContentView` 直接渲染 `VoiceInputView` + 齿轮 toolbar + 设置 sheet，主窗口 minSize 720×520 → 560×520，删除 `SidebarItem` / `SidebarItemRow` 以及 `HSplitView` 结构。
+- `1.4.3-rc9`：改名遗留收尾 + 邮件点开真正变已读。(1) 5 个 `Localizable.strings`（en/zh-Hans/ja/ko/yue）的 `app.name` 与所有 `onboarding.welcome` / `welcome.title` / 权限引导文案，外加 5 个 `InfoPlist.strings` 的 `CFBundleDisplayName`，外加 `pbxproj` 里 `INFOPLIST_KEY_CFBundleDisplayName` + 三段权限描述，一次性全部统一为 `MuseType`（en）/ `妙打`（zh-Hans/ja/ko/yue）。当时为避免 TCC 权限失效暂未改工程身份；`2.0.0-rc8` 已完成工程身份迁移。(2) `EmailViewModel.markAsRead` 改成乐观更新：先把 isRead=true 写进 EmailStore（UI 立即变已读），再异步走 IMAP STORE \Seen，IMAP 失败只记日志不回滚本地，依赖 `EmailStore.addMessages` 的 `isRead = server ? server : existing` OR-merge 兜底保住本地读态。
 - `1.4.3-rc8`：邮件签名编辑器三连改造：(1) 布局从 `Form` 重构为 `ScrollView + VStack`，可用变量从两列稀疏卡片改为 `LazyVGrid` adaptive 紧凑芯片，4 行 footer 折叠到 `DisclosureGroup`，窗体 `minHeight` 600 → 520；(2) 引入 `SignatureEditorController` + 自定义 `SignatureTextEditor`(NSViewRepresentable 包 NSTextView)，变量芯片点击走 `replaceCharacters(in: selectedRange, with:)` 插入到光标位置，支持 Undo，光标自动推到插入末尾；(3) 内置签名样式从 11 套扩到 17 套，新增「精致样式」分组（品牌卡片 / 左色条 / 暖色线条 / 渐变玻璃 / 蒙德里安 / 黑白胶囊）。HTML 编辑时 NSTextView 用等宽字体。
 - `1.4.3-rc7`：修「已发送(本地)」虚拟文件夹被后台同步无差别 IMAP `selectFolder` 触发 NON_EXISTANT_FOLDER（错码 33）的告警刷屏，连带修「点开本地已发送邮件不被标已读」（IMAP 抛错导致 ViewModel.markAsRead 走 catch 分支，本地 `isRead = true` 写库被跳过）。`EmailFolder` 加 `isLocal` 计算属性（以 `path == "__LocalSent__"` 判定）；`EmailService` 全部 IMAP 入口（sync/markAsRead/delete/star/move/fetchBody/fetchRaw/downloadAttachment/search）对本地文件夹短路；`EmailViewModel.startBackgroundSyncTask` 循环顶部 `if folder.isLocal { continue }` 双保险。
 - `1.4.3-rc6`：消掉 Xcode runtime 的 `mailstream_cfstream.c:912` 优先级反转告警。libetpan CFStream runloop 跑在 Default QoS，调用线程被钉到 UserInitiated 时会触发 "User-initiated waiting on a lower QoS thread"。`LibEtPanWrapper.m` 的 `ensureUserInitiatedQoS` 函数体改为 `QOS_CLASS_UTILITY`；`EmailService.swift` 中 16 处包 IMAP/SMTP 同步调用的 `Task.detached(priority: .userInitiated)` 全部降为 `.utility`（已存在的 `.background` 后台同步保持不动）。

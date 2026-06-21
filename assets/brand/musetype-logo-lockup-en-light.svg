@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1480 420" role="img" aria-labelledby="title desc">
+  <title id="title">MuseType logo lockup for light backgrounds</title>
+  <desc id="desc">MuseType English wordmark paired with the light-background pulse microphone logo mark.</desc>
+  <defs>
+    <linearGradient id="micBody" x1="80" y1="80" x2="260" y2="330" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#26313d"/>
+      <stop offset="1" stop-color="#101820"/>
+    </linearGradient>
+    <linearGradient id="cyanPulse" x1="58" y1="64" x2="362" y2="360" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#06d9e8"/>
+      <stop offset="1" stop-color="#00aebd"/>
+    </linearGradient>
+    <linearGradient id="steelRing" x1="34" y1="36" x2="388" y2="388" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8b9baa"/>
+      <stop offset="1" stop-color="#4f6172"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(18 18) scale(.375)">
+    <circle cx="512" cy="512" r="386" fill="none" stroke="url(#steelRing)" stroke-width="48" stroke-dasharray="514 92" stroke-linecap="butt" transform="rotate(-46 512 512)"/>
+    <circle cx="512" cy="512" r="270" fill="none" stroke="url(#cyanPulse)" stroke-width="38" stroke-dasharray="338 86" stroke-linecap="butt" transform="rotate(-44 512 512)"/>
+    <g fill="url(#micBody)">
+      <rect x="418" y="342" width="188" height="284" rx="94"/>
+      <rect x="492" y="682" width="40" height="112" rx="2"/>
+      <rect x="446" y="786" width="132" height="34" rx="2"/>
+    </g>
+    <path d="M364 512v54c0 82 66 148 148 148s148-66 148-148v-54" fill="none" stroke="url(#micBody)" stroke-width="36" stroke-linecap="butt"/>
+    <g fill="#f7fbff">
+      <rect x="450" y="484" width="28" height="70" rx="14"/>
+      <rect x="484" y="454" width="28" height="130" rx="14"/>
+      <rect x="518" y="426" width="28" height="190" rx="14"/>
+      <rect x="552" y="454" width="28" height="130" rx="14"/>
+      <rect x="586" y="484" width="28" height="70" rx="14"/>
+    </g>
+  </g>
+  <text x="454" y="245" fill="#111820" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="138" font-weight="760" letter-spacing="0">MuseType</text>
+  <text x="460" y="306" fill="#687786" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif" font-size="38" font-weight="560" letter-spacing="7">VOICE TO TEXT</text>
+</svg>

@@ -7,6 +7,17 @@
 
 import SwiftUI
 
+private struct MainWindowPaletteKey: EnvironmentKey {
+    static let defaultValue = MainWindowSkin.systemDefault.palette
+}
+
+private extension EnvironmentValues {
+    var mainWindowPalette: MainWindowSkinPalette {
+        get { self[MainWindowPaletteKey.self] }
+        set { self[MainWindowPaletteKey.self] = newValue }
+    }
+}
+
 struct VoiceInputView: View {
     @ObservedObject private var preferences = UserPreferences.shared
     @ObservedObject private var historyManager = VoiceInputHistoryManager.shared
@@ -20,6 +31,8 @@ struct VoiceInputView: View {
     @State private var copiedRecordId: UUID?
 
     var body: some View {
+        let palette = preferences.mainWindowSkin.palette
+
         VStack(spacing: 0) {
             // 模型未下载提示横幅 - Apple 风格：克制、信息优先
             if !isModelDownloaded {
@@ -53,7 +66,15 @@ struct VoiceInputView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(
+            LinearGradient(
+                colors: palette.backgroundColors,
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .environment(\.mainWindowPalette, palette)
+        .preferredColorScheme(palette.preferredColorScheme)
         .navigationTitle(NSLocalizedString("voice.input", comment: ""))
         .alert(NSLocalizedString("error", comment: ""), isPresented: Binding(
             get: { errorMessage != nil },
@@ -109,33 +130,34 @@ struct VoiceInputView: View {
 // MARK: - 模型下载横幅（Apple 风格：克制、可点击）
 private struct ModelDownloadBanner: View {
     let onTap: () -> Void
+    @Environment(\.mainWindowPalette) private var palette
 
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
                 Image(systemName: "arrow.down.circle.fill")
                     .font(.title3)
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(palette.accentColor)
                     .symbolRenderingMode(.hierarchical)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(NSLocalizedString("model.not.downloaded.title", comment: ""))
                         .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(palette.primaryTextColor)
                     Text(NSLocalizedString("model.not.downloaded.message", comment: ""))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryTextColor)
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(palette.tertiaryTextColor)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
-            .background(Color.accentColor.opacity(0.08))
+            .background(palette.elevatedSurfaceColor)
         }
         .buttonStyle(.plain)
     }
@@ -145,6 +167,7 @@ private struct ModelDownloadBanner: View {
 private struct TestInputSection: View {
     @Binding var testInputText: String
     @FocusState.Binding var isTestInputFocused: Bool
+    @Environment(\.mainWindowPalette) private var palette
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -152,11 +175,11 @@ private struct TestInputSection: View {
             HStack(spacing: 10) {
                 Image(systemName: "info.circle.fill")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryTextColor)
                     .symbolRenderingMode(.hierarchical)
                 Text(NSLocalizedString("main.usage.hint", comment: ""))
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryTextColor)
                     .multilineTextAlignment(.leading)
             }
             .padding(.horizontal, 16)
@@ -164,26 +187,27 @@ private struct TestInputSection: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color(nsColor: .controlBackgroundColor))
+                    .fill(palette.elevatedSurfaceColor)
             )
 
             // 输入框
             VStack(alignment: .leading, spacing: 8) {
                 Text(NSLocalizedString("test.input.label", comment: ""))
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryTextColor)
 
                 TextField(NSLocalizedString("test.input.placeholder", comment: ""), text: $testInputText, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(2...4)
                     .focused($isTestInputFocused)
+                    .foregroundStyle(palette.primaryTextColor)
                     .padding(14)
                     .background(
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color(nsColor: .textBackgroundColor))
+                            .fill(palette.fieldColor)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .strokeBorder(Color.primary.opacity(isTestInputFocused ? 0.3 : 0.12), lineWidth: isTestInputFocused ? 1.5 : 1)
+                                    .strokeBorder(isTestInputFocused ? palette.accentColor.opacity(0.62) : palette.borderColor, lineWidth: isTestInputFocused ? 1.5 : 1)
                             )
                     )
             }
@@ -191,7 +215,11 @@ private struct TestInputSection: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.regularMaterial)
+                .fill(palette.surfaceColor)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(palette.borderColor, lineWidth: 1)
+                )
         )
     }
 }
@@ -199,6 +227,7 @@ private struct TestInputSection: View {
 // MARK: - 统计区（卡片式，Apple 风格）
 private struct StatsSection: View {
     @ObservedObject var historyManager: VoiceInputHistoryManager
+    @Environment(\.mainWindowPalette) private var palette
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -226,23 +255,27 @@ private struct StatsSection: View {
             HStack(spacing: 8) {
                 Text(NSLocalizedString("avg.characters.per.record", comment: ""))
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryTextColor)
                 Text(String(format: "%.0f", historyManager.averageCharactersPerRecord))
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(palette.primaryTextColor)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color(nsColor: .controlBackgroundColor).opacity(0.6))
+                    .fill(palette.elevatedSurfaceColor)
             )
         }
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.regularMaterial)
+                .fill(palette.surfaceColor)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(palette.borderColor, lineWidth: 1)
+                )
         )
     }
 }
@@ -255,12 +288,13 @@ private struct VoiceInputStatCard: View {
     let audioSeconds: TimeInterval
     let transcriptionSeconds: TimeInterval
     let realtimeFactor: Double?
+    @Environment(\.mainWindowPalette) private var palette
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryTextColor)
 
             HStack(spacing: 16) {
                 StatItemView(
@@ -289,7 +323,11 @@ private struct VoiceInputStatCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.5))
+                .fill(palette.elevatedSurfaceColor)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(palette.borderColor.opacity(0.7), lineWidth: 1)
+                )
         )
     }
 
@@ -326,15 +364,16 @@ private struct VoiceInputStatCard: View {
 private struct StatItemView: View {
     let title: String
     let value: String
+    @Environment(\.mainWindowPalette) private var palette
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(palette.tertiaryTextColor)
             Text(value)
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(.primary)
+                .foregroundStyle(palette.primaryTextColor)
         }
     }
 }
@@ -345,6 +384,7 @@ private struct HistorySection: View {
     @Binding var copiedRecordId: UUID?
     @Binding var showClearHistoryConfirm: Bool
     let onCopyRecord: (VoiceInputHistoryRecord) -> Void
+    @Environment(\.mainWindowPalette) private var palette
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -352,15 +392,16 @@ private struct HistorySection: View {
             HStack {
                 Text(NSLocalizedString("voice.input.history", comment: ""))
                     .font(.title3.weight(.semibold))
+                    .foregroundStyle(palette.primaryTextColor)
                 Text("(\(historyManager.totalCount) \(NSLocalizedString("records", comment: "")))")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryTextColor)
                 Spacer()
                 if !historyManager.records.isEmpty {
                     Button(action: { showClearHistoryConfirm = true }) {
                         Text(NSLocalizedString("clear.all", comment: ""))
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(palette.secondaryTextColor)
                     }
                     .buttonStyle(.plain)
                 }
@@ -372,6 +413,7 @@ private struct HistorySection: View {
                 ContentUnavailableView {
                     Label(NSLocalizedString("no.records", comment: ""), systemImage: "text.badge.plus")
                 }
+                .foregroundStyle(palette.secondaryTextColor)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 48)
             } else {
@@ -384,14 +426,20 @@ private struct HistorySection: View {
                             onDelete: { historyManager.remove(record) }
                         )
                         if record.id != historyManager.records.last?.id {
-                            Divider()
+                            Rectangle()
+                                .fill(palette.borderColor)
+                                .frame(height: 1)
                                 .padding(.leading, 20)
                         }
                     }
                 }
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(.regularMaterial)
+                        .fill(palette.elevatedSurfaceColor)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .strokeBorder(palette.borderColor, lineWidth: 1)
+                        )
                 )
             }
         }
@@ -405,6 +453,7 @@ private struct HistoryRecordRow: View {
     let onCopy: () -> Void
     let onDelete: () -> Void
     @State private var isHovered = false
+    @Environment(\.mainWindowPalette) private var palette
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -413,10 +462,10 @@ private struct HistoryRecordRow: View {
                     .font(.body)
                     .lineLimit(5)
                     .textSelection(.enabled)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(palette.primaryTextColor)
                 Text(record.timestamp, format: .dateTime.month().day().hour().minute())
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(palette.tertiaryTextColor)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 14)
@@ -435,7 +484,7 @@ private struct HistoryRecordRow: View {
                 } else {
                     Image(systemName: "doc.on.doc")
                         .font(.body)
-                        .foregroundStyle(isHovered ? .primary : .secondary)
+                        .foregroundStyle(isHovered ? palette.primaryTextColor : palette.secondaryTextColor)
                         .symbolRenderingMode(.hierarchical)
                 }
             }

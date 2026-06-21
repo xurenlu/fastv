@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		420B8873F2660D76E1855456 /* Pods_row1.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F8E1ABDD6478BDDD3FBF5EE6 /* Pods_row1.framework */; };
+		420B8873F2660D76E1855456 /* Pods_musetype.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F8E1ABDD6478BDDD3FBF5EE6 /* Pods_musetype.framework */; };
 		5C33D8722EDC849D00527815 /* libetpan.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C33D8712EDC849D00527815 /* libetpan.a */; };
 		5C33D8732EDC849D00527815 /* libetpan.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C33D8712EDC849D00527815 /* libetpan.a */; };
 		5C33DDE92EDC9D0800527815 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C33DDE82EDC9D0800527815 /* libz.tbd */; };
@@ -24,23 +24,23 @@
 			containerPortal = 5C0423762ECD792D00821B50 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 5C04237D2ECD792D00821B50;
-			remoteInfo = row1;
+			remoteInfo = musetype;
 		};
 		5C0423982ECD793000821B50 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 5C0423762ECD792D00821B50 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 5C04237D2ECD792D00821B50;
-			remoteInfo = row1;
+			remoteInfo = musetype;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		29D214D841CB811225CD3A43 /* Pods-typecho.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-typecho.debug.xcconfig"; path = "Target Support Files/Pods-typecho/Pods-typecho.debug.xcconfig"; sourceTree = "<group>"; };
-		5C04237E2ECD792D00821B50 /* row1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = row1.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5C04237E2ECD792D00821B50 /* musetype.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = musetype.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C04238D2ECD793000821B50 /* typecho.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = typecho.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C0423972ECD793000821B50 /* fastvUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = fastvUITests.xctest; path = typecho.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		5C1000012F00000100527815 /* row1.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = row1.xctestplan; sourceTree = "<group>"; };
+		5C1000012F00000100527815 /* musetype.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = musetype.xctestplan; sourceTree = "<group>"; };
 		5C33D8712EDC849D00527815 /* libetpan.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libetpan.a; sourceTree = "<group>"; };
 		5C33DDE82EDC9D0800527815 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
 		5C33DDEA2EDC9D1A00527815 /* libsasl2.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsasl2.tbd; path = usr/lib/libsasl2.tbd; sourceTree = SDKROOT; };
@@ -49,24 +49,30 @@
 		5C33DDF02EDC9D3800527815 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		5C33DDF22EDC9D4100527815 /* CFNetwork.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CFNetwork.framework; path = System/Library/Frameworks/CFNetwork.framework; sourceTree = SDKROOT; };
 		5EF571A6A0DA73C2DB42978C /* Pods-typecho.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-typecho.release.xcconfig"; path = "Target Support Files/Pods-typecho/Pods-typecho.release.xcconfig"; sourceTree = "<group>"; };
-		7D031418607FBBB6418EECC7 /* Pods-row1.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-row1.debug.xcconfig"; path = "Target Support Files/Pods-row1/Pods-row1.debug.xcconfig"; sourceTree = "<group>"; };
-		DC0B03A35A134716360C9BD8 /* Pods-row1.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-row1.release.xcconfig"; path = "Target Support Files/Pods-row1/Pods-row1.release.xcconfig"; sourceTree = "<group>"; };
-		F8E1ABDD6478BDDD3FBF5EE6 /* Pods_row1.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_row1.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		7D031418607FBBB6418EECC7 /* Pods-musetype.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-musetype.debug.xcconfig"; path = "Target Support Files/Pods-musetype/Pods-musetype.debug.xcconfig"; sourceTree = "<group>"; };
+		DC0B03A35A134716360C9BD8 /* Pods-musetype.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-musetype.release.xcconfig"; path = "Target Support Files/Pods-musetype/Pods-musetype.release.xcconfig"; sourceTree = "<group>"; };
+		F8E1ABDD6478BDDD3FBF5EE6 /* Pods_musetype.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_musetype.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		5C0423802ECD792D00821B50 /* fastv */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = fastv;
 			sourceTree = "<group>";
 		};
 		5C0423902ECD793000821B50 /* fastvTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = fastvTests;
 			sourceTree = "<group>";
 		};
 		5C04239A2ECD793000821B50 /* fastvUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = fastvUITests;
 			sourceTree = "<group>";
 		};
@@ -84,7 +90,7 @@
 				5C33DDEB2EDC9D1A00527815 /* libsasl2.tbd in Frameworks */,
 				5C33DDE92EDC9D0800527815 /* libz.tbd in Frameworks */,
 				5C33D8722EDC849D00527815 /* libetpan.a in Frameworks */,
-				420B8873F2660D76E1855456 /* Pods_row1.framework in Frameworks */,
+				420B8873F2660D76E1855456 /* Pods_musetype.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -111,8 +117,8 @@
 			children = (
 				29D214D841CB811225CD3A43 /* Pods-typecho.debug.xcconfig */,
 				5EF571A6A0DA73C2DB42978C /* Pods-typecho.release.xcconfig */,
-				7D031418607FBBB6418EECC7 /* Pods-row1.debug.xcconfig */,
-				DC0B03A35A134716360C9BD8 /* Pods-row1.release.xcconfig */,
+				7D031418607FBBB6418EECC7 /* Pods-musetype.debug.xcconfig */,
+				DC0B03A35A134716360C9BD8 /* Pods-musetype.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -124,7 +130,7 @@
 				5C0423802ECD792D00821B50 /* fastv */,
 				5C0423902ECD793000821B50 /* fastvTests */,
 				5C04239A2ECD793000821B50 /* fastvUITests */,
-				5C1000012F00000100527815 /* row1.xctestplan */,
+				5C1000012F00000100527815 /* musetype.xctestplan */,
 				5C04237F2ECD792D00821B50 /* Products */,
 				0966A4D65B81DE6EE4B14886 /* Pods */,
 				E65830A71AE08364D55B68BA /* Frameworks */,
@@ -134,7 +140,7 @@
 		5C04237F2ECD792D00821B50 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				5C04237E2ECD792D00821B50 /* row1.app */,
+				5C04237E2ECD792D00821B50 /* musetype.app */,
 				5C04238D2ECD793000821B50 /* typecho.xctest */,
 				5C0423972ECD793000821B50 /* fastvUITests.xctest */,
 			);
@@ -150,7 +156,7 @@
 				5C33DDEC2EDC9D2700527815 /* libiconv.tbd */,
 				5C33DDEA2EDC9D1A00527815 /* libsasl2.tbd */,
 				5C33DDE82EDC9D0800527815 /* libz.tbd */,
-				F8E1ABDD6478BDDD3FBF5EE6 /* Pods_row1.framework */,
+				F8E1ABDD6478BDDD3FBF5EE6 /* Pods_musetype.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -158,9 +164,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		5C04237D2ECD792D00821B50 /* row1 */ = {
+		5C04237D2ECD792D00821B50 /* musetype */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 5C0423A12ECD793000821B50 /* Build configuration list for PBXNativeTarget "row1" */;
+			buildConfigurationList = 5C0423A12ECD793000821B50 /* Build configuration list for PBXNativeTarget "musetype" */;
 			buildPhases = (
 				24ADEB328C96006508A84D48 /* [CP] Check Pods Manifest.lock */,
 				5C04237A2ECD792D00821B50 /* Sources */,
@@ -177,9 +183,9 @@
 			fileSystemSynchronizedGroups = (
 				5C0423802ECD792D00821B50 /* fastv */,
 			);
-			name = row1;
-			productName = row1;
-			productReference = 5C04237E2ECD792D00821B50 /* row1.app */;
+			name = musetype;
+			productName = musetype;
+			productReference = 5C04237E2ECD792D00821B50 /* musetype.app */;
 			productType = "com.apple.product-type.application";
 		};
 		5C04238C2ECD793000821B50 /* fastvTests */ = {
@@ -260,14 +266,12 @@
 			);
 			mainGroup = 5C0423752ECD792D00821B50;
 			minimizedProjectReferenceProxies = 1;
-			packageReferences = (
-			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 5C04237F2ECD792D00821B50 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				5C04237D2ECD792D00821B50 /* row1 */,
+				5C04237D2ECD792D00821B50 /* musetype */,
 				5C04238C2ECD793000821B50 /* fastvTests */,
 				5C0423962ECD793000821B50 /* fastvUITests */,
 			);
@@ -314,7 +318,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-row1-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-musetype-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -327,19 +331,15 @@
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-row1/Pods-row1-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-musetype/Pods-musetype-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-row1/Pods-row1-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-musetype/Pods-musetype-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-row1/Pods-row1-frameworks.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-musetype/Pods-musetype-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		5C0423AC2ECD793000821B50 /* Copy ONNX Runtime Library */ = {
@@ -412,12 +412,12 @@
 /* Begin PBXTargetDependency section */
 		5C04238F2ECD793000821B50 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 5C04237D2ECD792D00821B50 /* row1 */;
+			target = 5C04237D2ECD792D00821B50 /* musetype */;
 			targetProxy = 5C04238E2ECD793000821B50 /* PBXContainerItemProxy */;
 		};
 		5C0423992ECD793000821B50 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 5C04237D2ECD792D00821B50 /* row1 */;
+			target = 5C04237D2ECD792D00821B50 /* musetype */;
 			targetProxy = 5C0423982ECD793000821B50 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -545,14 +545,14 @@
 		};
 		5C0423A22ECD793000821B50 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7D031418607FBBB6418EECC7 /* Pods-row1.debug.xcconfig */;
+			baseConfigurationReference = 7D031418607FBBB6418EECC7 /* Pods-musetype.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 23;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -584,13 +584,13 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.0.0-rc3";
+				MARKETING_VERSION = "2.0.0-rc14";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.17push.row1;
-				PRODUCT_NAME = row1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.17push.musetype;
+				PRODUCT_NAME = musetype;
 				REGISTER_APP_GROUPS = YES;
 				SCRIPTING_DEFINITION_FILE = fastv/fastv.sdef;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -605,14 +605,14 @@
 		};
 		5C0423A32ECD793000821B50 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = DC0B03A35A134716360C9BD8 /* Pods-row1.release.xcconfig */;
+			baseConfigurationReference = DC0B03A35A134716360C9BD8 /* Pods-musetype.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 23;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -644,13 +644,13 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.0.0-rc3";
+				MARKETING_VERSION = "2.0.0-rc14";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.17push.row1;
-				PRODUCT_NAME = row1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.17push.musetype;
+				PRODUCT_NAME = musetype;
 				REGISTER_APP_GROUPS = YES;
 				SCRIPTING_DEFINITION_FILE = fastv/fastv.sdef;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -669,7 +669,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 23;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -690,7 +690,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.0.0-rc3";
+				MARKETING_VERSION = "2.0.0-rc14";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -698,7 +698,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/row1.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/row1";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/musetype.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/musetype";
 			};
 			name = Debug;
 		};
@@ -708,7 +708,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 23;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -729,7 +729,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.0.0-rc3";
+				MARKETING_VERSION = "2.0.0-rc14";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -737,7 +737,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/row1.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/row1";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/musetype.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/musetype";
 			};
 			name = Release;
 		};
@@ -746,10 +746,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 23;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.0.0-rc3";
+				MARKETING_VERSION = "2.0.0-rc14";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -757,7 +757,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = row1;
+				TEST_TARGET_NAME = musetype;
 			};
 			name = Debug;
 		};
@@ -766,10 +766,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 23;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.0.0-rc3";
+				MARKETING_VERSION = "2.0.0-rc14";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -777,7 +777,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = row1;
+				TEST_TARGET_NAME = musetype;
 			};
 			name = Release;
 		};
@@ -793,7 +793,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		5C0423A12ECD793000821B50 /* Build configuration list for PBXNativeTarget "row1" */ = {
+		5C0423A12ECD793000821B50 /* Build configuration list for PBXNativeTarget "musetype" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				5C0423A22ECD793000821B50 /* Debug */,

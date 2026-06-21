@@ -59,6 +59,10 @@ private var incrementalBatchRefinedTexts: [String?] = []       // 每批的轉�
 private let incrementalBatchMinSegments = 3  // 至少 3 段才觸發（2 段拼接效果提升有限）
 private let incrementalBatchMinDuration: TimeInterval = 3.0     // 每批至少 3 秒，避免過短
 private let incrementalBatchMaxDuration: TimeInterval = 6.0     // 每批最多 6 秒，避免過度合併導致效率下降
+/// v2.0.0-rc5 关掉「二次拼接转写」：用户反馈识别慢，怀疑就是这条「为提准重跑 ASR」的路径在抢
+/// CPU。AI 模式下分段 ASR 已经能给出可用文本，加上 AI Polish 文本层兜底，二次拼接的边际收益
+/// 远小于它对感知速度的伤害。代码保留，方便后续 A/B 或回滚。
+private let enableBatchRefinementTranscription = false
 
 /// 智能分段：靜音觸發時提取當前段落、轉寫並緩存（串行執行，不插入，鬆鍵時一次性輸出）
 /// 同時啟動二次拼接轉寫：多段音頻合併後再轉寫，準確率更高；鬆鍵時若已完成則替換零碎結果
@@ -96,7 +100,7 @@ private func performIncrementalSegmentTranscription() async {
             insertVoiceText(text, preferences: UserPreferences.shared)
             currentSessionLiveInsertedText += text
             print("⚡️ [fastvApp] 實時插入分段完成，累計文本长度: \(currentSessionLiveInsertedText.count)")
-        } else if incrementalTranscriptionResults.count >= incrementalBatchMinSegments {
+        } else if enableBatchRefinementTranscription && incrementalTranscriptionResults.count >= incrementalBatchMinSegments {
             // 二次拼接轉寫：動態規劃分批，每批至少3段、至少2秒。
             // 實時插入模式不做二次替換，避免回改已插入內容時干擾用戶輸入。
             scheduleBatchRefinementTranscription(language: language)
@@ -564,18 +568,8 @@ struct fastvApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ZStack {
-                ContentView()
-                
-                // 语音模型预加载启动屏（仅当已完成引导且有模型文件时显示）
-                if UserPreferences.shared.hasCompletedOnboarding {
-                    SpeechModelPreloadSplashView(preloadManager: SpeechModelPreloadManager.shared)
-                }
-            }
+            ContentView()
             .onAppear {
-                // 应用启动时预加载语音模型（若有模型文件），首次语音输入即可直接使用
-                SpeechModelPreloadManager.shared.startPreloadIfNeeded()
-
                 // 启动内存监控（仅在 Debug 模式下）
                 #if DEBUG
                 MemoryMonitor.shared.startMonitoring()
@@ -597,6 +591,10 @@ struct fastvApp: App {
                     // 延迟初始化，确保窗口已显示
                     try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
                     setupVoiceInput()
+
+                    // 主窗口先完成首屏展示，再静默预热语音模型，避免大模型加载拖慢启动体感。
+                    try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5秒
+                    SpeechModelPreloadManager.shared.startPreloadIfNeeded()
                 }
             }
         }
@@ -763,7 +761,7 @@ struct fastvApp: App {
         let preferences = UserPreferences.shared
         
         print("🔧 [fastvApp] 語音輸入設置:")
-        print("  - 啟用: \(preferences.enableVoiceInput)")
+        print("  - 啟用: true（主功能固定啟用）")
         print("  - 主快捷鍵: keyCode=\(preferences.voiceInputShortcutKeyCode), modifiers=\(preferences.voiceInputShortcutModifiers.rawValue)")
         print("  - AI校正快捷鍵: keyCode=\(preferences.voiceInputWithAIShortcutKeyCode), modifiers=\(preferences.voiceInputWithAIShortcutModifiers.rawValue)")
         
@@ -790,7 +788,7 @@ struct fastvApp: App {
     private func applyShortcutConfigIfNeeded(reason: String) {
         let preferences = UserPreferences.shared
         let newConfig = ShortcutConfig(
-            isEnabled: preferences.enableVoiceInput,
+            isEnabled: true,
             keyCode: preferences.voiceInputShortcutKeyCode,
             modifiers: preferences.voiceInputShortcutModifiers
         )
@@ -802,19 +800,14 @@ struct fastvApp: App {
         
         lastShortcutConfig = newConfig
         
-        if newConfig.isEnabled {
-            print("🔧 [fastvApp] 快捷鍵配置已更新（原因: \(reason)），重新註冊監聽")
-            // 傳遞雙快捷鍵配置
-            GlobalShortcutMonitor.shared.startMonitoring(
-                keyCode: newConfig.keyCode,
-                modifiers: newConfig.modifiers,
-                secondaryKeyCode: preferences.voiceInputWithAIShortcutKeyCode,
-                secondaryModifiers: preferences.voiceInputWithAIShortcutModifiers
-            )
-        } else {
-            print("ℹ️ [fastvApp] 語音輸入已禁用（原因: \(reason)），停止快捷鍵監聽")
-            GlobalShortcutMonitor.shared.stopMonitoring()
-        }
+        print("🔧 [fastvApp] 快捷鍵配置已更新（原因: \(reason)），重新註冊監聽")
+        // 傳遞雙快捷鍵配置
+        GlobalShortcutMonitor.shared.startMonitoring(
+            keyCode: newConfig.keyCode,
+            modifiers: newConfig.modifiers,
+            secondaryKeyCode: preferences.voiceInputWithAIShortcutKeyCode,
+            secondaryModifiers: preferences.voiceInputWithAIShortcutModifiers
+        )
     }
 
     /// 快捷键按下立即响应（同步路径，最小化延迟）

@@ -55,7 +55,6 @@
 "to.speak" = "話す";
 "press.and.hold.to.speak" = "押して話し、離して終了";
 "press.and.hold" = "押して話す:";
-"enable.voice.input.in.settings" = "設定で音声入力を有効にしてください";
 "transcribing" = "文字変換中...";
 "speech.model.preload.title" = "音声モデルを読み込み中";
 "speech.model.preload.message" = "初回の音声認識モデルの読み込み中です。しばらくお待ちください。";
@@ -63,7 +62,6 @@
 "voice.recording.too.short.message" = "録音が短すぎて正確な認識ができません。少なくとも0.5秒以上話してください。";
 
 // 設定
-"enable.voice.input" = "音声入力を有効にする";
 "global.shortcut" = "グローバルショートカット";
 "current.shortcut" = "現在のショートカット:";
 "click.to.capture.shortcut" = "クリックしてショートカットを記録";
@@ -82,6 +80,22 @@
 "waveform.window.position" = "ツールバー位置";
 "waveform.window.size" = "ツールバーサイズ";
 "waveform.window.color" = "ツールバー色";
+"main.window.skin.section" = "画面スキン";
+"main.window.skin.footer" = "変更はメインウィンドウにすぐ反映されます。ダーク系スキンでは読みやすい明るい文字色を使います。";
+"main.window.skin.systemDefault.name" = "システム標準";
+"main.window.skin.systemDefault.description" = "macOS の標準外観に従う、落ち着いた表示。";
+"main.window.skin.mistForest.name" = "淡い霧の森";
+"main.window.skin.mistForest.description" = "淡い緑、暖かな白、やわらかな空気感。";
+"main.window.skin.inkPaper.name" = "墨と和紙";
+"main.window.skin.inkPaper.description" = "低彩度の紙色に墨のような落ち着いた階調。";
+"main.window.skin.sciFiGlow.name" = "SF グロー";
+"main.window.skin.sciFiGlow.description" = "暗い面に冷たい光と控えめなネオンを添えます。";
+"main.window.skin.midnightSlate.name" = "ミッドナイトスレート";
+"main.window.skin.midnightSlate.description" = "深い青黒に明るい文字で、長時間でも読みやすく。";
+"main.window.skin.auroraNoir.name" = "オーロラノワール";
+"main.window.skin.auroraNoir.description" = "黒緑の奥行きに青緑のハイライト。";
+"main.window.skin.emberGraphite.name" = "エンバーグラファイト";
+"main.window.skin.emberGraphite.description" = "炭のような暗色に暖かなオレンジのアクセント。";
 "permission.test" = "権限テスト";
 "test.microphone.permission" = "マイク権限をテスト";
 "test.show.toolbar" = "ツールバー表示をテスト";

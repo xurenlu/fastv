@@ -4,7 +4,7 @@ platform :osx, '11.0'
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 use_frameworks!
 
-target 'row1' do
+target 'musetype' do
   # Comment the next line if you don't want to use dynamic frameworks
   use_frameworks!
 
@@ -27,4 +27,3 @@ post_install do |installer|
     end
   end
 end
-

@@ -35,122 +35,137 @@ struct QuickSettingsTab: View {
                 Text(NSLocalizedString("settings.section.general", comment: ""))
             }
 
+            Section {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
+                    ForEach(MainWindowSkin.allCases, id: \.self) { skin in
+                        MainWindowSkinCard(
+                            skin: skin,
+                            isSelected: preferences.mainWindowSkin == skin
+                        ) {
+                            preferences.mainWindowSkin = skin
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            } header: {
+                Text(NSLocalizedString("main.window.skin.section", comment: ""))
+            } footer: {
+                Text(NSLocalizedString("main.window.skin.footer", comment: ""))
+            }
+
             // 语音输入配置
             Section {
-                Toggle(NSLocalizedString("enable.voice.input", comment: ""), isOn: $preferences.enableVoiceInput)
-                
-                if preferences.enableVoiceInput {
-                    VStack(alignment: .leading, spacing: 16) {
-                        // 主快捷鍵設置區域（純語音輸入）
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text("語音輸入快捷鍵")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                
-                                Spacer()
-                                
-                                Text("純語音輸入")
-                                    .font(.caption)
-                                    .foregroundStyle(.blue)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 2)
-                                    .background(Color.blue.opacity(0.1))
-                                    .clipShape(Capsule())
-                            }
-                            
-                            Text("當前快捷鍵：")
-                                .font(.caption)
+                VStack(alignment: .leading, spacing: 16) {
+                    // 主快捷鍵設置區域（純語音輸入）
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("語音輸入快捷鍵")
+                                .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             
-                            // 主快捷鍵捕獲器
-                            ShortcutCaptureView(
-                                keyCode: Binding(
-                                    get: { preferences.voiceInputShortcutKeyCode },
-                                    set: { preferences.voiceInputShortcutKeyCode = $0 }
-                                ),
-                                modifiers: Binding(
-                                    get: { preferences.voiceInputShortcutModifiers },
-                                    set: { preferences.voiceInputShortcutModifiers = $0 }
-                                ),
-                                defaultKeyCode: 0x3F,  // 默認 FN
-                                defaultModifiers: []
-                            )
+                            Spacer()
+                            
+                            Text("純語音輸入")
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Color.blue.opacity(0.1))
+                                .clipShape(Capsule())
                         }
                         
-                        Divider()
+                        Text("當前快捷鍵：")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                         
-                        // AI 校正快捷鍵設置區域（語音輸入 + AI 校正）
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text("AI 校正快捷鍵")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                
-                                Spacer()
-                                
-                                Text("語音輸入 + AI 校正")
-                                    .font(.caption)
-                                    .foregroundStyle(.purple)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 2)
-                                    .background(Color.purple.opacity(0.1))
-                                    .clipShape(Capsule())
-                            }
-                            
-                            Text("當前快捷鍵：")
-                                .font(.caption)
+                        // 主快捷鍵捕獲器
+                        ShortcutCaptureView(
+                            keyCode: Binding(
+                                get: { preferences.voiceInputShortcutKeyCode },
+                                set: { preferences.voiceInputShortcutKeyCode = $0 }
+                            ),
+                            modifiers: Binding(
+                                get: { preferences.voiceInputShortcutModifiers },
+                                set: { preferences.voiceInputShortcutModifiers = $0 }
+                            ),
+                            defaultKeyCode: 0x3F,  // 默認 FN
+                            defaultModifiers: []
+                        )
+                    }
+                    
+                    Divider()
+                    
+                    // AI 校正快捷鍵設置區域（語音輸入 + AI 校正）
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("AI 校正快捷鍵")
+                                .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             
-                            // AI 校正快捷鍵捕獲器
-                            ShortcutCaptureView(
-                                keyCode: Binding(
-                                    get: { preferences.voiceInputWithAIShortcutKeyCode },
-                                    set: { preferences.voiceInputWithAIShortcutKeyCode = $0 }
-                                ),
-                                modifiers: Binding(
-                                    get: { preferences.voiceInputWithAIShortcutModifiers },
-                                    set: { preferences.voiceInputWithAIShortcutModifiers = $0 }
-                                ),
-                                defaultKeyCode: 0x3F,  // 默認 FN
-                                defaultModifiers: .control  // 默認 Control 修飾鍵
-                            )
+                            Spacer()
                             
-                            // AI 校正說明
-                            HStack(spacing: 6) {
-                                Image(systemName: "info.circle.fill")
-                                    .font(.caption)
-                                    .foregroundStyle(.purple)
-                                Text("使用此快捷鍵時，語音識別完成後會自動進行 AI 文本優化。需要先在「AI與模型」中配置 AI 服務。")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+                            Text("語音輸入 + AI 校正")
+                                .font(.caption)
+                                .foregroundStyle(.purple)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Color.purple.opacity(0.1))
+                                .clipShape(Capsule())
                         }
                         
-                        Divider()
+                        Text("當前快捷鍵：")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                         
-                        // 识别语言设置
-                        Picker(NSLocalizedString("recognition.language", comment: ""), selection: $preferences.voiceInputLanguage) {
-                            Text(NSLocalizedString("auto.detect", comment: "")).tag("auto")
-                            Text(NSLocalizedString("chinese", comment: "")).tag("zh")
-                            Text(NSLocalizedString("english", comment: "")).tag("en")
-                            Text(NSLocalizedString("cantonese", comment: "")).tag("yue")
-                            Text(NSLocalizedString("japanese", comment: "")).tag("ja")
-                            Text(NSLocalizedString("korean", comment: "")).tag("ko")
-                        }
+                        // AI 校正快捷鍵捕獲器
+                        ShortcutCaptureView(
+                            keyCode: Binding(
+                                get: { preferences.voiceInputWithAIShortcutKeyCode },
+                                set: { preferences.voiceInputWithAIShortcutKeyCode = $0 }
+                            ),
+                            modifiers: Binding(
+                                get: { preferences.voiceInputWithAIShortcutModifiers },
+                                set: { preferences.voiceInputWithAIShortcutModifiers = $0 }
+                            ),
+                            defaultKeyCode: 0x3F,  // 默認 FN
+                            defaultModifiers: .control  // 默認 Control 修飾鍵
+                        )
                         
-                        // 自动检测提示
-                        if preferences.voiceInputLanguage == "auto" {
-                            HStack(spacing: 6) {
-                                Image(systemName: "info.circle.fill")
-                                    .font(.caption)
-                                    .foregroundStyle(.orange)
-                                Text(NSLocalizedString("auto.detect.hint", comment: ""))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.leading, 20)
+                        // AI 校正說明
+                        HStack(spacing: 6) {
+                            Image(systemName: "info.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.purple)
+                            Text("使用此快捷鍵時，語音識別完成後會自動進行 AI 文本優化。需要先在「AI與模型」中配置 AI 服務。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
+                    }
+                    
+                    Divider()
+                    
+                    // 识别语言设置
+                    Picker(NSLocalizedString("recognition.language", comment: ""), selection: $preferences.voiceInputLanguage) {
+                        Text(NSLocalizedString("auto.detect", comment: "")).tag("auto")
+                        Text(NSLocalizedString("chinese", comment: "")).tag("zh")
+                        Text(NSLocalizedString("english", comment: "")).tag("en")
+                        Text(NSLocalizedString("cantonese", comment: "")).tag("yue")
+                        Text(NSLocalizedString("japanese", comment: "")).tag("ja")
+                        Text(NSLocalizedString("korean", comment: "")).tag("ko")
+                    }
+                    
+                    // 自动检测提示
+                    if preferences.voiceInputLanguage == "auto" {
+                        HStack(spacing: 6) {
+                            Image(systemName: "info.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                            Text(NSLocalizedString("auto.detect.hint", comment: ""))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.leading, 20)
+                    }
                         
                         Divider()
                         
@@ -324,65 +339,59 @@ struct QuickSettingsTab: View {
                             .help(NSLocalizedString("cleanup.toolbar.window", comment: ""))
                         }
                     }
-                    .padding(.leading, 20)
-                }
             } header: {
                 Text(NSLocalizedString("voice.input.section", comment: ""))
             } footer: {
-                if preferences.enableVoiceInput {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(NSLocalizedString("voice.input.description", comment: ""))
-                        
-                        // 权限状态显示
-                        PermissionStatusView()
-                        
-                        // FN键提示
-                        if preferences.voiceInputShortcutKeyCode == 0x3F || preferences.voiceInputWithAIShortcutKeyCode == 0x3F {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "info.circle.fill")
-                                        .font(.caption)
-                                        .foregroundStyle(.orange)
-                                    Text(NSLocalizedString("fn.key.hint", comment: ""))
-                                        .font(.system(size: 11))
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            .padding(.top, 4)
-                        }
-                        
-                        // 双快捷键使用说明
-                        VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(NSLocalizedString("voice.input.description", comment: ""))
+                    
+                    // 权限状态显示
+                    PermissionStatusView()
+                    
+                    // FN键提示
+                    if preferences.voiceInputShortcutKeyCode == 0x3F || preferences.voiceInputWithAIShortcutKeyCode == 0x3F {
+                        VStack(alignment: .leading, spacing: 8) {
                             HStack(spacing: 6) {
-                                Image(systemName: "keyboard")
+                                Image(systemName: "info.circle.fill")
                                     .font(.caption)
-                                    .foregroundStyle(.blue)
-                                Text("使用說明：")
-                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.orange)
+                                Text(NSLocalizedString("fn.key.hint", comment: ""))
+                                    .font(.system(size: 11))
                                     .foregroundStyle(.secondary)
                             }
-                            
-                            let voiceShortcut = formatShortcut(
-                                keyCode: preferences.voiceInputShortcutKeyCode,
-                                modifiers: preferences.voiceInputShortcutModifiers
-                            )
-                            let aiShortcut = formatShortcut(
-                                keyCode: preferences.voiceInputWithAIShortcutKeyCode,
-                                modifiers: preferences.voiceInputWithAIShortcutModifiers
-                            )
-                            
-                            Text("• \(voiceShortcut)：按住開始錄音，鬆開後直接輸入文字")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                            
-                            Text("• \(aiShortcut)：按住開始錄音，鬆開後進行 AI 校正再輸入")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
                         }
                         .padding(.top, 4)
                     }
-                } else {
-                    Text("啟用後可通過快捷鍵進行語音輸入")
+                    
+                    // 双快捷键使用说明
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "keyboard")
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                            Text("使用說明：")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        let voiceShortcut = formatShortcut(
+                            keyCode: preferences.voiceInputShortcutKeyCode,
+                            modifiers: preferences.voiceInputShortcutModifiers
+                        )
+                        let aiShortcut = formatShortcut(
+                            keyCode: preferences.voiceInputWithAIShortcutKeyCode,
+                            modifiers: preferences.voiceInputWithAIShortcutModifiers
+                        )
+                        
+                        Text("• \(voiceShortcut)：按住開始錄音，鬆開後直接輸入文字")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                        
+                        Text("• \(aiShortcut)：按住開始錄音，鬆開後進行 AI 校正再輸入")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.top, 4)
                 }
             }
             
@@ -529,6 +538,113 @@ struct QuickSettingsTab: View {
         
         parts.append(keyName)
         return parts.joined(separator: "+")
+    }
+}
+
+private struct MainWindowSkinCard: View {
+    let skin: MainWindowSkin
+    let isSelected: Bool
+    let action: () -> Void
+
+    private var palette: MainWindowSkinPalette {
+        skin.palette
+    }
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 10) {
+                MainWindowSkinPreview(skin: skin)
+                    .frame(height: 54)
+
+                HStack(alignment: .top, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(skin.displayName)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(palette.primaryTextColor)
+                            .lineLimit(1)
+                        Text(skin.detail)
+                            .font(.caption)
+                            .foregroundStyle(palette.secondaryTextColor)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(palette.accentColor)
+                    }
+                }
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, minHeight: 134, alignment: .topLeading)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(palette.surfaceColor)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(isSelected ? palette.accentColor.opacity(0.78) : palette.borderColor, lineWidth: isSelected ? 1.5 : 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct MainWindowSkinPreview: View {
+    let skin: MainWindowSkin
+
+    private var palette: MainWindowSkinPalette {
+        skin.palette
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: palette.backgroundColors,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(palette.accentColor)
+                        .frame(width: 7, height: 7)
+                    Circle()
+                        .fill(palette.accentSecondaryColor)
+                        .frame(width: 7, height: 7)
+                    Capsule()
+                        .fill(palette.primaryTextColor.opacity(0.14))
+                        .frame(width: 36, height: 7)
+
+                    Spacer()
+
+                    Image(systemName: skin.iconName)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(palette.accentColor)
+                }
+
+                HStack(spacing: 5) {
+                    RoundedRectangle(cornerRadius: 2, style: .continuous)
+                        .fill(palette.primaryTextColor.opacity(0.30))
+                        .frame(width: 46, height: 6)
+                    RoundedRectangle(cornerRadius: 2, style: .continuous)
+                        .fill(palette.secondaryTextColor.opacity(0.26))
+                        .frame(width: 26, height: 6)
+                }
+            }
+            .padding(9)
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .strokeBorder(palette.borderColor, lineWidth: 1)
+        )
     }
 }
 

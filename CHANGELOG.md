@@ -2,6 +2,75 @@
 
 所有版本變更記錄。
 
+## [2.0.0-rc14] - 2026-06-21
+
+### 改进
+
+- **CTC 去重改为标准保守流程**：启用 CTC 去重时先合并连续重复帧，再移除 blank token，避免过去“先删 blank 再合并”把「谢谢」「我看看」「100」等 blank 分隔的正常重复误压掉；设置页文案同步改为实验性保守去重，并补充单测覆盖叠词与连续数字。
+
+## [2.0.0-rc13] - 2026-06-21
+
+### 改进
+
+- **设置窗口底部移除版本号 footer**：版本号不再显示在设置页底部分隔线上，避免视觉上压线；版本信息保留在「数据与其他」→「关于」弹窗中。
+
+## [2.0.0-rc12] - 2026-06-21
+
+### 改进
+
+- **语音输入法不再提供关闭开关**：设置页移除「启用语音输入法」开关，语音输入作为应用唯一主功能始终启用；历史版本保存过关闭状态的用户升级后也会自动恢复启用，快捷键注册不再受该旧开关影响。
+
+## [2.0.0-rc11] - 2026-06-21
+
+### 改进
+
+- **主窗口默认皮肤改为淡雅雾林**：未设置过界面皮肤的新用户默认进入「淡雅雾林」风格；已手动选择过皮肤的用户保持原选择不变。
+
+## [2.0.0-rc10] - 2026-06-21
+
+### 修复
+
+- **主窗口启动不再被语音模型预加载挡住**：启动时先展示主窗口并完成快捷键初始化，再延后 1.5 秒静默预热 ONNX 语音模型；移除启动阶段覆盖主窗口的模型预加载展示层。
+- **降低启动预热资源优先级**：启动预加载从 `.userInitiated` 降为 `.utility`，减少 894MB 模型加载对首屏响应的抢占；按下语音快捷键时仍保留即时预热路径。
+
+## [2.0.0-rc9] - 2026-06-21
+
+### 新增
+
+- **主窗口界面皮肤**：设置 → 通用新增「界面皮肤」卡片选择器，提供系统默认、淡雅雾林、水墨宣纸、科幻光栅、午夜岩蓝、极光暗夜、熔火石墨 7 套风格；主窗口背景、输入区、统计卡片、历史列表会即时跟随切换。
+- **深色皮肤浅色文字体系**：科幻光栅、午夜岩蓝、极光暗夜、熔火石墨使用专门的浅色标题 / 正文 / 辅助文字 token，暗色背景下保持可读对比；界面皮肤文案补齐中 / 英 / 日 / 韩 / 粤 5 语言。
+
+## [2.0.0-rc8] - 2026-06-18
+
+### 清理
+
+- **工程身份收尾到 musetype**：Xcode app target、共享 scheme、test plan、CocoaPods target、测试宿主路径、`PRODUCT_NAME`、构建/打包脚本产物名统一从 `row1` 迁到 `musetype`，编译产物改为 `musetype.app` / `musetype.dmg`。
+- **Bundle ID 与测试导入同步**：主 app Bundle ID 改为 `com.17push.musetype`，`fastvTests` 的 `@testable import` 改为 `musetype`，避免新模块名下单测继续找旧模块。
+
+## [2.0.0-rc7] - 2026-06-18
+
+### 回滚
+
+- **回滚 rc6 的 ONNX IntraOp=1 实验**：用户决定不实测直接回滚。`ONNXRuntimeWrapper.swift` 的 `numThreads` 恢复为 `max(4, ProcessInfo.processInfo.activeProcessorCount)`，删掉 `intraOpNumThreads` 常量。rc5 关掉的「二次拼接转写」保留（那条不影响单段推理速度）。
+
+## [2.0.0-rc6] - 2026-06-18
+
+### 改进
+
+- **实验：ONNX IntraOp 线程数砍到 1**：用户假设「多个 ONNX 推理互抢线程导致识别慢」，让 `SetIntraOpNumThreads` 从 `max(4, activeProcessorCount)` 改为 `1`，作为 A/B 对照。注意 IntraOp 控制的是「单次推理内部的多核并行」，不是 session 并发；理论上设为 1 会让单次推理变慢数倍。常量提到 `ONNXRuntimeWrapper.intraOpNumThreads` 顶部，方便实测后一行回滚。
+
+## [2.0.0-rc5] - 2026-06-18
+
+### 改进
+
+- **关掉「二次拼接转写」，AI 模式响应更快**：原机制（[fastvApp.swift:163-213](fastv/fastvApp.swift:163)）在 AI 快捷键模式下会把多段音频合并后再跑一遍 ONNX，目的是「长音频准确率更高」，松键时若已完成则替换零碎结果。代价是 AI 模式录音期间持续抢 ONNX session，让前台分段转写变慢；而 AI 模式下文本侧已有 AI Polish 兜底，二次 ASR 的边际收益很小。新增 `enableBatchRefinementTranscription` 编译期开关（默认 `false`），`performIncrementalSegmentTranscription` 的 `else if` 分支被 short-circuit；`scheduleBatchRefinementTranscription` / `runBatchRefinementTranscription` / `partitionSegmentsForBatchRefinement` 代码保留，方便后续 A/B 或回滚。普通快捷键路径本来就走实时插入分支，不受影响。
+
+## [2.0.0-rc4] - 2026-06-18
+
+### 改进
+
+- **主窗口拍扁，去掉左右分栏**：妙打 v2.0 后只剩「语音输入」一个一级入口，左侧 160pt 的功能侧栏（含「功能」标题、`SidebarItem` 列表、`SidebarItemRow` 选中竖条）完全成了视觉负担。`ContentView` 直接渲染 `VoiceInputView`，齿轮按钮与设置 sheet 上提到根视图。删掉 `SidebarItem` / `SidebarItemRow` 及 `HSplitView` 结构，主窗口 minSize 从 720×520 收到 560×520，给纯语音工具应有的窄长身段。
+
 ## [2.0.0-rc3] - 2026-06-17
 
 竞品调研驱动的「四件套」打磨：易用性、准确性、稳定性、美观一锅端。

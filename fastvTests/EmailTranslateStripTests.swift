@@ -9,7 +9,7 @@
 //
 
 import Testing
-@testable import row1
+@testable import musetype
 
 struct EmailTranslateStripTests {
 

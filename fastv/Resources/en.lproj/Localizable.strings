@@ -55,7 +55,6 @@
 "to.speak" = "to speak";
 "press.and.hold.to.speak" = "Press and hold to speak, release to end";
 "press.and.hold" = "Press and Hold:";
-"enable.voice.input.in.settings" = "Please enable voice input in settings";
 "transcribing" = "Transcribing...";
 "speech.model.preload.title" = "Loading Voice Model";
 "speech.model.preload.message" = "Preparing the speech recognition model for the first time. This may take a few seconds.";
@@ -63,7 +62,6 @@
 "voice.recording.too.short.message" = "The recording is too short for accurate recognition. Please try speaking for at least half a second.";
 
 // Settings
-"enable.voice.input" = "Enable Voice Input";
 "global.shortcut" = "Global Shortcut";
 "current.shortcut" = "Current Shortcut:";
 "click.to.capture.shortcut" = "Click to Capture Shortcut";
@@ -82,6 +80,22 @@
 "waveform.window.position" = "Toolbar Position";
 "waveform.window.size" = "Toolbar Size";
 "waveform.window.color" = "Toolbar Color";
+"main.window.skin.section" = "Interface Skin";
+"main.window.skin.footer" = "Changes apply to the main window immediately. Dark skins use light text for readable contrast.";
+"main.window.skin.systemDefault.name" = "System Default";
+"main.window.skin.systemDefault.description" = "Follows the native macOS appearance with a restrained feel.";
+"main.window.skin.mistForest.name" = "Mist Forest";
+"main.window.skin.mistForest.description" = "Soft greens, warm whites, and an airy surface.";
+"main.window.skin.inkPaper.name" = "Ink Paper";
+"main.window.skin.inkPaper.description" = "Muted paper tones with calm ink-like contrast.";
+"main.window.skin.sciFiGlow.name" = "Sci-Fi Glow";
+"main.window.skin.sciFiGlow.description" = "Dark surfaces with cool light and subtle neon accents.";
+"main.window.skin.midnightSlate.name" = "Midnight Slate";
+"main.window.skin.midnightSlate.description" = "Deep blue-black with light text for long sessions.";
+"main.window.skin.auroraNoir.name" = "Aurora Noir";
+"main.window.skin.auroraNoir.description" = "Black-green depth with fresh cyan highlights.";
+"main.window.skin.emberGraphite.name" = "Ember Graphite";
+"main.window.skin.emberGraphite.description" = "Charcoal surfaces with a warm ember accent.";
 "permission.test" = "Permission Test";
 "test.microphone.permission" = "Test Microphone Permission";
 "test.show.toolbar" = "Test Show Toolbar";

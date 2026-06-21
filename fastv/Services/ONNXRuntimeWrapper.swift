@@ -722,11 +722,34 @@ class ONNXRuntimeWrapper {
         }
     }
     
+    /// 标准 CTC 去重：先合并连续重复帧，再移除 blank。
+    ///
+    /// 关键点：不能先删 blank 再合并重复 token，否则会把 `谢 blank 谢` 误压成一个 `谢`，
+    /// 从而伤到「谢谢」「看看」「100」这类正常重复内容。
+    static func deduplicatedCTCTokens(from argmaxTokenIDs: [Int], blankTokenID: Int = 0) -> [Int] {
+        var tokens: [Int] = []
+        var previousToken: Int?
+
+        for token in argmaxTokenIDs {
+            defer { previousToken = token }
+
+            guard token != blankTokenID else {
+                continue
+            }
+
+            if token != previousToken {
+                tokens.append(token)
+            }
+        }
+
+        return tokens
+    }
+
     /// CTC 解码：从 CTC logits 解码 token IDs
     /// CTC 解码步骤：
     /// 1. 对每个时间步执行 argmax 获取最可能的 token
-    /// 2. 移除 blank token（通常是 0）
-    /// 3. 移除连续重复的 token（CTC 去重）
+    /// 2. 启用去重时按标准 CTC 流程先合并连续重复帧，再移除 blank token（通常是 0）
+    /// 3. 禁用去重时仅移除 blank，保留原始非 blank token
     private func decodeCTCLogits(from outputValue: OpaquePointer, actualLength: Int?, api: UnsafePointer<OrtApi>, enableDeduplication: Bool = false) throws -> [Int] {
         // 获取张量信息
         var tensorInfo: OpaquePointer?
@@ -850,17 +873,10 @@ class ONNXRuntimeWrapper {
         print("非 0 token 数量: \(tokenIDs.count)")
         #endif
         
-        // CTC 去重：移除连续重复的 token（可选）
-        // 注意：禁用去重可以保留叠词（如"谢谢"）和连续数字（如"100"中的"00"）
+        // CTC 去重：按标准流程先合并连续重复帧，再移除 blank（可选）
+        // 注意：不要在移除 blank 后再合并重复 token，否则会误删 blank 分隔的正常叠词。
         if enableDeduplication {
-            var deduplicatedTokens: [Int] = []
-            var prevToken: Int? = nil
-            for token in tokenIDs {
-                if token != prevToken {
-                    deduplicatedTokens.append(token)
-                    prevToken = token
-                }
-            }
+            let deduplicatedTokens = Self.deduplicatedCTCTokens(from: allArgmaxResults)
             
             #if DEBUG
             print("CTC 去重后 token 数量: \(deduplicatedTokens.count)")

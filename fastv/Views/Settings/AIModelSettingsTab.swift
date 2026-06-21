@@ -24,12 +24,12 @@ struct AIModelSettingsTab: View {
         Form {
             // 文本纠错配置
             Section {
-                // CTC 去重开关（强烈建议保持关闭，避免过度清理）
+                // CTC 去重开关（保守实现：标准 CTC 流程会尽量保留 blank 分隔的正常叠词）
                 VStack(alignment: .leading, spacing: 8) {
-                    Toggle("CTC 去重（不推荐，会误删叠词和数字）", isOn: $preferences.enableCTCDeduplication)
+                    Toggle("CTC 标准去重（实验，保守处理叠词）", isOn: $preferences.enableCTCDeduplication)
 
                     Text(preferences.enableCTCDeduplication
-                        ? "⚠️ 已启用：会错误合并\"谢谢\"→\"谢\"、\"我看看\"→\"我看\"、\"100\"→\"10\"，建议关闭"
+                        ? "⚠️ 已启用：先合并连续帧再移除空白，尽量保留\"谢谢\"、\"我看看\"、\"100\"；如仍误删叠词请关闭"
                         : "✓ 已禁用：保留叠词（谢谢、看看）和连续数字（100），推荐")
                         .font(.caption)
                         .foregroundStyle(preferences.enableCTCDeduplication ? .orange : .secondary)
@@ -350,4 +350,3 @@ struct AIModelSettingsTab: View {
 #Preview {
     AIModelSettingsTab()
 }
-

@@ -18,7 +18,7 @@ xcodebuild build \
 
 xcodebuild build \
   -project Pods/Pods.xcodeproj \
-  -scheme Pods-row1 \
+  -scheme Pods-musetype \
   -configuration "$CONFIGURATION" \
   -derivedDataPath "$DERIVED_DATA_PATH" \
   BUILD_DIR="$BUILD_DIR" \
@@ -26,7 +26,7 @@ xcodebuild build \
 
 xcodebuild test \
   -project fastv.xcodeproj \
-  -scheme row1 \
+  -scheme musetype \
   -configuration "$CONFIGURATION" \
   -derivedDataPath "$DERIVED_DATA_PATH" \
   CODE_SIGNING_ALLOWED=NO

@@ -49,7 +49,7 @@ final class SpeechModelPreloadManager {
             isPreloadComplete = false
             let startTime = CFAbsoluteTimeGetCurrent()
             
-            Task.detached(priority: .userInitiated) {
+            Task.detached(priority: .utility) {
                 let loaded = await SpeechTranscriptionModel.shared.preload()
                 let duration = CFAbsoluteTimeGetCurrent() - startTime
 

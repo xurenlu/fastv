@@ -6,7 +6,7 @@
 //
 
 import Testing
-@testable import row1
+@testable import musetype
 
 struct fastvTests {
 
@@ -56,6 +56,27 @@ struct fastvTests {
         #expect(ActiveTextInputTextAnalyzer.looksLikeRewriteInstruction("润色上一句，语气自然一点"))
         #expect(ActiveTextInputTextAnalyzer.looksLikeRewriteInstruction("rewrite this sentence"))
         #expect(!ActiveTextInputTextAnalyzer.looksLikeRewriteInstruction("今天下午三点开会"))
+    }
+
+    @Test func ctcDeduplicationPreservesBlankSeparatedReduplication() async throws {
+        let tokenForXie = 42
+        let argmax = [tokenForXie, tokenForXie, 0, tokenForXie, tokenForXie]
+
+        #expect(ONNXRuntimeWrapper.deduplicatedCTCTokens(from: argmax) == [tokenForXie, tokenForXie])
+    }
+
+    @Test func ctcDeduplicationPreservesBlankSeparatedRepeatedDigits() async throws {
+        let tokenForOne = 11
+        let tokenForZero = 10
+        let argmax = [tokenForOne, tokenForOne, 0, tokenForZero, 0, tokenForZero, tokenForZero]
+
+        #expect(ONNXRuntimeWrapper.deduplicatedCTCTokens(from: argmax) == [tokenForOne, tokenForZero, tokenForZero])
+    }
+
+    @Test func ctcDeduplicationCollapsesFrameLevelRepeats() async throws {
+        let argmax = [7, 7, 7, 0, 8, 8, 0, 9]
+
+        #expect(ONNXRuntimeWrapper.deduplicatedCTCTokens(from: argmax) == [7, 8, 9])
     }
 
 }

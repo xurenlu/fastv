@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">MuseType pulse microphone logo mark</title>
+  <desc id="desc">A minimal sci-fi microphone surrounded by segmented pulse rings for the MuseType voice typing app.</desc>
+  <defs>
+    <linearGradient id="micBody" x1="410" y1="330" x2="612" y2="790" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e9edf2"/>
+    </linearGradient>
+    <linearGradient id="cyanPulse" x1="252" y1="260" x2="772" y2="764" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2ff8ff"/>
+      <stop offset="1" stop-color="#00d4df"/>
+    </linearGradient>
+    <linearGradient id="steelRing" x1="154" y1="156" x2="872" y2="870" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8a9aa8"/>
+      <stop offset="1" stop-color="#566778"/>
+    </linearGradient>
+  </defs>
+
+  <g id="mark">
+    <g fill="none" stroke-linecap="butt">
+      <circle cx="512" cy="512" r="386" stroke="url(#steelRing)" stroke-width="48" stroke-dasharray="514 92" transform="rotate(-46 512 512)"/>
+      <circle cx="512" cy="512" r="270" stroke="url(#cyanPulse)" stroke-width="38" stroke-dasharray="338 86" transform="rotate(-44 512 512)"/>
+    </g>
+
+    <g fill="url(#micBody)">
+      <rect x="418" y="342" width="188" height="284" rx="94"/>
+      <rect x="492" y="682" width="40" height="112" rx="2"/>
+      <rect x="446" y="786" width="132" height="34" rx="2"/>
+    </g>
+
+    <path d="M364 512v54c0 82 66 148 148 148s148-66 148-148v-54" fill="none" stroke="url(#micBody)" stroke-width="36" stroke-linecap="butt"/>
+
+    <g fill="#05242d">
+      <rect x="450" y="484" width="28" height="70" rx="14"/>
+      <rect x="484" y="454" width="28" height="130" rx="14"/>
+      <rect x="518" y="426" width="28" height="190" rx="14"/>
+      <rect x="552" y="454" width="28" height="130" rx="14"/>
+      <rect x="586" y="484" width="28" height="70" rx="14"/>
+    </g>
+  </g>
+</svg>

@@ -55,7 +55,6 @@
 "to.speak" = "开始说话";
 "press.and.hold.to.speak" = "按住开始说话,松开后结束";
 "press.and.hold" = "按着说:";
-"enable.voice.input.in.settings" = "请在设置中启用语音输入法功能";
 "transcribing" = "转文字中...";
 "speech.model.preload.title" = "正在加载语音模型";
 "speech.model.preload.message" = "首次加载语音识别模型，请稍候…";
@@ -63,7 +62,6 @@
 "voice.recording.too.short.message" = "录音时长过短，识别可能不准确。建议至少说半秒以上。";
 
 // 设置
-"enable.voice.input" = "启用语音输入法";
 "global.shortcut" = "全局快捷键";
 "current.shortcut" = "当前快捷键:";
 "click.to.capture.shortcut" = "点击录制快捷键";
@@ -82,6 +80,22 @@
 "waveform.window.position" = "悬浮工具条位置";
 "waveform.window.size" = "悬浮工具条大小";
 "waveform.window.color" = "悬浮工具条颜色";
+"main.window.skin.section" = "界面皮肤";
+"main.window.skin.footer" = "切换后立即应用到主窗口。深色皮肤会使用浅色文字，保证暗背景下可读。";
+"main.window.skin.systemDefault.name" = "系统默认";
+"main.window.skin.systemDefault.description" = "跟随 macOS 原生外观，稳定克制。";
+"main.window.skin.mistForest.name" = "淡雅雾林";
+"main.window.skin.mistForest.description" = "浅绿、暖白和柔和空气感。";
+"main.window.skin.inkPaper.name" = "水墨宣纸";
+"main.window.skin.inkPaper.description" = "墨色层次配低饱和纸底，安静有质感。";
+"main.window.skin.sciFiGlow.name" = "科幻光栅";
+"main.window.skin.sciFiGlow.description" = "深色界面配冷光和少量霓虹点缀。";
+"main.window.skin.midnightSlate.name" = "午夜岩蓝";
+"main.window.skin.midnightSlate.description" = "深蓝黑底配浅色文字，长时间使用更稳。";
+"main.window.skin.auroraNoir.name" = "极光暗夜";
+"main.window.skin.auroraNoir.description" = "黑绿暗底配青绿高光，清爽但不刺眼。";
+"main.window.skin.emberGraphite.name" = "熔火石墨";
+"main.window.skin.emberGraphite.description" = "炭黑底色配暖橙强调，深色但有温度。";
 "permission.test" = "权限测试";
 "test.microphone.permission" = "测试麦克风权限";
 "test.show.toolbar" = "测试显示工具条";

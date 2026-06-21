@@ -56,18 +56,6 @@ struct SettingsView: View {
                     .keyboardShortcut(.defaultAction)
                 }
             }
-            .safeAreaInset(edge: .bottom) {
-                // 版本信息显示在底部
-                HStack {
-                    Spacer()
-                    Text("\(AppVersionManager.appName) \(AppVersionManager.fullVersion)")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.tertiary)
-                    Spacer()
-                }
-                .padding(.vertical, 8)
-                .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-            }
             .frame(minWidth: 640, minHeight: 580)
         }
     }
