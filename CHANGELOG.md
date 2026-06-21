@@ -2,6 +2,49 @@
 
 所有版本變更記錄。
 
+## [2.1.0] - 2026-06-21
+
+竞品调研驱动的「四件套」补齐汇总版。从 `2.0.0-rc14` 起步，经 rc1 → rc6
+6 个 rc 拼齐后定版。对照 VoiceInk / Superwhisper / TypeWhisper / Wispr Flow /
+VocaMac 五家头部产品，把妙打从「本地 + 菜单栏 + 多语种」推进到了「上下文
+感知 + AI 模板路由 + 术语包 + 跟随光标」同档。
+
+### 本轮汇总
+
+- **rc1 — 热键三模式 + 术语包**：[HotkeyTriggerStateMachine](fastv/Services/HotkeyTriggerStateMachine.swift) 把
+  物理按键 press/release 翻译为有效录音 start/stop，FN/Control/普通键三条
+  检测路径统一走 dispatchRaw*；CorrectionCategory 新增 `.terminology` 分类，
+  替换管线中优先生效且大小写不敏感。
+- **rc2 — 收敛遗留废测试清理**：删 `EmailRemoteImageBlocking` /
+  `EmailTranslateStrip` 两个文件 + `MeetingRichDoc` 前 6 例引用已删 API 的用例，
+  `fastvTests` 目录不再有 `#if false` 屏蔽段。
+- **rc3 — 修测试 runner SwiftUI 兼容崩溃**：[ContentView](fastv/ContentView.swift) +
+  [fastvApp](fastv/fastvApp.swift) 加 `isRunningUnderXCTest` 早 return，
+  XCTest host 跳过状态栏 / 快捷键 / 麦克风 / 模型预热等重副作用，恢复 macOS 26
+  下整套单测执行能力。
+- **rc4 — Power Mode 上下文感知 prompt**：[AppContextResolver](fastv/Services/AppContextResolver.swift)
+  + [ContextProfile](fastv/Models/ContextProfile.swift) + [ContextProfileManager](fastv/Models/ContextProfileManager.swift)
+  + [ContextProfileEditorView](fastv/Views/ContextProfileEditorView.swift)。
+  按前台 App / 浏览器 URL 切换 AI 后处理 prompt 模板；出厂 4 内置预设
+  （邮件正式 / Slack / IM 口语 / IDE 代码）；MatchRule 三态 + glob `*`。
+- **rc5 — MuseType 品牌图标统一**：`AppIcon.appiconset` + `assets/brand/`
+  + DMG `.VolumeIcon.icns`。
+- **rc6 — 光标旁悬浮指示器**：[CursorPositionLocator](fastv/Services/CursorPositionLocator.swift)
+  AX 优先链拿 caret bounds（失败兜底鼠标位置），[WaveformWindowManager](fastv/Views/WaveformView.swift)
+  followCursorTimer 50ms 重定位。
+
+### 测试规模
+
+`scripts/run_unit_tests.sh` 全套 41 个测试通过，含 6 个 suite：
+HotkeyTriggerStateMachine、TerminologyCorrection、ContextProfileMatching、
+CursorPositionLocator、MeetingRichDoc（残留 4 例）、fastvTests。
+
+### 工程
+
+- 版本号 `2.1.0-rc6` → `2.1.0`（定版，全部 6 个 rc 已落地）。
+- 后续 Batch 4「语音指令编辑」（"删掉这句"/"换行"/"加粗"）单独立项，不在
+  2.1.0 范围内。
+
 ## [2.1.0-rc6] - 2026-06-21
 
 竞品调研第三批：**光标旁悬浮指示器（Follow Cursor）**。对标 VocaMac /
