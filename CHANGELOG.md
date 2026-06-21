@@ -2,6 +2,80 @@
 
 所有版本變更記錄。
 
+## [2.1.0-rc4] - 2026-06-21
+
+竞品调研第二批：**Power Mode（上下文感知 prompt 模板）**。对标
+VoiceInk Power Mode / Superwhisper Custom Mode / Wispr Flow Writing Styles。
+
+### 新增
+
+- **上下文解析层** [`fastv/Services/AppContextResolver.swift`](fastv/Services/AppContextResolver.swift)：
+  从 `NSWorkspace.frontmostApplication` 拿 bundleId / appName，对受支持的浏览器
+  （Safari / Chrome / Arc / Brave / Edge / Firefox）走 AX `AXWebArea` 抽当前 tab URL；
+  1s TTL 缓存避免每次录音都重复 AX 调用；未授权 AX 静默回退到无 URL。
+- **Profile 模型** [`fastv/Models/ContextProfile.swift`](fastv/Models/ContextProfile.swift)：
+  `MatchRule` 三态枚举（`bundleId` / `urlPattern` / `appNameContains`），自带
+  `precedence`（100/50/10）与 `globMatch`（`*` 通配，正则字符严格转义）；
+  `ContextProfile` 内含 `matchScore` 与 `renderedPrompt`（替换 `{transcript}` / `{appName}` /
+  `{browserURL}` 占位符，缺失值清空字面占位符避免泄漏到最终 prompt）。
+- **路由器** [`fastv/Models/ContextProfileManager.swift`](fastv/Models/ContextProfileManager.swift)：
+  `@MainActor ObservableObject`，UserDefaults 持久化 `contextProfiles_v1`；
+  `match(_:)` 取最高 precedence 命中的 profile；`resolveSystemPrompt(...)` 在未启用
+  Power Mode / 未命中 / 模板为空时回退到 `UserPreferences.aiSystemPrompt`。出厂内置 4 预设：
+  - 邮件（Apple Mail / Outlook / Spark / Gmail / Outlook Web） → 正式书面语；
+  - Slack（slackmacgap + *.slack.com/*） → 简短英式 Slack 风格；
+  - IM / 微信 / Discord / Telegram / WhatsApp / 腾讯会议 → 保留口语；
+  - IDE（Xcode / VS Code / Cursor / JetBrains） → 英文代码注释风格。
+- **AI 后处理接入** [`fastv/fastvApp.swift`](fastv/fastvApp.swift) 的两个
+  `OllamaService.optimizeTranscript` 调用前各插一段
+  `AppContextResolver.shared.resolve()` + `ContextProfileManager.shared.resolveSystemPrompt(...)`，
+  在不改 `OllamaService` API 的前提下把 prompt 路由进 polish 管线。
+- **设置 UI**：
+  - [`fastv/Views/Settings/AIModelSettingsTab.swift`](fastv/Views/Settings/AIModelSettingsTab.swift)
+    在「场景映射」section 之后新增 **Power Mode** section，含启用 Toggle + 入口；
+  - [`fastv/Views/ContextProfileEditorView.swift`](fastv/Views/ContextProfileEditorView.swift)
+    HSplitView 左列表右详情，可加规则 / 改 prompt 模板 / 删除自定义 profile / 还原内置。
+- **5 语种 i18n** 全套（en / zh-Hans / ja / ko / yue）。
+
+### 测试
+
+- 新增 [`fastvTests/ContextProfileMatchingTests.swift`](fastvTests/ContextProfileMatchingTests.swift) 9 例：
+  覆盖 MatchRule 三态、glob 正则转义、ContextProfile.matchScore + renderedPrompt
+  占位符、ContextProfileManager.match 优先级、enablePowerMode 开关、resolveSystemPrompt
+  fallback 路径。
+
+### 工程
+
+- 版本号 `2.1.0-rc3` → `2.1.0-rc4`（功能新增，按既定 rc 节奏递增）。
+
+## [2.1.0-rc3] - 2026-06-21
+
+`xcodebuild test -scheme musetype` 编译能过但测试 runner 在 bootstrap 时
+SIGSEGV（`InitialAllocationPool` → `ContentView.body.getter` → AttributeGraph），
+HotkeyTriggerStateMachine 与 TerminologyCorrection 两个新测试套件因此根本跑不起来。
+本版仅修复该 runner 启动崩溃，不动业务代码。
+
+### 修复
+
+- 在 [`fastv/ContentView.swift`](fastv/ContentView.swift) 引入全局 `isRunningUnderXCTest`
+  标志（检测 `XCTestConfigurationFilePath` / `XCInjectBundleInto` 环境变量及
+  `XCTestCase` 类是否存在），测试态下 `body` 直接返回 1×1 的 `Color.clear`，
+  绕开 `OnboardingView` / `VoiceInputView` 这条会在 macOS 26 SwiftUI 下崩
+  AttributeGraph 的真实主界面渲染路径。
+- 在 [`fastv/fastvApp.swift`](fastv/fastvApp.swift) 同步给 `AppDelegate`
+  （`applicationWillFinishLaunching` / `applicationDidFinishLaunching` /
+  `applicationWillTerminate`）与 `WindowGroup` 的 `onAppear` 都加上同样的测试态
+  早 return，避免 XCTest host 阶段触发状态栏、全局快捷键、麦克风权限弹窗、
+  模型预热等重副作用，让 unit test 进程拿到一个尽量"安静"的 host。
+- 影响范围：仅在 `XCTestConfigurationFilePath` 等环境变量存在时生效，正常 app
+  启动路径完全不变。
+
+### 工程
+
+- 版本号 `2.1.0-rc2` → `2.1.0-rc3`（bugfix，仅递增 rc 号）。
+- 顺手把 `fastv.xcodeproj/project.pbxproj` 里 6 处 `MARKETING_VERSION` 一并同步
+  到 `2.1.0-rc3`，跟前端版本号保持一致。
+
 ## [2.1.0-rc2] - 2026-06-21
 
 清理 v2.0.0-rc1 产品收敛后遗留的废测试，让 `fastvTests` target 恢复无屏蔽编译。

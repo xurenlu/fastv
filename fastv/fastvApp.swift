@@ -326,11 +326,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        // 测试 runner 共宿主 app 时跳过所有副作用，避免 SwiftUI / 状态栏 / 麦克风
+        // 弹窗在 bootstrap 阶段把 runner 拖崩。
+        if isRunningUnderXCTest { return }
         // 一次性清除已保存的窗口状态，解决「侧边栏被持久化为折叠」导致看不到菜单的问题
         flushSavedSidebarStateIfNeeded()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if isRunningUnderXCTest {
+            print("🧪 [AppDelegate] 检测到 XCTest host，跳过启动副作用（状态栏/快捷键/权限弹窗等）")
+            return
+        }
         // 应用启动完成后，初始化状态栏
         print("📱 [AppDelegate] 应用启动完成，初始化状态栏")
         StatusBarManager.shared.show()
@@ -510,6 +517,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        if isRunningUnderXCTest { return }
         print("🧹 [AppDelegate] 应用即将退出，清理资源")
 
         // 优先释放麦克风，避免退出后状态栏仍显示橙色录音图标
@@ -586,6 +594,8 @@ struct fastvApp: App {
         WindowGroup {
             ContentView()
             .onAppear {
+                // 测试 runner 共宿主 app 时不要触发任何重量级初始化
+                if isRunningUnderXCTest { return }
                 // 启动内存监控（仅在 Debug 模式下）
                 #if DEBUG
                 MemoryMonitor.shared.startMonitoring()
@@ -1183,10 +1193,17 @@ struct fastvApp: App {
             if shouldDoAI {
                 waveformManager.setAICorrecting()
                 do {
+                    // Power Mode：按前台 App / 浏览器 URL 选 prompt 模板，未启用或未命中走默认。
+                    let ctx = AppContextResolver.shared.resolve()
+                    let systemPrompt = ContextProfileManager.shared.resolveSystemPrompt(
+                        defaultPrompt: preferences.aiSystemPrompt,
+                        context: ctx,
+                        transcript: text
+                    )
                     text = try await OllamaService.shared.optimizeTranscript(
                         text: text,
                         scenario: .voiceInputOptimization,
-                        systemPrompt: preferences.aiSystemPrompt,
+                        systemPrompt: systemPrompt,
                         useMistakes: true,
                         useHighFrequencyWords: true
                     )
@@ -1293,10 +1310,17 @@ struct fastvApp: App {
                 
                 let aiStartTime = Date()
                 do {
+                    // Power Mode：上下文路由 prompt 模板，未命中走默认。
+                    let ctx = AppContextResolver.shared.resolve()
+                    let systemPrompt = ContextProfileManager.shared.resolveSystemPrompt(
+                        defaultPrompt: preferences.aiSystemPrompt,
+                        context: ctx,
+                        transcript: text
+                    )
                     let optimizedText = try await OllamaService.shared.optimizeTranscript(
                         text: text,
                         scenario: .voiceInputOptimization,
-                        systemPrompt: preferences.aiSystemPrompt,
+                        systemPrompt: systemPrompt,
                         useMistakes: true,
                         useHighFrequencyWords: true
                     )

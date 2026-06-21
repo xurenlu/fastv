@@ -11,6 +11,7 @@ import SwiftUI
 /// 包含：AI服务管理、场景映射（语音优化/Todo/聊天）、AI文本优化、文本纠错、模型文件
 struct AIModelSettingsTab: View {
     @ObservedObject var preferences = UserPreferences.shared
+    @ObservedObject var contextProfileManager = ContextProfileManager.shared
 
     // 缓存计算结果，避免每次渲染都重新计算
     @State private var totalRulesCount = 0
@@ -111,6 +112,34 @@ struct AIModelSettingsTab: View {
                 Text("场景映射")
             } footer: {
                 Text("为不同功能场景（语音输入优化、AI Todo、AI 聊天）配置独立的 AI 服务和模型。")
+            }
+
+            // Power Mode — 上下文感知 prompt 模板
+            Section {
+                Toggle(
+                    NSLocalizedString("context.profile.enable.power.mode", comment: ""),
+                    isOn: $contextProfileManager.enablePowerMode
+                )
+
+                NavigationLink {
+                    ContextProfileEditorView()
+                        .navigationTitle(NSLocalizedString("context.profile.title", comment: ""))
+                        .frame(minWidth: 780, minHeight: 580)
+                } label: {
+                    HStack {
+                        Image(systemName: "rectangle.and.text.magnifyingglass")
+                        Text(NSLocalizedString("context.profile.title", comment: ""))
+                        Spacer()
+                        Text("\(contextProfileManager.profiles.count) " + NSLocalizedString("context.profile.count.suffix", comment: ""))
+                            .foregroundStyle(.secondary)
+                            .font(.caption)
+                    }
+                }
+                .disabled(!contextProfileManager.enablePowerMode)
+            } header: {
+                Text(NSLocalizedString("context.profile.section.header", comment: ""))
+            } footer: {
+                Text(NSLocalizedString("context.profile.section.footer", comment: ""))
             }
 
             // AI 文本优化功能

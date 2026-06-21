@@ -8,6 +8,7 @@ MuseType（妙打）定位为 macOS 上的低打扰语音输入工具。应用�
 
 - 语音输入法：默认按住快捷键录音、松开转写并插入当前输入框；设置 → 触发方式 还可切换「按一下切换」（toggle）或「混合」（短按 = 切换、长按 ≥ 0.25s = 按住录音），覆盖长段口述与短句两类场景。
 - 术语包：常错词管理新增「术语包」分栏。专有名词、产品名、技术术语在替换管线中优先生效且大小写不敏感，说「open ai」也能输出「OpenAI」。
+- Power Mode（场景感知 prompt）：按前台 App / 浏览器 URL 自动切换 AI 后处理 prompt 模板。出厂内置 4 套预设（邮件正式 / Slack 简短 / IM 口语 / IDE 代码注释），用户可加自定义场景（bundleId / URL 通配 / App 名 contains 三种匹配规则 OR 组合）。AX 抽 Safari/Chrome/Arc/Brave/Edge/Firefox 当前 tab URL，1s 缓存。
 - 主窗口界面皮肤：可在设置中切换系统默认、清爽浅色、纸感与多套深色风格；深色皮肤使用浅色文字，保证暗背景可读。
 - AI 语音优化：AI 快捷键可对转写文本进行口语化清理、标点补全和错字修正。
 - AI 上下文回改：识别到“修改上一句”“润色这句”“重写”等语音指令时，读取当前 text input / textarea 的内容，只回改选中文本或光标前最近一句。
@@ -28,6 +29,7 @@ MuseType（妙打）定位为 macOS 上的低打扰语音输入工具。应用�
 
 ## 版本记录
 
+- `2.1.0-rc4`：竞品调研第二批 — **Power Mode（上下文感知 prompt 模板）**。新增 `AppContextResolver`（NSWorkspace.frontmost + AX 抽浏览器 URL，1s 缓存）、`ContextProfile` / `MatchRule` 模型（bundleId 100 / urlPattern 50 / appNameContains 10 三档优先级 + `*` 通配）、`ContextProfileManager`（UserDefaults 持久化 + 出厂 4 内置预设：邮件 / Slack / IM / IDE）。`fastvApp.swift` 两个 polish 调用点注入 `resolveSystemPrompt(...)`，未启用 / 未命中走默认 `aiSystemPrompt`。设置 → AI 与模型 新增 Power Mode section 与 `ContextProfileEditorView` 编辑面板。5 语种 i18n。
 - `2.1.0-rc2`：清理 v2.0.0-rc1 产品收敛后遗留的 3 个废测试。`EmailRemoteImageBlockingTests.swift` 与 `EmailTranslateStripTests.swift` 整文件删除（引用已不存在的 `EmailBodyWebViewRepresentable.stripRemoteImageSources` / `EmailViewModel.stripHTMLTagsForTranslate`），`MeetingRichDocTests.swift` 顶部 6 个引用已删 `decideRichDocTrigger` 的用例删除，保留下方 Markdown / `AIScenario` 4 个仍然有效的用例。`fastvTests` 目录里不再有 `#if false` 临时屏蔽段。
 - `2.1.0-rc1`：竞品调研驱动的首批补齐。
   - **触发方式三模式**：原 push-to-talk 之外新增 toggle（按一下开/再按一下关）与 hybrid（短按切换 / 长按 ≥ 0.25s 退化为 PTT）。引入独立 `HotkeyTriggerStateMachine`（`fastv/Services/HotkeyTriggerStateMachine.swift`），把"物理按键 press/release"翻译为"有效录音 start/stop"，FN / Control / 普通键三条检测路径统一走 `dispatchRawPress` / `dispatchRawRelease`。设置 → 语音输入与快捷键 segmented 实时切换，5 语种 i18n。默认仍为 `pushToTalk` 与历史版本一致。
