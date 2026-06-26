@@ -8,14 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		420B8873F2660D76E1855456 /* Pods_musetype.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F8E1ABDD6478BDDD3FBF5EE6 /* Pods_musetype.framework */; };
-		5C33D8722EDC849D00527815 /* libetpan.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C33D8712EDC849D00527815 /* libetpan.a */; };
-		5C33D8732EDC849D00527815 /* libetpan.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C33D8712EDC849D00527815 /* libetpan.a */; };
-		5C33DDE92EDC9D0800527815 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C33DDE82EDC9D0800527815 /* libz.tbd */; };
-		5C33DDEB2EDC9D1A00527815 /* libsasl2.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C33DDEA2EDC9D1A00527815 /* libsasl2.tbd */; };
-		5C33DDED2EDC9D2700527815 /* libiconv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C33DDEC2EDC9D2700527815 /* libiconv.tbd */; };
-		5C33DDEF2EDC9D2F00527815 /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C33DDEE2EDC9D2F00527815 /* libresolv.tbd */; };
-		5C33DDF12EDC9D3800527815 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C33DDF02EDC9D3800527815 /* Security.framework */; };
-		5C33DDF32EDC9D4100527815 /* CFNetwork.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C33DDF22EDC9D4100527815 /* CFNetwork.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -41,13 +33,6 @@
 		5C04238D2ECD793000821B50 /* typecho.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = typecho.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C0423972ECD793000821B50 /* fastvUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = fastvUITests.xctest; path = typecho.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C1000012F00000100527815 /* musetype.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = musetype.xctestplan; sourceTree = "<group>"; };
-		5C33D8712EDC849D00527815 /* libetpan.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libetpan.a; sourceTree = "<group>"; };
-		5C33DDE82EDC9D0800527815 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
-		5C33DDEA2EDC9D1A00527815 /* libsasl2.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsasl2.tbd; path = usr/lib/libsasl2.tbd; sourceTree = SDKROOT; };
-		5C33DDEC2EDC9D2700527815 /* libiconv.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libiconv.tbd; path = usr/lib/libiconv.tbd; sourceTree = SDKROOT; };
-		5C33DDEE2EDC9D2F00527815 /* libresolv.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libresolv.tbd; path = usr/lib/libresolv.tbd; sourceTree = SDKROOT; };
-		5C33DDF02EDC9D3800527815 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
-		5C33DDF22EDC9D4100527815 /* CFNetwork.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CFNetwork.framework; path = System/Library/Frameworks/CFNetwork.framework; sourceTree = SDKROOT; };
 		5EF571A6A0DA73C2DB42978C /* Pods-typecho.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-typecho.release.xcconfig"; path = "Target Support Files/Pods-typecho/Pods-typecho.release.xcconfig"; sourceTree = "<group>"; };
 		7D031418607FBBB6418EECC7 /* Pods-musetype.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-musetype.debug.xcconfig"; path = "Target Support Files/Pods-musetype/Pods-musetype.debug.xcconfig"; sourceTree = "<group>"; };
 		DC0B03A35A134716360C9BD8 /* Pods-musetype.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-musetype.release.xcconfig"; path = "Target Support Files/Pods-musetype/Pods-musetype.release.xcconfig"; sourceTree = "<group>"; };
@@ -77,13 +62,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5C33DDF32EDC9D4100527815 /* CFNetwork.framework in Frameworks */,
-				5C33DDF12EDC9D3800527815 /* Security.framework in Frameworks */,
-				5C33DDEF2EDC9D2F00527815 /* libresolv.tbd in Frameworks */,
-				5C33DDED2EDC9D2700527815 /* libiconv.tbd in Frameworks */,
-				5C33DDEB2EDC9D1A00527815 /* libsasl2.tbd in Frameworks */,
-				5C33DDE92EDC9D0800527815 /* libz.tbd in Frameworks */,
-				5C33D8722EDC849D00527815 /* libetpan.a in Frameworks */,
 				420B8873F2660D76E1855456 /* Pods_musetype.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -92,7 +70,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5C33D8732EDC849D00527815 /* libetpan.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -120,7 +97,6 @@
 		5C0423752ECD792D00821B50 = {
 			isa = PBXGroup;
 			children = (
-				5C33D8712EDC849D00527815 /* libetpan.a */,
 				5C0423802ECD792D00821B50 /* fastv */,
 				5C0423902ECD793000821B50 /* fastvTests */,
 				5C04239A2ECD793000821B50 /* fastvUITests */,
@@ -144,12 +120,6 @@
 		E65830A71AE08364D55B68BA /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				5C33DDF22EDC9D4100527815 /* CFNetwork.framework */,
-				5C33DDF02EDC9D3800527815 /* Security.framework */,
-				5C33DDEE2EDC9D2F00527815 /* libresolv.tbd */,
-				5C33DDEC2EDC9D2700527815 /* libiconv.tbd */,
-				5C33DDEA2EDC9D1A00527815 /* libsasl2.tbd */,
-				5C33DDE82EDC9D0800527815 /* libz.tbd */,
 				F8E1ABDD6478BDDD3FBF5EE6 /* Pods_musetype.framework */,
 			);
 			name = Frameworks;
@@ -560,7 +530,6 @@
 					"$(inherited)",
 					"$(SRCROOT)/Libraries/onnxruntime/current/include",
 					"$(SRCROOT)/ThirdParty",
-					"$(SRCROOT)/ThirdParty/libetpan/include/**",
 					/opt/homebrew/include,
 				);
 				INFOPLIST_KEY_CFBundleDisplayName = "妙打";
@@ -582,7 +551,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.1.1-rc1";
+				MARKETING_VERSION = "2.1.1-rc2";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
@@ -620,7 +589,6 @@
 					"$(inherited)",
 					"$(SRCROOT)/Libraries/onnxruntime/current/include",
 					"$(SRCROOT)/ThirdParty",
-					"$(SRCROOT)/ThirdParty/libetpan/include/**",
 					/opt/homebrew/include,
 				);
 				INFOPLIST_KEY_CFBundleDisplayName = "妙打";
@@ -642,7 +610,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.1.1-rc1";
+				MARKETING_VERSION = "2.1.1-rc2";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
@@ -679,7 +647,6 @@
 					"$(inherited)",
 					"$(SRCROOT)/Libraries/onnxruntime/current/include",
 					"$(SRCROOT)/ThirdParty",
-					"$(SRCROOT)/ThirdParty/libetpan/include/**",
 					/opt/homebrew/include,
 				);
 				LIBRARY_SEARCH_PATHS = (
@@ -688,7 +655,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.1.1-rc1";
+				MARKETING_VERSION = "2.1.1-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -718,7 +685,6 @@
 					"$(inherited)",
 					"$(SRCROOT)/Libraries/onnxruntime/current/include",
 					"$(SRCROOT)/ThirdParty",
-					"$(SRCROOT)/ThirdParty/libetpan/include/**",
 					/opt/homebrew/include,
 				);
 				LIBRARY_SEARCH_PATHS = (
@@ -727,7 +693,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.1.1-rc1";
+				MARKETING_VERSION = "2.1.1-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -747,7 +713,7 @@
 				CURRENT_PROJECT_VERSION = 24;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.1.1-rc1";
+				MARKETING_VERSION = "2.1.1-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -767,7 +733,7 @@
 				CURRENT_PROJECT_VERSION = 24;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.1.1-rc1";
+				MARKETING_VERSION = "2.1.1-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;

@@ -30,6 +30,8 @@ MuseType（妙打）定位为 macOS 上的低打扰语音输入工具。应用�
 
 ## 版本记录
 
+- `2.1.1-rc2`：清理主线工程里已废弃邮件链路留下的 `libetpan.a` 及其 CFNetwork/Security/zlib/sasl/iconv/resolv 依赖链接项和 `ThirdParty/libetpan/include/**` 头文件搜索路径。当前源码不再包含邮件调用层，继续链接 libetpan 只会增加旧构建/误链接触发 `mailstream_cfstream.c:912` QoS 优先级反转诊断的机会；第三方 libetpan 源码保持不改，后续如恢复邮件功能，应继续把 IMAP/SMTP 阻塞 I/O 放在 `.utility` QoS。
+
 - `2.1.0`：定版。竞品调研驱动的「四件套」补齐，覆盖 rc1 → rc6 全部已 ship 能力：热键三模式 + 术语包（rc1）、SwiftUI 测试 host 修复（rc3）、Power Mode 上下文 prompt 模板（rc4）、MuseType 品牌图标（rc5）、光标旁悬浮指示器（rc6）。全套 41 个单测通过。Batch 4「语音指令编辑」单独立项。
 - `2.1.0-rc6`：竞品调研第三批 — **光标旁悬浮指示器（Follow Cursor）**。`WaveformWindowPosition` 新增 `.followCursor` 枚举；`Services/CursorPositionLocator.swift` AX 优先链（`AXFocusedUIElement` → `AXSelectedTextRange` → `AXBoundsForRangeParameterizedAttribute` 拿 caret bounds，失败回退 focused element frame，再失败回退 `NSEvent.mouseLocation`）；`WaveformWindowManager` 加 50ms `followCursorTimer`，仅 followCursor 模式启动、hide / cleanup 即销毁。新增 `CursorPositionLocatorTests` 6 例（clamp 数学 + 多屏 + 负坐标）。5 语种 i18n 补齐 6 个位置 displayName + 1 个 hint。
 - `2.1.0-rc5`：应用与 DMG 图标统一到 MuseType 新品牌。`AppIcon.appiconset` 全尺寸替换为脉冲麦克风 Logo；新增 `assets/brand/musetype-dmg-volume.icns`，打包脚本创建 DMG 时写入 `.VolumeIcon.icns` 并设置卷标自定义图标；品牌资产目录保留深浅色图形标、中英文组合字标与 PNG 尺寸导出。

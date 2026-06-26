@@ -2,6 +2,18 @@
 
 所有版本變更記錄。
 
+## [2.1.1-rc2] - 2026-06-26
+
+### 修复
+
+- **清理已废弃邮件链路残留的 libetpan 链接**：当前主线已在 v2.0.0 收敛为纯语音输入工具，源码中不再包含 `EmailService.swift` / `LibEtPanWrapper.m` 等邮件调用层，但 Xcode 工程仍把 `libetpan.a` 及其 CFNetwork/Security/zlib/sasl/iconv/resolv 依赖链进 app target，并保留 `ThirdParty/libetpan/include/**` 头文件搜索路径。移除这些残留工程配置，避免旧构建或误链接路径继续把 `mailstream_cfstream.c:912` 的 CFStream 同步等待暴露到运行时诊断里。
+- 处理策略保持在调用/工程层：不修改第三方 `mailstream_cfstream.c` 的 RunLoop 等待逻辑；如果后续恢复邮件功能，IMAP/SMTP 阻塞 I/O 仍应放在 `.utility` QoS，而不是 `.userInitiated`。
+
+### 工程
+
+- 版本号 `2.1.1-rc1` → `2.1.1-rc2`（bugfix，仅递增 rc 号）。
+- 同步 `fastv.xcodeproj/project.pbxproj` 6 处 `MARKETING_VERSION`、`fastv/Info.plist` 的 `CFBundleShortVersionString`，以及 `stt-api/stt_api.py` 的 `API_VERSION`。
+
 ## [2.1.1-rc1] - 2026-06-21
 
 ### 修复

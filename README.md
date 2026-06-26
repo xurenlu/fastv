@@ -4,7 +4,7 @@
 
 > v2.0.0 起，妙打收敛为**纯语音输入工具**；邮箱、视频、Todo 等历史产品线已不在主线。
 >
-> 当前版本：**v2.1.0**（hotfix `v2.1.1-rc1` 已发）。最近一轮按 VoiceInk / Superwhisper / TypeWhisper / Wispr Flow / VocaMac 做了竞品调研，补齐了**热键三模式 / 术语包 / Power Mode / 跟随光标**四件套。
+> 当前版本：**v2.1.1-rc2**。最近一轮按 VoiceInk / Superwhisper / TypeWhisper / Wispr Flow / VocaMac 做了竞品调研，补齐了**热键三模式 / 术语包 / Power Mode / 跟随光标**四件套。
 
 ## ✨ 核心功能
 
