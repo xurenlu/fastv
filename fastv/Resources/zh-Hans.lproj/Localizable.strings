@@ -6,7 +6,7 @@
 */
 
 // 通用
-"app.name" = "QEcho";
+"app.name" = "轻语";
 "settings.section.general" = "通用";
 "hide.dock.icon" = "在 Dock 中隐藏图标";
 "hide.dock.icon.description" = "开启后仅在菜单栏常驻，Dock 不再显示图标。需要时可从菜单栏图标重新打开窗口。";
