@@ -2,6 +2,98 @@
 
 所有版本變更記錄。
 
+## [2.2.0-rc5] - 2026-07-08
+
+### 修复
+
+- **关于页推荐应用收口轻图**：推荐网格中的图片编辑、截图、上传分享类产品只保留轻图（MusePic / qingtu），移除已停用的 MuseSnip / 简图推荐，并更新轻图卡片文案。
+
+### 工程
+
+- 版本号 `2.2.0-rc4` → `2.2.0-rc5`；同步 `fastv.xcodeproj/project.pbxproj`、`fastv/Info.plist`、`stt-api/stt_api.py` 与 README 版本。
+
+## [2.2.0-rc4] - 2026-07-08
+
+### 新增
+
+- **同 App 短上下文联想校正**：AI 语音优化时会读取当前焦点输入框光标前最多 260 个 UTF-16 字符，作为“同一 App 短上下文”随本次语音一起发送给模型，用于修正同音/近音误识别。例如在编程语境中，`保持工作去干净` 可根据前文修正为 `保持工作区干净`。
+- 默认 AI 系统提示词新增“同一 App 短上下文联想校正”章节，要求模型只把短上下文当作当前 App 当前输入框的参考，不复述、不续写、不跨 App 使用历史、不引入外部事实。
+- Power Mode 的邮件 / Slack / IM / IDE 内置 prompt 同步加入同 App 短上下文规则，并对未修改过的出厂模板做温和迁移。
+
+### 变更
+
+- 为提高 DeepSeek / Kimi 等模型的 cache rate，固定规则继续放在 system prompt；每次不同的短上下文放在 user message 中，避免动态上下文污染可缓存的 system 前缀。
+- AI 请求的 user message 在存在短上下文时使用稳定结构：`同一 App 短上下文` + `本次语音转写`，让模型明确只输出本次语音的优化结果。
+
+### 测试
+
+- 扩展 ContextProfile 测试，覆盖默认系统提示词、4 个内置场景 prompt 是否包含短上下文规则，以及短上下文是否只截取光标前有限文本。
+
+### 工程
+
+- 版本号 `2.2.0-rc3` → `2.2.0-rc4`（同一 minor 预发布中的 AI 后处理增强，递增 rc 号）。
+- 同步 `fastv.xcodeproj/project.pbxproj` 6 处 `MARKETING_VERSION`、`fastv/Info.plist` 的 `CFBundleShortVersionString`，以及 `stt-api/stt_api.py` 的 `API_VERSION`。
+
+## [2.2.0-rc3] - 2026-07-08
+
+### 新增
+
+- **中英混合术语自动校正**：内置一组高置信度术语/流行技术词规则，覆盖 `麦克 app → Mac app`、`麦克 OS / Mac OS → macOS`、`open ai → OpenAI`、`chat gpt → ChatGPT`、`git hub → GitHub`、`type script → TypeScript`、`swift ui → SwiftUI`、`vs code → VS Code`、`k8s / k 8 s → Kubernetes` 等常见语音误听。
+- 默认 AI 系统提示词新增“中英混合与流行术语校正”章节，要求 AI 只在高置信度、语境明确时修正产品名、技术词和流行词，不确定时保留原文，避免臆造。
+- Power Mode 的邮件 / Slack / IM / IDE 内置 prompt 同步加入中英混合术语校正规则，并对未修改过的出厂模板做温和迁移。
+
+### 变更
+
+- 常错词正则边界从单纯 `\b` 调整为更适合中文上下文的 ASCII 边界，确保“我想做一个麦克 app”这种夹在中文句子里的短语也能命中，同时避免把英文词误替换到更长单词内部。
+- 内置纠错规则初始化升级到 v3；已初始化过 v2 的用户会增量加入新规则，不覆盖用户自定义规则，也不重置已存在内置规则的开关状态。
+
+### 测试
+
+- 新增中英混合术语测试，覆盖 `麦克 app`、`麦克系统`、`open ai`、`git hub`、`type script` 的内置替换。
+- 扩展 ContextProfile 测试，覆盖默认提示词与 4 个内置场景 prompt 是否包含中英混合术语校正规则。
+
+### 工程
+
+- 版本号 `2.2.0-rc2` → `2.2.0-rc3`（同一 minor 预发布中的 AI 后处理增强，递增 rc 号）。
+- 同步 `fastv.xcodeproj/project.pbxproj` 6 处 `MARKETING_VERSION`、`fastv/Info.plist` 的 `CFBundleShortVersionString`，以及 `stt-api/stt_api.py` 的 `API_VERSION`。
+
+## [2.2.0-rc2] - 2026-07-07
+
+### 新增
+
+- **关于窗口刷新**：借用 MuseTerm 的 About 窗口结构，改为独立 700×500 macOS 窗口，加入左侧企鹅动画、版本信息、作者主页入口、隐私承诺卡片和 83d 系列推荐应用网格。
+- 新增 About 窗口所需的企鹅动画帧与推荐应用图标资源，并补齐中 / 英 / 日 / 韩 / 粤 5 语种本地化文案。
+
+### 变更
+
+- 设置 → 数据与其他 → 关于 从原先的 sheet 弹层改为独立窗口打开，窗口内容改为妙打自己的语音输入定位与隐私说明，不复用 MuseTerm 的产品介绍文案。
+
+### 工程
+
+- 版本号 `2.2.0-rc1` → `2.2.0-rc2`（同一 minor 预发布中的界面增强，递增 rc 号）。
+- 同步 `fastv.xcodeproj/project.pbxproj` 6 处 `MARKETING_VERSION`、`fastv/Info.plist` 的 `CFBundleShortVersionString`，以及 `stt-api/stt_api.py` 的 `API_VERSION`。
+
+## [2.2.0-rc1] - 2026-07-07
+
+### 新增
+
+- **AI 语音输入轻度结构化整理**：默认 AI 优化提示词新增“输入法级别”的结构化规则。当原文天然包含多个事项、条件、步骤、问题或请求时，可以整理成 2-5 条短列表；单句闲聊不强行列表化，且不新增原文没有的信息。
+- **Power Mode 预设同步增强**：邮件、Slack、IM 内置 prompt 均加入轻度结构化边界；IDE / 代码编辑器预设仅在多项 TODO、步骤或条件场景允许输出多行 `// - ` 列表注释，避免破坏默认单行注释体验。
+
+### 变更
+
+- 默认系统提示词抽成 `UserPreferences.defaultAISystemPrompt` 单一来源，设置页“恢复默认”和首次启动共用同一份 prompt。
+- 对仍保持旧出厂文案的默认系统提示词与内置 Power Mode 预设做一次温和迁移；用户自定义过的 prompt 不会被覆盖。
+
+### 测试
+
+- 新增 `ContextProfileMatchingTests.builtInPromptsIncludeLightStructure`，覆盖默认提示词与内置场景预设的轻度结构化规则。
+
+### 工程
+
+- 版本号 `2.1.1-rc2` → `2.2.0-rc1`（功能增强，递增 minor 预发布版本）。
+- 同步 `fastv.xcodeproj/project.pbxproj` 6 处 `MARKETING_VERSION`、`fastv/Info.plist` 的 `CFBundleShortVersionString`，以及 `stt-api/stt_api.py` 的 `API_VERSION`。
+
 ## [2.1.1-rc2] - 2026-06-26
 
 ### 修复

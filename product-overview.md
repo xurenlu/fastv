@@ -11,7 +11,10 @@ MuseType（妙打）定位为 macOS 上的低打扰语音输入工具。应用�
 - Power Mode（场景感知 prompt）：按前台 App / 浏览器 URL 自动切换 AI 后处理 prompt 模板。出厂内置 4 套预设（邮件正式 / Slack 简短 / IM 口语 / IDE 代码注释），用户可加自定义场景（bundleId / URL 通配 / App 名 contains 三种匹配规则 OR 组合）。AX 抽 Safari/Chrome/Arc/Brave/Edge/Firefox 当前 tab URL，1s 缓存。
 - 悬浮指示器位置：除「左上 / 右上 / 左下 / 右下 / 正中下方」5 个固定位置之外，新增「跟随光标」—— 录音期间小指示器贴着输入光标移动（AX 拿 caret bounds 优先，失败兜底鼠标位置）。
 - 主窗口界面皮肤：可在设置中切换系统默认、清爽浅色、纸感与多套深色风格；深色皮肤使用浅色文字，保证暗背景可读。
-- AI 语音优化：AI 快捷键可对转写文本进行口语化清理、标点补全和错字修正。
+- 关于窗口：独立 macOS 窗口展示妙打版本、作者主页、隐私承诺，以及 83d 系列推荐应用。
+- AI 语音优化：AI 快捷键可对转写文本进行口语化清理、标点补全、错字修正和轻度结构化整理；当口述内容天然包含多个事项、条件、步骤或请求时，可整理成 2-5 条短列表。
+- 中英混合术语校正：内置高置信度术语/流行技术词规则（如 `麦克 app → Mac app`、`Mac OS → macOS`、`open ai → OpenAI`、`git hub → GitHub`、`type script → TypeScript`），并通过默认 AI prompt 处理需要语境推断的产品名、技术词和流行词。
+- 同 App 短上下文联想校正：AI 语音优化会读取当前焦点输入框光标前的小段文本，只在同一 App / 当前输入框内作为参考，用于修正同音或近音误识别；动态上下文放在 user message，固定规则保留在 system prompt 以提高 DeepSeek / Kimi 等模型的 cache rate。
 - AI 上下文回改：识别到“修改上一句”“润色这句”“重写”等语音指令时，读取当前 text input / textarea 的内容，只回改选中文本或光标前最近一句。
 - 智能分段转写：长语音输入时按停顿后台转写，松开后合并输出。
 - 会议记录：支持录音、转写、摘要与导出；录音同时 AI 流式生成「图文并茂」的结构化 Markdown 文档（要点列表、表格、勾选框行动项、mermaid 思维导图）。
@@ -29,6 +32,15 @@ MuseType（妙打）定位为 macOS 上的低打扰语音输入工具。应用�
 - IDLE 长连接的"最近 PUSH 间隔过长"自检（比如 12h 没有 EXISTS 也没有错误），目前没有兜底，长期跑可考虑加自检并主动 NOOP。
 
 ## 版本记录
+
+- `2.2.0-rc5`：关于页推荐应用收口轻图（MusePic / qingtu），图片编辑、截图、上传分享类产品不再展示 MuseSnip / 简图。
+- `2.2.0-rc4`：AI 后处理新增同 App 短上下文联想校正。优化语音时读取当前焦点输入框光标前最多 260 个 UTF-16 字符，只作为当前 App / 当前输入框参考，帮助把“保持工作去干净”这类同音误识别修成“保持工作区干净”。默认系统提示词与 Power Mode 4 个内置 prompt 同步加入“不复述上下文、不跨 App 使用历史、不引入外部事实”的约束；动态上下文放在 user message，固定规则留在 system prompt 以提升 DeepSeek / Kimi 等模型的 cache rate。
+
+- `2.2.0-rc3`：AI 后处理新增中英混合与流行术语校正。内置规则增量加入 `麦克 app → Mac app`、`麦克 OS / Mac OS → macOS`、`open ai → OpenAI`、`git hub → GitHub`、`type script → TypeScript`、`swift ui → SwiftUI`、`vs code → VS Code`、`k8s → Kubernetes` 等高置信度替换；默认系统提示词和 Power Mode 4 个内置 prompt 同步加入“只在语境明确时修正，不确定时保留原文”的 AI 约束。常错词正则边界改为适配中文上下文的 ASCII 边界，并新增对应单测。
+
+- `2.2.0-rc2`：关于窗口刷新为独立 700×500 macOS 窗口，移植 MuseTerm 的布局结构与推荐应用网格，但内容替换为妙打自己的语音输入定位、隐私承诺、版本信息和作者主页入口。新增企鹅动画帧、推荐应用图标资源，并补齐中 / 英 / 日 / 韩 / 粤 5 语种 About 本地化文案。
+
+- `2.2.0-rc1`：AI 语音输入提示词新增输入法级别的轻度结构化整理。默认 prompt 在多事项、条件、步骤、问题或请求场景可整理成 2-5 条短列表，同时明确不强行列表化单句闲聊、不新增原文没有的信息。Power Mode 邮件 / Slack / IM 预设同步增强，IDE 预设仅对多项 TODO、步骤或条件允许多行 `// - ` 注释列表。旧出厂默认 prompt 与仍未修改的内置预设会温和迁移，用户自定义模板保持不动。
 
 - `2.1.1-rc2`：清理主线工程里已废弃邮件链路留下的 `libetpan.a` 及其 CFNetwork/Security/zlib/sasl/iconv/resolv 依赖链接项和 `ThirdParty/libetpan/include/**` 头文件搜索路径。当前源码不再包含邮件调用层，继续链接 libetpan 只会增加旧构建/误链接触发 `mailstream_cfstream.c:912` QoS 优先级反转诊断的机会；第三方 libetpan 源码保持不改，后续如恢复邮件功能，应继续把 IMAP/SMTP 阻塞 I/O 放在 `.utility` QoS。
 

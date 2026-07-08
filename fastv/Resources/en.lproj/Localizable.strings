@@ -465,6 +465,22 @@
 "about.website" = "Website";
 "about.website.url" = "83d.me";
 "about.version" = "Version";
+"about.summary" = "A low-distraction macOS voice input tool: hold the shortcut, speak, release, and insert polished text into the active field.";
+"about.author_homepage" = "Author homepage · 83d.me";
+"about.other_apps" = "More apps by Rocky";
+"about.other_apps.summary" = "A small shelf of sibling macOS apps from the 83d release catalog.";
+"about.app.willDeep.name" = "WillDeep";
+"about.app.willDeep.summary" = "Focused writing and deep editing.";
+"about.app.timeBill.name" = "TimeBill";
+"about.app.timeBill.summary" = "Time tracking and billing companion.";
+"about.app.museUploader.name" = "MusePic";
+"about.app.museUploader.summary" = "Screenshot, image editing, and upload sharing.";
+"about.app.markReader.name" = "MarkReader";
+"about.app.markReader.summary" = "Clean Markdown reading.";
+"about.app.museMail.name" = "MuseMail";
+"about.app.museMail.summary" = "Quiet email workflows.";
+"about.app.museMate.name" = "Muse Mate";
+"about.app.museMate.summary" = "Personal creative companion.";
 "about.copyright" = "Copyright";
 "show.app" = "Show %@";
 

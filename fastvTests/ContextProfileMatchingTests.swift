@@ -190,4 +190,39 @@ struct ContextProfileMatchingTests {
         )
         #expect(out2 == "HIT:MyApp")
     }
+
+    @Test("默认提示词与内置场景预设支持轻度结构化和中英混合术语校正")
+    func builtInPromptsIncludeLightStructureAndMixedLanguageTerms() {
+        #expect(UserPreferences.defaultAISystemPrompt.contains("2-5 条短列表"))
+        #expect(UserPreferences.defaultAISystemPrompt.contains("不要强行列表化单句闲聊"))
+        #expect(UserPreferences.defaultAISystemPrompt.contains("麦克 app"))
+        #expect(UserPreferences.defaultAISystemPrompt.contains("OpenAI"))
+        #expect(UserPreferences.defaultAISystemPrompt.contains("不确定时保留原文"))
+        #expect(UserPreferences.defaultAISystemPrompt.contains("同一 App 短上下文"))
+        #expect(UserPreferences.defaultAISystemPrompt.contains("保持工作区干净"))
+
+        let prompts = ContextProfileManager.builtInDefaults().map(\.promptTemplate)
+        let structuredPrompts = prompts.filter { $0.contains("2-5 条短列表") }
+        #expect(structuredPrompts.count >= 3)
+        #expect(prompts.allSatisfy { $0.contains("麦克 app→Mac app") })
+        #expect(prompts.allSatisfy { $0.contains("open ai→OpenAI") })
+        #expect(prompts.allSatisfy { $0.contains("同一 App 短上下文") })
+        #expect(prompts.allSatisfy { $0.contains("保持工作去干净") })
+
+        let codePrompt = prompts.first { $0.contains("IDE / 代码编辑器") }
+        #expect(codePrompt?.contains("多行 `// - ` 列表注释") == true)
+    }
+
+    @Test("短上下文只截取光标前有限文本，并按字符边界对齐")
+    func shortReferenceContextIsBoundedBeforeCursor() {
+        let text = "项目说明：保持工作区干净，提交前先看 git status。现在继续输入"
+        let cursor = text.utf16.count
+        let context = ActiveTextInputTextAnalyzer.referenceContextBeforeCursor(
+            in: text,
+            cursorLocation: cursor,
+            maxLength: 18
+        )
+
+        #expect(context == "git status。现在继续输入")
+    }
 }

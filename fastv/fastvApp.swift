@@ -1199,12 +1199,14 @@ struct fastvApp: App {
                         context: ctx,
                         transcript: text
                     )
+                    let referenceContext = ActiveTextInputContextService.shared.captureShortReferenceContext()
                     text = try await OllamaService.shared.optimizeTranscript(
                         text: text,
                         scenario: .voiceInputOptimization,
                         systemPrompt: systemPrompt,
                         useMistakes: true,
-                        useHighFrequencyWords: true
+                        useHighFrequencyWords: true,
+                        referenceContext: referenceContext
                     )
                     waveformManager.setAICorrected()
                 } catch {
@@ -1316,12 +1318,14 @@ struct fastvApp: App {
                         context: ctx,
                         transcript: text
                     )
+                    let referenceContext = ActiveTextInputContextService.shared.captureShortReferenceContext()
                     let optimizedText = try await OllamaService.shared.optimizeTranscript(
                         text: text,
                         scenario: .voiceInputOptimization,
                         systemPrompt: systemPrompt,
                         useMistakes: true,
-                        useHighFrequencyWords: true
+                        useHighFrequencyWords: true,
+                        referenceContext: referenceContext
                     )
                     let aiDuration = Date().timeIntervalSince(aiStartTime)
                     print("✅ [fastvApp] AI 優化完成，耗時: \(String(format: "%.2f", aiDuration))秒")

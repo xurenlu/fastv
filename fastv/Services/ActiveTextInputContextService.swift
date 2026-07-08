@@ -92,6 +92,27 @@ struct ActiveTextInputTextAnalyzer {
         return newText
     }
 
+    static func referenceContextBeforeCursor(in text: String, cursorLocation: Int, maxLength: Int) -> String? {
+        let textLength = text.utf16.count
+        guard textLength > 0, maxLength > 0 else { return nil }
+
+        var end = max(0, min(cursorLocation, textLength))
+        end = trimTrailingInlineWhitespace(in: text, utf16End: end)
+        guard end > 0 else { return nil }
+
+        var start = max(0, end - maxLength)
+        start = alignToScalarBoundary(in: text, utf16Offset: start, direction: .forward)
+        start = trimLeadingWhitespace(in: text, utf16Start: start, utf16End: end)
+
+        guard end > start,
+              let context = substring(text, range: CFRange(location: start, length: end - start)) else {
+            return nil
+        }
+
+        let trimmed = context.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     private enum BoundaryDirection {
         case forward
         case backward
@@ -224,6 +245,22 @@ final class ActiveTextInputContextService {
             targetRange: recentRange,
             selectionRange: safeSelection,
             isSelectedText: false
+        )
+    }
+
+    func captureShortReferenceContext(maxLength: Int = 260) -> String? {
+        guard let focusedElement = focusedUIElement(),
+              let fullText = stringAttribute(kAXValueAttribute, from: focusedElement) else {
+            return nil
+        }
+
+        let textLength = fullText.utf16.count
+        let selection = selectedTextRange(from: focusedElement) ?? CFRange(location: textLength, length: 0)
+        let safeSelection = ActiveTextInputTextAnalyzer.clamp(range: selection, upperBound: textLength)
+        return ActiveTextInputTextAnalyzer.referenceContextBeforeCursor(
+            in: fullText,
+            cursorLocation: safeSelection.location,
+            maxLength: maxLength
         )
     }
 

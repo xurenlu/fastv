@@ -82,4 +82,22 @@ struct TerminologyCorrectionTests {
         let entry = m.mistakes.first { $0.wrong == "k8s" && $0.correct == "Kubernetes" }
         #expect(entry?.category == .terminology)
     }
+
+    @Test("内置中英混合术语：'麦克 app' → 'Mac app'")
+    func builtInMixedLanguageMacAppCorrection() {
+        let m = CommonMistakeManager.shared
+        resetManager(m)
+
+        let out = m.applyCorrections(to: "我想做一个麦克 app，然后发布到麦克系统。")
+        #expect(out == "我想做一个Mac app，然后发布到macOS。")
+    }
+
+    @Test("内置流行技术词：OpenAI / GitHub / TypeScript")
+    func builtInPopularTechTermCorrections() {
+        let m = CommonMistakeManager.shared
+        resetManager(m)
+
+        let out = m.applyCorrections(to: "open ai 的 sdk 放在 git hub，用 type script 写。")
+        #expect(out == "OpenAI 的 sdk 放在 GitHub，用 TypeScript 写。")
+    }
 }

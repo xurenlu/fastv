@@ -353,6 +353,22 @@
 "about.website" = "個人ホームページ";
 "about.website.url" = "83d.me";
 "about.version" = "バージョン";
+"about.summary" = "macOS 向けの低干渉な音声入力ツールです。ショートカットを押しながら話し、離すと文字起こしして現在の入力欄へ挿入します。必要に応じて AI が軽く整えます。";
+"about.author_homepage" = "作者ホームページ · 83d.me";
+"about.other_apps" = "Rocky のほかの App";
+"about.other_apps.summary" = "83d のリリースカタログにある macOS App の小さな棚です。";
+"about.app.willDeep.name" = "WillDeep";
+"about.app.willDeep.summary" = "執筆と深い編集に集中。";
+"about.app.timeBill.name" = "TimeBill";
+"about.app.timeBill.summary" = "時間記録と請求の相棒。";
+"about.app.museUploader.name" = "MusePic";
+"about.app.museUploader.summary" = "スクリーンショット、画像編集、アップロード共有。";
+"about.app.markReader.name" = "MarkReader";
+"about.app.markReader.summary" = "読みやすい Markdown リーダー。";
+"about.app.museMail.name" = "MuseMail";
+"about.app.museMail.summary" = "静かなメールワークフロー。";
+"about.app.museMate.name" = "Muse Mate";
+"about.app.museMate.summary" = "個人制作の小さな相棒。";
 "about.copyright" = "著作権";
 "show.app" = "%@ を表示";
 

@@ -106,7 +106,8 @@ class OllamaService {
         scenario: AIScenario = .voiceInputOptimization,
         systemPrompt: String,
         useMistakes: Bool = true,
-        useHighFrequencyWords: Bool = true
+        useHighFrequencyWords: Bool = true,
+        referenceContext: String? = nil
     ) async throws -> String {
         let preferences = UserPreferences.shared
         let config = preferences.getConfig(for: scenario)
@@ -118,7 +119,8 @@ class OllamaService {
             timeout: config.timeout,
             systemPrompt: systemPrompt,
             useMistakes: useMistakes,
-            useHighFrequencyWords: useHighFrequencyWords
+            useHighFrequencyWords: useHighFrequencyWords,
+            referenceContext: referenceContext
         )
     }
     
@@ -139,7 +141,8 @@ class OllamaService {
         timeout: Double? = nil,
         systemPrompt: String,
         useMistakes: Bool = true,
-        useHighFrequencyWords: Bool = true
+        useHighFrequencyWords: Bool = true,
+        referenceContext: String? = nil
     ) async throws -> String {
         let effectiveModel = model ?? profile.defaultModel
         let effectiveTimeout = timeout ?? profile.timeout
@@ -152,7 +155,8 @@ class OllamaService {
             timeout: effectiveTimeout,
             systemPrompt: systemPrompt,
             useMistakes: useMistakes,
-            useHighFrequencyWords: useHighFrequencyWords
+            useHighFrequencyWords: useHighFrequencyWords,
+            referenceContext: referenceContext
         )
     }
 
@@ -215,7 +219,8 @@ class OllamaService {
         timeout: TimeInterval = 5.0,
         systemPrompt: String,
         useMistakes: Bool = true,
-        useHighFrequencyWords: Bool = true
+        useHighFrequencyWords: Bool = true,
+        referenceContext: String? = nil
     ) async throws -> String {
         print("🤖 [OllamaService] 开始优化文本，长度: \(text.count)")
         print("🤖 [OllamaService] API 端点: \(endpoint)")
@@ -241,6 +246,8 @@ class OllamaService {
                 print("📝 [OllamaService] 已加载高频词信息")
             }
         }
+
+        let userPrompt = Self.buildOptimizationUserPrompt(text: text, referenceContext: referenceContext)
         
         // 检测 API 类型
         let apiType = Self.detectAPIType(endpoint: endpoint)
@@ -262,7 +269,7 @@ class OllamaService {
                     ],
                     [
                         "role": "user",
-                        "content": text
+                        "content": userPrompt
                     ]
                 ],
                 "temperature": 0.3,
@@ -272,7 +279,7 @@ class OllamaService {
             // Ollama 格式（使用 prompt 和 system）
             requestBody = [
                 "model": model,
-                "prompt": text,
+                "prompt": userPrompt,
                 "system": enhancedSystemPrompt,
                 "stream": false,
                 "options": [
@@ -404,6 +411,23 @@ class OllamaService {
         print("✅ [OllamaService] 文本优化完成（\(apiTypeName)），优化后长度: \(finalText.count)")
         
         return finalText
+    }
+
+    private static func buildOptimizationUserPrompt(text: String, referenceContext: String?) -> String {
+        let trimmedContext = referenceContext?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let trimmedContext, !trimmedContext.isEmpty else {
+            return text
+        }
+
+        return """
+【同一 App 短上下文，仅供联想校正，不要复述】
+\(trimmedContext)
+
+【本次语音转写】
+\(text)
+"""
     }
     
     /// 测试 API 连接

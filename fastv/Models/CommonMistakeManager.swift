@@ -159,7 +159,11 @@ class CommonMistakeManager: ObservableObject {
         if let cached = regexCache[cacheKey] {
             return cached
         }
-        let escapedPattern = "\\b\(NSRegularExpression.escapedPattern(for: pattern))\\b"
+        let escaped = NSRegularExpression.escapedPattern(for: pattern)
+        let hasASCIIToken = pattern.range(of: "[A-Za-z0-9_]", options: .regularExpression) != nil
+        let escapedPattern = hasASCIIToken
+            ? "(?<![A-Za-z0-9_])\(escaped)(?![A-Za-z0-9_])"
+            : escaped
         var options: NSRegularExpression.Options = []
         if caseInsensitive { options.insert(.caseInsensitive) }
         if let regex = try? NSRegularExpression(pattern: escapedPattern, options: options) {
@@ -246,11 +250,26 @@ class CommonMistakeManager: ObservableObject {
     
     /// 初始化内置规则（首次运行或从 v1 迁移时）
     private func initializeBuiltInRules() {
+        let v3Key = "hasInitializedBuiltInRules_v3"
         let v2Key = "hasInitializedBuiltInRules_v2"
         let v1Key = "hasInitializedBuiltInRules_v1"
-        
-        // v2 已初始化则跳过
-        guard !UserDefaults.standard.bool(forKey: v2Key) else { return }
+
+        if UserDefaults.standard.bool(forKey: v3Key) { return }
+
+        if UserDefaults.standard.bool(forKey: v2Key) {
+            let builtInRules = getBuiltInRules()
+            let existingPairs = Set(mistakes.filter(\.isBuiltIn).map { "\($0.wrong)\u{0}\($0.correct)" })
+            let newRules = builtInRules.filter { !existingPairs.contains("\($0.wrong)\u{0}\($0.correct)") }
+
+            if !newRules.isEmpty {
+                mistakes.append(contentsOf: newRules)
+                saveMistakes()
+                print("✅ [CommonMistakeManager] 已增量加入 \(newRules.count) 条 v3 内置中英混合术语规则")
+            }
+
+            UserDefaults.standard.set(true, forKey: v3Key)
+            return
+        }
         
         // 从 v1 迁移：移除旧的内置规则，应用精简后的规则（避免过度清理叠词、数字）
         if UserDefaults.standard.bool(forKey: v1Key) {
@@ -262,6 +281,7 @@ class CommonMistakeManager: ObservableObject {
         mistakes.append(contentsOf: builtInRules)
         
         UserDefaults.standard.set(true, forKey: v2Key)
+        UserDefaults.standard.set(true, forKey: v3Key)
         UserDefaults.standard.set(true, forKey: v1Key) // 保持兼容
         saveMistakes()
         
@@ -441,6 +461,66 @@ class CommonMistakeManager: ObservableObject {
                 category: .pronoun
             ))
         }
+
+        let mixedLanguageTerminologyRules: [(String, String)] = [
+            ("麦克 app", "Mac app"),
+            ("麦克APP", "Mac app"),
+            ("麦克应用", "Mac app"),
+            ("麦克软件", "Mac app"),
+            ("马克 app", "Mac app"),
+            ("mac app", "Mac app"),
+            ("麦克 OS", "macOS"),
+            ("麦克OS", "macOS"),
+            ("麦克系统", "macOS"),
+            ("Mac OS", "macOS"),
+            ("mac os", "macOS"),
+            ("麦克电脑", "Mac"),
+            ("open ai", "OpenAI"),
+            ("chat gpt", "ChatGPT"),
+            ("g p t", "GPT"),
+            ("git hub", "GitHub"),
+            ("github", "GitHub"),
+            ("git lab", "GitLab"),
+            ("type script", "TypeScript"),
+            ("java script", "JavaScript"),
+            ("node js", "Node.js"),
+            ("react js", "React"),
+            ("vue js", "Vue.js"),
+            ("next js", "Next.js"),
+            ("nuxt js", "Nuxt.js"),
+            ("tail wind", "Tailwind CSS"),
+            ("vs code", "VS Code"),
+            ("visual studio code", "Visual Studio Code"),
+            ("x code", "Xcode"),
+            ("swift ui", "SwiftUI"),
+            ("uikit", "UIKit"),
+            ("app kit", "AppKit"),
+            ("i o s", "iOS"),
+            ("i pad o s", "iPadOS"),
+            ("watch o s", "watchOS"),
+            ("k 8 s", "Kubernetes"),
+            ("k8s", "Kubernetes"),
+            ("库伯内提斯", "Kubernetes"),
+            ("docker", "Docker"),
+            ("postgre sql", "PostgreSQL"),
+            ("postgres", "PostgreSQL"),
+            ("my sql", "MySQL"),
+            ("sqlite", "SQLite"),
+            ("mongo db", "MongoDB"),
+            ("redis", "Redis"),
+        ]
+
+        for (wrong, correct) in mixedLanguageTerminologyRules {
+            rules.append(CommonMistake(
+                wrong: wrong,
+                correct: correct,
+                frequency: 0,
+                confidence: 1.0,
+                isBuiltIn: true,
+                isEnabled: true,
+                category: .terminology
+            ))
+        }
         
         // 标点规则
         let punctuationRules: [(String, String)] = [
@@ -463,4 +543,3 @@ class CommonMistakeManager: ObservableObject {
         return rules
     }
 }
-

@@ -465,6 +465,22 @@
 "about.website" = "个人主页";
 "about.website.url" = "83d.me";
 "about.version" = "版本";
+"about.summary" = "一个低打扰的 macOS 语音输入工具：按住快捷键说话，松开后转写并插入当前输入框；需要时可用 AI 轻度整理文本。";
+"about.author_homepage" = "作者主页 · 83d.me";
+"about.other_apps" = "Rocky 的其他 App";
+"about.other_apps.summary" = "来自 83d 发布清单的一组 macOS 小伙伴。";
+"about.app.willDeep.name" = "WillDeep";
+"about.app.willDeep.summary" = "专注写作与深度编辑。";
+"about.app.timeBill.name" = "TimeBill";
+"about.app.timeBill.summary" = "时间记录与账单助手。";
+"about.app.museUploader.name" = "轻图";
+"about.app.museUploader.summary" = "截图、图片编辑与上传分享。";
+"about.app.markReader.name" = "MarkReader";
+"about.app.markReader.summary" = "清爽的 Markdown 阅读。";
+"about.app.museMail.name" = "MuseMail";
+"about.app.museMail.summary" = "安静的邮件工作流。";
+"about.app.museMate.name" = "Muse Mate";
+"about.app.museMate.summary" = "个人创作小伙伴。";
 "about.copyright" = "版权所有";
 "show.app" = "显示 %@";
 

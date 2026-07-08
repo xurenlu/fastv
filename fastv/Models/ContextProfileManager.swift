@@ -24,12 +24,18 @@ final class ContextProfileManager: ObservableObject {
         static let profiles = "contextProfiles_v1"
         static let enablePowerMode = "enablePowerMode"
         static let hasInitializedBuiltIns = "contextProfiles_hasInitializedBuiltIns_v1"
+        static let hasMigratedLightStructure = "contextProfiles_hasMigratedLightStructure_v1"
+        static let hasMigratedMixedLanguageTerms = "contextProfiles_hasMigratedMixedLanguageTerms_v1"
+        static let hasMigratedShortReferenceContext = "contextProfiles_hasMigratedShortReferenceContext_v1"
     }
 
     private init() {
         enablePowerMode = UserDefaults.standard.object(forKey: Keys.enablePowerMode) as? Bool ?? true
         load()
         initializeBuiltInsIfNeeded()
+        migrateBuiltInsForLightStructureIfNeeded()
+        migrateBuiltInsForMixedLanguageTermsIfNeeded()
+        migrateBuiltInsForShortReferenceContextIfNeeded()
     }
 
     // MARK: - 查询
@@ -116,18 +122,170 @@ final class ContextProfileManager: ObservableObject {
         save()
     }
 
+    /// 仅迁移仍保持旧出厂文案的内置预设；用户改过 promptTemplate 的预设不动。
+    private func migrateBuiltInsForLightStructureIfNeeded() {
+        guard !UserDefaults.standard.bool(forKey: Keys.hasMigratedLightStructure) else { return }
+
+        let legacyDefaults = Self.legacyBuiltInDefaults()
+        let currentDefaults = Self.builtInDefaults()
+        var didChange = false
+
+        for index in profiles.indices where profiles[index].isBuiltIn {
+            guard let legacy = legacyDefaults.first(where: { $0.promptTemplate == profiles[index].promptTemplate }),
+                  let current = currentDefaults.first(where: { Set($0.matchRules) == Set(legacy.matchRules) }) else {
+                continue
+            }
+
+            profiles[index].promptTemplate = current.promptTemplate
+            didChange = true
+        }
+
+        UserDefaults.standard.set(true, forKey: Keys.hasMigratedLightStructure)
+        if didChange {
+            save()
+        }
+    }
+
+    /// 仅迁移仍保持出厂文案的内置预设；用户改过 promptTemplate 的预设不动。
+    private func migrateBuiltInsForMixedLanguageTermsIfNeeded() {
+        guard !UserDefaults.standard.bool(forKey: Keys.hasMigratedMixedLanguageTerms) else { return }
+
+        let previousDefaults = Self.builtInDefaults(
+            includeLightStructure: true,
+            includeMixedLanguageTerms: false,
+            includeShortReferenceContext: false
+        )
+        let currentDefaults = Self.builtInDefaults()
+        var didChange = false
+
+        for index in profiles.indices where profiles[index].isBuiltIn {
+            guard let previous = previousDefaults.first(where: { $0.promptTemplate == profiles[index].promptTemplate }),
+                  let current = currentDefaults.first(where: { Set($0.matchRules) == Set(previous.matchRules) }) else {
+                continue
+            }
+
+            profiles[index].promptTemplate = current.promptTemplate
+            didChange = true
+        }
+
+        UserDefaults.standard.set(true, forKey: Keys.hasMigratedMixedLanguageTerms)
+        if didChange {
+            save()
+        }
+    }
+
+    /// 仅迁移仍保持出厂文案的内置预设；用户改过 promptTemplate 的预设不动。
+    private func migrateBuiltInsForShortReferenceContextIfNeeded() {
+        guard !UserDefaults.standard.bool(forKey: Keys.hasMigratedShortReferenceContext) else { return }
+
+        let previousDefaults = Self.builtInDefaults(
+            includeLightStructure: true,
+            includeMixedLanguageTerms: true,
+            includeShortReferenceContext: false
+        )
+        let currentDefaults = Self.builtInDefaults()
+        var didChange = false
+
+        for index in profiles.indices where profiles[index].isBuiltIn {
+            guard let previous = previousDefaults.first(where: { $0.promptTemplate == profiles[index].promptTemplate }),
+                  let current = currentDefaults.first(where: { Set($0.matchRules) == Set(previous.matchRules) }) else {
+                continue
+            }
+
+            profiles[index].promptTemplate = current.promptTemplate
+            didChange = true
+        }
+
+        UserDefaults.standard.set(true, forKey: Keys.hasMigratedShortReferenceContext)
+        if didChange {
+            save()
+        }
+    }
+
     // MARK: - 内置预设
 
     /// 4 个出厂预设。它们的 promptTemplate 在用户首次进入设置时可被改写，
     /// 也支持通过 resetBuiltInsToDefault() 还原。
     static func builtInDefaults() -> [ContextProfile] {
+        builtInDefaults(
+            includeLightStructure: true,
+            includeMixedLanguageTerms: true,
+            includeShortReferenceContext: true
+        )
+    }
+
+    private static func legacyBuiltInDefaults() -> [ContextProfile] {
+        builtInDefaults(
+            includeLightStructure: false,
+            includeMixedLanguageTerms: false,
+            includeShortReferenceContext: false
+        )
+    }
+
+    private static func builtInDefaults(
+        includeLightStructure: Bool,
+        includeMixedLanguageTerms: Bool,
+        includeShortReferenceContext: Bool
+    ) -> [ContextProfile] {
+        let sharedStructureRules = includeLightStructure
+            ? """
+- 多事项内容可以用短列表提升可读性
+- 如果原文天然包含多个事项、条件、步骤或请求，可以整理成 2-5 条短列表；不要强行列表化单句闲聊，不要新增原文没有的信息
+"""
+            : ""
+        let sharedMixedLanguageRules = includeMixedLanguageTerms
+            ? """
+- 高置信度修正常见中英混合术语、产品名、技术词和流行词：麦克 app→Mac app，麦克 OS / Mac OS→macOS，open ai→OpenAI，chat gpt→ChatGPT，git hub→GitHub，type script→TypeScript，swift ui→SwiftUI，vs code→VS Code
+- 只在语境明确时修正；不确定时保留原文，不要臆造术语或新增信息
+"""
+            : ""
+        let sharedReferenceContextRules = includeShortReferenceContext
+            ? """
+- 如果用户消息包含“同一 App 短上下文”，只把它当作当前 App 当前输入框光标前的一小段参考，用于修正本次语音里的同音/近音错误；例如编程语境中“保持工作去干净”应修正为“保持工作区干净”
+- 不要复述、总结、续写短上下文；不要引入其他 App、历史会话、全局记忆或外部事实
+"""
+            : ""
+        let emailFormatRules = includeLightStructure
+            ? """
+- 必要时拆段
+\(sharedStructureRules)
+- 称呼/结尾敬语自然保留
+"""
+            : """
+- 必要时拆段
+- 称呼/结尾敬语自然保留
+"""
+        let conversationalFormatRules = includeLightStructure
+            ? """
+- 短句更短，不要硬塞书面语
+\(sharedStructureRules)
+"""
+            : "- 短句更短，不要硬塞书面语"
+        let codeOutputRules = includeLightStructure
+            ? """
+- 涉及 API/类型/函数名时保留原大小写（iPhone / OpenAI / NSURL）
+- 如果口述包含多项 TODO、步骤或条件，可以输出多行 `// - ` 列表注释；否则保持默认单行注释
+- 不输出中文，除非口述明确要求"中文注释"
+"""
+            : """
+- 涉及 API/类型/函数名时保留原大小写（iPhone / OpenAI / NSURL）
+- 不输出中文，除非口述明确要求"中文注释"
+"""
+        let slackListRules = includeLightStructure
+            ? """
+- 列表型内容用 - 项目符号
+\(sharedStructureRules)
+"""
+            : "- 列表型内容用 - 项目符号"
+
         let emailPrompt = """
 你是一个邮件语境的语音输入优化助手。把口述文本改写成正式、礼貌、适合邮件正文的书面语。
 
 【规则】
 - 去口水词、加标点
-- 必要时拆段
-- 称呼/结尾敬语自然保留
+\(emailFormatRules)
+\(sharedMixedLanguageRules)
+\(sharedReferenceContextRules)
 - 不要新增原文没有的信息
 - 只输出改写后的正文，不要加引号或解释
 
@@ -139,9 +297,11 @@ final class ContextProfileManager: ObservableObject {
 
 【规则】
 - 去掉无意义填充词（嗯/啊/那个/就是）但保留语气
-- 短句更短，不要硬塞书面语
+\(conversationalFormatRules)
 - 不加多余敬语
 - 中英文之间留半角空格
+\(sharedMixedLanguageRules)
+\(sharedReferenceContextRules)
 - 只输出改写后的文本
 
 当前应用：{appName}
@@ -153,8 +313,9 @@ final class ContextProfileManager: ObservableObject {
 【规则】
 - 默认输出 `// ` 开头的单行英文注释；如口述含有"多行""block"等词则输出 `/* ... */`
 - 去口水词、保留技术术语
-- 涉及 API/类型/函数名时保留原大小写（iPhone / OpenAI / NSURL）
-- 不输出中文，除非口述明确要求"中文注释"
+\(codeOutputRules)
+\(sharedMixedLanguageRules)
+\(sharedReferenceContextRules)
 - 只输出注释/标识符本身
 
 当前应用：{appName}
@@ -166,7 +327,9 @@ final class ContextProfileManager: ObservableObject {
 【规则】
 - 去口水词、加必要标点
 - 涉及代码片段时用 `code` 反引号
-- 列表型内容用 - 项目符号
+\(slackListRules)
+\(sharedMixedLanguageRules)
+\(sharedReferenceContextRules)
 - 称呼以 @name 形式时保留 @ 符号
 - 只输出改写后的消息
 

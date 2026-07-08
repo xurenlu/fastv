@@ -4,7 +4,7 @@
 
 > v2.0.0 起，妙打收敛为**纯语音输入工具**；邮箱、视频、Todo 等历史产品线已不在主线。
 >
-> 当前版本：**v2.1.1-rc2**。最近一轮按 VoiceInk / Superwhisper / TypeWhisper / Wispr Flow / VocaMac 做了竞品调研，补齐了**热键三模式 / 术语包 / Power Mode / 跟随光标**四件套。
+> 当前版本：**v2.2.0-rc5**。最近一轮按 VoiceInk / Superwhisper / TypeWhisper / Wispr Flow / VocaMac 做了竞品调研，补齐了**热键三模式 / 术语包 / Power Mode / 跟随光标**四件套，增强 AI 语音输入的轻度结构化整理、中英混合术语校正、同 App 短上下文联想校正，并刷新关于窗口。
 
 ## ✨ 核心功能
 
@@ -106,7 +106,7 @@ cd stt-api && pip install -r requirements.txt && python stt_api.py --port 50002
 bash scripts/run_unit_tests.sh
 ```
 
-当前共 **41 个单测 / 6 个 suite**，覆盖：热键状态机、术语包优先级与大小写命中、ContextProfile 匹配优先级与占位符渲染、CursorPositionLocator clamp 数学、AIScenario 与 Markdown 解析等。
+当前共 **45 个单测 / 6 个 suite**，覆盖：热键状态机、术语包优先级与大小写命中、中英混合术语内置规则、同 App 短上下文截断、ContextProfile 匹配优先级与占位符渲染、CursorPositionLocator clamp 数学、AIScenario 与 Markdown 解析等。
 
 ## 🧩 依赖与致谢
 

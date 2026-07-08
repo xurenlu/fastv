@@ -11,7 +11,6 @@ import SwiftUI
 /// 包含：内存监控、历史记录管理、权限测试、支持与推荐
 struct DataOtherSettingsTab: View {
     @ObservedObject var preferences = UserPreferences.shared
-    @State private var showAbout = false
     @State private var showMemoryMonitor = false
 
     var body: some View {
@@ -41,7 +40,7 @@ struct DataOtherSettingsTab: View {
             // 关于
             Section {
                 Button(action: {
-                    showAbout = true
+                    AboutWindowOpener.open()
                 }) {
                     HStack {
                         Image(systemName: "info.circle.fill")
@@ -124,9 +123,6 @@ struct DataOtherSettingsTab: View {
             }
         }
         .formStyle(.grouped)
-        .sheet(isPresented: $showAbout) {
-            AboutView()
-        }
         .sheet(isPresented: $showMemoryMonitor) {
             MonitorChartView()
                 .frame(minWidth: 600, minHeight: 500)
@@ -137,4 +133,3 @@ struct DataOtherSettingsTab: View {
 #Preview {
     DataOtherSettingsTab()
 }
-
