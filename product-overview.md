@@ -2,7 +2,7 @@
 
 ## 当前设计思路
 
-MuseType（妙打）定位为 macOS 上的低打扰语音输入工具。应用优先保持后台常驻，通过全局快捷键、悬浮波形和本地语音转写能力，把 AI 语音输入送到用户正在使用的输入场景里。
+轻语（QEcho）定位为 macOS 上的低打扰语音输入工具。应用优先保持后台常驻，通过全局快捷键、悬浮波形和本地语音转写能力，把 AI 语音输入送到用户正在使用的输入场景里。
 
 ## 主要功能
 
@@ -11,7 +11,7 @@ MuseType（妙打）定位为 macOS 上的低打扰语音输入工具。应用�
 - Power Mode（场景感知 prompt）：按前台 App / 浏览器 URL 自动切换 AI 后处理 prompt 模板。出厂内置 4 套预设（邮件正式 / Slack 简短 / IM 口语 / IDE 代码注释），用户可加自定义场景（bundleId / URL 通配 / App 名 contains 三种匹配规则 OR 组合）。AX 抽 Safari/Chrome/Arc/Brave/Edge/Firefox 当前 tab URL，1s 缓存。
 - 悬浮指示器位置：除「左上 / 右上 / 左下 / 右下 / 正中下方」5 个固定位置之外，新增「跟随光标」—— 录音期间小指示器贴着输入光标移动（AX 拿 caret bounds 优先，失败兜底鼠标位置）。
 - 主窗口界面皮肤：可在设置中切换系统默认、清爽浅色、纸感与多套深色风格；深色皮肤使用浅色文字，保证暗背景可读。
-- 关于窗口：独立 macOS 窗口展示妙打版本、作者主页、隐私承诺，以及 83d 系列推荐应用。
+- 关于窗口：独立 macOS 窗口展示轻语版本、作者主页、隐私承诺，以及 83d 系列推荐应用。
 - AI 语音优化：AI 快捷键可对转写文本进行口语化清理、标点补全、错字修正和轻度结构化整理；当口述内容天然包含多个事项、条件、步骤或请求时，可整理成 2-5 条短列表。
 - 中英混合术语校正：内置高置信度术语/流行技术词规则（如 `麦克 app → Mac app`、`Mac OS → macOS`、`open ai → OpenAI`、`git hub → GitHub`、`type script → TypeScript`），并通过默认 AI prompt 处理需要语境推断的产品名、技术词和流行词。
 - 同 App 短上下文联想校正：AI 语音优化会读取当前焦点输入框光标前的小段文本，只在同一 App / 当前输入框内作为参考，用于修正同音或近音误识别；动态上下文放在 user message，固定规则保留在 system prompt 以提高 DeepSeek / Kimi 等模型的 cache rate。
@@ -33,20 +33,21 @@ MuseType（妙打）定位为 macOS 上的低打扰语音输入工具。应用�
 
 ## 版本记录
 
-- `2.2.0-rc5`：关于页推荐应用收口轻图（MusePic / qingtu），图片编辑、截图、上传分享类产品不再展示 MuseSnip / 简图。
+- `2.2.0-rc6`：品牌升级为轻语（QEcho），应用产物输出为 `QEcho.app`，关于页推荐应用统一为 Q 系列命名。
+- `2.2.0-rc5`：关于页推荐应用收口轻图（QPic / qpic），图片编辑、截图、上传分享类产品不再展示 MuseSnip / 简图。
 - `2.2.0-rc4`：AI 后处理新增同 App 短上下文联想校正。优化语音时读取当前焦点输入框光标前最多 260 个 UTF-16 字符，只作为当前 App / 当前输入框参考，帮助把“保持工作去干净”这类同音误识别修成“保持工作区干净”。默认系统提示词与 Power Mode 4 个内置 prompt 同步加入“不复述上下文、不跨 App 使用历史、不引入外部事实”的约束；动态上下文放在 user message，固定规则留在 system prompt 以提升 DeepSeek / Kimi 等模型的 cache rate。
 
 - `2.2.0-rc3`：AI 后处理新增中英混合与流行术语校正。内置规则增量加入 `麦克 app → Mac app`、`麦克 OS / Mac OS → macOS`、`open ai → OpenAI`、`git hub → GitHub`、`type script → TypeScript`、`swift ui → SwiftUI`、`vs code → VS Code`、`k8s → Kubernetes` 等高置信度替换；默认系统提示词和 Power Mode 4 个内置 prompt 同步加入“只在语境明确时修正，不确定时保留原文”的 AI 约束。常错词正则边界改为适配中文上下文的 ASCII 边界，并新增对应单测。
 
-- `2.2.0-rc2`：关于窗口刷新为独立 700×500 macOS 窗口，移植 MuseTerm 的布局结构与推荐应用网格，但内容替换为妙打自己的语音输入定位、隐私承诺、版本信息和作者主页入口。新增企鹅动画帧、推荐应用图标资源，并补齐中 / 英 / 日 / 韩 / 粤 5 语种 About 本地化文案。
+- `2.2.0-rc2`：关于窗口刷新为独立 700×500 macOS 窗口，移植 MuseTerm 的布局结构与推荐应用网格，但内容替换为轻语自己的语音输入定位、隐私承诺、版本信息和作者主页入口。新增企鹅动画帧、推荐应用图标资源，并补齐中 / 英 / 日 / 韩 / 粤 5 语种 About 本地化文案。
 
 - `2.2.0-rc1`：AI 语音输入提示词新增输入法级别的轻度结构化整理。默认 prompt 在多事项、条件、步骤、问题或请求场景可整理成 2-5 条短列表，同时明确不强行列表化单句闲聊、不新增原文没有的信息。Power Mode 邮件 / Slack / IM 预设同步增强，IDE 预设仅对多项 TODO、步骤或条件允许多行 `// - ` 注释列表。旧出厂默认 prompt 与仍未修改的内置预设会温和迁移，用户自定义模板保持不动。
 
 - `2.1.1-rc2`：清理主线工程里已废弃邮件链路留下的 `libetpan.a` 及其 CFNetwork/Security/zlib/sasl/iconv/resolv 依赖链接项和 `ThirdParty/libetpan/include/**` 头文件搜索路径。当前源码不再包含邮件调用层，继续链接 libetpan 只会增加旧构建/误链接触发 `mailstream_cfstream.c:912` QoS 优先级反转诊断的机会；第三方 libetpan 源码保持不改，后续如恢复邮件功能，应继续把 IMAP/SMTP 阻塞 I/O 放在 `.utility` QoS。
 
-- `2.1.0`：定版。竞品调研驱动的「四件套」补齐，覆盖 rc1 → rc6 全部已 ship 能力：热键三模式 + 术语包（rc1）、SwiftUI 测试 host 修复（rc3）、Power Mode 上下文 prompt 模板（rc4）、MuseType 品牌图标（rc5）、光标旁悬浮指示器（rc6）。全套 41 个单测通过。Batch 4「语音指令编辑」单独立项。
+- `2.1.0`：定版。竞品调研驱动的「四件套」补齐，覆盖 rc1 → rc6 全部已 ship 能力：热键三模式 + 术语包（rc1）、SwiftUI 测试 host 修复（rc3）、Power Mode 上下文 prompt 模板（rc4）、QEcho 品牌图标（rc5）、光标旁悬浮指示器（rc6）。全套 41 个单测通过。Batch 4「语音指令编辑」单独立项。
 - `2.1.0-rc6`：竞品调研第三批 — **光标旁悬浮指示器（Follow Cursor）**。`WaveformWindowPosition` 新增 `.followCursor` 枚举；`Services/CursorPositionLocator.swift` AX 优先链（`AXFocusedUIElement` → `AXSelectedTextRange` → `AXBoundsForRangeParameterizedAttribute` 拿 caret bounds，失败回退 focused element frame，再失败回退 `NSEvent.mouseLocation`）；`WaveformWindowManager` 加 50ms `followCursorTimer`，仅 followCursor 模式启动、hide / cleanup 即销毁。新增 `CursorPositionLocatorTests` 6 例（clamp 数学 + 多屏 + 负坐标）。5 语种 i18n 补齐 6 个位置 displayName + 1 个 hint。
-- `2.1.0-rc5`：应用与 DMG 图标统一到 MuseType 新品牌。`AppIcon.appiconset` 全尺寸替换为脉冲麦克风 Logo；新增 `assets/brand/musetype-dmg-volume.icns`，打包脚本创建 DMG 时写入 `.VolumeIcon.icns` 并设置卷标自定义图标；品牌资产目录保留深浅色图形标、中英文组合字标与 PNG 尺寸导出。
+- `2.1.0-rc5`：应用与 DMG 图标统一到 QEcho 新品牌。`AppIcon.appiconset` 全尺寸替换为脉冲麦克风 Logo；新增 `assets/brand/musetype-dmg-volume.icns`，打包脚本创建 DMG 时写入 `.VolumeIcon.icns` 并设置卷标自定义图标；品牌资产目录保留深浅色图形标、中英文组合字标与 PNG 尺寸导出。
 - `2.1.0-rc4`：竞品调研第二批 — **Power Mode（上下文感知 prompt 模板）**。新增 `AppContextResolver`（NSWorkspace.frontmost + AX 抽浏览器 URL，1s 缓存）、`ContextProfile` / `MatchRule` 模型（bundleId 100 / urlPattern 50 / appNameContains 10 三档优先级 + `*` 通配）、`ContextProfileManager`（UserDefaults 持久化 + 出厂 4 内置预设：邮件 / Slack / IM / IDE）。`fastvApp.swift` 两个 polish 调用点注入 `resolveSystemPrompt(...)`，未启用 / 未命中走默认 `aiSystemPrompt`。设置 → AI 与模型 新增 Power Mode section 与 `ContextProfileEditorView` 编辑面板。5 语种 i18n。
 - `2.1.0-rc2`：清理 v2.0.0-rc1 产品收敛后遗留的 3 个废测试。`EmailRemoteImageBlockingTests.swift` 与 `EmailTranslateStripTests.swift` 整文件删除（引用已不存在的 `EmailBodyWebViewRepresentable.stripRemoteImageSources` / `EmailViewModel.stripHTMLTagsForTranslate`），`MeetingRichDocTests.swift` 顶部 6 个引用已删 `decideRichDocTrigger` 的用例删除，保留下方 Markdown / `AIScenario` 4 个仍然有效的用例。`fastvTests` 目录里不再有 `#if false` 临时屏蔽段。
 - `2.1.0-rc1`：竞品调研驱动的首批补齐。
@@ -63,8 +64,8 @@ MuseType（妙打）定位为 macOS 上的低打扰语音输入工具。应用�
 - `2.0.0-rc7`：回滚 rc6 的 ONNX `IntraOp=1` 实验。`ONNXRuntimeWrapper.numThreads` 恢复 `max(4, activeProcessorCount)`，删 `intraOpNumThreads` 常量。rc5 关掉的二次拼接保留。
 - `2.0.0-rc6`：实验性把 ONNX `SetIntraOpNumThreads` 从 `max(4, activeProcessorCount)` 改为 `1`，验证「多 ONNX 推理互抢线程」假设。注意 IntraOp 控制单次推理内部并行，不是 session 并发，理论上单次推理时间会数倍上升。常量 `ONNXRuntimeWrapper.intraOpNumThreads` 提到类顶部方便一行回滚。
 - `2.0.0-rc5`：关掉 AI 模式下的「二次拼接转写」。原机制在录音中累计 ≥3 段后会把音频合并再跑一遍 ONNX 提准，但它和前台分段转写抢 ONNX session，让分段感觉变慢；AI 模式本来就有 AI Polish 文本兜底，边际收益不值这个 CPU。新增 `enableBatchRefinementTranscription = false` 编译开关 short-circuit 掉触发点，相关代码（scheduleBatchRefinementTranscription / runBatchRefinementTranscription / partitionSegmentsForBatchRefinement）保留以备 A/B 或回滚。普通快捷键走实时插入分支，本就不触发，不受影响。
-- `2.0.0-rc4`：去掉主窗口左右分栏。妙打收敛为纯语音输入工具后，左侧 160pt 的「功能」侧栏只剩 `voiceInput` 一个孤零零的入口，视觉负担大于信息密度。`ContentView` 直接渲染 `VoiceInputView` + 齿轮 toolbar + 设置 sheet，主窗口 minSize 720×520 → 560×520，删除 `SidebarItem` / `SidebarItemRow` 以及 `HSplitView` 结构。
-- `1.4.3-rc9`：改名遗留收尾 + 邮件点开真正变已读。(1) 5 个 `Localizable.strings`（en/zh-Hans/ja/ko/yue）的 `app.name` 与所有 `onboarding.welcome` / `welcome.title` / 权限引导文案，外加 5 个 `InfoPlist.strings` 的 `CFBundleDisplayName`，外加 `pbxproj` 里 `INFOPLIST_KEY_CFBundleDisplayName` + 三段权限描述，一次性全部统一为 `MuseType`（en）/ `妙打`（zh-Hans/ja/ko/yue）。当时为避免 TCC 权限失效暂未改工程身份；`2.0.0-rc8` 已完成工程身份迁移。(2) `EmailViewModel.markAsRead` 改成乐观更新：先把 isRead=true 写进 EmailStore（UI 立即变已读），再异步走 IMAP STORE \Seen，IMAP 失败只记日志不回滚本地，依赖 `EmailStore.addMessages` 的 `isRead = server ? server : existing` OR-merge 兜底保住本地读态。
+- `2.0.0-rc4`：去掉主窗口左右分栏。轻语收敛为纯语音输入工具后，左侧 160pt 的「功能」侧栏只剩 `voiceInput` 一个孤零零的入口，视觉负担大于信息密度。`ContentView` 直接渲染 `VoiceInputView` + 齿轮 toolbar + 设置 sheet，主窗口 minSize 720×520 → 560×520，删除 `SidebarItem` / `SidebarItemRow` 以及 `HSplitView` 结构。
+- `1.4.3-rc9`：改名遗留收尾 + 邮件点开真正变已读。(1) 5 个 `Localizable.strings`（en/zh-Hans/ja/ko/yue）的 `app.name` 与所有 `onboarding.welcome` / `welcome.title` / 权限引导文案，外加 5 个 `InfoPlist.strings` 的 `CFBundleDisplayName`，外加 `pbxproj` 里 `INFOPLIST_KEY_CFBundleDisplayName` + 三段权限描述，一次性全部统一为 `QEcho`（en）/ `轻语`（zh-Hans/ja/ko/yue）。当时为避免 TCC 权限失效暂未改工程身份；`2.0.0-rc8` 已完成工程身份迁移。(2) `EmailViewModel.markAsRead` 改成乐观更新：先把 isRead=true 写进 EmailStore（UI 立即变已读），再异步走 IMAP STORE \Seen，IMAP 失败只记日志不回滚本地，依赖 `EmailStore.addMessages` 的 `isRead = server ? server : existing` OR-merge 兜底保住本地读态。
 - `1.4.3-rc8`：邮件签名编辑器三连改造：(1) 布局从 `Form` 重构为 `ScrollView + VStack`，可用变量从两列稀疏卡片改为 `LazyVGrid` adaptive 紧凑芯片，4 行 footer 折叠到 `DisclosureGroup`，窗体 `minHeight` 600 → 520；(2) 引入 `SignatureEditorController` + 自定义 `SignatureTextEditor`(NSViewRepresentable 包 NSTextView)，变量芯片点击走 `replaceCharacters(in: selectedRange, with:)` 插入到光标位置，支持 Undo，光标自动推到插入末尾；(3) 内置签名样式从 11 套扩到 17 套，新增「精致样式」分组（品牌卡片 / 左色条 / 暖色线条 / 渐变玻璃 / 蒙德里安 / 黑白胶囊）。HTML 编辑时 NSTextView 用等宽字体。
 - `1.4.3-rc7`：修「已发送(本地)」虚拟文件夹被后台同步无差别 IMAP `selectFolder` 触发 NON_EXISTANT_FOLDER（错码 33）的告警刷屏，连带修「点开本地已发送邮件不被标已读」（IMAP 抛错导致 ViewModel.markAsRead 走 catch 分支，本地 `isRead = true` 写库被跳过）。`EmailFolder` 加 `isLocal` 计算属性（以 `path == "__LocalSent__"` 判定）；`EmailService` 全部 IMAP 入口（sync/markAsRead/delete/star/move/fetchBody/fetchRaw/downloadAttachment/search）对本地文件夹短路；`EmailViewModel.startBackgroundSyncTask` 循环顶部 `if folder.isLocal { continue }` 双保险。
 - `1.4.3-rc6`：消掉 Xcode runtime 的 `mailstream_cfstream.c:912` 优先级反转告警。libetpan CFStream runloop 跑在 Default QoS，调用线程被钉到 UserInitiated 时会触发 "User-initiated waiting on a lower QoS thread"。`LibEtPanWrapper.m` 的 `ensureUserInitiatedQoS` 函数体改为 `QOS_CLASS_UTILITY`；`EmailService.swift` 中 16 处包 IMAP/SMTP 同步调用的 `Task.detached(priority: .userInitiated)` 全部降为 `.utility`（已存在的 `.background` 后台同步保持不动）。

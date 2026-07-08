@@ -1,12 +1,12 @@
 /* 
   Localizable.strings
-  typecho
+  QEcho
 
   English
 */
 
 // General
-"app.name" = "MuseType";
+"app.name" = "QEcho";
 "settings.section.general" = "General";
 "hide.dock.icon" = "Hide icon in Dock";
 "hide.dock.icon.description" = "When enabled, the app stays only in the menu bar with no Dock icon. Reopen the window anytime from the menu bar icon.";
@@ -181,7 +181,7 @@
 "stats.realtime.factor.unit" = "x";
 
 // Onboarding
-"onboarding.welcome" = "Welcome to MuseType";
+"onboarding.welcome" = "Welcome to QEcho";
 "onboarding.set.shortcut.title" = "Set Shortcut";
 "onboarding.set.shortcut.description" = "Please set a global shortcut to start voice input";
 "onboarding.select.language.title" = "Select Default Language";
@@ -259,7 +259,7 @@
 "model.download.url.placeholder" = "Enter model download URL";
 
 // Welcome Page
-"welcome.title" = "Welcome to MuseType";
+"welcome.title" = "Welcome to QEcho";
 "welcome.subtitle" = "Smart Voice Input";
 "welcome.feature.global.shortcut" = "Global Shortcut";
 "welcome.feature.global.shortcut.desc" = "Set shortcuts to press in any app's text field to speak and input text";
@@ -274,7 +274,7 @@
 
 // Permissions
 "microphone.permission.required" = "Microphone Permission Required";
-"microphone.permission.description" = "Voice input requires microphone access.\n\nPlease follow these steps:\n1. Open \"System Settings\"\n2. Go to \"Privacy & Security\" > \"Microphone\"\n3. Find MuseType and check it\n4. Restart the app";
+"microphone.permission.description" = "Voice input requires microphone access.\n\nPlease follow these steps:\n1. Open \"System Settings\"\n2. Go to \"Privacy & Security\" > \"Microphone\"\n3. Find QEcho and check it\n4. Restart the app";
 "open.system.settings" = "Open System Settings";
 "later" = "Later";
 "microphone.in.use" = "Microphone In Use";
@@ -323,13 +323,13 @@
 "permission.test.trigger" = "Trigger Permission Request";
 "permission.test.description" = "Will attempt to access microphone to trigger system permission dialog.\n\nIf permission dialog appears, please click \"Allow\".";
 "permission.request.title" = "Request Microphone Permission";
-"permission.request.description" = "System will show permission request dialog.\n\nPlease click \"Allow\" to authorize MuseType to access microphone.";
+"permission.request.description" = "System will show permission request dialog.\n\nPlease click \"Allow\" to authorize QEcho to access microphone.";
 "permission.granted.title" = "✅ Microphone Permission Granted";
 "permission.granted.description" = "You have successfully granted microphone permission!\n\nYou can now use voice input feature.";
 "permission.already.granted.title" = "✅ Microphone Permission Granted";
 "permission.already.granted.description" = "You have already granted microphone permission.\n\nYou can use voice input feature directly.";
 "permission.denied.title" = "⚠️ Microphone Permission Denied";
-"permission.denied.description" = "Voice input requires microphone permission.\n\nPlease follow these steps to manually authorize:\n1. Open \"System Settings\"\n2. Go to \"Privacy & Security\" > \"Microphone\"\n3. Find MuseType and check it";
+"permission.denied.description" = "Voice input requires microphone permission.\n\nPlease follow these steps to manually authorize:\n1. Open \"System Settings\"\n2. Go to \"Privacy & Security\" > \"Microphone\"\n3. Find QEcho and check it";
 "continue" = "Continue";
 "great" = "Great";
 
@@ -473,14 +473,14 @@
 "about.app.willDeep.summary" = "Focused writing and deep editing.";
 "about.app.timeBill.name" = "TimeBill";
 "about.app.timeBill.summary" = "Time tracking and billing companion.";
-"about.app.museUploader.name" = "MusePic";
-"about.app.museUploader.summary" = "Screenshot, image editing, and upload sharing.";
-"about.app.markReader.name" = "MarkReader";
+"about.app.museUploader.name" = "QPic";
+"about.app.museUploader.summary" = "Screenshots, image editing, and upload sharing.";
+"about.app.markReader.name" = "QMarkView";
 "about.app.markReader.summary" = "Clean Markdown reading.";
-"about.app.museMail.name" = "MuseMail";
-"about.app.museMail.summary" = "Quiet email workflows.";
-"about.app.museMate.name" = "Muse Mate";
-"about.app.museMate.summary" = "Personal creative companion.";
+"about.app.museMail.name" = "QMailMate";
+"about.app.museMail.summary" = "AI email writing, triage, summaries, and replies.";
+"about.app.museMate.name" = "QNote";
+"about.app.museMate.summary" = "Light notes and Markdown writing.";
 "about.copyright" = "Copyright";
 "show.app" = "Show %@";
 

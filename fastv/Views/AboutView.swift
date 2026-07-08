@@ -58,7 +58,7 @@ struct AboutView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 2)
 
-                Link(destination: URL(string: "https://83d.me/products/typecho")!) {
+                Link(destination: URL(string: "https://83d.me/products/qecho")!) {
                     Label(NSLocalizedString("about.author_homepage", comment: ""), systemImage: "arrow.up.right")
                         .font(.callout.weight(.medium))
                 }
@@ -213,13 +213,13 @@ private enum AboutRecommendedApp: String, CaseIterable, Identifiable {
         case .timeBill:
             return URL(string: "https://83d.me/products/timebill")!
         case .museUploader:
-            return URL(string: "https://83d.me/products/qingtu")!
+            return URL(string: "https://83d.me/products/qpic")!
         case .markReader:
-            return URL(string: "https://83d.me/products/markreader")!
+            return URL(string: "https://83d.me/products/qmarkview")!
         case .museMail:
-            return URL(string: "https://83d.me/products/musemail")!
+            return URL(string: "https://83d.me/products/qmailmate")!
         case .museMate:
-            return URL(string: "https://83d.me/products/musemate")!
+            return URL(string: "https://83d.me/products/qnote")!
         }
     }
 }

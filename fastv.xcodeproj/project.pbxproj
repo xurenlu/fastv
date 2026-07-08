@@ -29,7 +29,7 @@
 
 /* Begin PBXFileReference section */
 		29D214D841CB811225CD3A43 /* Pods-typecho.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-typecho.debug.xcconfig"; path = "Target Support Files/Pods-typecho/Pods-typecho.debug.xcconfig"; sourceTree = "<group>"; };
-		5C04237E2ECD792D00821B50 /* musetype.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = musetype.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5C04237E2ECD792D00821B50 /* QEcho.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QEcho.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C04238D2ECD793000821B50 /* typecho.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = typecho.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C0423972ECD793000821B50 /* fastvUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = fastvUITests.xctest; path = typecho.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C1000012F00000100527815 /* musetype.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = musetype.xctestplan; sourceTree = "<group>"; };
@@ -110,7 +110,7 @@
 		5C04237F2ECD792D00821B50 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				5C04237E2ECD792D00821B50 /* musetype.app */,
+				5C04237E2ECD792D00821B50 /* QEcho.app */,
 				5C04238D2ECD793000821B50 /* typecho.xctest */,
 				5C0423972ECD793000821B50 /* fastvUITests.xctest */,
 			);
@@ -149,7 +149,7 @@
 			);
 			name = musetype;
 			productName = musetype;
-			productReference = 5C04237E2ECD792D00821B50 /* musetype.app */;
+			productReference = 5C04237E2ECD792D00821B50 /* QEcho.app */;
 			productType = "com.apple.product-type.application";
 		};
 		5C04238C2ECD793000821B50 /* fastvTests */ = {
@@ -520,7 +520,7 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -532,14 +532,14 @@
 					"$(SRCROOT)/ThirdParty",
 					/opt/homebrew/include,
 				);
-				INFOPLIST_KEY_CFBundleDisplayName = "妙打";
+				INFOPLIST_KEY_CFBundleDisplayName = "轻语";
 				INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)";
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "妙打 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "轻语需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "妙打 需要访问您的麦克风以进行语音输入和语音转文字功能。";
-				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "妙打 需要访问您的提醒事项以同步待办事项到 AI Todo 功能中。应用只会读取未完成的提醒事项，不会修改或删除您的提醒事项。";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "轻语需要访问您的麦克风以进行语音输入和语音转文字功能。";
+				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "轻语需要访问您的提醒事项以同步待办事项到 AI Todo 功能中。应用只会读取未完成的提醒事项，不会修改或删除您的提醒事项。";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -551,13 +551,14 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.2.0-rc5";
+				MARKETING_VERSION = "2.2.0-rc6";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.17push.musetype;
-				PRODUCT_NAME = musetype;
+				PRODUCT_NAME = QEcho;
+				PRODUCT_MODULE_NAME = musetype;
 				REGISTER_APP_GROUPS = YES;
 				SCRIPTING_DEFINITION_FILE = fastv/fastv.sdef;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -579,7 +580,7 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -591,14 +592,14 @@
 					"$(SRCROOT)/ThirdParty",
 					/opt/homebrew/include,
 				);
-				INFOPLIST_KEY_CFBundleDisplayName = "妙打";
+				INFOPLIST_KEY_CFBundleDisplayName = "轻语";
 				INFOPLIST_KEY_CFBundleShortVersionString = "$(MARKETING_VERSION)";
 				INFOPLIST_KEY_CFBundleVersion = "$(CURRENT_PROJECT_VERSION)";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "妙打 需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "轻语需要辅助功能权限以监听全局快捷键、访问剪贴板并自动将识别文本插入到其他应用的输入框中。";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "妙打 需要访问您的麦克风以进行语音输入和语音转文字功能。";
-				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "妙打 需要访问您的提醒事项以同步待办事项到 AI Todo 功能中。应用只会读取未完成的提醒事项，不会修改或删除您的提醒事项。";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "轻语需要访问您的麦克风以进行语音输入和语音转文字功能。";
+				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "轻语需要访问您的提醒事项以同步待办事项到 AI Todo 功能中。应用只会读取未完成的提醒事项，不会修改或删除您的提醒事项。";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -610,13 +611,14 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.2.0-rc5";
+				MARKETING_VERSION = "2.2.0-rc6";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.17push.musetype;
-				PRODUCT_NAME = musetype;
+				PRODUCT_NAME = QEcho;
+				PRODUCT_MODULE_NAME = musetype;
 				REGISTER_APP_GROUPS = YES;
 				SCRIPTING_DEFINITION_FILE = fastv/fastv.sdef;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -635,7 +637,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -655,7 +657,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.2.0-rc5";
+				MARKETING_VERSION = "2.2.0-rc6";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -663,7 +665,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/musetype.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/musetype";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/QEcho.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/QEcho";
 			};
 			name = Debug;
 		};
@@ -673,7 +675,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -693,7 +695,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.2.0-rc5";
+				MARKETING_VERSION = "2.2.0-rc6";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -701,7 +703,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/musetype.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/musetype";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/QEcho.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/QEcho";
 			};
 			name = Release;
 		};
@@ -710,10 +712,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.2.0-rc5";
+				MARKETING_VERSION = "2.2.0-rc6";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -730,10 +732,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.2.0-rc5";
+				MARKETING_VERSION = "2.2.0-rc6";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;

@@ -1,12 +1,12 @@
 /* 
   Localizable.strings
-  妙打
+  輕語
 
   粵語（繁體中文）
 */
 
 // 通用
-"app.name" = "妙打";
+"app.name" = "輕語";
 "settings.section.general" = "一般";
 "hide.dock.icon" = "喺 Dock 度收埋圖標";
 "hide.dock.icon.description" = "開咗之後淨係喺選單列常駐，Dock 唔再顯示圖標。要用嘅時候可以喺選單列圖標度重新開窗。";
@@ -30,13 +30,13 @@
 "about.app.timeBill.name" = "TimeBill";
 "about.app.timeBill.summary" = "時間記錄同帳單助手。";
 "about.app.museUploader.name" = "輕圖";
-"about.app.museUploader.summary" = "截圖、圖片編輯同上傳分享。";
-"about.app.markReader.name" = "MarkReader";
-"about.app.markReader.summary" = "清爽嘅 Markdown 閱讀。";
-"about.app.museMail.name" = "MuseMail";
-"about.app.museMail.summary" = "安靜嘅郵件工作流。";
-"about.app.museMate.name" = "Muse Mate";
-"about.app.museMate.summary" = "個人創作小伙伴。";
+"about.app.museUploader.summary" = "截圖、圖片編輯與上傳分享。";
+"about.app.markReader.name" = "輕閱";
+"about.app.markReader.summary" = "清爽的 Markdown 閱讀。";
+"about.app.museMail.name" = "輕郵";
+"about.app.museMail.summary" = "AI 郵件寫作、摘要、分類與回覆助手。";
+"about.app.museMate.name" = "輕記";
+"about.app.museMate.summary" = "輕量筆記與 Markdown 創作。";
 "about.privacy.title" = "私隱承諾";
 "about.privacy.body" = "語音轉文字全部喺呢部機度搞掂，唔使聯網。錄音絕對唔會傳去任何伺服器。用 AI 執靚嘅時候都淨係傳轉好嘅文字（仲可以閂咗佢）。冇網都照用得。";
 "about.copyright" = "版權所有";
@@ -205,7 +205,7 @@
 "stats.realtime.factor.unit" = "倍";
 
 // 引導流程
-"onboarding.welcome" = "歡迎使用 妙打";
+"onboarding.welcome" = "歡迎使用輕語";
 "onboarding.set.shortcut.title" = "設定快捷鍵";
 "onboarding.set.shortcut.description" = "請設定一個全域快捷鍵來啟動語音輸入";
 "onboarding.select.language.title" = "選擇預設語言";
@@ -283,7 +283,7 @@
 "model.download.url.placeholder" = "請輸入模型下載地址";
 
 // 歡迎頁面
-"welcome.title" = "歡迎使用 妙打";
+"welcome.title" = "歡迎使用輕語";
 "welcome.subtitle" = "智能語音輸入法";
 "welcome.feature.global.shortcut" = "全域快捷鍵";
 "welcome.feature.global.shortcut.desc" = "設定快捷鍵，在任何應用的輸入框中按下快捷鍵即可說話輸入文字";
@@ -298,7 +298,7 @@
 
 // 權限相關
 "microphone.permission.required" = "需要麥克風權限";
-"microphone.permission.description" = "語音輸入功能需要存取麥克風。\n\n請按以下步驟授權：\n1. 開啟「系統設定」\n2. 進入「隱私與安全性」 > 「麥克風」\n3. 找到 妙打 並勾選\n4. 重新啟動應用";
+"microphone.permission.description" = "語音輸入功能需要存取麥克風。\n\n請按以下步驟授權：\n1. 開啟「系統設定」\n2. 進入「隱私與安全性」 > 「麥克風」\n3. 找到 輕語 並勾選\n4. 重新啟動應用";
 "open.system.settings" = "開啟系統設定";
 "later" = "稍後";
 "microphone.in.use" = "麥克風正在使用中";
@@ -347,13 +347,13 @@
 "permission.test.trigger" = "嘗試觸發權限請求";
 "permission.test.description" = "即將嘗試存取麥克風以觸發系統權限對話框。\n\n如果彈出權限對話框，請點擊「允許」。";
 "permission.request.title" = "請求麥克風權限";
-"permission.request.description" = "系統將彈出權限請求對話框。\n\n請點擊「允許」以授權 妙打 存取麥克風。";
+"permission.request.description" = "系統將彈出權限請求對話框。\n\n請點擊「允許」以授權 輕語 存取麥克風。";
 "permission.granted.title" = "✅ 麥克風權限已授權";
 "permission.granted.description" = "您已成功授權麥克風權限！\n\n現在可以使用語音輸入功能了。";
 "permission.already.granted.title" = "✅ 麥克風權限已授權";
 "permission.already.granted.description" = "您已經授權了麥克風權限。\n\n可以直接使用語音輸入功能。";
 "permission.denied.title" = "⚠️ 麥克風權限被拒絕";
-"permission.denied.description" = "語音輸入功能需要麥克風權限。\n\n請按以下步驟手動授權：\n1. 開啟「系統設定」\n2. 進入「隱私與安全性」 > 「麥克風」\n3. 找到 妙打 並勾選";
+"permission.denied.description" = "語音輸入功能需要麥克風權限。\n\n請按以下步驟手動授權：\n1. 開啟「系統設定」\n2. 進入「隱私與安全性」 > 「麥克風」\n3. 找到 輕語 並勾選";
 "continue" = "繼續";
 "great" = "太好了";
 

@@ -15,7 +15,7 @@
     <string>zh_CN</string>
 
     <key>CFBundleDisplayName</key>
-    <string>妙打</string>
+    <string>轻语</string>
 
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
@@ -33,10 +33,10 @@
     <string>APPL</string>
 
     <key>CFBundleShortVersionString</key>
-    <string>2.2.0-rc5</string>
+    <string>2.2.0-rc6</string>
 
     <key>CFBundleVersion</key>
-    <string>23</string>
+    <string>26</string>
 
     <key>LSMinimumSystemVersion</key>
     <string>$(MACOSX_DEPLOYMENT_TARGET)</string>

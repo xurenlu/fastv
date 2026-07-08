@@ -1,12 +1,12 @@
 /* 
   Localizable.strings
-  妙打
+  QEcho
 
   한국어
 */
 
 // 일반
-"app.name" = "妙打";
+"app.name" = "QEcho";
 "settings.section.general" = "일반";
 "hide.dock.icon" = "Dock에서 아이콘 숨기기";
 "hide.dock.icon.description" = "켜면 Dock에 아이콘을 표시하지 않고 메뉴 막대에만 상주합니다. 메뉴 막대 아이콘에서 언제든 창을 다시 열 수 있습니다.";
@@ -29,14 +29,14 @@
 "about.app.willDeep.summary" = "집중 글쓰기와 깊은 편집.";
 "about.app.timeBill.name" = "TimeBill";
 "about.app.timeBill.summary" = "시간 기록과 청구 도우미.";
-"about.app.museUploader.name" = "MusePic";
-"about.app.museUploader.summary" = "스크린샷, 이미지 편집, 업로드 공유.";
-"about.app.markReader.name" = "MarkReader";
-"about.app.markReader.summary" = "깔끔한 Markdown 읽기.";
-"about.app.museMail.name" = "MuseMail";
-"about.app.museMail.summary" = "조용한 메일 워크플로.";
-"about.app.museMate.name" = "Muse Mate";
-"about.app.museMate.summary" = "개인 창작 동반자.";
+"about.app.museUploader.name" = "QPic";
+"about.app.museUploader.summary" = "Screenshots, image editing, and upload sharing.";
+"about.app.markReader.name" = "QMarkView";
+"about.app.markReader.summary" = "Clean Markdown reading.";
+"about.app.museMail.name" = "QMailMate";
+"about.app.museMail.summary" = "AI email writing, triage, summaries, and replies.";
+"about.app.museMate.name" = "QNote";
+"about.app.museMate.summary" = "Light notes and Markdown writing.";
 "about.privacy.title" = "프라이버시 약속";
 "about.privacy.body" = "음성 인식은 모두 이 기기에서 처리되며 네트워크가 필요하지 않습니다. 녹음 데이터는 어떤 서버로도 전송되지 않습니다. AI 다듬기를 사용할 때도 텍스트만 전송되며 음성은 전송되지 않습니다(끌 수도 있습니다). 오프라인에서도 정상 작동합니다.";
 "about.copyright" = "저작권";
@@ -205,7 +205,7 @@
 "stats.realtime.factor.unit" = "배";
 
 // 온보딩
-"onboarding.welcome" = "妙打에 오신 것을 환영합니다";
+"onboarding.welcome" = "QEcho에 오신 것을 환영합니다";
 "onboarding.set.shortcut.title" = "단축키 설정";
 "onboarding.set.shortcut.description" = "음성 입력을 시작할 전역 단축키를 설정하세요";
 "onboarding.select.language.title" = "기본 언어 선택";
@@ -283,7 +283,7 @@
 "model.download.url.placeholder" = "모델 다운로드 주소를 입력하세요";
 
 // 환영 페이지
-"welcome.title" = "妙打에 오신 것을 환영합니다";
+"welcome.title" = "QEcho에 오신 것을 환영합니다";
 "welcome.subtitle" = "스마트 음성 입력";
 "welcome.feature.global.shortcut" = "전역 단축키";
 "welcome.feature.global.shortcut.desc" = "단축키를 설정하여 모든 앱의 입력 필드에서 단축키를 눌러 말하고 텍스트를 입력할 수 있습니다";
@@ -298,7 +298,7 @@
 
 // 권한 관련
 "microphone.permission.required" = "마이크 권한 필요";
-"microphone.permission.description" = "음성 입력 기능은 마이크 접근이 필요합니다.\n\n다음 단계를 따라 권한을 부여하세요:\n1. \"시스템 설정\" 열기\n2. \"개인정보 보호 및 보안\" > \"마이크\"로 이동\n3. 妙打 찾아서 체크\n4. 앱 재시작";
+"microphone.permission.description" = "음성 입력 기능은 마이크 접근이 필요합니다.\n\n다음 단계를 따라 권한을 부여하세요:\n1. \"시스템 설정\" 열기\n2. \"개인정보 보호 및 보안\" > \"마이크\"로 이동\n3. QEcho 찾아서 체크\n4. 앱 재시작";
 "open.system.settings" = "시스템 설정 열기";
 "later" = "나중에";
 "microphone.in.use" = "마이크 사용 중";
@@ -347,13 +347,13 @@
 "permission.test.trigger" = "권한 요청 트리거";
 "permission.test.description" = "시스템 권한 대화 상자를 트리거하기 위해 마이크에 액세스를 시도합니다.\n\n권한 대화 상자가 나타나면 \"허용\"을 클릭하세요.";
 "permission.request.title" = "마이크 권한 요청";
-"permission.request.description" = "시스템이 권한 요청 대화 상자를 표시합니다.\n\n\"허용\"을 클릭하여 妙打가 마이크에 액세스할 수 있도록 권한을 부여하세요.";
+"permission.request.description" = "시스템이 권한 요청 대화 상자를 표시합니다.\n\n\"허용\"을 클릭하여 QEcho가 마이크에 액세스할 수 있도록 권한을 부여하세요.";
 "permission.granted.title" = "✅ 마이크 권한 부여됨";
 "permission.granted.description" = "마이크 권한을 성공적으로 부여했습니다!\n\n이제 음성 입력 기능을 사용할 수 있습니다.";
 "permission.already.granted.title" = "✅ 마이크 권한 부여됨";
 "permission.already.granted.description" = "이미 마이크 권한을 부여했습니다.\n\n음성 입력 기능을 직접 사용할 수 있습니다.";
 "permission.denied.title" = "⚠️ 마이크 권한 거부됨";
-"permission.denied.description" = "음성 입력 기능은 마이크 권한이 필요합니다.\n\n다음 단계를 따라 수동으로 권한을 부여하세요:\n1. \"시스템 설정\" 열기\n2. \"개인정보 보호 및 보안\" > \"마이크\"로 이동\n3. 妙打 찾아서 체크";
+"permission.denied.description" = "음성 입력 기능은 마이크 권한이 필요합니다.\n\n다음 단계를 따라 수동으로 권한을 부여하세요:\n1. \"시스템 설정\" 열기\n2. \"개인정보 보호 및 보안\" > \"마이크\"로 이동\n3. QEcho 찾아서 체크";
 "continue" = "계속";
 "great" = "좋습니다";
 

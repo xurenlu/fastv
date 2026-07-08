@@ -6,7 +6,7 @@
 */
 
 // 一般
-"app.name" = "妙打";
+"app.name" = "QEcho";
 "settings.section.general" = "一般";
 "hide.dock.icon" = "Dock のアイコンを隠す";
 "hide.dock.icon.description" = "有効にすると、Dock にアイコンを表示せずメニューバーに常駐します。メニューバーのアイコンからいつでもウインドウを開けます。";
@@ -181,7 +181,7 @@
 "stats.realtime.factor.unit" = "倍";
 
 // オンボーディング
-"onboarding.welcome" = "妙打へようこそ";
+"onboarding.welcome" = "QEchoへようこそ";
 "onboarding.set.shortcut.title" = "ショートカットを設定";
 "onboarding.set.shortcut.description" = "音声入力を開始するグローバルショートカットを設定してください";
 "onboarding.select.language.title" = "デフォルト言語を選択";
@@ -259,7 +259,7 @@
 "model.download.url.placeholder" = "モデルダウンロードURLを入力してください";
 
 // ウェルカムページ
-"welcome.title" = "妙打へようこそ";
+"welcome.title" = "QEchoへようこそ";
 "welcome.subtitle" = "スマート音声入力";
 "welcome.feature.global.shortcut" = "グローバルショートカット";
 "welcome.feature.global.shortcut.desc" = "ショートカットを設定して、どのアプリケーションのテキストフィールドでもショートカットを押して話してテキストを入力";
@@ -274,7 +274,7 @@
 
 // 権限関連
 "microphone.permission.required" = "マイク権限が必要です";
-"microphone.permission.description" = "音声入力機能にはマイクへのアクセスが必要です。\n\n次の手順に従ってください：\n1. \"システム設定\"を開く\n2. \"プライバシーとセキュリティ\" > \"マイク\"に移動\n3. 妙打を見つけてチェック\n4. アプリを再起動";
+"microphone.permission.description" = "音声入力機能にはマイクへのアクセスが必要です。\n\n次の手順に従ってください：\n1. \"システム設定\"を開く\n2. \"プライバシーとセキュリティ\" > \"マイク\"に移動\n3. QEchoを見つけてチェック\n4. アプリを再起動";
 "open.system.settings" = "システム設定を開く";
 "later" = "後で";
 "microphone.in.use" = "マイク使用中";
@@ -323,13 +323,13 @@
 "permission.test.trigger" = "権限リクエストをトリガー";
 "permission.test.description" = "システム権限ダイアログをトリガーするためにマイクへのアクセスを試みます。\n\n権限ダイアログが表示されたら、「許可」をクリックしてください。";
 "permission.request.title" = "マイク権限をリクエスト";
-"permission.request.description" = "システムが権限リクエストダイアログを表示します。\n\n妙打がマイクにアクセスできるように「許可」をクリックしてください。";
+"permission.request.description" = "システムが権限リクエストダイアログを表示します。\n\nQEchoがマイクにアクセスできるように「許可」をクリックしてください。";
 "permission.granted.title" = "✅ マイク権限が付与されました";
 "permission.granted.description" = "マイク権限の付与に成功しました！\n\nこれで音声入力機能を使用できます。";
 "permission.already.granted.title" = "✅ マイク権限が付与されました";
 "permission.already.granted.description" = "すでにマイク権限が付与されています。\n\n音声入力機能を直接使用できます。";
 "permission.denied.title" = "⚠️ マイク権限が拒否されました";
-"permission.denied.description" = "音声入力機能にはマイク権限が必要です。\n\n次の手順で手動で権限を付与してください：\n1. \"システム設定\"を開く\n2. \"プライバシーとセキュリティ\" > \"マイク\"に移動\n3. 妙打を見つけてチェック";
+"permission.denied.description" = "音声入力機能にはマイク権限が必要です。\n\n次の手順で手動で権限を付与してください：\n1. \"システム設定\"を開く\n2. \"プライバシーとセキュリティ\" > \"マイク\"に移動\n3. QEchoを見つけてチェック";
 "continue" = "続ける";
 "great" = "素晴らしい";
 
@@ -361,14 +361,14 @@
 "about.app.willDeep.summary" = "執筆と深い編集に集中。";
 "about.app.timeBill.name" = "TimeBill";
 "about.app.timeBill.summary" = "時間記録と請求の相棒。";
-"about.app.museUploader.name" = "MusePic";
-"about.app.museUploader.summary" = "スクリーンショット、画像編集、アップロード共有。";
-"about.app.markReader.name" = "MarkReader";
-"about.app.markReader.summary" = "読みやすい Markdown リーダー。";
-"about.app.museMail.name" = "MuseMail";
-"about.app.museMail.summary" = "静かなメールワークフロー。";
-"about.app.museMate.name" = "Muse Mate";
-"about.app.museMate.summary" = "個人制作の小さな相棒。";
+"about.app.museUploader.name" = "QPic";
+"about.app.museUploader.summary" = "Screenshots, image editing, and upload sharing.";
+"about.app.markReader.name" = "QMarkView";
+"about.app.markReader.summary" = "Clean Markdown reading.";
+"about.app.museMail.name" = "QMailMate";
+"about.app.museMail.summary" = "AI email writing, triage, summaries, and replies.";
+"about.app.museMate.name" = "QNote";
+"about.app.museMate.summary" = "Light notes and Markdown writing.";
 "about.copyright" = "著作権";
 "show.app" = "%@ を表示";
 
