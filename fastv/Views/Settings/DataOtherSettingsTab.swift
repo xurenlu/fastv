@@ -60,7 +60,7 @@ struct DataOtherSettingsTab: View {
             // 支持与推荐
             Section {
                 // 官方支持页
-                Link(destination: URL(string: "https://83d.me/products/typecho")!) {
+                Link(destination: URL(string: "https://83d.me/products/qecho")!) {
                     HStack {
                         Image(systemName: "questionmark.circle.fill")
                             .foregroundStyle(.blue)

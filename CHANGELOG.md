@@ -2,6 +2,16 @@
 
 所有版本變更記錄。
 
+## [2.2.0-rc8] - 2026-07-09
+
+### 修复
+
+- **官方支持页链接切换到 QEcho 英文 slug**：设置页的官方支持入口从旧 typecho 地址改为 `https://83d.me/products/qecho`。
+
+### 工程
+
+- 版本号 `2.2.0-rc7` → `2.2.0-rc8`；同步 `fastv.xcodeproj/project.pbxproj`、`fastv/Info.plist`、`stt-api/stt_api.py`。
+
 ## [2.2.0-rc7] - 2026-07-09
 
 ### 修复
