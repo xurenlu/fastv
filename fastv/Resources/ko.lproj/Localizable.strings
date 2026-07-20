@@ -7,6 +7,7 @@
 
 // 일반
 "app.name" = "QEcho";
+"someim.update.check" = "업데이트 확인…";
 "settings.section.general" = "일반";
 "hide.dock.icon" = "Dock에서 아이콘 숨기기";
 "hide.dock.icon.description" = "켜면 Dock에 아이콘을 표시하지 않고 메뉴 막대에만 상주합니다. 메뉴 막대 아이콘에서 언제든 창을 다시 열 수 있습니다.";

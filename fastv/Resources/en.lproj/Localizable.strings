@@ -7,6 +7,7 @@
 
 // General
 "app.name" = "QEcho";
+"someim.update.check" = "Check for Updates…";
 "settings.section.general" = "General";
 "hide.dock.icon" = "Hide icon in Dock";
 "hide.dock.icon.description" = "When enabled, the app stays only in the menu bar with no Dock icon. Reopen the window anytime from the menu bar icon.";

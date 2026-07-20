@@ -7,6 +7,7 @@
 
 // 通用
 "app.name" = "輕語";
+"someim.update.check" = "檢查更新…";
 "settings.section.general" = "一般";
 "hide.dock.icon" = "喺 Dock 度收埋圖標";
 "hide.dock.icon.description" = "開咗之後淨係喺選單列常駐，Dock 唔再顯示圖標。要用嘅時候可以喺選單列圖標度重新開窗。";

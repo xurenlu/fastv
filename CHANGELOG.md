@@ -2,6 +2,31 @@
 
 所有版本變更記錄。
 
+## [2.3.0-rc2] - 2026-07-20
+
+### 修复
+
+- 放大菜单栏闲置态品牌图标：裁掉 `MenuBarIcon` 资源中过多的透明边距，并让 `StatusBarManager` 以 18pt 渲染品牌图标，改善与系统菜单栏图标并排时偏小的问题。
+
+### 工程
+
+- 版本号 `2.3.0-rc1` → `2.3.0-rc2`，build `27` → `28`；同步 Xcode、Info.plist 与 STT API 响应版本。
+
+## [2.3.0-rc1] - 2026-07-20
+
+### 新增
+
+- 集成 Sparkle 自动更新，支持启动检查和应用菜单手动检查更新。
+- 更新源统一使用 some.im 的 QEcho stable appcast：`https://some.im/api/v1/appcast/qecho/macos/stable.xml`。
+
+### 测试
+
+- 新增更新地址配置测试，并通过 CocoaPods workspace 的 macOS 13.7 Debug 构建。
+
+### 工程
+
+- 版本号 `2.2.0-rc8` → `2.3.0-rc1`，build `26` → `27`；同步 Xcode、Info.plist 与 STT API 响应版本。
+
 ## [2.2.0-rc8] - 2026-07-09
 
 ### 修复
