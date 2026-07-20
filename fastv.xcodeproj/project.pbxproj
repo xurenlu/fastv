@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		420B8873F2660D76E1855456 /* Pods_musetype.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F8E1ABDD6478BDDD3FBF5EE6 /* Pods_musetype.framework */; };
+		BFF20D58A2686398E68CFC67 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 7C864D9382D3A405BCBC8404 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -42,16 +43,22 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		5C0423802ECD792D00821B50 /* fastv */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = fastv;
 			sourceTree = "<group>";
 		};
 		5C0423902ECD793000821B50 /* fastvTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = fastvTests;
 			sourceTree = "<group>";
 		};
 		5C04239A2ECD793000821B50 /* fastvUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = fastvUITests;
 			sourceTree = "<group>";
 		};
@@ -63,6 +70,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				420B8873F2660D76E1855456 /* Pods_musetype.framework in Frameworks */,
+				BFF20D58A2686398E68CFC67 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -148,6 +156,9 @@
 				5C0423802ECD792D00821B50 /* fastv */,
 			);
 			name = musetype;
+			packageProductDependencies = (
+				7C864D9382D3A405BCBC8404 /* Sparkle */,
+			);
 			productName = musetype;
 			productReference = 5C04237E2ECD792D00821B50 /* QEcho.app */;
 			productType = "com.apple.product-type.application";
@@ -230,6 +241,9 @@
 			);
 			mainGroup = 5C0423752ECD792D00821B50;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				75EE4354F35F82744DC24F5E /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 5C04237F2ECD792D00821B50 /* Products */;
 			projectDirPath = "";
@@ -520,12 +534,13 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 28;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/Libraries/onnxruntime/current/include",
@@ -540,6 +555,11 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "轻语需要访问您的麦克风以进行语音输入和语音转文字功能。";
 				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "轻语需要访问您的提醒事项以同步待办事项到 AI Todo 功能中。应用只会读取未完成的提醒事项，不会修改或删除您的提醒事项。";
+				INFOPLIST_KEY_SUAutomaticallyUpdate = YES;
+				INFOPLIST_KEY_SUEnableAutomaticChecks = YES;
+				INFOPLIST_KEY_SUFeedURL = "https://some.im/api/v1/public/app-updates/appcast.xml?app_id=qecho&platform=macos&channel=stable";
+				INFOPLIST_KEY_SUPublicEDKey = "3QVMPCYo42ORmq8uUHqUdW8ayy5nw8Hs5uq9DLKDp0A=";
+				INFOPLIST_KEY_SUVerifyUpdateBeforeExtraction = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -551,14 +571,14 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.2.0-rc8";
+				MARKETING_VERSION = "2.3.0-rc2";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.17push.musetype;
-				PRODUCT_NAME = QEcho;
 				PRODUCT_MODULE_NAME = musetype;
+				PRODUCT_NAME = QEcho;
 				REGISTER_APP_GROUPS = YES;
 				SCRIPTING_DEFINITION_FILE = fastv/fastv.sdef;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -580,12 +600,13 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 28;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/Libraries/onnxruntime/current/include",
@@ -600,6 +621,11 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "轻语需要访问您的麦克风以进行语音输入和语音转文字功能。";
 				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "轻语需要访问您的提醒事项以同步待办事项到 AI Todo 功能中。应用只会读取未完成的提醒事项，不会修改或删除您的提醒事项。";
+				INFOPLIST_KEY_SUAutomaticallyUpdate = YES;
+				INFOPLIST_KEY_SUEnableAutomaticChecks = YES;
+				INFOPLIST_KEY_SUFeedURL = "https://some.im/api/v1/public/app-updates/appcast.xml?app_id=qecho&platform=macos&channel=stable";
+				INFOPLIST_KEY_SUPublicEDKey = "3QVMPCYo42ORmq8uUHqUdW8ayy5nw8Hs5uq9DLKDp0A=";
+				INFOPLIST_KEY_SUVerifyUpdateBeforeExtraction = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -611,14 +637,14 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.2.0-rc8";
+				MARKETING_VERSION = "2.3.0-rc2";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.17push.musetype;
-				PRODUCT_NAME = QEcho;
 				PRODUCT_MODULE_NAME = musetype;
+				PRODUCT_NAME = QEcho;
 				REGISTER_APP_GROUPS = YES;
 				SCRIPTING_DEFINITION_FILE = fastv/fastv.sdef;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -637,7 +663,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 28;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -657,7 +683,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.2.0-rc8";
+				MARKETING_VERSION = "2.3.0-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -675,7 +701,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 28;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -695,7 +721,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.2.0-rc8";
+				MARKETING_VERSION = "2.3.0-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -712,10 +738,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 28;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.2.0-rc8";
+				MARKETING_VERSION = "2.3.0-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -732,10 +758,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 28;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.2.0-rc8";
+				MARKETING_VERSION = "2.3.0-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -787,6 +813,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		75EE4354F35F82744DC24F5E /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.6.4;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		7C864D9382D3A405BCBC8404 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 75EE4354F35F82744DC24F5E /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 5C0423762ECD792D00821B50 /* Project object */;
 }

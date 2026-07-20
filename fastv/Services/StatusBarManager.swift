@@ -64,6 +64,7 @@ class StatusBarManager: NSObject, ObservableObject {
     @Published private(set) var activity: Activity = .idle
 
     private var cancellables = Set<AnyCancellable>()
+    private static let idleBrandIconSize = NSSize(width: 18, height: 18)
 
     override init() {
         super.init()
@@ -133,7 +134,9 @@ class StatusBarManager: NSObject, ObservableObject {
         // 菜单栏明暗自动取色）；录音 / 转写 / AI 优化三个功能态保留 SF Symbol，
         // 颜色编码状态语义（红 / 蓝 / 紫），不让品牌图标混淆「正在做什么」。
         let image: NSImage?
-        if activity == .idle, let brand = NSImage(named: "MenuBarIcon") {
+        if activity == .idle, let namedBrand = NSImage(named: "MenuBarIcon") {
+            let brand = namedBrand.copy() as? NSImage ?? namedBrand
+            brand.size = Self.idleBrandIconSize
             brand.isTemplate = true
             image = brand
             button.contentTintColor = nil

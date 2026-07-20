@@ -589,6 +589,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 struct fastvApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
+    init() {
+        SomeIMUpdateController.shared.start()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -625,6 +629,9 @@ struct fastvApp: App {
         }
         .windowStyle(.automatic)
         .defaultSize(width: 800, height: 600)
+        .commands {
+            SomeIMUpdateCommands()
+        }
     }
     
     /// 清理波形窗口（兜底方案）

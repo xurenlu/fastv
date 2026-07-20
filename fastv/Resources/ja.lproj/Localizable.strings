@@ -7,6 +7,7 @@
 
 // 一般
 "app.name" = "QEcho";
+"someim.update.check" = "アップデートを確認…";
 "settings.section.general" = "一般";
 "hide.dock.icon" = "Dock のアイコンを隠す";
 "hide.dock.icon.description" = "有効にすると、Dock にアイコンを表示せずメニューバーに常駐します。メニューバーのアイコンからいつでもウインドウを開けます。";
