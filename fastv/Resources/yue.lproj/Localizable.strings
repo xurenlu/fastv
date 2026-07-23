@@ -339,6 +339,59 @@
 "memory.monitor" = "記憶體監控";
 "support.and.recommend" = "支援同推薦";
 "support.official.page" = "官方支援頁";
+
+/* 說明 tab */
+"settings.tab.help" = "說明";
+"help.section.shortcuts" = "輸入法快捷鍵";
+"help.shortcuts.footer" = "以上快捷鍵喺揀咗「輕語輸入法」而且組緊字（畫面有候選窗）嗰陣先生效。翻頁鍵 - 同 = 係主流五筆/拼音輸入法嘅習慣，, 同 。一樣可以翻頁。";
+"help.sc.digits" = "撳數字鍵揀對應序號嘅候選詞上屏。";
+"help.sc.space" = "上屏而家高亮（第一個）嘅候選詞。";
+"help.sc.semicolon" = "揀第 2 個候選詞上屏（次選）。";
+"help.sc.apostrophe" = "揀第 3 個候選詞上屏（淨五筆方案；拼音方案入面引號用嚟分隔音節）。";
+"help.sc.pageUp" = "候選翻去上一頁。";
+"help.sc.pageDown" = "候選翻去下一頁。";
+"help.sc.arrows" = "喺候選之間上下移動高亮。";
+"help.sc.tab" = "喺候選之間輪換高亮。";
+"help.sc.return" = "上屏而家輸入嘅原始編碼（唔揀詞，直接輸出你敲嘅字母）。";
+"help.sc.esc" = "清空而家組緊嘅字，取消今次輸入。";
+"help.sc.shift" = "切換中文 / 英文輸入（臨時撳一下切英文直接輸入）。";
+"help.sc.backtick" = "拼音反查：唔記得某個字嘅五筆編碼嗰陣，輸入 ` 再打拼音，候選會標出對應嘅五筆碼。";
+
+"help.section.voice" = "語音輸入指南";
+"help.voice.keys.title" = "兩個語音快捷鍵";
+"help.voice.keys.body" = "預設 FN 鍵 = 純語音輸入（講完直接插入文字）；FN + Control = 語音輸入 + AI 優化（去語氣詞、補標點、改錯字）。兩個快捷鍵都可以喺「語音輸入」頁自訂。";
+"help.voice.trigger.title" = "三種觸發方式";
+"help.voice.trigger.body" = "撳住錄音：撳住講、鬆手停，啱講啲短嘢；撳一下切換：撳一下開始、再撳一下停，啱長段口述；混合：短撳切換、長撳（≥0.25 秒）變返撳住錄音。喺「語音輸入」頁切換。";
+"help.voice.ai.title" = "AI 優化同上下文回改";
+"help.voice.ai.body" = "用 AI 快捷鍵講嘢嗰陣會自動幫你做口語化整理；講「改上一句 / 潤色呢句 / 重寫」等指令時，會讀取而家輸入框游標前最近一句嚟回改。要先喺「AI 同模型」設定好 AI 服務。";
+"help.voice.terms.title" = "術語庫同常錯字";
+"help.voice.terms.body" = "喺「輸入法·打字」或者常錯字管理度加入專有名詞、產品名、技術術語，識別時優先生效而且唔分大細楷，例如講「open ai」會輸出「OpenAI」。";
+"help.voice.power.title" = "Power Mode（場景感知）";
+"help.voice.power.body" = "跟住而家前台 App 或者瀏覽器網址自動切換 AI 後處理風格：郵件用正式語氣、Slack 簡短、IM 口語、IDE 輸出代碼註解風格。可以喺「AI 同模型」度自訂場景規則。";
+
+"help.section.install" = "輸入法安裝同排障";
+"help.install.steps.title" = "點樣安裝同啟用";
+"help.install.steps.body" = "喺「輸入法·打字」頁撳「安裝並啟用」，將輕語輸入法裝去 ~/Library/Input Methods 並註冊。跟住喺選單列輸入法選單（或 系統設定 → 鍵盤 → 輸入法）度揀「輕語輸入法」。";
+"help.install.notShown.title" = "列表度見唔到輸入法";
+"help.install.notShown.body" = "macOS 有時唔會即刻刷新輸入源列表。請登出再重新登入一次；登入後如果仲係冇出現，去 系統設定 → 鍵盤 → 輸入法 → 「+」→ 簡體中文 度手動加返「輕語輸入法」。";
+"help.install.icon.title" = "選單列圖標冇更新";
+"help.install.icon.body" = "系統會快取輸入源圖標。更新版本後如果仲係顯示舊圖標，登出重新登入就會刷新；或者喺終端機執行 killall com.apple.TextInputMenuAgent 之後重新揀一次輸入法。";
+"help.install.schemes.title" = "切換五筆 / 拼音 / 混打";
+"help.install.schemes.body" = "喺「輸入法·打字」頁用分段選擇，或者直接撳選單列輸入法選單入面嘅方案項切換。混打（預設）之下五筆碼同全拼可以喺同一個輸入串度撈埋一齊打，唔使切模式。";
+
+"help.section.faq" = "常見問題";
+"help.faq.password.title" = "密碼框入面點解用唔到？";
+"help.faq.password.body" = "macOS 嘅安全輸入（Secure Input）會喺密碼框接管鍵盤，任何第三方輸入法都插唔到手，呢個係系統限制，語音同打字都入唔到密碼框。請喺密碼框用系統輸入法直接輸入。";
+"help.faq.privacy.title" = "我嘅語音會唔會上傳？";
+"help.faq.privacy.body" = "唔會。語音轉文字全部喺呢部機度搞掂，唔聯網。淨係喺你主動用 AI 優化嗰陣先會將「轉好嘅文字」傳去你設定嘅 AI 服務（可以閂咗佢），語音本身絕對唔會外傳。";
+"help.faq.permission.title" = "需要邊啲權限？";
+"help.faq.permission.body" = "語音輸入需要麥克風權限；將文字插入去其他 App、以及 Power Mode 攞而家嘅網址需要輔助功能權限。輸入法打字本身唔需要輔助功能權限。可以喺「語音輸入」頁測試麥克風權限。";
+"help.faq.relogin.title" = "點解成日叫我登出重登？";
+"help.faq.relogin.body" = "系統輸入法程序由 macOS 托管，更新咗輸入法組件之後舊程序可能仲留喺記憶體度，登出重登可以令系統載入新版本。呢個係平台機制，唔係出錯。";
+"help.faq.voiceVsType.title" = "語音同打字係咪同一套輸入法？";
+"help.faq.voiceVsType.body" = "係。揀咗「輕語輸入法」之後，直接敲鍵盤就行 Rime 引擎打字（五筆·拼音混打），撳住語音快捷鍵講嘢就行語音轉寫，兩者都由系統輸入法通道統一上屏。";
+
+"help.section.more" = "更多說明";
 "settings.done" = "完成";
 
 // 權限相關Alert

@@ -311,6 +311,59 @@
 "memory.monitor" = "Memory Monitor";
 "support.and.recommend" = "Support & Recommendations";
 "support.official.page" = "Official Support Page";
+
+/* Help tab */
+"settings.tab.help" = "Help";
+"help.section.shortcuts" = "IME Shortcuts";
+"help.shortcuts.footer" = "These shortcuts apply while QEcho IME is selected and you are composing (a candidate window is on screen). The page keys - and = follow the convention of mainstream Wubi/Pinyin IMEs; , and 。 also turn pages.";
+"help.sc.digits" = "Press a number key to commit the candidate at that position.";
+"help.sc.space" = "Commit the currently highlighted (first) candidate.";
+"help.sc.semicolon" = "Commit the 2nd candidate (second choice).";
+"help.sc.apostrophe" = "Commit the 3rd candidate (Wubi-only schemes; in Pinyin the apostrophe is used as a syllable separator).";
+"help.sc.pageUp" = "Go to the previous page of candidates.";
+"help.sc.pageDown" = "Go to the next page of candidates.";
+"help.sc.arrows" = "Move the highlight up and down among candidates.";
+"help.sc.tab" = "Cycle the highlight through candidates.";
+"help.sc.return" = "Commit the raw code you typed (no selection — output the letters as entered).";
+"help.sc.esc" = "Clear the current composition and cancel this input.";
+"help.sc.shift" = "Toggle Chinese / English input (a quick tap switches to direct English input).";
+"help.sc.backtick" = "Pinyin reverse lookup: when you forget a character's Wubi code, type ` then its pinyin, and candidates will show the matching Wubi code.";
+
+"help.section.voice" = "Voice Input Guide";
+"help.voice.keys.title" = "Two Voice Shortcuts";
+"help.voice.keys.body" = "By default, FN = plain voice input (the text is inserted right after you finish); FN + Control = voice input + AI polishing (remove filler words, add punctuation, fix typos). Both shortcuts can be customized on the Voice Input page.";
+"help.voice.trigger.title" = "Three Trigger Modes";
+"help.voice.trigger.body" = "Push-to-Talk: hold to speak, release to stop — best for short bursts. Toggle: tap once to start, tap again to stop — best for long dictation. Hybrid: a short tap toggles, a long hold (≥0.25s) falls back to push-to-talk. Switch on the Voice Input page.";
+"help.voice.ai.title" = "AI Polishing & Contextual Rewrite";
+"help.voice.ai.body" = "When you speak using the AI shortcut, the text is cleaned up automatically; when you say commands like \"revise the last sentence / polish this / rewrite\", it reads the most recent sentence before the cursor in the current field and rewrites it. Configure your AI service under \"AI & Models\" first.";
+"help.voice.terms.title" = "Terminology & Common Typos";
+"help.voice.terms.body" = "Add proper nouns, product names, and technical terms under \"IME & Typing\" or in the common-typos manager. They take priority during recognition and are case-insensitive — for example, saying \"open ai\" outputs \"OpenAI\".";
+"help.voice.power.title" = "Power Mode (Context-Aware)";
+"help.voice.power.body" = "Automatically switches the AI post-processing style based on the frontmost app or browser URL: formal tone for mail, concise for Slack, casual for IM, code-comment style for IDEs. Customize the profile rules under \"AI & Models\".";
+
+"help.section.install" = "IME Install & Troubleshooting";
+"help.install.steps.title" = "How to Install & Enable";
+"help.install.steps.body" = "On the \"IME & Typing\" page, tap \"Install & Enable\" to install QEcho IME to ~/Library/Input Methods and register it. Then pick \"QEcho IME\" from the input menu in the menu bar (or System Settings → Keyboard → Input Sources).";
+"help.install.notShown.title" = "IME Not Showing in the List";
+"help.install.notShown.body" = "macOS sometimes does not refresh the input source list immediately. Log out and back in once; if it still doesn't appear after logging in, go to System Settings → Keyboard → Input Sources → \"+\" → Simplified Chinese and add \"QEcho IME\" manually.";
+"help.install.icon.title" = "Menu Bar Icon Not Updated";
+"help.install.icon.body" = "The system caches input source icons. If the old icon still shows after an update, log out and back in to refresh it; or run killall com.apple.TextInputMenuAgent in Terminal and reselect the input method.";
+"help.install.schemes.title" = "Switching Wubi / Pinyin / Mixed";
+"help.install.schemes.body" = "Use the segmented control on the \"IME & Typing\" page, or pick a scheme directly from the input menu in the menu bar. In mixed mode (default), Wubi codes and full Pinyin can be typed in the same input string without switching modes.";
+
+"help.section.faq" = "FAQ";
+"help.faq.password.title" = "Why doesn't it work in password fields?";
+"help.faq.password.body" = "macOS Secure Input takes over the keyboard in password fields, and no third-party input method can intervene — this is a system restriction, so neither voice nor typing can reach password fields. Please use the system input method directly in password fields.";
+"help.faq.privacy.title" = "Is my voice uploaded?";
+"help.faq.privacy.body" = "No. Speech-to-text happens entirely on this device, offline. Only when you actively use AI polishing is the \"transcribed text\" sent to the AI service you configured (which you can turn off); the audio itself is never sent out.";
+"help.faq.permission.title" = "What permissions are needed?";
+"help.faq.permission.body" = "Voice input needs microphone permission; inserting text into other apps and Power Mode reading the current URL need accessibility permission. IME typing itself does not need accessibility permission. You can test microphone permission on the \"Voice Input\" page.";
+"help.faq.relogin.title" = "Why does it keep asking me to log out and back in?";
+"help.faq.relogin.body" = "The system input method process is managed by macOS, and after updating the IME component the old process may remain in memory. Logging out and back in lets the system load the new version. This is how the platform works — it is not an error.";
+"help.faq.voiceVsType.title" = "Are voice and typing one input method?";
+"help.faq.voiceVsType.body" = "Yes. Once QEcho IME is selected, typing directly goes through the Rime engine (Wubi + Pinyin mixed input), and holding the voice shortcut to speak goes through voice transcription — both are committed through the same system input method channel.";
+
+"help.section.more" = "More Help";
 "settings.done" = "Done";
 
 // Permission Alerts

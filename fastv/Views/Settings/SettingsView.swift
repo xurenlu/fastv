@@ -22,6 +22,7 @@ struct SettingsView: View {
         case typing
         case aiModel
         case data
+        case help
 
         var id: String { rawValue }
 
@@ -32,6 +33,7 @@ struct SettingsView: View {
             case .typing: return "settings.tab.typing"
             case .aiModel: return "settings.tab.aiModel"
             case .data: return "settings.tab.data"
+            case .help: return "settings.tab.help"
             }
         }
 
@@ -42,6 +44,7 @@ struct SettingsView: View {
             case .typing: return "keyboard.fill"
             case .aiModel: return "cpu"
             case .data: return "folder.fill"
+            case .help: return "questionmark.circle.fill"
             }
         }
     }
@@ -107,6 +110,8 @@ struct SettingsView: View {
             AIModelSettingsTab().id("aiModel")
         case .data:
             DataOtherSettingsTab().id("data")
+        case .help:
+            HelpTab().id("help")
         }
     }
 }
