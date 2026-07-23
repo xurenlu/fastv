@@ -339,6 +339,59 @@
 "memory.monitor" = "메모리 모니터";
 "support.and.recommend" = "지원 및 추천";
 "support.official.page" = "공식 지원 페이지";
+
+/* 도움말 탭 */
+"settings.tab.help" = "도움말";
+"help.section.shortcuts" = "입력기 단축키";
+"help.shortcuts.footer" = "위 단축키는 「QEcho IME」가 선택되고 조합 중(화면에 후보 창이 있는 상태)일 때 작동합니다. 페이지 넘김 키 - 와 = 는 주류 오필/병음 입력기의 관례이며, , 와 。 로도 페이지를 넘길 수 있습니다.";
+"help.sc.digits" = "숫자 키를 눌러 해당 번호의 후보를 입력합니다.";
+"help.sc.space" = "현재 강조된(첫 번째) 후보를 입력합니다.";
+"help.sc.semicolon" = "두 번째 후보를 입력합니다(차선).";
+"help.sc.apostrophe" = "세 번째 후보를 입력합니다(오필 전용 방식. 병음 방식에서는 어포스트로피가 음절 구분에 쓰입니다).";
+"help.sc.pageUp" = "후보를 이전 페이지로 넘깁니다.";
+"help.sc.pageDown" = "후보를 다음 페이지로 넘깁니다.";
+"help.sc.arrows" = "후보 사이에서 강조를 위아래로 이동합니다.";
+"help.sc.tab" = "후보 사이에서 강조를 순환시킵니다.";
+"help.sc.return" = "입력 중인 원본 코드를 그대로 입력합니다(후보를 선택하지 않고 친 글자를 그대로 출력).";
+"help.sc.esc" = "현재 조합을 지우고 이번 입력을 취소합니다.";
+"help.sc.shift" = "중국어 / 영어 입력을 전환합니다(한 번 누르면 임시로 영어 직접 입력).";
+"help.sc.backtick" = "병음 역조회: 어떤 글자의 오필 코드가 기억나지 않을 때 ` 를 입력한 뒤 병음을 치면 후보에 해당 오필 코드가 표시됩니다.";
+
+"help.section.voice" = "음성 입력 가이드";
+"help.voice.keys.title" = "두 개의 음성 단축키";
+"help.voice.keys.body" = "기본적으로 FN 키 = 순수 음성 입력(말을 마치면 바로 텍스트 삽입), FN + Control = 음성 입력 + AI 최적화(말버릇 제거, 구두점 추가, 오타 수정). 두 단축키 모두 「음성 입력」 페이지에서 사용자 지정할 수 있습니다.";
+"help.voice.trigger.title" = "세 가지 트리거 방식";
+"help.voice.trigger.body" = "누르고 있기: 누른 채 말하고 놓으면 정지, 짧은 문장에 적합. 토글: 한 번 누르면 시작, 다시 누르면 정지, 긴 받아쓰기에 적합. 하이브리드: 짧게 누르면 토글, 길게(≥0.25초) 누르면 누르고 있기로 전환. 「음성 입력」 페이지에서 전환합니다.";
+"help.voice.ai.title" = "AI 최적화와 컨텍스트 수정";
+"help.voice.ai.body" = "AI 단축키로 말하면 자동으로 구어체가 정리됩니다. 「앞 문장 수정 / 이 문장 다듬기 / 다시 쓰기」 같은 명령을 말하면 현재 입력란 커서 앞의 최근 문장을 읽어 다시 씁니다. 먼저 「AI 및 모델」에서 AI 서비스를 설정하세요.";
+"help.voice.terms.title" = "용어집과 자주 틀리는 단어";
+"help.voice.terms.body" = "「입력기·타이핑」 또는 자주 틀리는 단어 관리에서 고유명사·제품명·전문용어를 등록하면 인식 시 우선 적용되며 대소문자를 구분하지 않습니다. 예를 들어 'open ai'라고 말하면 'OpenAI'로 출력됩니다.";
+"help.voice.power.title" = "Power Mode(컨텍스트 인식)";
+"help.voice.power.body" = "전면 앱이나 브라우저 URL에 따라 AI 후처리 스타일을 자동으로 전환합니다. 메일은 격식체, Slack은 간결하게, IM은 구어체, IDE는 코드 주석 형식으로 출력합니다. 「AI 및 모델」에서 시나리오 규칙을 사용자 지정할 수 있습니다.";
+
+"help.section.install" = "입력기 설치 및 문제 해결";
+"help.install.steps.title" = "설치 및 활성화 방법";
+"help.install.steps.body" = "「입력기·타이핑」 페이지에서 「설치 및 활성화」를 누르면 QEcho IME가 ~/Library/Input Methods에 설치되고 등록됩니다. 그런 다음 메뉴 막대의 입력 메뉴(또는 시스템 설정 → 키보드 → 입력 소스)에서 「QEcho IME」를 선택하세요.";
+"help.install.notShown.title" = "목록에 입력기가 보이지 않을 때";
+"help.install.notShown.body" = "macOS는 입력 소스 목록을 바로 새로 고치지 않을 때가 있습니다. 로그아웃 후 다시 로그인하세요. 로그인 후에도 나타나지 않으면 시스템 설정 → 키보드 → 입력 소스 → 「+」 → 중국어 간체 에서 「QEcho IME」를 수동으로 추가하세요.";
+"help.install.icon.title" = "메뉴 막대 아이콘이 갱신되지 않을 때";
+"help.install.icon.body" = "시스템은 입력 소스 아이콘을 캐시합니다. 업데이트 후에도 이전 아이콘이 표시되면 로그아웃 후 다시 로그인하면 새로 고쳐집니다. 또는 터미널에서 killall com.apple.TextInputMenuAgent 를 실행한 뒤 입력기를 다시 선택하세요.";
+"help.install.schemes.title" = "오필 / 병음 / 혼합 전환";
+"help.install.schemes.body" = "「입력기·타이핑」 페이지의 분할 선택을 사용하거나 메뉴 막대의 입력 메뉴에서 방식을 직접 선택하세요. 혼합(기본) 모드에서는 오필 코드와 전체 병음을 같은 입력 문자열에 섞어서 칠 수 있어 모드를 전환할 필요가 없습니다.";
+
+"help.section.faq" = "자주 묻는 질문";
+"help.faq.password.title" = "비밀번호 입력란에서는 왜 안 되나요?";
+"help.faq.password.body" = "macOS의 보안 입력(Secure Input)은 비밀번호 입력란에서 키보드를 가로채며, 어떤 서드파티 입력기도 개입할 수 없습니다. 이는 시스템 제한으로 음성과 타이핑 모두 비밀번호 입력란에 들어가지 못합니다. 비밀번호 입력란에서는 시스템 입력기로 직접 입력하세요.";
+"help.faq.privacy.title" = "제 음성이 업로드되나요?";
+"help.faq.privacy.body" = "아니요. 음성을 텍스트로 변환하는 작업은 모두 이 기기에서 처리되며 인터넷에 연결하지 않습니다. 직접 AI 최적화를 사용할 때만 「변환된 텍스트」가 설정한 AI 서비스로 전송되며(끌 수 있습니다), 음성 자체는 절대 외부로 전송되지 않습니다.";
+"help.faq.permission.title" = "어떤 권한이 필요한가요?";
+"help.faq.permission.body" = "음성 입력에는 마이크 권한이 필요합니다. 다른 앱에 텍스트를 삽입하거나 Power Mode가 현재 URL을 가져오려면 접근성 권한이 필요합니다. 입력기 타이핑 자체는 접근성 권한이 필요 없습니다. 마이크 권한은 「음성 입력」 페이지에서 테스트할 수 있습니다.";
+"help.faq.relogin.title" = "왜 자꾸 로그아웃 후 다시 로그인하라고 하나요?";
+"help.faq.relogin.body" = "시스템 입력기 프로세스는 macOS가 관리하며, 입력기 구성 요소를 업데이트한 뒤에도 이전 프로세스가 메모리에 남아 있을 수 있습니다. 로그아웃 후 다시 로그인하면 시스템이 새 버전을 불러옵니다. 이는 플랫폼의 동작 방식이며 오류가 아닙니다.";
+"help.faq.voiceVsType.title" = "음성과 타이핑은 하나의 입력기인가요?";
+"help.faq.voiceVsType.body" = "네. 「QEcho IME」를 선택하면 키보드로 직접 치면 Rime 엔진을 통한 타이핑(오필·병음 혼합 입력)이 되고, 음성 단축키를 눌러 말하면 음성 전사가 됩니다. 둘 다 동일한 시스템 입력기 채널을 통해 입력됩니다.";
+
+"help.section.more" = "추가 도움말";
 "settings.done" = "완료";
 
 // 권한 관련 알림

@@ -311,6 +311,59 @@
 "memory.monitor" = "内存监控";
 "support.and.recommend" = "支持与推荐";
 "support.official.page" = "官方支持页";
+
+/* 帮助 tab */
+"settings.tab.help" = "帮助";
+"help.section.shortcuts" = "输入法快捷键";
+"help.shortcuts.footer" = "以上快捷键在选中「轻语输入法」且正在组字（屏幕上有候选窗）时生效。翻页键 - 和 = 是主流五笔/拼音输入法的习惯，, 和 。同样可翻页。";
+"help.sc.digits" = "按数字键选择对应序号的候选词上屏。";
+"help.sc.space" = "上屏当前高亮（第一个）候选词。";
+"help.sc.semicolon" = "选择第 2 个候选词上屏（次选）。";
+"help.sc.apostrophe" = "选择第 3 个候选词上屏（仅纯五笔方案；拼音方案里引号用作音节分隔）。";
+"help.sc.pageUp" = "候选翻到上一页。";
+"help.sc.pageDown" = "候选翻到下一页。";
+"help.sc.arrows" = "在候选中上下移动高亮。";
+"help.sc.tab" = "在候选间轮换高亮。";
+"help.sc.return" = "上屏当前输入的原始编码（不选词，直接输出你敲的字母）。";
+"help.sc.esc" = "清空当前组字，取消本次输入。";
+"help.sc.shift" = "切换中文 / 英文输入（临时按一下切英文直接输入）。";
+"help.sc.backtick" = "拼音反查：忘了某字五笔编码时，输入 ` 再打拼音，候选会标出对应五笔码。";
+
+"help.section.voice" = "语音输入指南";
+"help.voice.keys.title" = "两个语音快捷键";
+"help.voice.keys.body" = "默认 FN 键 = 纯语音输入（说完直接插入文字）；FN + Control = 语音输入 + AI 优化（去语气词、补标点、修错字）。两个快捷键都可在「语音输入」页自定义。";
+"help.voice.trigger.title" = "三种触发方式";
+"help.voice.trigger.body" = "按住录音：按住说、松开停，适合短句；按一下切换：按一下开始、再按一下停，适合长段口述；混合：短按切换、长按（≥0.25 秒）退化为按住录音。在「语音输入」页切换。";
+"help.voice.ai.title" = "AI 优化与上下文回改";
+"help.voice.ai.body" = "用 AI 快捷键说话时会自动做口语化整理；说「修改上一句 / 润色这句 / 重写」等指令时，会读取当前输入框光标前最近一句进行回改。需先在「AI 与模型」配置好 AI 服务。";
+"help.voice.terms.title" = "术语包与常错词";
+"help.voice.terms.body" = "在「输入法·打字」或常错词管理里加入专有名词、产品名、技术术语，识别时优先生效且大小写不敏感，例如说「open ai」会输出「OpenAI」。";
+"help.voice.power.title" = "Power Mode（场景感知）";
+"help.voice.power.body" = "按当前前台 App 或浏览器网址自动切换 AI 后处理风格：邮件用正式语气、Slack 简短、IM 口语、IDE 输出代码注释风格。可在「AI 与模型」里自定义场景规则。";
+
+"help.section.install" = "输入法安装与排障";
+"help.install.steps.title" = "如何安装并启用";
+"help.install.steps.body" = "在「输入法·打字」页点「安装并启用」，把轻语输入法装到 ~/Library/Input Methods 并注册。随后在菜单栏输入法菜单（或 系统设置 → 键盘 → 输入法）里选择「轻语输入法」。";
+"help.install.notShown.title" = "列表里看不到输入法";
+"help.install.notShown.body" = "macOS 有时不会立即刷新输入源列表。请注销并重新登录一次；登录后若仍未出现，去 系统设置 → 键盘 → 输入法 → 「+」→ 简体中文 里手动添加「轻语输入法」。";
+"help.install.icon.title" = "菜单栏图标没更新";
+"help.install.icon.body" = "系统会缓存输入源图标。更新版本后若仍显示旧图标，注销重新登录即可刷新；或在终端执行 killall com.apple.TextInputMenuAgent 后重新选择一次输入法。";
+"help.install.schemes.title" = "切换五笔 / 拼音 / 混打";
+"help.install.schemes.body" = "在「输入法·打字」页用分段选择，或直接点菜单栏输入法菜单里的方案项切换。混打（默认）下五笔码和全拼可在同一输入串里混着打，不用切模式。";
+
+"help.section.faq" = "常见问题";
+"help.faq.password.title" = "密码框里为什么用不了？";
+"help.faq.password.body" = "macOS 的安全输入（Secure Input）会在密码框接管键盘，任何第三方输入法都无法介入，这是系统限制，语音和打字都进不去密码框。请在密码框用系统输入法直接输入。";
+"help.faq.privacy.title" = "我的语音会上传吗？";
+"help.faq.privacy.body" = "不会。语音转文字全部在本机完成，不联网。只有在你主动用 AI 优化时才会把「转写后的文字」发给你配置的 AI 服务（可以关闭），语音本身绝不外传。";
+"help.faq.permission.title" = "需要哪些权限？";
+"help.faq.permission.body" = "语音输入需要麦克风权限；把文字插入到其它 App、以及 Power Mode 抓取当前网址需要辅助功能权限。输入法打字本身不需要辅助功能权限。可在「语音输入」页测试麦克风权限。";
+"help.faq.relogin.title" = "为什么常让我注销重登？";
+"help.faq.relogin.body" = "系统输入法进程由 macOS 托管，更新输入法组件后旧进程可能仍驻留内存，注销重登能让系统加载新版本。这是平台机制，不是出错。";
+"help.faq.voiceVsType.title" = "语音和打字是一套输入法吗？";
+"help.faq.voiceVsType.body" = "是。选中「轻语输入法」后，直接敲键盘走 Rime 引擎打字（五笔·拼音混打），按住语音快捷键说话则走语音转写，两者都从系统输入法通道统一上屏。";
+
+"help.section.more" = "更多帮助";
 "settings.done" = "完成";
 
 // 权限相关Alert
