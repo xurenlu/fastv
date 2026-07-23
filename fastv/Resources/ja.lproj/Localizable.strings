@@ -302,7 +302,6 @@
 "ai.test.optimization" = "テキスト最適化をテスト";
 "ai.test.optimization.help" = "テストテキストを送信してAI最適化機能を検証";
 "settings.title" = "設定";
-"settings.tab.general" = "一般";
 "settings.tab.voice" = "音声入力";
 "settings.tab.typing" = "入力方式・タイピング";
 "settings.tab.aiModel" = "AI とモデル";
