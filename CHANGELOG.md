@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.4.0-rc11] - 2026-07-24
+
+### Changed
+
+- **设置窗口成为主窗口**：轻语已是系统输入法，打开 App / 点 Dock 图标现在直接显示设置窗（左侧 tab），不再有以前那个带测试输入框的旧主窗口 + 齿轮弹 sheet 结构。`ContentView` 的 WindowGroup 内容改为直接渲染 `SettingsView`（保留 XCTest 短路、`MainWindowSentinel`、引导页分支）。
+- **测试输入框 / 语音输入统计 / 语音输入历史 并入「语音输入」tab**：原主窗口的三块整体搬进设置窗「语音输入」tab，位于该 tab 的各项语音设置（快捷键/触发/识别语言/分段/悬浮条/插入/权限/默认语言）之后，方便就地试用与查看统计。
+- `Cmd+,` 与输入法菜单「打开轻语设置」改为把主窗口（即设置窗）拉到前面（`MainWindowPresenter.bringToFront`），不再单独 sheet 弹设置。
+
+### Engineering
+
+- 删除 `fastv/Views/VoiceInputView.swift`（内容已迁入 `VoiceInputTab`）与仅其使用的 `ModelDownloadBanner`；移除失效的 `Notification.Name.openSettings`。
+- 版本号 `2.4.0-rc10` → `2.4.0-rc11`，build `40` → `41`；同步 4 处版本点。
+
 ## [2.4.0-rc10] - 2026-07-23
 
 ### Fixed
