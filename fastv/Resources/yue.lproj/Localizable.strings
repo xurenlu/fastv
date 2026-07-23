@@ -335,6 +335,10 @@
 "settings.tab.typing" = "輸入法·打字";
 "settings.tab.aiModel" = "AI 同模型";
 "settings.tab.data" = "資料同其他";
+"performance.monitor" = "性能監控";
+"memory.monitor" = "記憶體監控";
+"support.and.recommend" = "支援同推薦";
+"support.official.page" = "官方支援頁";
 "settings.done" = "完成";
 
 // 權限相關Alert

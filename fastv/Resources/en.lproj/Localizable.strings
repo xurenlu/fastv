@@ -307,6 +307,10 @@
 "settings.tab.typing" = "IME & Typing";
 "settings.tab.aiModel" = "AI & Models";
 "settings.tab.data" = "Data & More";
+"performance.monitor" = "Performance";
+"memory.monitor" = "Memory Monitor";
+"support.and.recommend" = "Support & Recommendations";
+"support.official.page" = "Official Support Page";
 "settings.done" = "Done";
 
 // Permission Alerts

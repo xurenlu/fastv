@@ -335,6 +335,10 @@
 "settings.tab.typing" = "입력기·타이핑";
 "settings.tab.aiModel" = "AI 및 모델";
 "settings.tab.data" = "데이터 및 기타";
+"performance.monitor" = "성능 모니터링";
+"memory.monitor" = "메모리 모니터";
+"support.and.recommend" = "지원 및 추천";
+"support.official.page" = "공식 지원 페이지";
 "settings.done" = "완료";
 
 // 권한 관련 알림

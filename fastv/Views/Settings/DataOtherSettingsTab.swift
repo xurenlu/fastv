@@ -23,7 +23,7 @@ struct DataOtherSettingsTab: View {
                     HStack {
                         Image(systemName: "chart.line.uptrend.xyaxis.circle.fill")
                             .foregroundStyle(.blue)
-                        Text("内存监控")
+                        Text(NSLocalizedString("memory.monitor", comment: ""))
                         Spacer()
                         Text(MemoryMonitor.shared.getMemoryUsageString())
                             .foregroundStyle(.secondary)
@@ -34,7 +34,7 @@ struct DataOtherSettingsTab: View {
                 }
                 .buttonStyle(.plain)
             } header: {
-                Text("性能监控")
+                Text(NSLocalizedString("performance.monitor", comment: ""))
             }
 
             // 关于
@@ -64,62 +64,25 @@ struct DataOtherSettingsTab: View {
                     HStack {
                         Image(systemName: "questionmark.circle.fill")
                             .foregroundStyle(.blue)
-                        Text("官方支持页")
+                        Text(NSLocalizedString("support.official.page", comment: ""))
                         Spacer()
                         Image(systemName: "arrow.up.right.square")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
-                
+
                 Divider()
-                
-                // 推荐应用
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("推荐应用")
+
+                // 推荐应用（与关于窗口共用同一网格）
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(NSLocalizedString("about.other_apps", comment: ""))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    
-                    // 妙墨 Markdown 笔记软件
-                    Link(destination: URL(string: "https://apps.apple.com/cn/app/%E5%A6%99%E5%A2%A8/id6751117141")!) {
-                        HStack {
-                            Image(systemName: "doc.text.fill")
-                                .foregroundStyle(.purple)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("妙墨")
-                                    .font(.body)
-                                Text("Markdown 笔记软件")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "arrow.up.right.square")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    
-                    // 时间帐单
-                    Link(destination: URL(string: "https://apps.apple.com/cn/app/%E6%97%B6%E9%97%B4%E5%B8%90%E5%8D%95/id6752824838?mt=12")!) {
-                        HStack {
-                            Image(systemName: "clock.fill")
-                                .foregroundStyle(.orange)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("时间帐单")
-                                    .font(.body)
-                                Text("个人时间记录工具")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "arrow.up.right.square")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                    RecommendedAppsGrid()
                 }
             } header: {
-                Text("支持与推荐")
+                Text(NSLocalizedString("support.and.recommend", comment: ""))
             }
         }
         .formStyle(.grouped)
