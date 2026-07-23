@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.4.0-rc4] - 2026-07-23
+
+### Fixed
+
+- 修输入源菜单图标丑/糊：此前直接把彩色 App icon 缩到 16pt 当输入法图标，小尺寸糊成一团且深色菜单栏下发黑。改为专门绘制的**单色矢量模板图** `QEchoIMETemplate.pdf`（脉冲外环 + 麦克风 + 声波竖条镂空），文件名以 `Template` 结尾，macOS 自动按明暗主题反色（与系统 CharacterPalette 的 `CVIconTemplate.pdf` 同一机制），矢量任意分辨率清晰。源图 `assets/brand/qecho-ime-menubar-template.svg` 随仓库保留可迭代。
+- 移除工程中旧 `QEchoIME.tiff` 的残留资源引用，避免构建期挂空引用。
+
+### Note
+
+- 系统会缓存输入源图标，更新后若仍显示旧图标，需注销重新登录（或 `killall '\''com.apple.TextInputMenuAgent'\''` 后重选输入法）刷新缓存。
+
 ## [2.4.0-rc3] - 2026-07-23
 
 ### Added

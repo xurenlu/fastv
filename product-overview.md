@@ -1,6 +1,6 @@
 # Product Overview
 
-> 最后更新：2026-07-23 | 当前版本：v2.4.0-rc3
+> 最后更新：2026-07-23 | 当前版本：v2.4.0-rc4
 
 ## 当前设计思路
 
@@ -38,6 +38,7 @@
 
 ## 版本记录
 
+- `2.4.0-rc4`：输入源菜单图标改为单色矢量模板图 `QEchoIMETemplate.pdf`（脉冲麦克风），文件名以 Template 结尾由 macOS 自动明暗反色，替代此前糊/发黑的彩色 App icon 缩图；清理旧 tiff 残留引用。源图 `assets/brand/qecho-ime-menubar-template.svg` 随仓库。
 - `2.4.0-rc3`：输入法阶段三 — 试用反馈打磨。输入源显示名「轻语输入法」+ App icon 菜单栏图标（tsInputMethodLocalizedNamesKey / tsInputMethodIconFileKey）；候选快捷键分号次选、引号三选（纯五笔），delimiter 相应避让；新增 `wubi86.schema.yaml` 纯五笔方案（prism 预编译随包）与纯拼音入口，三方案在设置页 segmented / 输入法下拉菜单切换，经 `qecho-ime-settings.json` 双侧同步；动态词频开关（custom 补丁 + IME 热重启部署）；输入法下拉菜单（设置入口经分布式通知唤起主 App / 方案 radio / 中英切换 / 全角开关）；IME 菜单 5 语种本地化。`IMESettingsTests` 8 例，含随包 custom 与生成器一致性防漂移。
 - `2.4.0-rc2`：输入法阶段二 — librime 五笔·拼音混打。vendor librime 1.17.0 universal dylib 与 wubi_pinyin/pinyin_simp/prelude 方案数据（含预编译词典与三方 LICENSE）；新增 `RimeEngine`（C API 封装）、`RimeKeyMapping`（键值/光标偏移纯函数，共享单测）；`QEchoIMEController` 实现内联组字、IMKCandidates 候选窗、选字/翻页/Esc/回车、Shift 中英切换（flagsChanged → Rime ascii_composer）、语音上屏前自动清组字。冒烟验证 `wqvb`/`shuru`/`khk` 混出候选；全套 59 单测通过。
 - `2.4.0-rc1`：系统输入法（实验性）阶段一。新增 QEchoIME IMKit target（英文直通薄壳 + CFMessagePort 语音上屏服务端），随主 App 嵌入分发；主 App 新增 `InputMethodBridgeService`（检测当前输入源 + 发送转写文本）与 `InputMethodInstaller`（安装 / TIS 注册 / 启用），三处语音插入调用点收敛到 `insertVoiceText` 统一入口并优先走输入法通道；设置页新增「输入法（实验性）」区块与 5 语种文案；`InputMethodBridgeContract` 契约 6 个单测，全套 46 测通过。
