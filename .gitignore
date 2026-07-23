@@ -1,5 +1,8 @@
 # Xcode
 build/
+# QEchoIME 预编译 Rime 词典是随包分发的 vendor 数据，不是构建产物
+!QEchoIME/RimeData/build/
+!QEchoIME/RimeData/build/**
 DerivedData/
 .derivedData/
 *.xcuserstate

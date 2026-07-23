@@ -9,10 +9,15 @@
 /* Begin PBXBuildFile section */
 		0E28A5934CC3C085196FA401 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 157FCB7A6158E71E6A21CFEE /* Cocoa.framework */; };
 		176CCDEE638042CC623C455C /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = E331E50F0E4972CC7798BF5B /* main.swift */; };
+		18309D32E8420B595A5E586C /* librime.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 75B03F1385C914281CA5C0AA /* librime.1.dylib */; };
+		18B271FC03AFF5A0C617F180 /* RimeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 913A75EE857762F3687D2531 /* RimeEngine.swift */; };
 		420B8873F2660D76E1855456 /* Pods_musetype.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F8E1ABDD6478BDDD3FBF5EE6 /* Pods_musetype.framework */; };
 		52922B0CAD2D41FD8F675951 /* InputMethodBridgeContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD07884DD621A291E5C0E9B /* InputMethodBridgeContract.swift */; };
 		5504FF08BCB6CEF78B991E39 /* QEchoIMEController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A3DC7D8EC1D2ABF9008C1BA /* QEchoIMEController.swift */; };
+		5E86896F0D95FD4912BC9BA0 /* librime.1.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 75B03F1385C914281CA5C0AA /* librime.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		67DE1C2DF0605ED09DBADCB0 /* RimeData in Resources */ = {isa = PBXBuildFile; fileRef = 25F6EC8B468C2C63E6AEF0F4 /* RimeData */; };
 		6F086E88051E878AE6CCD0C1 /* QEchoIME.app in Embed Input Method */ = {isa = PBXBuildFile; fileRef = 161CCC51A8A655CDDEF940EC /* QEchoIME.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		7038947BB83302B308667997 /* RimeKeyMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1E0956AA3CE5CAA15A3F0C /* RimeKeyMapping.swift */; };
 		941B8D178AAD8CCDE66EAAE9 /* VoiceCommitServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BDF9BC00900F082BE15E5E /* VoiceCommitServer.swift */; };
 		BFF20D58A2686398E68CFC67 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 7C864D9382D3A405BCBC8404 /* Sparkle */; };
 /* End PBXBuildFile section */
@@ -53,11 +58,23 @@
 			name = "Embed Input Method";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AE6B0CBE67E370F977142870 /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				5E86896F0D95FD4912BC9BA0 /* librime.1.dylib in Embed Libraries */,
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		157FCB7A6158E71E6A21CFEE /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
 		161CCC51A8A655CDDEF940EC /* QEchoIME.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QEchoIME.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		25F6EC8B468C2C63E6AEF0F4 /* RimeData */ = {isa = PBXFileReference; includeInIndex = 1; path = RimeData; sourceTree = "<group>"; };
 		29D214D841CB811225CD3A43 /* Pods-typecho.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-typecho.debug.xcconfig"; path = "Target Support Files/Pods-typecho/Pods-typecho.debug.xcconfig"; sourceTree = "<group>"; };
 		2A3DC7D8EC1D2ABF9008C1BA /* QEchoIMEController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QEchoIMEController.swift; sourceTree = "<group>"; };
 		5C04237E2ECD792D00821B50 /* QEcho.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QEcho.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -65,8 +82,12 @@
 		5C0423972ECD793000821B50 /* fastvUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = fastvUITests.xctest; path = typecho.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C1000012F00000100527815 /* musetype.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = musetype.xctestplan; sourceTree = "<group>"; };
 		5EF571A6A0DA73C2DB42978C /* Pods-typecho.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-typecho.release.xcconfig"; path = "Target Support Files/Pods-typecho/Pods-typecho.release.xcconfig"; sourceTree = "<group>"; };
+		75B03F1385C914281CA5C0AA /* librime.1.dylib */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = "compiled.mach-o.dylib"; name = librime.1.dylib; path = ../ThirdParty/librime/lib/librime.1.dylib; sourceTree = "<group>"; };
 		7D031418607FBBB6418EECC7 /* Pods-musetype.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-musetype.debug.xcconfig"; path = "Target Support Files/Pods-musetype/Pods-musetype.debug.xcconfig"; sourceTree = "<group>"; };
+		8F1E0956AA3CE5CAA15A3F0C /* RimeKeyMapping.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RimeKeyMapping.swift; path = ../fastv/Services/RimeKeyMapping.swift; sourceTree = "<group>"; };
+		913A75EE857762F3687D2531 /* RimeEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RimeEngine.swift; sourceTree = "<group>"; };
 		A2BDF9BC00900F082BE15E5E /* VoiceCommitServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VoiceCommitServer.swift; sourceTree = "<group>"; };
+		B505B67EC4521A859283FEB7 /* QEchoIME-Bridging-Header.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "QEchoIME-Bridging-Header.h"; sourceTree = "<group>"; };
 		DC0B03A35A134716360C9BD8 /* Pods-musetype.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-musetype.release.xcconfig"; path = "Target Support Files/Pods-musetype/Pods-musetype.release.xcconfig"; sourceTree = "<group>"; };
 		E0E1228C032E765F33D04BD5 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E331E50F0E4972CC7798BF5B /* main.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
@@ -127,6 +148,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0E28A5934CC3C085196FA401 /* Cocoa.framework in Frameworks */,
+				18309D32E8420B595A5E586C /* librime.1.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -152,6 +174,11 @@
 				A2BDF9BC00900F082BE15E5E /* VoiceCommitServer.swift */,
 				E0E1228C032E765F33D04BD5 /* Info.plist */,
 				FCD07884DD621A291E5C0E9B /* InputMethodBridgeContract.swift */,
+				913A75EE857762F3687D2531 /* RimeEngine.swift */,
+				B505B67EC4521A859283FEB7 /* QEchoIME-Bridging-Header.h */,
+				8F1E0956AA3CE5CAA15A3F0C /* RimeKeyMapping.swift */,
+				75B03F1385C914281CA5C0AA /* librime.1.dylib */,
+				25F6EC8B468C2C63E6AEF0F4 /* RimeData */,
 			);
 			name = QEchoIME;
 			path = QEchoIME;
@@ -280,6 +307,7 @@
 				8839997755450A0EE50D7B6D /* Sources */,
 				D9F244D82B9DD0959BA87FB3 /* Frameworks */,
 				32C42503118C49A3C98AE49F /* Resources */,
+				AE6B0CBE67E370F977142870 /* Embed Libraries */,
 			);
 			buildRules = (
 			);
@@ -347,6 +375,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				67DE1C2DF0605ED09DBADCB0 /* RimeData in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -490,6 +519,8 @@
 				5504FF08BCB6CEF78B991E39 /* QEchoIMEController.swift in Sources */,
 				941B8D178AAD8CCDE66EAAE9 /* VoiceCommitServer.swift in Sources */,
 				52922B0CAD2D41FD8F675951 /* InputMethodBridgeContract.swift in Sources */,
+				18B271FC03AFF5A0C617F180 /* RimeEngine.swift in Sources */,
+				7038947BB83302B308667997 /* RimeKeyMapping.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -526,17 +557,26 @@
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/ThirdParty/librime/include",
+				);
 				INFOPLIST_FILE = QEchoIME/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/ThirdParty/librime/lib",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.0-rc1";
+				MARKETING_VERSION = "2.4.0-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.17push.inputmethod.QEchoIME;
 				PRODUCT_NAME = QEchoIME;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "QEchoIME/QEchoIME-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -670,7 +710,7 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 31;
+				CURRENT_PROJECT_VERSION = 32;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -707,7 +747,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.0-rc1";
+				MARKETING_VERSION = "2.4.0-rc2";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
@@ -736,7 +776,7 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 31;
+				CURRENT_PROJECT_VERSION = 32;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -773,7 +813,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.0-rc1";
+				MARKETING_VERSION = "2.4.0-rc2";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
@@ -799,7 +839,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 31;
+				CURRENT_PROJECT_VERSION = 32;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -819,7 +859,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.0-rc1";
+				MARKETING_VERSION = "2.4.0-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -837,7 +877,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 31;
+				CURRENT_PROJECT_VERSION = 32;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -857,7 +897,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.0-rc1";
+				MARKETING_VERSION = "2.4.0-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -874,10 +914,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 31;
+				CURRENT_PROJECT_VERSION = 32;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.4.0-rc1";
+				MARKETING_VERSION = "2.4.0-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -894,10 +934,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 31;
+				CURRENT_PROJECT_VERSION = 32;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.4.0-rc1";
+				MARKETING_VERSION = "2.4.0-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -920,17 +960,26 @@
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/ThirdParty/librime/include",
+				);
 				INFOPLIST_FILE = QEchoIME/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/ThirdParty/librime/lib",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.0-rc1";
+				MARKETING_VERSION = "2.4.0-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.17push.inputmethod.QEchoIME;
 				PRODUCT_NAME = QEchoIME;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "QEchoIME/QEchoIME-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;

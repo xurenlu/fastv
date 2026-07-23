@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.4.0-rc2] - 2026-07-23
+
+### Added
+
+- 输入法阶段二：QEchoIME 接入 librime，支持**五笔·拼音混打**（`wubi_pinyin` 方案，五笔 86 码与全拼同一输入串混出候选，`` ` `` 前缀拼音反查带五笔编码提示）。组字区内联 preedit（下划线 marked text）、系统单列候选窗（IMKCandidates）、翻页/方向键/数字选字/Esc 清空/回车上原文，Shift 中英切换由 Rime ascii_composer 处理。
+- 语音上屏与打字融合：语音文本插入前自动落掉进行中的组字，避免 marked text 交错。
+- Vendor librime 1.17.0 官方预编译 universal dylib（`ThirdParty/librime/`，BSD-3-Clause）与 Rime 方案数据（`QEchoIME/RimeData/`：rime-wubi LGPL-3.0、rime-pinyin-simp Apache-2.0、rime-prelude LGPL-3.0，均以独立数据文件随包分发并附 LICENSE）。词典预编译产物随包分发，首次启用无需等待长时间部署；用户词典与日志位于 `~/Library/Application Support/QEchoIME/`。
+
+### Tests
+
+- 新增 `RimeKeyMappingTests` 7 例：macOS 键码/字符 → X11 keysym 映射、修饰键掩码、UTF-8→UTF-16 光标偏移（含 emoji 与非法偏移兜底）。全套 59 测通过。
+
+### Engineering
+
+- `RimeEngine`（librime C API Swift 封装：traits/session/process_key/context/commit）、`RimeKeyMapping`（纯函数映射，musetype 与 QEchoIME 共享编译）；`scripts/add_ime_target.rb` 扩展 dylib 链接/嵌入、bridging header、RimeData 资源（仍幂等）。
+- `.gitignore` 对 `QEchoIME/RimeData/build/` 预编译词典加白名单（vendor 数据非构建产物）。
+- 版本号 `2.4.0-rc1` → `2.4.0-rc2`，build `31` → `32`；同步 Xcode、Info.plist 与 STT API 响应版本。
+
 ## [2.4.0-rc1] - 2026-07-23
 
 ### Added
