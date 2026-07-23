@@ -4,4 +4,5 @@ patch:
   speller/delimiter: " '"
   key_binder/bindings/+:
     - { when: has_menu, accept: semicolon, send: 2 }
+  menu/page_size: 5
   translator/enable_user_dict: true

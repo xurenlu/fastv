@@ -1,6 +1,6 @@
 # Product Overview
 
-> 最后更新：2026-07-23 | 当前版本：v2.4.0-rc5
+> 最后更新：2026-07-23 | 当前版本：v2.4.0-rc6
 
 ## 当前设计思路
 
@@ -13,7 +13,6 @@
 - 术语包：常错词管理新增「术语包」分栏。专有名词、产品名、技术术语在替换管线中优先生效且大小写不敏感，说「open ai」也能输出「OpenAI」。
 - Power Mode（场景感知 prompt）：按前台 App / 浏览器 URL 自动切换 AI 后处理 prompt 模板。出厂内置 4 套预设（邮件正式 / Slack 简短 / IM 口语 / IDE 代码注释），用户可加自定义场景（bundleId / URL 通配 / App 名 contains 三种匹配规则 OR 组合）。AX 抽 Safari/Chrome/Arc/Brave/Edge/Firefox 当前 tab URL，1s 缓存。
 - 悬浮指示器位置：除「左上 / 右上 / 左下 / 右下 / 正中下方」5 个固定位置之外，新增「跟随光标」—— 录音期间小指示器贴着输入光标移动（AX 拿 caret bounds 优先，失败兜底鼠标位置）。
-- 主窗口界面皮肤：可在设置中切换系统默认、清爽浅色、纸感与多套深色风格；深色皮肤使用浅色文字，保证暗背景可读。
 - 关于窗口：独立 macOS 窗口展示轻语版本、作者主页，以及包含 GitWise、象墨等产品的 83d 系列推荐应用。
 - AI 语音优化：AI 快捷键可对转写文本进行口语化清理、标点补全、错字修正和轻度结构化整理；当口述内容天然包含多个事项、条件、步骤或请求时，可整理成 2-5 条短列表。
 - 中英混合术语校正：内置高置信度术语/流行技术词规则（如 `麦克 app → Mac app`、`Mac OS → macOS`、`open ai → OpenAI`、`git hub → GitHub`、`type script → TypeScript`），并通过默认 AI prompt 处理需要语境推断的产品名、技术词和流行词。
@@ -38,6 +37,7 @@
 
 ## 版本记录
 
+- `2.4.0-rc6`：候选个数 5–9 可选（menu/page_size）；候选窗 6 套一键预设皮肤（经典浅色/夜幕/清新绿/极简黑白/大字护眼/竖排水墨，均由现有可选项拼成，套用后可微调）；设置窗口重构为左侧竖向 tab 5 组（常用/语音输入/输入法·打字/AI 与模型/数据与其他）；移除主窗口 7 套界面皮肤，主窗固定系统默认配色。
 - `2.4.0-rc5`：候选窗全面外观定制。自绘无边框 NSPanel + NSView 替代系统 IMKCandidates，支持横/竖排、候选字体与字号、序号/编码提示字号、7 色配色（浅色/深色两套独立可调 + 跟随系统深浅色）、圆角/间距/内边距、序号与编码提示显隐、点击选字。设置页「候选窗外观」区块带实时预览与一键恢复默认。外观经 qecho-ime-settings.json 即时通知 IME 重绘，不触发 Rime 重部署。`CandidateAppearanceTests` 12 例（含旧设置文件向后兼容），全套 80 测通过。
 - `2.4.0-rc4`：输入源菜单图标改为单色矢量模板图 `QEchoIMETemplate.pdf`（脉冲麦克风），文件名以 Template 结尾由 macOS 自动明暗反色，替代此前糊/发黑的彩色 App icon 缩图；清理旧 tiff 残留引用。源图 `assets/brand/qecho-ime-menubar-template.svg` 随仓库。
 - `2.4.0-rc3`：输入法阶段三 — 试用反馈打磨。输入源显示名「轻语输入法」+ App icon 菜单栏图标（tsInputMethodLocalizedNamesKey / tsInputMethodIconFileKey）；候选快捷键分号次选、引号三选（纯五笔），delimiter 相应避让；新增 `wubi86.schema.yaml` 纯五笔方案（prism 预编译随包）与纯拼音入口，三方案在设置页 segmented / 输入法下拉菜单切换，经 `qecho-ime-settings.json` 双侧同步；动态词频开关（custom 补丁 + IME 热重启部署）；输入法下拉菜单（设置入口经分布式通知唤起主 App / 方案 radio / 中英切换 / 全角开关）；IME 菜单 5 语种本地化。`IMESettingsTests` 8 例，含随包 custom 与生成器一致性防漂移。

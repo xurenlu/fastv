@@ -8,7 +8,7 @@
 import SwiftUI
 
 private struct MainWindowPaletteKey: EnvironmentKey {
-    static let defaultValue = MainWindowSkin.systemDefault.palette
+    static let defaultValue = MainWindowSkinPalette.systemDefault
 }
 
 private extension EnvironmentValues {
@@ -31,7 +31,7 @@ struct VoiceInputView: View {
     @State private var copiedRecordId: UUID?
 
     var body: some View {
-        let palette = preferences.mainWindowSkin.palette
+        let palette = MainWindowSkinPalette.systemDefault
 
         VStack(spacing: 0) {
             // 模型未下载提示横幅 - Apple 风格：克制、信息优先

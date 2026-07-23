@@ -44,7 +44,7 @@ final class IMESettingsTests: XCTestCase {
     // MARK: - RimePatchGenerator
 
     func testMixedPatchRemovesSemicolonFromDelimiterAndBindsSecondCandidate() {
-        let yaml = RimePatchGenerator.customYAML(for: .mixed, enableUserDict: true)
+        let yaml = RimePatchGenerator.customYAML(for: .mixed, enableUserDict: true, pageSize: 5)
         XCTAssertTrue(yaml.contains("speller/delimiter: \" '\""))
         XCTAssertTrue(yaml.contains("accept: semicolon, send: 2"))
         XCTAssertFalse(yaml.contains("apostrophe"), "混打方案引号要留给拼音音节分隔")
@@ -52,21 +52,21 @@ final class IMESettingsTests: XCTestCase {
     }
 
     func testWubiPatchBindsSecondAndThirdCandidate() {
-        let yaml = RimePatchGenerator.customYAML(for: .wubi, enableUserDict: true)
+        let yaml = RimePatchGenerator.customYAML(for: .wubi, enableUserDict: true, pageSize: 5)
         XCTAssertTrue(yaml.contains("speller/delimiter: \" \""))
         XCTAssertTrue(yaml.contains("accept: semicolon, send: 2"))
         XCTAssertTrue(yaml.contains("accept: apostrophe, send: 3"))
     }
 
     func testPinyinPatchKeepsApostropheAsSyllableDivider() {
-        let yaml = RimePatchGenerator.customYAML(for: .pinyin, enableUserDict: true)
+        let yaml = RimePatchGenerator.customYAML(for: .pinyin, enableUserDict: true, pageSize: 5)
         XCTAssertFalse(yaml.contains("speller/delimiter"), "纯拼音不覆盖 delimiter，保留 ' 分隔音节")
         XCTAssertTrue(yaml.contains("accept: semicolon, send: 2"))
         XCTAssertFalse(yaml.contains("apostrophe"))
     }
 
     func testUserDictDisabledIsWrittenToAllSchemas() {
-        let files = RimePatchGenerator.userCustomFiles(enableUserDict: false)
+        let files = RimePatchGenerator.userCustomFiles(enableUserDict: false, pageSize: 5)
         XCTAssertEqual(Set(files.keys), Set([
             "wubi_pinyin.custom.yaml",
             "wubi86.custom.yaml",
@@ -87,7 +87,7 @@ final class IMESettingsTests: XCTestCase {
             .deletingLastPathComponent()  // fastvTests/
             .deletingLastPathComponent()  // repo root
             .appendingPathComponent("QEchoIME/RimeData")
-        for (fileName, generated) in RimePatchGenerator.userCustomFiles(enableUserDict: true) {
+        for (fileName, generated) in RimePatchGenerator.userCustomFiles(enableUserDict: true, pageSize: 5) {
             let shippedURL = repoRimeData.appendingPathComponent(fileName)
             let shipped = try String(contentsOf: shippedURL, encoding: .utf8)
             // 随包文件允许多带注释行，逐行比对非注释内容

@@ -5,4 +5,5 @@ patch:
   key_binder/bindings/+:
     - { when: has_menu, accept: semicolon, send: 2 }
     - { when: has_menu, accept: apostrophe, send: 3 }
+  menu/page_size: 5
   translator/enable_user_dict: true

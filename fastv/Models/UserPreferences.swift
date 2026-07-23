@@ -22,172 +22,21 @@ struct MainWindowSkinPalette {
     let accentColor: Color
     let accentSecondaryColor: Color
     let preferredColorScheme: ColorScheme?
-}
 
-enum MainWindowSkin: String, CaseIterable {
-    case systemDefault = "systemDefault"
-    case mistForest = "mistForest"
-    case inkPaper = "inkPaper"
-    case sciFiGlow = "sciFiGlow"
-    case midnightSlate = "midnightSlate"
-    case auroraNoir = "auroraNoir"
-    case emberGraphite = "emberGraphite"
-
-    var displayName: String {
-        NSLocalizedString(displayNameKey, comment: "")
-    }
-
-    var detail: String {
-        NSLocalizedString(detailKey, comment: "")
-    }
-
-    var iconName: String {
-        switch self {
-        case .systemDefault:
-            return "macwindow"
-        case .mistForest:
-            return "leaf"
-        case .inkPaper:
-            return "paintbrush.pointed"
-        case .sciFiGlow:
-            return "sparkles"
-        case .midnightSlate:
-            return "moon.stars"
-        case .auroraNoir:
-            return "waveform.path.ecg"
-        case .emberGraphite:
-            return "flame"
-        }
-    }
-
-    var palette: MainWindowSkinPalette {
-        switch self {
-        case .systemDefault:
-            return MainWindowSkinPalette(
-                backgroundColors: [Color(nsColor: .windowBackgroundColor), Color(nsColor: .windowBackgroundColor)],
-                surfaceColor: Color(nsColor: .controlBackgroundColor).opacity(0.78),
-                elevatedSurfaceColor: Color(nsColor: .controlBackgroundColor),
-                fieldColor: Color(nsColor: .textBackgroundColor),
-                borderColor: Color.primary.opacity(0.12),
-                primaryTextColor: .primary,
-                secondaryTextColor: .secondary,
-                tertiaryTextColor: Color.secondary.opacity(0.72),
-                accentColor: .accentColor,
-                accentSecondaryColor: .secondary,
-                preferredColorScheme: nil
-            )
-        case .mistForest:
-            return MainWindowSkinPalette(
-                backgroundColors: [
-                    Color(red: 0.88, green: 0.94, blue: 0.91),
-                    Color(red: 0.96, green: 0.92, blue: 0.84)
-                ],
-                surfaceColor: Color.white.opacity(0.66),
-                elevatedSurfaceColor: Color(red: 0.96, green: 0.99, blue: 0.96).opacity(0.82),
-                fieldColor: Color.white.opacity(0.76),
-                borderColor: Color(red: 0.36, green: 0.58, blue: 0.52).opacity(0.28),
-                primaryTextColor: Color(red: 0.12, green: 0.19, blue: 0.17),
-                secondaryTextColor: Color(red: 0.31, green: 0.43, blue: 0.39),
-                tertiaryTextColor: Color(red: 0.45, green: 0.56, blue: 0.52).opacity(0.82),
-                accentColor: Color(red: 0.23, green: 0.51, blue: 0.47),
-                accentSecondaryColor: Color(red: 0.76, green: 0.42, blue: 0.32),
-                preferredColorScheme: .light
-            )
-        case .inkPaper:
-            return MainWindowSkinPalette(
-                backgroundColors: [
-                    Color(red: 0.95, green: 0.93, blue: 0.85),
-                    Color(red: 0.86, green: 0.88, blue: 0.80)
-                ],
-                surfaceColor: Color(red: 0.99, green: 0.97, blue: 0.89).opacity(0.74),
-                elevatedSurfaceColor: Color(red: 0.98, green: 0.95, blue: 0.85).opacity(0.88),
-                fieldColor: Color(red: 1.00, green: 0.98, blue: 0.90).opacity(0.86),
-                borderColor: Color(red: 0.48, green: 0.36, blue: 0.22).opacity(0.24),
-                primaryTextColor: Color(red: 0.20, green: 0.18, blue: 0.14),
-                secondaryTextColor: Color(red: 0.43, green: 0.36, blue: 0.26),
-                tertiaryTextColor: Color(red: 0.55, green: 0.47, blue: 0.36).opacity(0.82),
-                accentColor: Color(red: 0.23, green: 0.32, blue: 0.42),
-                accentSecondaryColor: Color(red: 0.58, green: 0.42, blue: 0.23),
-                preferredColorScheme: .light
-            )
-        case .sciFiGlow:
-            return MainWindowSkinPalette(
-                backgroundColors: [
-                    Color(red: 0.03, green: 0.15, blue: 0.17),
-                    Color(red: 0.02, green: 0.05, blue: 0.07)
-                ],
-                surfaceColor: Color(red: 0.06, green: 0.22, blue: 0.23).opacity(0.88),
-                elevatedSurfaceColor: Color(red: 0.07, green: 0.28, blue: 0.30).opacity(0.92),
-                fieldColor: Color(red: 0.02, green: 0.12, blue: 0.14).opacity(0.94),
-                borderColor: Color(red: 0.13, green: 0.86, blue: 0.92).opacity(0.28),
-                primaryTextColor: Color(red: 0.90, green: 1.00, blue: 0.98),
-                secondaryTextColor: Color(red: 0.67, green: 0.85, blue: 0.84),
-                tertiaryTextColor: Color(red: 0.46, green: 0.66, blue: 0.66),
-                accentColor: Color(red: 0.05, green: 0.82, blue: 0.92),
-                accentSecondaryColor: Color(red: 0.35, green: 0.98, blue: 0.67),
-                preferredColorScheme: .dark
-            )
-        case .midnightSlate:
-            return MainWindowSkinPalette(
-                backgroundColors: [
-                    Color(red: 0.08, green: 0.10, blue: 0.15),
-                    Color(red: 0.01, green: 0.02, blue: 0.04)
-                ],
-                surfaceColor: Color(red: 0.12, green: 0.15, blue: 0.21).opacity(0.92),
-                elevatedSurfaceColor: Color(red: 0.16, green: 0.19, blue: 0.27).opacity(0.94),
-                fieldColor: Color(red: 0.07, green: 0.09, blue: 0.14).opacity(0.96),
-                borderColor: Color(red: 0.55, green: 0.68, blue: 0.92).opacity(0.22),
-                primaryTextColor: Color(red: 0.92, green: 0.95, blue: 1.00),
-                secondaryTextColor: Color(red: 0.70, green: 0.77, blue: 0.88),
-                tertiaryTextColor: Color(red: 0.50, green: 0.57, blue: 0.68),
-                accentColor: Color(red: 0.42, green: 0.66, blue: 1.00),
-                accentSecondaryColor: Color(red: 0.67, green: 0.56, blue: 1.00),
-                preferredColorScheme: .dark
-            )
-        case .auroraNoir:
-            return MainWindowSkinPalette(
-                backgroundColors: [
-                    Color(red: 0.02, green: 0.08, blue: 0.08),
-                    Color(red: 0.05, green: 0.11, blue: 0.18)
-                ],
-                surfaceColor: Color(red: 0.04, green: 0.16, blue: 0.15).opacity(0.90),
-                elevatedSurfaceColor: Color(red: 0.06, green: 0.22, blue: 0.20).opacity(0.94),
-                fieldColor: Color(red: 0.02, green: 0.10, blue: 0.11).opacity(0.96),
-                borderColor: Color(red: 0.36, green: 0.95, blue: 0.73).opacity(0.24),
-                primaryTextColor: Color(red: 0.88, green: 1.00, blue: 0.96),
-                secondaryTextColor: Color(red: 0.66, green: 0.86, blue: 0.80),
-                tertiaryTextColor: Color(red: 0.45, green: 0.65, blue: 0.60),
-                accentColor: Color(red: 0.38, green: 0.96, blue: 0.72),
-                accentSecondaryColor: Color(red: 0.22, green: 0.71, blue: 0.96),
-                preferredColorScheme: .dark
-            )
-        case .emberGraphite:
-            return MainWindowSkinPalette(
-                backgroundColors: [
-                    Color(red: 0.13, green: 0.12, blue: 0.11),
-                    Color(red: 0.04, green: 0.04, blue: 0.04)
-                ],
-                surfaceColor: Color(red: 0.18, green: 0.17, blue: 0.16).opacity(0.92),
-                elevatedSurfaceColor: Color(red: 0.23, green: 0.21, blue: 0.20).opacity(0.94),
-                fieldColor: Color(red: 0.10, green: 0.10, blue: 0.10).opacity(0.96),
-                borderColor: Color(red: 1.00, green: 0.58, blue: 0.28).opacity(0.20),
-                primaryTextColor: Color(red: 1.00, green: 0.96, blue: 0.90),
-                secondaryTextColor: Color(red: 0.84, green: 0.76, blue: 0.66),
-                tertiaryTextColor: Color(red: 0.63, green: 0.56, blue: 0.48),
-                accentColor: Color(red: 1.00, green: 0.55, blue: 0.24),
-                accentSecondaryColor: Color(red: 0.96, green: 0.78, blue: 0.42),
-                preferredColorScheme: .dark
-            )
-        }
-    }
-
-    private var displayNameKey: String {
-        "main.window.skin.\(rawValue).name"
-    }
-
-    private var detailKey: String {
-        "main.window.skin.\(rawValue).description"
-    }
+    /// 主窗口固定使用系统默认外观（跟随系统浅色/深色）。
+    static let systemDefault = MainWindowSkinPalette(
+        backgroundColors: [Color(nsColor: .windowBackgroundColor), Color(nsColor: .windowBackgroundColor)],
+        surfaceColor: Color(nsColor: .controlBackgroundColor).opacity(0.78),
+        elevatedSurfaceColor: Color(nsColor: .controlBackgroundColor),
+        fieldColor: Color(nsColor: .textBackgroundColor),
+        borderColor: Color.primary.opacity(0.12),
+        primaryTextColor: .primary,
+        secondaryTextColor: .secondary,
+        tertiaryTextColor: Color.secondary.opacity(0.72),
+        accentColor: .accentColor,
+        accentSecondaryColor: .secondary,
+        preferredColorScheme: nil
+    )
 }
 
 @MainActor
@@ -323,7 +172,6 @@ class UserPreferences: ObservableObject {
         static let lastWatermarkFontURL = "lastWatermarkFontURL" // 上次使用的字体文件路径
         // 通用 / 外观
         static let hideDockIcon = "hideDockIcon" // 在 Dock 中隐藏图标（仅保留菜单栏图标常驻）
-        static let mainWindowSkin = "mainWindowSkin" // 主窗口界面皮肤
     }
 
     static let defaultAISystemPrompt = """
@@ -489,10 +337,6 @@ class UserPreferences: ObservableObject {
             defaults.set(newValue, forKey: Keys.hideDockIcon)
             NotificationCenter.default.post(name: .hideDockIconPreferenceChanged, object: newValue)
         }
-    }
-
-    @Published var mainWindowSkin: MainWindowSkin {
-        willSet { defaults.set(newValue.rawValue, forKey: Keys.mainWindowSkin) }
     }
 
     @Published var extractFirstFrame: Bool {
@@ -1017,14 +861,6 @@ class UserPreferences: ObservableObject {
             waveformWindowColorStyle = .darkGrayBlue
         }
 
-        // 主窗口界面皮肤，默认使用淡雅雾林
-        if let skinString = defaults.string(forKey: Keys.mainWindowSkin),
-           let skin = MainWindowSkin(rawValue: skinString) {
-            mainWindowSkin = skin
-        } else {
-            mainWindowSkin = .mistForest
-        }
-        
         // AI 优化设置，默认不启用
         enableAIOptimization = defaults.object(forKey: Keys.enableAIOptimization) as? Bool ?? false
         enableMeetingSummaryAI = defaults.object(forKey: Keys.enableMeetingSummaryAI) as? Bool ?? false
