@@ -1,14 +1,14 @@
 __build_info:
   rime_version: 1.17.0
   timestamps:
-    default: 1784805385
-    default.custom: 1784805385
-    key_bindings: 1784805385
+    default: 1784806075
+    default.custom: 1784809398
+    key_bindings: 1784806075
     key_bindings.custom: 0
-    punctuation: 1784805385
+    punctuation: 1784806075
     punctuation.custom: 0
-    wubi_pinyin.custom: 0
-    wubi_pinyin.schema: 1784805385
+    wubi_pinyin.custom: 1784809408
+    wubi_pinyin.schema: 1784806075
 abc_segmentor:
   extra_tags:
     - reverse_lookup
@@ -62,6 +62,7 @@ key_binder:
     - {accept: "Control+Shift+numbersign", toggle: full_shape, when: always}
     - {accept: "Control+Shift+dollar", toggle: simplification, when: always}
     - {accept: "Control+Shift+percent", toggle: extended_charset, when: always}
+    - {accept: semicolon, send: 2, when: has_menu}
   import_preset: default
 menu:
   page_size: 5
@@ -173,7 +174,7 @@ selector:
     bindings: {ISO_Left_Tab: previous_candidate, "Shift+Tab": previous_candidate, Tab: next_candidate}
     linear: {bindings: {ISO_Left_Tab: previous_candidate, "Shift+Tab": previous_candidate, Tab: next_candidate}}
 speller:
-  delimiter: " ;'"
+  delimiter: " '"
 switches:
   - name: ascii_mode
     reset: 0
@@ -191,6 +192,7 @@ translator:
   enable_charset_filter: true
   enable_encoder: true
   enable_sentence: true
+  enable_user_dict: true
   encode_commit_history: true
   max_phrase_length: 4
   prism: wubi_pinyin

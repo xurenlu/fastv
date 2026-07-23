@@ -377,6 +377,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 设置 Cmd+, 快捷键打开设置窗口
         setupSettingsShortcut()
+        setupInputMethodSettingsObserver()
 
         // 设置窗口标题为多语言的 APP 名称
         DispatchQueue.main.async {
@@ -436,6 +437,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func openSettingsWindow() {
         // 发送通知打开设置窗口
         NotificationCenter.default.post(name: .openSettings, object: nil)
+    }
+
+    /// 监听输入法菜单「打开轻语设置…」的分布式通知（通知不携带任何用户数据）
+    private func setupInputMethodSettingsObserver() {
+        DistributedNotificationCenter.default().addObserver(
+            forName: Notification.Name(InputMethodBridgeContract.openSettingsDistributedNotification),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            NSApplication.shared.activate(ignoringOtherApps: true)
+            self?.openSettingsWindow()
+        }
     }
 
     /// 设置通知观察者（由 AppDelegate 统一管理）

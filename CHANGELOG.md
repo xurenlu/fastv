@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.4.0-rc3] - 2026-07-23
+
+### Added
+
+- 输入法阶段三（试用反馈打磨）：
+  - **显示名与图标**：输入源菜单显示「轻语输入法」（`tsInputMethodLocalizedNamesKey`，中文简/繁本地化，英文等显示 QEcho IME），菜单栏图标复用 QEcho App icon（16/32 双分辨率 tiff）。
+  - **候选上屏快捷键**：分号次选（全方案）、引号三选（纯五笔）；`-`/`=` 与 `,`/`。` 翻页、Tab 轮换候选为 Rime 预设保留。混打/纯五笔方案的 `speller/delimiter` 相应调整避让。
+  - **三方案可切换**：五笔·拼音混打（默认）/ 纯五笔 86（新增 `wubi86.schema.yaml`，prism 预编译随包）/ 纯拼音，设置页 segmented 选择或输入法菜单直接切换，双侧经 `qecho-ime-settings.json` 保持同步。
+  - **动态词频开关**：设置页可开关用户词库（`translator/enable_user_dict` custom 补丁 + IME 进程热重启部署），默认开启、越打越顺手。
+  - **输入法下拉菜单**（结构参考主流中文输入法）：打开轻语设置… / 三方案 radio / 中英切换 / 全角符号开关；「打开轻语设置」经分布式通知唤起主 App 设置窗口（通知不携带任何用户数据）。
+- 主 App ⇄ IME 桥接扩展：CFMessagePort 增加「设置变更」控制消息（messageID 2），IME 收到后重读设置并按需重启 Rime 部署；`RimePatchGenerator` 统一生成用户目录 custom 补丁，与随包默认文件同源防漂移。
+
+### Tests
+
+- 新增 `IMESettingsTests` 8 例：设置模型编解码/回退、三方案 schema id 对齐、补丁生成器（delimiter 避让、次三选绑定、词频开关）、随包 custom 文件与生成器一致性。
+
+### Engineering
+
+- `RimeEngine` 增加 `select_schema` / `get_current_schema` / `get_option` / `set_option` 与配置变更整体重启（glog setup 进程内单次守卫）；rime_deployer 离线预编译三方案（`wubi86.prism.bin` 等）随包，用户侧零部署等待。
+- 版本号 `2.4.0-rc2` → `2.4.0-rc3`，build `32` → `33`；同步 Xcode、Info.plist 与 STT API 响应版本。
+
 ## [2.4.0-rc2] - 2026-07-23
 
 ### Added

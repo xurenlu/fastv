@@ -29,6 +29,7 @@ final class RimeEngine {
     private let rime: RimeApi
     private var session: RimeSessionId = 0
     private(set) var ready = false
+    private var hasCalledSetup = false
 
     private init() {
         rime = rime_get_api().pointee
@@ -65,7 +66,11 @@ final class RimeEngine {
         traits.app_name = Self.leakedCString("rime.qecho")
         traits.min_log_level = 2 // 只记 ERROR 及以上
 
-        rime.setup?(&traits)
+        // setup（glog 初始化）进程内只允许一次；restartForConfigChange 复用时跳过
+        if !hasCalledSetup {
+            rime.setup?(&traits)
+            hasCalledSetup = true
+        }
         rime.initialize?(&traits)
         // 首次运行会把预置配置同步到用户目录；词典已预编译，维护很快
         if rime.start_maintenance?(0) != 0 {
@@ -155,6 +160,49 @@ final class RimeEngine {
         let raw = rime.get_input?(session).map { String(cString: $0) }
         rime.clear_composition?(session)
         return raw
+    }
+
+    // MARK: - 方案与选项（设置页 / 输入法菜单）
+
+    /// 当前会话使用的 Rime schema_id
+    func currentSchemaId() -> String? {
+        guard ensureSession() else { return nil }
+        var buffer = [CChar](repeating: 0, count: 256)
+        guard rime.get_current_schema?(session, &buffer, buffer.count) != 0 else { return nil }
+        return String(cString: buffer)
+    }
+
+    @discardableResult
+    func selectSchema(_ schemaId: String) -> Bool {
+        guard ensureSession() else { return false }
+        return schemaId.withCString { rime.select_schema?(session, $0) != 0 }
+    }
+
+    /// 运行时开关（ascii_mode / full_shape 等）
+    func option(_ name: String) -> Bool {
+        guard ensureSession() else { return false }
+        return name.withCString { rime.get_option?(session, $0) != 0 }
+    }
+
+    func setOption(_ name: String, value: Bool) {
+        guard ensureSession() else { return }
+        name.withCString { rime.set_option?(session, $0, value ? 1 : 0) }
+    }
+
+    /// 配置文件（*.custom.yaml）变更后的整体重启：销毁会话 → finalize → 重新初始化并部署。
+    /// 只应在用户改设置时触发，不在打字热路径上。
+    func restartForConfigChange() {
+        guard ready else {
+            startIfNeeded()
+            return
+        }
+        if session != 0 {
+            _ = rime.destroy_session?(session)
+            session = 0
+        }
+        rime.finalize?()
+        ready = false
+        startIfNeeded()
     }
 
     // MARK: - Private

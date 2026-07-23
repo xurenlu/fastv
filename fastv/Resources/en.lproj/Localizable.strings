@@ -609,4 +609,10 @@
 "ime.install.button" = "Install & Enable";
 "ime.reinstall.button" = "Update & Re-enable";
 "ime.refresh" = "Refresh Status";
-"ime.hint" = "After installing, pick \"QEcho\" from the input menu in the menu bar (or System Settings → Keyboard → Input Sources). While QEcho is the active input source, voice text is committed through the system input method channel, which is more reliable than simulated keystrokes. Typing currently passes through as-is; Pinyin & Wubi mixed typing is coming in a later version. If the input method does not appear after installing, log out and back in.";
+"ime.hint" = "After installing, pick \"QEcho IME\" from the input menu in the menu bar (or System Settings → Keyboard → Input Sources). While QEcho IME is active, typing is powered by the Rime engine (Wubi + Pinyin mixed input) and voice text is committed through the system input method channel, which is more reliable than simulated keystrokes. If the input method does not appear after installing, log out and back in.";
+"ime.scheme.label" = "Input Scheme";
+"ime.scheme.mixed" = "Wubi + Pinyin";
+"ime.scheme.wubi" = "Wubi Only (86)";
+"ime.scheme.pinyin" = "Pinyin Only";
+"ime.userdict.toggle" = "Adaptive word frequency (user dictionary)";
+"ime.shortcuts.hint" = "Candidate shortcuts: digits select · Space commits first · Semicolon 2nd · Apostrophe 3rd (Wubi-only) · -/= and ,/. page · Tab cycles · Return commits raw input · Shift toggles Chinese/English · ` Pinyin reverse lookup";

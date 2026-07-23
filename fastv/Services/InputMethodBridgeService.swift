@@ -32,15 +32,6 @@ final class InputMethodBridgeService {
     func commitViaInputMethod(_ text: String) -> Bool {
         guard !text.isEmpty else { return false }
 
-        guard let remotePort = CFMessagePortCreateRemote(
-            kCFAllocatorDefault,
-            InputMethodBridgeContract.voiceCommitPortName as CFString
-        ) else {
-            print("ℹ️ [InputMethodBridge] 输入法进程未在监听，回退传统插入")
-            return false
-        }
-        defer { CFMessagePortInvalidate(remotePort) }
-
         let requestData: Data
         do {
             requestData = try VoiceCommitPayload(text: text).encoded()
@@ -48,12 +39,44 @@ final class InputMethodBridgeService {
             print("⚠️ [InputMethodBridge] 载荷编码失败: \(error)")
             return false
         }
+        guard let reply = sendRequest(
+            messageID: InputMethodBridgeContract.voiceCommitMessageID,
+            data: requestData
+        ) else {
+            return false
+        }
+        if !reply.ok {
+            print("⚠️ [InputMethodBridge] 输入法侧未接受上屏: \(reply.reason ?? "unknown")")
+        }
+        return reply.ok
+    }
+
+    /// 通知 IME 进程重读设置文件；IME 未运行时返回 false（下次拉起时自会读取，无需处理）
+    @discardableResult
+    func notifySettingsChanged() -> Bool {
+        sendRequest(
+            messageID: InputMethodBridgeContract.settingsChangedMessageID,
+            data: Data()
+        )?.ok ?? false
+    }
+
+    // MARK: - Private
+
+    private func sendRequest(messageID: Int32, data: Data) -> VoiceCommitReply? {
+        guard let remotePort = CFMessagePortCreateRemote(
+            kCFAllocatorDefault,
+            InputMethodBridgeContract.voiceCommitPortName as CFString
+        ) else {
+            print("ℹ️ [InputMethodBridge] 输入法进程未在监听（messageID=\(messageID)）")
+            return nil
+        }
+        defer { CFMessagePortInvalidate(remotePort) }
 
         var rawReply: Unmanaged<CFData>?
         let status = CFMessagePortSendRequest(
             remotePort,
-            1,
-            requestData as CFData,
+            messageID,
+            data as CFData,
             Self.sendTimeout,
             Self.sendTimeout,
             CFRunLoopMode.defaultMode.rawValue,
@@ -61,16 +84,13 @@ final class InputMethodBridgeService {
         )
         guard status == kCFMessagePortSuccess,
               let replyData = rawReply?.takeRetainedValue() as Data? else {
-            print("⚠️ [InputMethodBridge] 发送失败或超时 status=\(status)")
-            return false
+            print("⚠️ [InputMethodBridge] 发送失败或超时 status=\(status) messageID=\(messageID)")
+            return nil
         }
         guard let reply = try? VoiceCommitReply.decode(replyData) else {
             print("⚠️ [InputMethodBridge] 回执解析失败")
-            return false
+            return nil
         }
-        if !reply.ok {
-            print("⚠️ [InputMethodBridge] 输入法侧未接受上屏: \(reply.reason ?? "unknown")")
-        }
-        return reply.ok
+        return reply
     }
 }
