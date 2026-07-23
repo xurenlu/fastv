@@ -49,7 +49,7 @@
 
 // 音声入力
 "voice.input" = "音声入力";
-"voice.input.history" = "履歴";
+"voice.input.history" = "音声入力履歴";
 "no.records" = "記録なし";
 "press.shortcut.to.start" = "ショートカットを押して音声入力を開始";
 "press.shortcut.to.speak" = "ショートカットを押して話す";
@@ -156,6 +156,7 @@
 "key" = "キー";
 "minute" = "分";
 "seconds.short" = "秒";
+"stats.voice.section" = "音声入力の統計";
 "stats.today" = "今日";
 "stats.all" = "累計";
 "stats.characters" = "文字数";

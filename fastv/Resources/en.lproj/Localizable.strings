@@ -49,7 +49,7 @@
 
 // Voice Input
 "voice.input" = "Voice Input";
-"voice.input.history" = "History";
+"voice.input.history" = "Voice Input History";
 "no.records" = "No Records";
 "press.shortcut.to.start" = "Press shortcut to start voice input";
 "press.shortcut.to.speak" = "Press shortcut to speak";
@@ -156,6 +156,7 @@
 "key" = "Key";
 "minute" = "min";
 "seconds.short" = "s";
+"stats.voice.section" = "Voice Input Stats";
 "stats.today" = "Today";
 "stats.all" = "All";
 "stats.characters" = "Chars";

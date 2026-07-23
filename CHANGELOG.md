@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.4.0-rc10] - 2026-07-23
+
+### Fixed
+
+- **修点击 Dock 图标出现两个主窗口**：主窗口关闭走 `orderOut`（隐藏而非 close），窗口对象仍在 `NSApp.windows`；此前 `applicationShouldHandleReopen` 返回 true，SwiftUI WindowGroup 会再建一个新场景窗口，同时 helper 又调回旧窗口，导致重复。改为始终返回 false，由 `MainWindowPresenter.bringToFront()` 全权找回已有主窗口。
+
+### Changed
+
+- 主窗口统计区加「语音输入统计」小标题（麦克风图标），明确这些指标（字数/字每分/识别语音/识别耗时/实时率）均来自语音输入；历史区标题由「历史记录」改为「语音输入历史」。5 语种本地化。
+
+### Engineering
+
+- 版本号 `2.4.0-rc9` → `2.4.0-rc10`，build `39` → `40`；同步 4 处版本点。
+
 ## [2.4.0-rc9] - 2026-07-23
 
 ### Changed

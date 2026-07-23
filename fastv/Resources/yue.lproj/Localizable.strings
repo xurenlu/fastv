@@ -77,7 +77,7 @@
 
 // 語音輸入
 "voice.input" = "語音輸入";
-"voice.input.history" = "歷史記錄";
+"voice.input.history" = "語音輸入歷史";
 "no.records" = "暫無記錄";
 "press.shortcut.to.start" = "按下快捷鍵開始語音輸入";
 "press.shortcut.to.speak" = "按下快捷鍵開始說話";
@@ -184,6 +184,7 @@
 "key" = "鍵";
 "minute" = "分";
 "seconds.short" = "秒";
+"stats.voice.section" = "語音輸入統計";
 "stats.today" = "今日";
 "stats.all" = "累計";
 "stats.characters" = "字數";

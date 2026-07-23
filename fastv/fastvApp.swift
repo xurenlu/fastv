@@ -593,14 +593,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        // 用户点 Dock 图标，且当前没有可见内容窗口时，走统一 helper 找回主窗口。
-        // 共享 StatusBarManager「显示妙打」相同的恢复链路。
-        if !flag {
-            Task { @MainActor in
-                _ = MainWindowPresenter.bringToFront()
-            }
+        // 主窗口关闭时是 orderOut(隐藏)而非真正 close，窗口对象仍在 NSApp.windows。
+        // 对 SwiftUI 来说它"存在但不可见"，若返回 true 走默认 reopen，WindowGroup 会
+        // 再建一个新场景窗口，同时我们的 helper 又调回旧窗口 → 出现两个主窗口。
+        // 因此始终返回 false，由 bringToFront() 全权找回并显示已有主窗口，避免重复。
+        Task { @MainActor in
+            _ = MainWindowPresenter.bringToFront()
         }
-        return true
+        return false
     }
 }
 
