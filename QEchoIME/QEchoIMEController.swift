@@ -26,6 +26,7 @@ final class QEchoIMEController: IMKInputController {
     override func activateServer(_ sender: Any!) {
         super.activateServer(sender)
         RimeEngine.shared.startIfNeeded()
+        IMESettingsCoordinator.shared.applyIfNeeded()
         VoiceCommitServer.shared.register(activeController: self)
     }
 
@@ -175,6 +176,109 @@ final class QEchoIMEController: IMKInputController {
         guard let client = sender as? IMKTextInput & NSObjectProtocol else { return }
         flushRawInput(to: client)
         QEchoPanels.candidates?.hide()
+    }
+
+    // MARK: - 输入法菜单（菜单栏输入源下拉，结构参考主流中文输入法）
+
+    override func menu() -> NSMenu! {
+        let menu = NSMenu(title: "QEcho")
+
+        let settingsItem = NSMenuItem(
+            title: Self.localized("ime.menu.openSettings"),
+            action: #selector(openMainAppSettings(_:)),
+            keyEquivalent: ""
+        )
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+        menu.addItem(.separator())
+
+        let currentSchema = RimeEngine.shared.currentSchemaId()
+        for schema in IMESchema.allCases {
+            let item = NSMenuItem(
+                title: Self.localized(schema.displayNameKey),
+                action: #selector(selectSchemaFromMenu(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = schema.rawValue
+            item.state = schema.rawValue == currentSchema ? .on : .off
+            menu.addItem(item)
+        }
+        menu.addItem(.separator())
+
+        let asciiOn = RimeEngine.shared.option("ascii_mode")
+        let asciiItem = NSMenuItem(
+            title: Self.localized(asciiOn ? "ime.menu.switchToChinese" : "ime.menu.switchToEnglish"),
+            action: #selector(toggleAsciiMode(_:)),
+            keyEquivalent: ""
+        )
+        asciiItem.target = self
+        menu.addItem(asciiItem)
+
+        let fullShapeItem = NSMenuItem(
+            title: Self.localized("ime.menu.fullShape"),
+            action: #selector(toggleFullShape(_:)),
+            keyEquivalent: ""
+        )
+        fullShapeItem.target = self
+        fullShapeItem.state = RimeEngine.shared.option("full_shape") ? .on : .off
+        menu.addItem(fullShapeItem)
+
+        return menu
+    }
+
+    @objc private func openMainAppSettings(_ sender: Any?) {
+        let workspace = NSWorkspace.shared
+        if let appURL = workspace.urlForApplication(
+            withBundleIdentifier: InputMethodBridgeContract.mainAppBundleID
+        ) {
+            workspace.openApplication(at: appURL, configuration: NSWorkspace.OpenConfiguration())
+        }
+        let post = {
+            DistributedNotificationCenter.default().postNotificationName(
+                Notification.Name(InputMethodBridgeContract.openSettingsDistributedNotification),
+                object: nil,
+                userInfo: nil,
+                deliverImmediately: true
+            )
+        }
+        post()
+        // 主 App 冷启动时首个通知可能赶不上观察者注册，延迟补发一次
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: post)
+    }
+
+    @objc private func selectSchemaFromMenu(_ sender: Any?) {
+        guard let rawValue = Self.menuItem(from: sender)?.representedObject as? String,
+              let schema = IMESchema(rawValue: rawValue) else { return }
+        IMESettingsCoordinator.shared.schemaChangedFromMenu(schema)
+        if let client = client() {
+            syncState(with: client)
+        }
+    }
+
+    @objc private func toggleAsciiMode(_ sender: Any?) {
+        let engine = RimeEngine.shared
+        engine.setOption("ascii_mode", value: !engine.option("ascii_mode"))
+    }
+
+    @objc private func toggleFullShape(_ sender: Any?) {
+        let engine = RimeEngine.shared
+        engine.setOption("full_shape", value: !engine.option("full_shape"))
+    }
+
+    /// IMKit 菜单动作的 sender 可能是 NSMenuItem，也可能是带 IMKCommandMenuItem 的字典
+    private static func menuItem(from sender: Any?) -> NSMenuItem? {
+        if let item = sender as? NSMenuItem {
+            return item
+        }
+        if let info = sender as? [String: Any] {
+            return info["IMKCommandMenuItem"] as? NSMenuItem
+        }
+        return nil
+    }
+
+    private static func localized(_ key: String) -> String {
+        Bundle.main.localizedString(forKey: key, value: nil, table: nil)
     }
 
     // MARK: - 语音上屏（VoiceCommitServer 调用）

@@ -1,0 +1,8 @@
+/* 轻语输入法菜单 */
+"ime.menu.openSettings" = "打开轻语设置…";
+"ime.scheme.mixed" = "五笔·拼音混打";
+"ime.scheme.wubi" = "纯五笔（86 版）";
+"ime.scheme.pinyin" = "纯拼音";
+"ime.menu.switchToEnglish" = "切换至英文输入";
+"ime.menu.switchToChinese" = "切换至中文输入";
+"ime.menu.fullShape" = "使用全角符号";

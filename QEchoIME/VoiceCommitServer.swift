@@ -43,10 +43,10 @@ final class VoiceCommitServer {
             release: nil,
             copyDescription: nil
         )
-        let callback: CFMessagePortCallBack = { _, _, data, info in
+        let callback: CFMessagePortCallBack = { _, messageID, data, info in
             guard let info else { return nil }
             let server = Unmanaged<VoiceCommitServer>.fromOpaque(info).takeUnretainedValue()
-            let reply = server.handleMessage(data as Data?)
+            let reply = server.handleMessage(id: messageID, data: data as Data?)
             guard let replyData = try? reply.encoded() else { return nil }
             return Unmanaged.passRetained(replyData as CFData)
         }
@@ -68,7 +68,19 @@ final class VoiceCommitServer {
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
     }
 
-    private func handleMessage(_ data: Data?) -> VoiceCommitReply {
+    private func handleMessage(id messageID: Int32, data: Data?) -> VoiceCommitReply {
+        switch messageID {
+        case InputMethodBridgeContract.settingsChangedMessageID:
+            IMESettingsCoordinator.shared.applyIfNeeded()
+            return VoiceCommitReply(ok: true, reason: nil)
+        case InputMethodBridgeContract.voiceCommitMessageID:
+            return handleVoiceCommit(data)
+        default:
+            return VoiceCommitReply(ok: false, reason: "unknown-message-id")
+        }
+    }
+
+    private func handleVoiceCommit(_ data: Data?) -> VoiceCommitReply {
         guard let data else {
             return VoiceCommitReply(ok: false, reason: "empty-request")
         }

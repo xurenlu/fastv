@@ -36,5 +36,20 @@
 	<string>com.17push.inputmethod.QEchoIME</string>
 	<key>TISIntendedLanguage</key>
 	<string>zh-Hans</string>
+	<key>tsInputMethodIconFileKey</key>
+	<string>QEchoIME.tiff</string>
+	<key>tsInputMethodLocalizedNamesKey</key>
+	<dict>
+		<key>en</key>
+		<string>QEcho IME</string>
+		<key>zh-Hans</key>
+		<string>轻语输入法</string>
+		<key>zh-Hant</key>
+		<string>輕語輸入法</string>
+		<key>ja</key>
+		<string>QEcho IME</string>
+		<key>ko</key>
+		<string>QEcho IME</string>
+	</dict>
 </dict>
 </plist>

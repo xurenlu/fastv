@@ -1,0 +1,8 @@
+/* QEcho IME menu */
+"ime.menu.openSettings" = "Open QEcho Settings…";
+"ime.scheme.mixed" = "Wubi + Pinyin Mixed";
+"ime.scheme.wubi" = "Wubi Only (86)";
+"ime.scheme.pinyin" = "Pinyin Only";
+"ime.menu.switchToEnglish" = "Switch to English Input";
+"ime.menu.switchToChinese" = "Switch to Chinese Input";
+"ime.menu.fullShape" = "Use Full-width Symbols";

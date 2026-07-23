@@ -9,6 +9,7 @@ import SwiftUI
 
 struct InputMethodSettingsSection: View {
     @ObservedObject private var installer = InputMethodInstaller.shared
+    @ObservedObject private var imeSettings = InputMethodSettingsStore.shared
 
     var body: some View {
         Section {
@@ -27,6 +28,7 @@ struct InputMethodSettingsSection: View {
 
                 Button(NSLocalizedString("ime.refresh", comment: "")) {
                     installer.refresh()
+                    imeSettings.reload()
                 }
             }
 
@@ -35,12 +37,41 @@ struct InputMethodSettingsSection: View {
                     .font(.caption)
                     .foregroundStyle(.red)
             }
+
+            Picker(
+                NSLocalizedString("ime.scheme.label", comment: ""),
+                selection: Binding(
+                    get: { imeSettings.settings.schema },
+                    set: { imeSettings.setSchema($0) }
+                )
+            ) {
+                ForEach(IMESchema.allCases, id: \.self) { schema in
+                    Text(NSLocalizedString(schema.displayNameKey, comment: ""))
+                        .tag(schema)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Toggle(
+                NSLocalizedString("ime.userdict.toggle", comment: ""),
+                isOn: Binding(
+                    get: { imeSettings.settings.enableUserDict },
+                    set: { imeSettings.setUserDictEnabled($0) }
+                )
+            )
+
+            Text(NSLocalizedString("ime.shortcuts.hint", comment: ""))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         } header: {
             Text(NSLocalizedString("ime.section", comment: ""))
         } footer: {
             Text(NSLocalizedString("ime.hint", comment: ""))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+        .onAppear {
+            imeSettings.reload()
         }
     }
 

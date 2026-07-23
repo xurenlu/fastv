@@ -1,6 +1,6 @@
 # Product Overview
 
-> 最后更新：2026-07-23 | 当前版本：v2.4.0-rc2
+> 最后更新：2026-07-23 | 当前版本：v2.4.0-rc3
 
 ## 当前设计思路
 
@@ -8,7 +8,7 @@
 
 ## 主要功能
 
-- 系统输入法（实验性）：QEchoIME 作为独立 IMKit 输入法随主 App 分发，设置页一键安装到 `~/Library/Input Methods` 并注册启用。打字由 librime 驱动，`wubi_pinyin` 方案支持五笔 86 与全拼混打、`` ` `` 前缀拼音反查五笔编码、Shift 中英切换；内联组字 + 系统候选窗。选中「轻语」输入法时，语音文本经 CFMessagePort → `IMKTextInput.insertText` 走系统输入法通道上屏（失败自动回退 CGEvent / 剪贴板），插入前自动落掉进行中的组字。词典预编译随包分发，用户词典在 `~/Library/Application Support/QEchoIME/`。
+- 系统输入法（实验性）：QEchoIME 作为独立 IMKit 输入法随主 App 分发，输入源菜单显示「轻语输入法」并使用 QEcho App 图标，设置页一键安装到 `~/Library/Input Methods` 并注册启用。打字由 librime 驱动，三方案可切换：五笔·拼音混打（默认）/ 纯五笔 86 / 纯拼音，设置页或输入法下拉菜单均可切换并双侧同步；`` ` `` 前缀拼音反查五笔编码、Shift 中英切换、内联组字 + 系统候选窗。候选快捷键：数字选字、空格首选、分号次选、引号三选（纯五笔）、`-`/`=` 与 `,`/`。` 翻页、Tab 轮换、回车上原始编码。动态词频（用户词库）可在设置页开关。输入法下拉菜单提供打开轻语设置、方案切换、中英/全角开关。选中轻语输入法时，语音文本经 CFMessagePort → `IMKTextInput.insertText` 走系统输入法通道上屏（失败自动回退 CGEvent / 剪贴板），插入前自动落掉进行中的组字。词典预编译随包分发（含纯五笔 prism），用户词典与设置在 `~/Library/Application Support/QEchoIME/`。
 - 语音输入法：默认按住快捷键录音、松开转写并插入当前输入框；设置 → 触发方式 还可切换「按一下切换」（toggle）或「混合」（短按 = 切换、长按 ≥ 0.25s = 按住录音），覆盖长段口述与短句两类场景。
 - 术语包：常错词管理新增「术语包」分栏。专有名词、产品名、技术术语在替换管线中优先生效且大小写不敏感，说「open ai」也能输出「OpenAI」。
 - Power Mode（场景感知 prompt）：按前台 App / 浏览器 URL 自动切换 AI 后处理 prompt 模板。出厂内置 4 套预设（邮件正式 / Slack 简短 / IM 口语 / IDE 代码注释），用户可加自定义场景（bundleId / URL 通配 / App 名 contains 三种匹配规则 OR 组合）。AX 抽 Safari/Chrome/Arc/Brave/Edge/Firefox 当前 tab URL，1s 缓存。
@@ -26,7 +26,7 @@
 
 ## 待完成问题
 
-- 输入法收尾项：关于页展示第三方许可（librime BSD-3 / rime-wubi LGPL-3.0 / rime-pinyin-simp Apache-2.0 / rime-prelude LGPL-3.0，LICENSE 文件已随包）、输入源菜单图标（tsInputMethodIconFileKey）、IME bundle 的 InfoPlist.strings 多语言显示名、安装后引导用户在输入法菜单选中「轻语」的提示动画、候选窗样式自定义（当前用系统 IMKCandidates 默认样式）。
+- 输入法收尾项：关于页展示第三方许可（librime BSD-3 / rime-wubi LGPL-3.0 / rime-pinyin-simp Apache-2.0 / rime-prelude LGPL-3.0，LICENSE 文件已随包）、安装后引导用户在输入法菜单选中「轻语输入法」的提示动画、候选窗样式自定义（当前用系统 IMKCandidates 默认样式）、词频重置入口、模糊音设置（拼音 z/zh 等）。
 - 输入法真机回归：在 Safari / 微信 / VS Code / 终端等宿主里过一遍混打、翻页、Shift 切换、语音上屏与组字互斥；覆盖 Sonoma 上 IMKCandidates 的已知怪癖。
 - 增加针对常见浏览器 textarea、原生 NSTextView、Electron 输入框的端到端回归测试。
 - 为 AI 上下文回改补充更细粒度的用户提示，例如回写失败时提示当前应用不支持 Accessibility 回写。
@@ -38,6 +38,7 @@
 
 ## 版本记录
 
+- `2.4.0-rc3`：输入法阶段三 — 试用反馈打磨。输入源显示名「轻语输入法」+ App icon 菜单栏图标（tsInputMethodLocalizedNamesKey / tsInputMethodIconFileKey）；候选快捷键分号次选、引号三选（纯五笔），delimiter 相应避让；新增 `wubi86.schema.yaml` 纯五笔方案（prism 预编译随包）与纯拼音入口，三方案在设置页 segmented / 输入法下拉菜单切换，经 `qecho-ime-settings.json` 双侧同步；动态词频开关（custom 补丁 + IME 热重启部署）；输入法下拉菜单（设置入口经分布式通知唤起主 App / 方案 radio / 中英切换 / 全角开关）；IME 菜单 5 语种本地化。`IMESettingsTests` 8 例，含随包 custom 与生成器一致性防漂移。
 - `2.4.0-rc2`：输入法阶段二 — librime 五笔·拼音混打。vendor librime 1.17.0 universal dylib 与 wubi_pinyin/pinyin_simp/prelude 方案数据（含预编译词典与三方 LICENSE）；新增 `RimeEngine`（C API 封装）、`RimeKeyMapping`（键值/光标偏移纯函数，共享单测）；`QEchoIMEController` 实现内联组字、IMKCandidates 候选窗、选字/翻页/Esc/回车、Shift 中英切换（flagsChanged → Rime ascii_composer）、语音上屏前自动清组字。冒烟验证 `wqvb`/`shuru`/`khk` 混出候选；全套 59 单测通过。
 - `2.4.0-rc1`：系统输入法（实验性）阶段一。新增 QEchoIME IMKit target（英文直通薄壳 + CFMessagePort 语音上屏服务端），随主 App 嵌入分发；主 App 新增 `InputMethodBridgeService`（检测当前输入源 + 发送转写文本）与 `InputMethodInstaller`（安装 / TIS 注册 / 启用），三处语音插入调用点收敛到 `insertVoiceText` 统一入口并优先走输入法通道；设置页新增「输入法（实验性）」区块与 5 语种文案；`InputMethodBridgeContract` 契约 6 个单测，全套 46 测通过。
 - `2.3.0-rc4`：关于窗口对齐 MuseTerm 的紧凑布局，推荐应用卡片使用更大的 42pt 图标，并新增 GitWise 与象墨（Xomo / VeilPic）两个入口及对应本地化文案、图标资源。
