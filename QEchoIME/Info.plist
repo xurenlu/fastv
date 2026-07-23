@@ -37,7 +37,7 @@
 	<key>TISIntendedLanguage</key>
 	<string>zh-Hans</string>
 	<key>tsInputMethodIconFileKey</key>
-	<string>QEchoIME.tiff</string>
+	<string>QEchoIMETemplate.pdf</string>
 	<key>tsInputMethodLocalizedNamesKey</key>
 	<dict>
 		<key>en</key>

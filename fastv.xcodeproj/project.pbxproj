@@ -23,9 +23,9 @@
 		6F086E88051E878AE6CCD0C1 /* QEchoIME.app in Embed Input Method */ = {isa = PBXBuildFile; fileRef = 161CCC51A8A655CDDEF940EC /* QEchoIME.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		7038947BB83302B308667997 /* RimeKeyMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1E0956AA3CE5CAA15A3F0C /* RimeKeyMapping.swift */; };
 		83D8D749F9FC51049A38C126 /* ja.lproj in Resources */ = {isa = PBXBuildFile; fileRef = FB90A590446AE9870DD41395 /* ja.lproj */; };
-		8948C01949CB809A3D59BDEF /* QEchoIME.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 8B2AAA5428A687AC14316379 /* QEchoIME.tiff */; };
 		941B8D178AAD8CCDE66EAAE9 /* VoiceCommitServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BDF9BC00900F082BE15E5E /* VoiceCommitServer.swift */; };
 		BFF20D58A2686398E68CFC67 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 7C864D9382D3A405BCBC8404 /* Sparkle */; };
+		D9EC6D6105A3D99D6B2E95EF /* QEchoIMETemplate.pdf in Resources */ = {isa = PBXBuildFile; fileRef = CBA7C4CF06A1BCCA6D79B5D8 /* QEchoIMETemplate.pdf */; };
 		FA25F396398CF0E9EA3E07B5 /* yue.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 2BAD2DBC36242ACF4FFB0F7C /* yue.lproj */; };
 /* End PBXBuildFile section */
 
@@ -93,12 +93,12 @@
 		5EF571A6A0DA73C2DB42978C /* Pods-typecho.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-typecho.release.xcconfig"; path = "Target Support Files/Pods-typecho/Pods-typecho.release.xcconfig"; sourceTree = "<group>"; };
 		75B03F1385C914281CA5C0AA /* librime.1.dylib */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = "compiled.mach-o.dylib"; name = librime.1.dylib; path = ../ThirdParty/librime/lib/librime.1.dylib; sourceTree = "<group>"; };
 		7D031418607FBBB6418EECC7 /* Pods-musetype.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-musetype.debug.xcconfig"; path = "Target Support Files/Pods-musetype/Pods-musetype.debug.xcconfig"; sourceTree = "<group>"; };
-		8B2AAA5428A687AC14316379 /* QEchoIME.tiff */ = {isa = PBXFileReference; includeInIndex = 1; name = QEchoIME.tiff; path = Resources/QEchoIME.tiff; sourceTree = "<group>"; };
 		8F1E0956AA3CE5CAA15A3F0C /* RimeKeyMapping.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RimeKeyMapping.swift; path = ../fastv/Services/RimeKeyMapping.swift; sourceTree = "<group>"; };
 		913A75EE857762F3687D2531 /* RimeEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RimeEngine.swift; sourceTree = "<group>"; };
 		A2BDF9BC00900F082BE15E5E /* VoiceCommitServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VoiceCommitServer.swift; sourceTree = "<group>"; };
 		B505B67EC4521A859283FEB7 /* QEchoIME-Bridging-Header.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "QEchoIME-Bridging-Header.h"; sourceTree = "<group>"; };
 		C727F3C565389AB0D3348583 /* IMESettingsCoordinator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IMESettingsCoordinator.swift; sourceTree = "<group>"; };
+		CBA7C4CF06A1BCCA6D79B5D8 /* QEchoIMETemplate.pdf */ = {isa = PBXFileReference; includeInIndex = 1; name = QEchoIMETemplate.pdf; path = Resources/QEchoIMETemplate.pdf; sourceTree = "<group>"; };
 		DC0B03A35A134716360C9BD8 /* Pods-musetype.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-musetype.release.xcconfig"; path = "Target Support Files/Pods-musetype/Pods-musetype.release.xcconfig"; sourceTree = "<group>"; };
 		E0E1228C032E765F33D04BD5 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E331E50F0E4972CC7798BF5B /* main.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
@@ -194,12 +194,12 @@
 				75B03F1385C914281CA5C0AA /* librime.1.dylib */,
 				25F6EC8B468C2C63E6AEF0F4 /* RimeData */,
 				C727F3C565389AB0D3348583 /* IMESettingsCoordinator.swift */,
-				8B2AAA5428A687AC14316379 /* QEchoIME.tiff */,
 				E40BABF479BECDD1B8926464 /* zh-Hans.lproj */,
 				F75779800E0690850A9F1BA1 /* en.lproj */,
 				FB90A590446AE9870DD41395 /* ja.lproj */,
 				5C6D0C74C65B90C85BF42D1E /* ko.lproj */,
 				2BAD2DBC36242ACF4FFB0F7C /* yue.lproj */,
+				CBA7C4CF06A1BCCA6D79B5D8 /* QEchoIMETemplate.pdf */,
 			);
 			name = QEchoIME;
 			path = QEchoIME;
@@ -397,12 +397,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				67DE1C2DF0605ED09DBADCB0 /* RimeData in Resources */,
-				8948C01949CB809A3D59BDEF /* QEchoIME.tiff in Resources */,
 				0C7FE4ADE2C5C36FCBE3D279 /* zh-Hans.lproj in Resources */,
 				2B9C39E501899B1756A81C55 /* en.lproj in Resources */,
 				83D8D749F9FC51049A38C126 /* ja.lproj in Resources */,
 				5BF0D2C15CFD2D97BAA290ED /* ko.lproj in Resources */,
 				FA25F396398CF0E9EA3E07B5 /* yue.lproj in Resources */,
+				D9EC6D6105A3D99D6B2E95EF /* QEchoIMETemplate.pdf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -599,7 +599,7 @@
 					"$(SRCROOT)/ThirdParty/librime/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.0-rc3";
+				MARKETING_VERSION = "2.4.0-rc4";
 				PRODUCT_BUNDLE_IDENTIFIER = com.17push.inputmethod.QEchoIME;
 				PRODUCT_NAME = QEchoIME;
 				SDKROOT = macosx;
@@ -738,7 +738,7 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 33;
+				CURRENT_PROJECT_VERSION = 34;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -775,7 +775,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.0-rc3";
+				MARKETING_VERSION = "2.4.0-rc4";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
@@ -804,7 +804,7 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 33;
+				CURRENT_PROJECT_VERSION = 34;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -841,7 +841,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.0-rc3";
+				MARKETING_VERSION = "2.4.0-rc4";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
@@ -867,7 +867,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 33;
+				CURRENT_PROJECT_VERSION = 34;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -887,7 +887,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.0-rc3";
+				MARKETING_VERSION = "2.4.0-rc4";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -905,7 +905,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 33;
+				CURRENT_PROJECT_VERSION = 34;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -925,7 +925,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.0-rc3";
+				MARKETING_VERSION = "2.4.0-rc4";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -942,10 +942,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 33;
+				CURRENT_PROJECT_VERSION = 34;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.4.0-rc3";
+				MARKETING_VERSION = "2.4.0-rc4";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -962,10 +962,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 33;
+				CURRENT_PROJECT_VERSION = 34;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.4.0-rc3";
+				MARKETING_VERSION = "2.4.0-rc4";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -1002,7 +1002,7 @@
 					"$(SRCROOT)/ThirdParty/librime/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.0-rc3";
+				MARKETING_VERSION = "2.4.0-rc4";
 				PRODUCT_BUNDLE_IDENTIFIER = com.17push.inputmethod.QEchoIME;
 				PRODUCT_NAME = QEchoIME;
 				SDKROOT = macosx;

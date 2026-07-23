@@ -17,7 +17,7 @@ PROJECT_PATH = File.expand_path('../fastv.xcodeproj', __dir__)
 SRCROOT = File.dirname(PROJECT_PATH)
 IME_TARGET_NAME = 'QEchoIME'
 IME_BUNDLE_ID = 'com.17push.inputmethod.QEchoIME'
-MARKETING_VERSION = '2.4.0-rc3'
+MARKETING_VERSION = '2.4.0-rc4'
 DEPLOYMENT_TARGET = '14.6'
 DEVELOPMENT_TEAM = 'ZH2S7D6PL6'
 EMBED_PHASE_NAME = 'Embed Input Method'
@@ -115,10 +115,10 @@ end
 
 # ---------- 2.6 输入源图标 + 菜单本地化资源 ----------
 
-icon_ref = ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME/Resources/QEchoIME.tiff'))
+icon_ref = ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME/Resources/QEchoIMETemplate.pdf'))
 unless ime_target.resources_build_phase.files_references.include?(icon_ref)
   ime_target.add_resources([icon_ref])
-  puts '✅ 输入源图标 QEchoIME.tiff 加入 bundle 资源'
+  puts '✅ 输入源图标 QEchoIMETemplate.pdf 加入 bundle 资源'
 end
 
 %w[zh-Hans en ja ko yue].each do |locale|
