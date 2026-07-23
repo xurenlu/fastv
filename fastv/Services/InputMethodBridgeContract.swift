@@ -111,20 +111,153 @@ enum IMESchema: String, Codable, CaseIterable {
     }
 }
 
+// MARK: - 候选窗外观
+
+/// 候选排列方向
+enum CandidateLayout: String, Codable, CaseIterable {
+    case horizontal
+    case vertical
+
+    var displayNameKey: String {
+        switch self {
+        case .horizontal: return "ime.cand.layout.horizontal"
+        case .vertical: return "ime.cand.layout.vertical"
+        }
+    }
+}
+
+/// RGBA 颜色（0~1），Codable 友好；避免依赖 AppKit/SwiftUI，两 target 与单测都能用
+struct CandidateColor: Codable, Equatable {
+    var r: Double
+    var g: Double
+    var b: Double
+    var a: Double
+
+    init(_ r: Double, _ g: Double, _ b: Double, _ a: Double = 1) {
+        self.r = r; self.g = g; self.b = b; self.a = a
+    }
+
+    /// 从 #RRGGBB / #RRGGBBAA 十六进制解析，失败返回 nil
+    static func hex(_ string: String) -> CandidateColor? {
+        var s = string.trimmingCharacters(in: .whitespaces)
+        if s.hasPrefix("#") { s.removeFirst() }
+        guard s.count == 6 || s.count == 8, let value = UInt64(s, radix: 16) else { return nil }
+        if s.count == 6 {
+            return CandidateColor(
+                Double((value >> 16) & 0xff) / 255,
+                Double((value >> 8) & 0xff) / 255,
+                Double(value & 0xff) / 255
+            )
+        }
+        return CandidateColor(
+            Double((value >> 24) & 0xff) / 255,
+            Double((value >> 16) & 0xff) / 255,
+            Double((value >> 8) & 0xff) / 255,
+            Double(value & 0xff) / 255
+        )
+    }
+
+    var hexString: String {
+        let ri = Int((r * 255).rounded()), gi = Int((g * 255).rounded()), bi = Int((b * 255).rounded())
+        return String(format: "#%02X%02X%02X", ri, gi, bi)
+    }
+}
+
+/// 一套配色（浅色或深色其一）
+struct CandidatePalette: Codable, Equatable {
+    var background: CandidateColor
+    var text: CandidateColor
+    var comment: CandidateColor        // 编码/拼音提示文字
+    var label: CandidateColor          // 序号文字
+    var highlightBackground: CandidateColor
+    var highlightText: CandidateColor
+    var border: CandidateColor
+
+    static let light = CandidatePalette(
+        background: CandidateColor(0.98, 0.98, 0.98),
+        text: CandidateColor(0.11, 0.11, 0.12),
+        comment: CandidateColor(0.55, 0.55, 0.58),
+        label: CandidateColor(0.62, 0.62, 0.66),
+        highlightBackground: CandidateColor(0.20, 0.52, 0.96),
+        highlightText: CandidateColor(1, 1, 1),
+        border: CandidateColor(0.82, 0.82, 0.85)
+    )
+
+    static let dark = CandidatePalette(
+        background: CandidateColor(0.16, 0.16, 0.18),
+        text: CandidateColor(0.94, 0.94, 0.96),
+        comment: CandidateColor(0.60, 0.60, 0.64),
+        label: CandidateColor(0.55, 0.55, 0.60),
+        highlightBackground: CandidateColor(0.24, 0.55, 0.98),
+        highlightText: CandidateColor(1, 1, 1),
+        border: CandidateColor(0.30, 0.30, 0.34)
+    )
+}
+
+/// 候选窗外观设置（自绘窗渲染依据）
+struct CandidateAppearance: Codable, Equatable {
+    var layout: CandidateLayout
+    var fontName: String?              // nil = 系统字体
+    var fontSize: Double               // 候选文字字号
+    var labelFontSize: Double          // 序号/编码提示字号
+    var cornerRadius: Double
+    var itemSpacing: Double            // 候选之间间距
+    var padding: Double                // 窗口内边距
+    var showLabel: Bool                // 显示序号 1 2 3
+    var showComment: Bool              // 显示编码/拼音提示
+    var followSystemDarkMode: Bool     // 跟随系统深浅色
+    var lightPalette: CandidatePalette
+    var darkPalette: CandidatePalette
+
+    static let `default` = CandidateAppearance(
+        layout: .horizontal,
+        fontName: nil,
+        fontSize: 18,
+        labelFontSize: 12,
+        cornerRadius: 8,
+        itemSpacing: 6,
+        padding: 8,
+        showLabel: true,
+        showComment: true,
+        followSystemDarkMode: true,
+        lightPalette: .light,
+        darkPalette: .dark
+    )
+
+    /// 字号/间距等钳制到合理范围，防止用户/损坏文件写入极端值
+    func sanitized() -> CandidateAppearance {
+        var a = self
+        a.fontSize = min(max(fontSize, 12), 48)
+        a.labelFontSize = min(max(labelFontSize, 8), 24)
+        a.cornerRadius = min(max(cornerRadius, 0), 24)
+        a.itemSpacing = min(max(itemSpacing, 0), 40)
+        a.padding = min(max(padding, 2), 40)
+        return a
+    }
+}
+
 /// IME 设置（主 App 设置页与输入法菜单共同维护，JSON 落盘于 IME 用户数据目录）
 struct IMESettings: Codable, Equatable {
     var version: Int
     var schemaId: String
     var enableUserDict: Bool
+    /// 候选窗外观；旧设置文件无此字段时解码为 nil，经 `appearance` 计算属性回落默认值
+    var candidateAppearance: CandidateAppearance?
 
     static let `default` = IMESettings(
         version: InputMethodBridgeContract.protocolVersion,
         schemaId: IMESchema.mixed.rawValue,
-        enableUserDict: true
+        enableUserDict: true,
+        candidateAppearance: .default
     )
 
     var schema: IMESchema {
         IMESchema(rawValue: schemaId) ?? .mixed
+    }
+
+    /// 外观读取入口：缺失或损坏时回落默认并钳制，渲染侧只认这个
+    var appearance: CandidateAppearance {
+        (candidateAppearance ?? .default).sanitized()
     }
 
     static func settingsFileURL() -> URL {

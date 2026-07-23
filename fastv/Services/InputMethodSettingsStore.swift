@@ -36,11 +36,27 @@ final class InputMethodSettingsStore: ObservableObject {
         persist(updated)
     }
 
+    /// 候选窗外观整体更新（设置面板绑定用）
+    func setAppearance(_ appearance: CandidateAppearance) {
+        var updated = settings
+        updated.candidateAppearance = appearance
+        persist(updated)
+    }
+
+    /// 恢复候选窗外观默认值
+    func resetAppearance() {
+        setAppearance(.default)
+    }
+
     private func persist(_ updated: IMESettings) {
         guard updated != settings else { return }
+        let userDictChanged = updated.enableUserDict != settings.enableUserDict
         do {
-            // 先重写 custom 补丁再写设置文件：IME 收到通知重启部署时补丁必须已就位
-            try writeCustomPatches(enableUserDict: updated.enableUserDict)
+            // 仅词频开关变化时才重写 custom 补丁（外观/方案变更不涉及 Rime 部署）；
+            // 先写补丁再写设置文件：IME 收到通知重启部署时补丁必须已就位
+            if userDictChanged {
+                try writeCustomPatches(enableUserDict: updated.enableUserDict)
+            }
             try updated.write()
         } catch {
             print("⚠️ [InputMethodSettings] 设置写入失败: \(error.localizedDescription)")

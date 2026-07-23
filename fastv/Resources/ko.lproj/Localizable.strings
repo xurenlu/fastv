@@ -465,3 +465,32 @@
 "ime.scheme.pinyin" = "병음 전용";
 "ime.userdict.toggle" = "동적 빈도 조정(사용자 사전)";
 "ime.shortcuts.hint" = "후보 단축키: 숫자 선택 · 스페이스 첫 후보 · 세미콜론 2번째 · 어포스트로피 3번째(오필 전용) · -/= 및 ,/. 페이지 · Tab 순환 · Return 원문 입력 · Shift 중/영 전환 · ` 병음 역조회";
+
+/* 후보 창 외관 */
+"ime.cand.section" = "후보 창";
+"ime.cand.preview" = "실시간 미리보기";
+"ime.cand.preview.light" = "밝게";
+"ime.cand.preview.dark" = "어둡게";
+"ime.cand.layout" = "배열 방향";
+"ime.cand.layout.horizontal" = "가로";
+"ime.cand.layout.vertical" = "세로";
+"ime.cand.font" = "글꼴";
+"ime.cand.font.system" = "시스템 기본";
+"ime.cand.fontSize" = "후보 크기";
+"ime.cand.labelFontSize" = "번호/코드 크기";
+"ime.cand.corner" = "모서리 둥글기";
+"ime.cand.spacing" = "후보 간격";
+"ime.cand.padding" = "안쪽 여백";
+"ime.cand.showLabel" = "후보 번호 표시";
+"ime.cand.showComment" = "코드/병음 힌트 표시";
+"ime.cand.followDark" = "시스템 밝기 따르기";
+"ime.cand.colors.light" = "밝은 배색";
+"ime.cand.colors.dark" = "어두운 배색";
+"ime.cand.color.bg" = "배경색";
+"ime.cand.color.text" = "글자색";
+"ime.cand.color.hlBg" = "선택 배경색";
+"ime.cand.color.hlText" = "선택 글자색";
+"ime.cand.color.comment" = "힌트 색";
+"ime.cand.color.label" = "번호 색";
+"ime.cand.color.border" = "테두리 색";
+"ime.cand.reset" = "기본값으로 복원";

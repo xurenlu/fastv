@@ -442,6 +442,9 @@ struct QuickSettingsTab: View {
             // 输入法（实验性）
             InputMethodSettingsSection()
 
+            // 候选窗外观
+            CandidateAppearanceView()
+
             // 界面语言设置
             Section {
                 Picker(NSLocalizedString("default.language", comment: ""), selection: Binding(

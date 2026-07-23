@@ -616,3 +616,32 @@
 "ime.scheme.pinyin" = "Pinyin Only";
 "ime.userdict.toggle" = "Adaptive word frequency (user dictionary)";
 "ime.shortcuts.hint" = "Candidate shortcuts: digits select · Space commits first · Semicolon 2nd · Apostrophe 3rd (Wubi-only) · -/= and ,/. page · Tab cycles · Return commits raw input · Shift toggles Chinese/English · ` Pinyin reverse lookup";
+
+/* Candidate window appearance */
+"ime.cand.section" = "Candidate Window";
+"ime.cand.preview" = "Live Preview";
+"ime.cand.preview.light" = "Light";
+"ime.cand.preview.dark" = "Dark";
+"ime.cand.layout" = "Layout";
+"ime.cand.layout.horizontal" = "Horizontal";
+"ime.cand.layout.vertical" = "Vertical";
+"ime.cand.font" = "Font";
+"ime.cand.font.system" = "System Default";
+"ime.cand.fontSize" = "Candidate Size";
+"ime.cand.labelFontSize" = "Label/Code Size";
+"ime.cand.corner" = "Corner Radius";
+"ime.cand.spacing" = "Item Spacing";
+"ime.cand.padding" = "Padding";
+"ime.cand.showLabel" = "Show Candidate Numbers";
+"ime.cand.showComment" = "Show Code/Pinyin Hints";
+"ime.cand.followDark" = "Match System Light/Dark";
+"ime.cand.colors.light" = "Light Palette";
+"ime.cand.colors.dark" = "Dark Palette";
+"ime.cand.color.bg" = "Background";
+"ime.cand.color.text" = "Text";
+"ime.cand.color.hlBg" = "Selected Background";
+"ime.cand.color.hlText" = "Selected Text";
+"ime.cand.color.comment" = "Hint Color";
+"ime.cand.color.label" = "Number Color";
+"ime.cand.color.border" = "Border";
+"ime.cand.reset" = "Reset to Default";

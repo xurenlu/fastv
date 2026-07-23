@@ -21,11 +21,8 @@ guard let server else {
     fatalError("QEchoIME: IMKServer 创建失败（连接名 \(connectionName)）")
 }
 
-// 系统单列候选窗，随组字状态 show/hide
-QEchoPanels.candidates = IMKCandidates(
-    server: server,
-    panelType: kIMKSingleColumnScrollingCandidatePanel
-)
+// 自绘候选窗（替代系统 IMKCandidates），支持横/竖排、配色、字体、序号等外观定制
+QEchoPanels.candidateWindow = CandidateWindow()
 
 VoiceCommitServer.shared.start()
 

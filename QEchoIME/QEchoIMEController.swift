@@ -3,7 +3,7 @@
 //  QEchoIME
 //
 //  IMKit 输入控制器：把键盘事件喂给 librime（wubi_pinyin 五笔·拼音混打），
-//  维护组字区 marked text 与系统候选窗，并承接语音上屏通道。
+//  维护组字区 marked text 与自绘候选窗，并承接语音上屏通道。
 //
 
 import Cocoa
@@ -11,7 +11,7 @@ import InputMethodKit
 
 /// 进程级共享面板（由 main.swift 在启动时创建）
 enum QEchoPanels {
-    static var candidates: IMKCandidates?
+    static var candidateWindow: CandidateWindow?
 }
 
 @objc(QEchoIMEController)
@@ -28,6 +28,10 @@ final class QEchoIMEController: IMKInputController {
         RimeEngine.shared.startIfNeeded()
         IMESettingsCoordinator.shared.applyIfNeeded()
         VoiceCommitServer.shared.register(activeController: self)
+        // 候选窗点击选字回调绑定到当前 controller
+        QEchoPanels.candidateWindow?.onSelect = { [weak self] index in
+            self?.selectCandidateByClick(index)
+        }
     }
 
     override func deactivateServer(_ sender: Any!) {
@@ -35,7 +39,7 @@ final class QEchoIMEController: IMKInputController {
         if let client = sender as? IMKTextInput & NSObjectProtocol {
             flushRawInput(to: client)
         }
-        QEchoPanels.candidates?.hide()
+        QEchoPanels.candidateWindow?.hide()
         VoiceCommitServer.shared.unregister(controller: self)
         super.deactivateServer(sender)
     }
@@ -111,7 +115,7 @@ final class QEchoIMEController: IMKInputController {
         let preedit = state?.preedit ?? ""
         guard !preedit.isEmpty else {
             clearMarkedText(of: client)
-            QEchoPanels.candidates?.hide()
+            QEchoPanels.candidateWindow?.hide()
             return
         }
 
@@ -126,11 +130,44 @@ final class QEchoIMEController: IMKInputController {
             replacementRange: Self.notFoundRange
         )
 
-        if let panel = QEchoPanels.candidates, !(state?.candidates.isEmpty ?? true) {
-            panel.update()
-            panel.show()
-        } else {
-            QEchoPanels.candidates?.hide()
+        updateCandidateWindow(state: state, client: client)
+    }
+
+    /// 用自绘候选窗渲染当前候选，跟随组字光标定位
+    private func updateCandidateWindow(
+        state: RimeEngine.CompositionState?,
+        client: IMKTextInput & NSObjectProtocol
+    ) {
+        guard let window = QEchoPanels.candidateWindow else { return }
+        guard let state, !state.candidates.isEmpty else {
+            window.hide()
+            return
+        }
+        let items = state.candidates.map { CandidateItem(text: $0.text, comment: $0.comment) }
+        window.update(
+            items: items,
+            highlightedIndex: state.highlightedIndex,
+            appearance: IMESettingsCoordinator.shared.currentAppearance,
+            near: caretScreenRect(client: client)
+        )
+    }
+
+    /// 取组字区首字符的屏幕矩形；宿主不支持时回退鼠标位置
+    private func caretScreenRect(client: IMKTextInput & NSObjectProtocol) -> NSRect {
+        var lineRect = NSRect.zero
+        _ = client.attributes(forCharacterIndex: 0, lineHeightRectangle: &lineRect)
+        if lineRect.width > 0 || lineRect.height > 0 {
+            return lineRect
+        }
+        let mouse = NSEvent.mouseLocation
+        return NSRect(x: mouse.x, y: mouse.y, width: 1, height: 16)
+    }
+
+    /// 候选窗点击选字：当前页内序号 index
+    private func selectCandidateByClick(_ index: Int) {
+        guard RimeEngine.shared.selectCandidate(onCurrentPage: index) else { return }
+        if let client = client() {
+            syncState(with: client)
         }
     }
 
@@ -149,33 +186,12 @@ final class QEchoIMEController: IMKInputController {
         clearMarkedText(of: client)
     }
 
-    // MARK: - IMKCandidates 数据源
-
-    override func candidates(_ sender: Any!) -> [Any]! {
-        RimeEngine.shared.snapshot()?.candidates.map { candidate in
-            candidate.comment.isEmpty ? candidate.text : "\(candidate.text) \(candidate.comment)"
-        } ?? []
-    }
-
-    override func candidateSelected(_ candidateString: NSAttributedString!) {
-        guard let selected = candidateString?.string,
-              let state = RimeEngine.shared.snapshot() else { return }
-        let index = state.candidates.firstIndex { candidate in
-            selected == candidate.text
-                || selected == "\(candidate.text) \(candidate.comment)"
-        }
-        guard let index, RimeEngine.shared.selectCandidate(onCurrentPage: index) else { return }
-        if let client = client() {
-            syncState(with: client)
-        }
-    }
-
     // MARK: - 系统要求提交（焦点切换 / 应用主动 commit）
 
     override func commitComposition(_ sender: Any!) {
         guard let client = sender as? IMKTextInput & NSObjectProtocol else { return }
         flushRawInput(to: client)
-        QEchoPanels.candidates?.hide()
+        QEchoPanels.candidateWindow?.hide()
     }
 
     // MARK: - 输入法菜单（菜单栏输入源下拉，结构参考主流中文输入法）
@@ -289,7 +305,7 @@ final class QEchoIMEController: IMKInputController {
         if RimeEngine.shared.ready, RimeEngine.shared.isComposing {
             RimeEngine.shared.clearComposition()
             clearMarkedText(of: client)
-            QEchoPanels.candidates?.hide()
+            QEchoPanels.candidateWindow?.hide()
         }
         client.insertText(text, replacementRange: Self.notFoundRange)
         return true
