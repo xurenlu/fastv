@@ -1,5 +1,45 @@
 # Changelog
 
+## [2.4.0-rc1] - 2026-07-23
+
+### Added
+
+- 系统输入法（实验性）第一阶段：新增 `QEchoIME` IMKit 输入法 target，产物随主 App 嵌入分发（`Contents/Resources/QEchoIME.app`）。设置 → 快速配置 新增「输入法（实验性）」区块，一键安装到 `~/Library/Input Methods` 并注册、启用输入源（TIS API）。
+- 语音上屏新增系统输入法通道：当用户选中「轻语」输入法时，转写文本经 CFMessagePort 发给输入法进程，由 `IMKTextInput.insertText` 走系统正规通道提交，比 CGEvent 模拟按键 / 剪贴板粘贴更可靠；输入法未选中或发送失败时自动回退原有插入方式。
+- 主 App 与输入法进程的桥接契约 `InputMethodBridgeContract`（端口名、输入源 ID、带版本号的 JSON 载荷/回执），配套 6 个单元测试（编解码往返、版本兼容、输入源 ID 判定）。
+
+### Engineering
+
+- 本阶段打字为直通模式（行为等同 ABC 键盘）；拼音·五笔混打将基于 librime + `wubi_pinyin` 方案在后续版本实现。
+- 三处语音插入调用点收敛到统一入口 `insertVoiceText`。
+- 新增 `scripts/add_ime_target.rb`（幂等）：向 Xcode 工程注入 QEchoIME target、共享契约文件、目标依赖与嵌入 phase。
+- 版本号 `2.3.0-rc4` → `2.4.0-rc1`，build `30` → `31`；同步 Xcode、Info.plist 与 STT API 响应版本。
+
+## [2.3.0-rc4] - 2026-07-22
+
+### Changed
+
+- 关于窗口对齐 MuseTerm 的紧凑布局：头部改为动画图标、应用名、版本号、简介与 83d 作者主页链接，推荐应用卡片同步使用 42pt 图标与更高卡片行距。
+- 推荐应用新增 GitWise 与象墨（Xomo / VeilPic），并补齐中、英、日、韩、粤本地化文案和图标资源。
+
+### Engineering
+
+- 版本号 `2.3.0-rc3` → `2.3.0-rc4`，build `29` → `30`；同步 Xcode、Info.plist 与 STT API 响应版本。
+
+## [2.3.0-rc3] - 2026-07-21
+
+### Fixed
+
+- Sparkle appcast 控制面显式固定为 `https://some.im`，避免未来误把 some.im/niuwoai 推理节点或用户自定义 API Base 当作更新源。
+
+### Tests
+
+- 更新 SomeIMUpdateConfiguration 契约测试，逐项断言 appcast 的 scheme、host、path 与 app_id/platform/channel 查询参数。
+
+### Changed
+
+- 版本号 `2.3.0-rc2` → `2.3.0-rc3`，build `28` → `29`。
+
 所有版本變更記錄。
 
 ## [2.3.0-rc2] - 2026-07-20

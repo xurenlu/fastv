@@ -224,6 +224,12 @@ private struct ContextualRewriteOutcome {
 }
 
 private func insertVoiceText(_ text: String, preferences: UserPreferences) {
+    // 选中轻语输入法时优先走系统输入法通道上屏（IMKTextInput.insertText），失败回退传统插入
+    if InputMethodBridgeService.shared.isQEchoInputSourceSelected,
+       InputMethodBridgeService.shared.commitViaInputMethod(text) {
+        print("✅ [fastvApp] 文本经输入法通道上屏")
+        return
+    }
     if preferences.useDirectTextInsertion {
         DirectTextInsertionService.shared.insertText(text)
     } else {
@@ -1224,11 +1230,7 @@ struct fastvApp: App {
                 waveformManager.setAICorrectionDisabled()
             }
             
-            if preferences.useDirectTextInsertion {
-                DirectTextInsertionService.shared.insertText(text)
-            } else {
-                TextInsertionService.shared.insertText(text)
-            }
+            insertVoiceText(text, preferences: preferences)
             let audioSec = currentSessionIncrementalAudioSeconds > 0 ? currentSessionIncrementalAudioSeconds : nil
             let transSec = currentSessionIncrementalTranscriptionSeconds > 0 ? currentSessionIncrementalTranscriptionSeconds : nil
             VoiceInputHistoryManager.shared.add(text: text, audioDurationSeconds: audioSec, transcriptionDurationSeconds: transSec)
@@ -1361,16 +1363,7 @@ struct fastvApp: App {
             
             // 先插入文本（优先保证用户体验）
             if !text.isEmpty {
-                // 根据设置选择文本插入方式
-                if preferences.useDirectTextInsertion {
-                    // 使用直接键盘输入，不依赖剪贴板，避免插入错误内容
-                    print("📝 [fastvApp] 直接插入文本到当前输入框（不使用剪贴板）...")
-                    DirectTextInsertionService.shared.insertText(text)
-                } else {
-                    // 使用剪贴板 + Cmd+V 方式（旧方式，作为备选）
-                    print("📝 [fastvApp] 通过剪贴板插入文本...")
-                    TextInsertionService.shared.insertText(text)
-                }
+                insertVoiceText(text, preferences: preferences)
                 VoiceInputHistoryManager.shared.add(
                     text: text,
                     audioDurationSeconds: audioDuration > 0 ? audioDuration : nil,

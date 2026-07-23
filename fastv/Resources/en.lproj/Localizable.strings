@@ -478,6 +478,10 @@
 "about.app.museUploader.summary" = "Screenshots, image editing, and upload sharing.";
 "about.app.markReader.name" = "QMarkView";
 "about.app.markReader.summary" = "Clean Markdown reading.";
+"about.app.gitWise.name" = "GitWise";
+"about.app.gitWise.summary" = "A local-first Git and code collaboration client.";
+"about.app.veilPic.name" = "Xomo";
+"about.app.veilPic.summary" = "Screenshots, image editing, and upload sharing in one place.";
 "about.app.museMail.name" = "QMailMate";
 "about.app.museMail.summary" = "AI email writing, triage, summaries, and replies.";
 "about.app.museMate.name" = "QNote";
@@ -594,3 +598,15 @@
 "ai.scenario.text_correction.desc" = "General text correction";
 "ai.scenario.error_detection" = "Error Detection";
 "ai.scenario.error_detection.desc" = "Error detection";
+
+/* Input Method (Experimental) */
+"ime.section" = "Input Method (Experimental)";
+"ime.status.label" = "System input method";
+"ime.status.notInstalled" = "Not installed";
+"ime.status.installedDisabled" = "Installed, not enabled";
+"ime.status.enabled" = "Enabled";
+"ime.status.embeddedMissing" = "This build does not include the input method component";
+"ime.install.button" = "Install & Enable";
+"ime.reinstall.button" = "Update & Re-enable";
+"ime.refresh" = "Refresh Status";
+"ime.hint" = "After installing, pick \"QEcho\" from the input menu in the menu bar (or System Settings → Keyboard → Input Sources). While QEcho is the active input source, voice text is committed through the system input method channel, which is more reliable than simulated keystrokes. Typing currently passes through as-is; Pinyin & Wubi mixed typing is coming in a later version. If the input method does not appear after installing, log out and back in.";

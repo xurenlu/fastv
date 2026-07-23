@@ -34,6 +34,10 @@
 "about.app.museUploader.summary" = "截圖、圖片編輯與上傳分享。";
 "about.app.markReader.name" = "輕閱";
 "about.app.markReader.summary" = "清爽的 Markdown 閱讀。";
+"about.app.gitWise.name" = "GitWise";
+"about.app.gitWise.summary" = "本機優先嘅 Git 同代碼協作客戶端。";
+"about.app.veilPic.name" = "象墨";
+"about.app.veilPic.summary" = "截圖、圖片編輯、上傳分享都歸到一處。";
 "about.app.museMail.name" = "輕郵";
 "about.app.museMail.summary" = "AI 郵件寫作、摘要、分類與回覆助手。";
 "about.app.museMate.name" = "輕記";
@@ -443,3 +447,15 @@
 "ai.scenario.text_correction.desc" = "通用文字糾錯";
 "ai.scenario.error_detection" = "錯誤偵測";
 "ai.scenario.error_detection.desc" = "錯誤偵測";
+
+/* 輸入法（實驗性） */
+"ime.section" = "輸入法（實驗性）";
+"ime.status.label" = "系統輸入法";
+"ime.status.notInstalled" = "未安裝";
+"ime.status.installedDisabled" = "已安裝，未啟用";
+"ime.status.enabled" = "已啟用";
+"ime.status.embeddedMissing" = "目前構建未包含輸入法組件";
+"ime.install.button" = "安裝並啟用";
+"ime.reinstall.button" = "更新並重新啟用";
+"ime.refresh" = "重新整理狀態";
+"ime.hint" = "安裝後喺選單列輸入法選單（或 系統設定 → 鍵盤 → 輸入法）揀「輕語」。揀咗輕語輸入法嗰陣，語音文字會行系統輸入法通道上屏，比模擬按鍵更可靠。打字目前係直通模式，拼音·五筆混打會喺之後版本加入。如果安裝後列表見唔到輸入法，請登出再重新登入。";

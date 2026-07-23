@@ -1,6 +1,6 @@
 # Product Overview
 
-> 最后更新：2026-07-20 | 当前版本：v2.3.0-rc2
+> 最后更新：2026-07-23 | 当前版本：v2.4.0-rc1
 
 ## 当前设计思路
 
@@ -8,12 +8,13 @@
 
 ## 主要功能
 
+- 系统输入法（实验性，阶段一）：QEchoIME 作为独立 IMKit 输入法随主 App 分发，设置页一键安装到 `~/Library/Input Methods` 并注册启用。选中「轻语」输入法时，语音文本经 CFMessagePort → `IMKTextInput.insertText` 走系统输入法通道上屏（失败自动回退 CGEvent / 剪贴板）；打字暂为直通模式，拼音·五笔混打（librime + `wubi_pinyin`）在阶段二实现。
 - 语音输入法：默认按住快捷键录音、松开转写并插入当前输入框；设置 → 触发方式 还可切换「按一下切换」（toggle）或「混合」（短按 = 切换、长按 ≥ 0.25s = 按住录音），覆盖长段口述与短句两类场景。
 - 术语包：常错词管理新增「术语包」分栏。专有名词、产品名、技术术语在替换管线中优先生效且大小写不敏感，说「open ai」也能输出「OpenAI」。
 - Power Mode（场景感知 prompt）：按前台 App / 浏览器 URL 自动切换 AI 后处理 prompt 模板。出厂内置 4 套预设（邮件正式 / Slack 简短 / IM 口语 / IDE 代码注释），用户可加自定义场景（bundleId / URL 通配 / App 名 contains 三种匹配规则 OR 组合）。AX 抽 Safari/Chrome/Arc/Brave/Edge/Firefox 当前 tab URL，1s 缓存。
 - 悬浮指示器位置：除「左上 / 右上 / 左下 / 右下 / 正中下方」5 个固定位置之外，新增「跟随光标」—— 录音期间小指示器贴着输入光标移动（AX 拿 caret bounds 优先，失败兜底鼠标位置）。
 - 主窗口界面皮肤：可在设置中切换系统默认、清爽浅色、纸感与多套深色风格；深色皮肤使用浅色文字，保证暗背景可读。
-- 关于窗口：独立 macOS 窗口展示轻语版本、作者主页、隐私承诺，以及 83d 系列推荐应用。
+- 关于窗口：独立 macOS 窗口展示轻语版本、作者主页，以及包含 GitWise、象墨等产品的 83d 系列推荐应用。
 - AI 语音优化：AI 快捷键可对转写文本进行口语化清理、标点补全、错字修正和轻度结构化整理；当口述内容天然包含多个事项、条件、步骤或请求时，可整理成 2-5 条短列表。
 - 中英混合术语校正：内置高置信度术语/流行技术词规则（如 `麦克 app → Mac app`、`Mac OS → macOS`、`open ai → OpenAI`、`git hub → GitHub`、`type script → TypeScript`），并通过默认 AI prompt 处理需要语境推断的产品名、技术词和流行词。
 - 同 App 短上下文联想校正：AI 语音优化会读取当前焦点输入框光标前的小段文本，只在同一 App / 当前输入框内作为参考，用于修正同音或近音误识别；动态上下文放在 user message，固定规则保留在 system prompt 以提高 DeepSeek / Kimi 等模型的 cache rate。
@@ -25,6 +26,8 @@
 
 ## 待完成问题
 
+- 输入法阶段二：集成 librime + `wubi_pinyin` 方案实现拼音·五笔混打（候选窗、翻页、中英切换、用户词典存 App Group）；注意 rime-wubi 码表 LGPL 授权，须以独立资源文件分发并在关于页注明来源与许可证。
+- 输入法收尾项：输入源菜单图标（tsInputMethodIconFileKey）、IME bundle 的 InfoPlist.strings 多语言显示名、安装后引导用户在输入法菜单选中「轻语」的提示动画。
 - 增加针对常见浏览器 textarea、原生 NSTextView、Electron 输入框的端到端回归测试。
 - 为 AI 上下文回改补充更细粒度的用户提示，例如回写失败时提示当前应用不支持 Accessibility 回写。
 - 梳理现有硬编码文案，逐步统一到本地化资源。
@@ -35,6 +38,9 @@
 
 ## 版本记录
 
+- `2.4.0-rc1`：系统输入法（实验性）阶段一。新增 QEchoIME IMKit target（英文直通薄壳 + CFMessagePort 语音上屏服务端），随主 App 嵌入分发；主 App 新增 `InputMethodBridgeService`（检测当前输入源 + 发送转写文本）与 `InputMethodInstaller`（安装 / TIS 注册 / 启用），三处语音插入调用点收敛到 `insertVoiceText` 统一入口并优先走输入法通道；设置页新增「输入法（实验性）」区块与 5 语种文案；`InputMethodBridgeContract` 契约 6 个单测，全套 46 测通过。
+- `2.3.0-rc4`：关于窗口对齐 MuseTerm 的紧凑布局，推荐应用卡片使用更大的 42pt 图标，并新增 GitWise 与象墨（Xomo / VeilPic）两个入口及对应本地化文案、图标资源。
+- `2.3.0-rc3`：Sparkle appcast 控制面显式固定为 `https://some.im`，避免未来误把 some.im/niuwoai 推理节点或用户自定义 API Base 当作更新源；更新 SomeIMUpdateConfiguration 契约测试，逐项断言 appcast 的 scheme、host、path 与查询参数。
 - `2.3.0-rc2`：放大菜单栏闲置态品牌图标。`MenuBarIcon` 三档 PNG 裁掉过多透明边距并提高画布填充率，`StatusBarManager` 明确以 18pt 渲染品牌图标，使轻语图标与系统菜单栏图标并排时更接近同一视觉尺寸。
 - `2.3.0-rc1`：集成 Sparkle 自动更新，支持启动检查和应用菜单手动检查更新；更新源统一使用 some.im 的 QEcho stable appcast。
 - `2.2.0-rc7`：修正简体中文系统应用名为轻语，英文和其他非中文系统继续显示 QEcho。
