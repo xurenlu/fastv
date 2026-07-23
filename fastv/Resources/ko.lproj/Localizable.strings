@@ -34,6 +34,10 @@
 "about.app.museUploader.summary" = "Screenshots, image editing, and upload sharing.";
 "about.app.markReader.name" = "QMarkView";
 "about.app.markReader.summary" = "Clean Markdown reading.";
+"about.app.gitWise.name" = "GitWise";
+"about.app.gitWise.summary" = "로컬 우선 Git 및 코드 협업 클라이언트.";
+"about.app.veilPic.name" = "Xomo";
+"about.app.veilPic.summary" = "스크린샷, 이미지 편집, 업로드 공유를 한곳에.";
 "about.app.museMail.name" = "QMailMate";
 "about.app.museMail.summary" = "AI email writing, triage, summaries, and replies.";
 "about.app.museMate.name" = "QNote";
@@ -443,3 +447,15 @@
 "ai.scenario.text_correction.desc" = "범용 텍스트 교정";
 "ai.scenario.error_detection" = "오류 감지";
 "ai.scenario.error_detection.desc" = "오류 감지";
+
+/* 입력기(실험적) */
+"ime.section" = "입력기(실험적)";
+"ime.status.label" = "시스템 입력기";
+"ime.status.notInstalled" = "설치되지 않음";
+"ime.status.installedDisabled" = "설치됨, 비활성화";
+"ime.status.enabled" = "활성화됨";
+"ime.status.embeddedMissing" = "이 빌드에는 입력기 구성 요소가 포함되어 있지 않습니다";
+"ime.install.button" = "설치 및 활성화";
+"ime.reinstall.button" = "업데이트 및 재활성화";
+"ime.refresh" = "상태 새로 고침";
+"ime.hint" = "설치 후 메뉴 막대의 입력 메뉴(또는 시스템 설정 → 키보드 → 입력 소스)에서 \"QEcho\"를 선택하세요. QEcho가 선택된 동안 음성 텍스트는 시스템 입력기 채널로 입력되어 키 입력 시뮬레이션보다 안정적입니다. 타이핑은 현재 그대로 통과되며, 병음·오필 혼합 입력은 이후 버전에서 추가됩니다. 설치 후 목록에 표시되지 않으면 로그아웃 후 다시 로그인하세요.";

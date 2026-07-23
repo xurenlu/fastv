@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "5C04237D2ECD792D00821B50"
-               BuildableName = "musetype.app"
+               BuildableName = "QEcho.app"
                BlueprintName = "musetype"
                ReferencedContainer = "container:fastv.xcodeproj">
             </BuildableReference>
@@ -27,23 +27,22 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      shouldUseLaunchSchemeArgsEnv = "YES"
-      shouldAutocreateTestPlan = "NO">
+      shouldUseLaunchSchemeArgsEnv = "YES">
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "5C04237D2ECD792D00821B50"
+            BuildableName = "QEcho.app"
+            BlueprintName = "musetype"
+            ReferencedContainer = "container:fastv.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
       <TestPlans>
          <TestPlanReference
             reference = "container:musetype.xctestplan"
             default = "YES">
          </TestPlanReference>
       </TestPlans>
-      <MacroExpansion>
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "5C04237D2ECD792D00821B50"
-            BuildableName = "musetype.app"
-            BlueprintName = "musetype"
-            ReferencedContainer = "container:fastv.xcodeproj">
-         </BuildableReference>
-      </MacroExpansion>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
@@ -60,7 +59,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "5C04237D2ECD792D00821B50"
-            BuildableName = "musetype.app"
+            BuildableName = "QEcho.app"
             BlueprintName = "musetype"
             ReferencedContainer = "container:fastv.xcodeproj">
          </BuildableReference>
@@ -77,7 +76,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "5C04237D2ECD792D00821B50"
-            BuildableName = "musetype.app"
+            BuildableName = "QEcho.app"
             BlueprintName = "musetype"
             ReferencedContainer = "container:fastv.xcodeproj">
          </BuildableReference>

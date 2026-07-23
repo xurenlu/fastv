@@ -478,6 +478,10 @@
 "about.app.museUploader.summary" = "截图、图片编辑与上传分享。";
 "about.app.markReader.name" = "轻阅";
 "about.app.markReader.summary" = "清爽的 Markdown 阅读。";
+"about.app.gitWise.name" = "GitWise";
+"about.app.gitWise.summary" = "本地优先的 Git 与代码协作客户端。";
+"about.app.veilPic.name" = "象墨";
+"about.app.veilPic.summary" = "截图、图片编辑、上传分享都归到一处。";
 "about.app.museMail.name" = "轻邮";
 "about.app.museMail.summary" = "AI 邮件写作、摘要、分类与回复助手。";
 "about.app.museMate.name" = "轻记";
@@ -594,3 +598,15 @@
 "ai.scenario.text_correction.desc" = "通用文本纠错";
 "ai.scenario.error_detection" = "错误检测";
 "ai.scenario.error_detection.desc" = "错误检测";
+
+/* 输入法（实验性） */
+"ime.section" = "输入法（实验性）";
+"ime.status.label" = "系统输入法";
+"ime.status.notInstalled" = "未安装";
+"ime.status.installedDisabled" = "已安装，未启用";
+"ime.status.enabled" = "已启用";
+"ime.status.embeddedMissing" = "当前构建未包含输入法组件";
+"ime.install.button" = "安装并启用";
+"ime.reinstall.button" = "更新并重新启用";
+"ime.refresh" = "刷新状态";
+"ime.hint" = "安装后在菜单栏输入法菜单（或 系统设置 → 键盘 → 输入法）中选择「轻语」。选中轻语输入法时，语音文本会走系统输入法通道上屏，比模拟按键更可靠。打字目前为直通模式，拼音·五笔混打将在后续版本加入。若安装后列表中看不到输入法，请注销并重新登录。";

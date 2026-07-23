@@ -1,0 +1,103 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# 把 QEchoIME 输入法 target 集成进 fastv.xcodeproj。
+# 说明：本工程使用 Xcode 16 文件系统同步 group（fastv/ → musetype、fastvTests/ → fastvTests），
+# 主 App 与测试的新增源文件自动入编，这里只需要：
+#   1. 创建 QEchoIME app target 并配置构建设置
+#   2. 挂 QEchoIME/ 下源文件 + 共享契约文件（fastv/Services/InputMethodBridgeContract.swift）
+#   3. musetype 依赖 QEchoIME，并把 QEchoIME.app 嵌入主 App 的 Resources
+# 幂等：重复执行不会产生重复 target / 文件引用 / build phase。
+#
+# 用法：LC_ALL=en_US.UTF-8 ruby scripts/add_ime_target.rb
+
+require 'xcodeproj'
+
+PROJECT_PATH = File.expand_path('../fastv.xcodeproj', __dir__)
+SRCROOT = File.dirname(PROJECT_PATH)
+IME_TARGET_NAME = 'QEchoIME'
+IME_BUNDLE_ID = 'com.17push.inputmethod.QEchoIME'
+MARKETING_VERSION = '2.4.0-rc1'
+DEPLOYMENT_TARGET = '14.6'
+DEVELOPMENT_TEAM = 'ZH2S7D6PL6'
+EMBED_PHASE_NAME = 'Embed Input Method'
+CONTRACT_PATH = File.join(SRCROOT, 'fastv/Services/InputMethodBridgeContract.swift')
+
+project = Xcodeproj::Project.open(PROJECT_PATH)
+
+main_target = project.targets.find { |t| t.name == 'musetype' }
+abort '❌ 找不到 musetype target' unless main_target
+
+# ---------- 1. QEchoIME target ----------
+
+ime_target = project.targets.find { |t| t.name == IME_TARGET_NAME }
+if ime_target
+  puts "ℹ️  #{IME_TARGET_NAME} target 已存在，跳过创建"
+else
+  ime_target = project.new_target(:application, IME_TARGET_NAME, :osx, DEPLOYMENT_TARGET)
+  puts "✅ 创建 target #{IME_TARGET_NAME}"
+end
+
+ime_target.build_configurations.each do |config|
+  s = config.build_settings
+  s['INFOPLIST_FILE'] = 'QEchoIME/Info.plist'
+  s['GENERATE_INFOPLIST_FILE'] = 'NO'
+  s['PRODUCT_BUNDLE_IDENTIFIER'] = IME_BUNDLE_ID
+  s['PRODUCT_NAME'] = IME_TARGET_NAME
+  s['MARKETING_VERSION'] = MARKETING_VERSION
+  s['CURRENT_PROJECT_VERSION'] = '1'
+  s['SWIFT_VERSION'] = '5.0'
+  s['MACOSX_DEPLOYMENT_TARGET'] = DEPLOYMENT_TARGET
+  s['CODE_SIGN_STYLE'] = 'Automatic'
+  s['DEVELOPMENT_TEAM'] = DEVELOPMENT_TEAM
+  s['ENABLE_HARDENED_RUNTIME'] = 'YES'
+  s['SKIP_INSTALL'] = 'YES'
+  s['COMBINE_HIDPI_IMAGES'] = 'YES'
+end
+
+# ---------- 2. QEchoIME 源文件 ----------
+
+ime_group = project.main_group['QEchoIME'] || project.main_group.new_group('QEchoIME', 'QEchoIME')
+
+def ensure_ref(group, path)
+  name = File.basename(path)
+  existing = group.files.find { |f| File.basename(f.path.to_s) == name }
+  existing || group.new_reference(path)
+end
+
+def ensure_source(target, file_ref)
+  already = target.source_build_phase.files_references.include?(file_ref)
+  target.add_file_references([file_ref]) unless already
+end
+
+%w[main.swift QEchoIMEController.swift VoiceCommitServer.swift].each do |name|
+  ensure_source(ime_target, ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME', name)))
+end
+ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME', 'Info.plist')) # 只挂引用，不进编译
+
+# 共享契约：musetype 经同步 group 自动入编，这里只需补 QEchoIME 侧
+ensure_source(ime_target, ensure_ref(ime_group, CONTRACT_PATH))
+
+# ---------- 3. 依赖 + 嵌入 ----------
+
+unless main_target.dependencies.any? { |d| d.target == ime_target }
+  main_target.add_dependency(ime_target)
+  puts '✅ 添加 musetype → QEchoIME 依赖'
+end
+
+embed_phase = main_target.copy_files_build_phases.find { |p| p.name == EMBED_PHASE_NAME }
+unless embed_phase
+  embed_phase = main_target.new_copy_files_build_phase(EMBED_PHASE_NAME)
+  embed_phase.symbol_dst_subfolder_spec = :resources
+  puts "✅ 创建 copy files phase：#{EMBED_PHASE_NAME}"
+end
+
+product_ref = ime_target.product_reference
+unless embed_phase.files_references.include?(product_ref)
+  build_file = embed_phase.add_file_reference(product_ref)
+  build_file.settings = { 'ATTRIBUTES' => %w[CodeSignOnCopy RemoveHeadersOnCopy] }
+  puts '✅ 把 QEchoIME.app 加入嵌入列表'
+end
+
+project.save
+puts "✅ 已保存 #{PROJECT_PATH}"

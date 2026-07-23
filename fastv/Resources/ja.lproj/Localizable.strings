@@ -366,6 +366,10 @@
 "about.app.museUploader.summary" = "Screenshots, image editing, and upload sharing.";
 "about.app.markReader.name" = "QMarkView";
 "about.app.markReader.summary" = "Clean Markdown reading.";
+"about.app.gitWise.name" = "GitWise";
+"about.app.gitWise.summary" = "ローカル優先の Git とコード共同作業クライアント。";
+"about.app.veilPic.name" = "軽図";
+"about.app.veilPic.summary" = "スクリーンショット、画像編集、アップロード共有をひとつに。";
 "about.app.museMail.name" = "QMailMate";
 "about.app.museMail.summary" = "AI email writing, triage, summaries, and replies.";
 "about.app.museMate.name" = "QNote";
@@ -447,3 +451,15 @@
 "ai.scenario.text_correction.desc" = "汎用テキスト校正";
 "ai.scenario.error_detection" = "エラー検出";
 "ai.scenario.error_detection.desc" = "エラー検出";
+
+/* 入力メソッド（実験的） */
+"ime.section" = "入力メソッド（実験的）";
+"ime.status.label" = "システム入力メソッド";
+"ime.status.notInstalled" = "未インストール";
+"ime.status.installedDisabled" = "インストール済み・未有効化";
+"ime.status.enabled" = "有効";
+"ime.status.embeddedMissing" = "このビルドには入力メソッドコンポーネントが含まれていません";
+"ime.install.button" = "インストールして有効化";
+"ime.reinstall.button" = "更新して再有効化";
+"ime.refresh" = "状態を更新";
+"ime.hint" = "インストール後、メニューバーの入力メニュー（または システム設定 → キーボード → 入力ソース）で「QEcho」を選択してください。QEcho を選択中は、音声テキストがシステム入力メソッド経由で入力され、キー入力シミュレーションより確実です。タイピングは現在パススルーで、ピンイン・五筆混合入力は今後のバージョンで追加予定です。インストール後に一覧に表示されない場合は、ログアウトして再ログインしてください。";
