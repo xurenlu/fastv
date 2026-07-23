@@ -13,13 +13,12 @@ import AppKit
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedTab: SettingsTab = .general
+    @State private var selectedTab: SettingsTab = .typing
 
-    /// 设置分组：常用 / 语音输入 / 输入法·打字 / AI 与模型 / 数据与其他
+    /// 设置分组：输入法·打字（默认）/ 语音输入 / AI 与模型 / 数据与其他 / 帮助
     enum SettingsTab: String, CaseIterable, Identifiable {
-        case general
-        case voice
         case typing
+        case voice
         case aiModel
         case data
         case help
@@ -28,9 +27,8 @@ struct SettingsView: View {
 
         var titleKey: String {
             switch self {
-            case .general: return "settings.tab.general"
-            case .voice: return "settings.tab.voice"
             case .typing: return "settings.tab.typing"
+            case .voice: return "settings.tab.voice"
             case .aiModel: return "settings.tab.aiModel"
             case .data: return "settings.tab.data"
             case .help: return "settings.tab.help"
@@ -39,9 +37,8 @@ struct SettingsView: View {
 
         var icon: String {
             switch self {
-            case .general: return "gearshape.fill"
-            case .voice: return "mic.fill"
             case .typing: return "keyboard.fill"
+            case .voice: return "mic.fill"
             case .aiModel: return "cpu"
             case .data: return "folder.fill"
             case .help: return "questionmark.circle.fill"
@@ -100,12 +97,10 @@ struct SettingsView: View {
     @ViewBuilder
     private var tabContent: some View {
         switch selectedTab {
-        case .general:
-            GeneralTab().id("general")
-        case .voice:
-            VoiceInputTab().id("voice")
         case .typing:
             TypingTab().id("typing")
+        case .voice:
+            VoiceInputTab().id("voice")
         case .aiModel:
             AIModelSettingsTab().id("aiModel")
         case .data:

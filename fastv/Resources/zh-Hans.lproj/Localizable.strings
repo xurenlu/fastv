@@ -302,7 +302,6 @@
 "ai.test.optimization" = "测试文本优化";
 "ai.test.optimization.help" = "发送测试文本，验证 AI 优化功能是否正常工作";
 "settings.title" = "设置";
-"settings.tab.general" = "常用";
 "settings.tab.voice" = "语音输入";
 "settings.tab.typing" = "输入法·打字";
 "settings.tab.aiModel" = "AI 与模型";

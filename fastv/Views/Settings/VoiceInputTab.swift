@@ -400,10 +400,28 @@ struct VoiceInputTab: View {
                 }
             }
 
+            // 默认语言（仅作用于语音输入识别的默认语言）
+            Section {
+                Picker(NSLocalizedString("default.language", comment: ""), selection: Binding(
+                    get: { preferences.defaultLanguage },
+                    set: { newValue in
+                        preferences.defaultLanguage = newValue
+                        LocalizationManager.shared.currentLanguage = newValue
+                    }
+                )) {
+                    ForEach(SupportedLanguage.allCases, id: \.self) { language in
+                        Text(language.nativeName).tag(language.rawValue)
+                    }
+                }
+            } header: {
+                Text(NSLocalizedString("language", comment: ""))
+            } footer: {
+                Text(NSLocalizedString("language.description", comment: ""))
+            }
         }
         .formStyle(.grouped)
     }
-    
+
     // MARK: - Helper Methods
     
     /// 测试麦克风权限

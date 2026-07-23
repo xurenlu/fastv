@@ -302,7 +302,6 @@
 "ai.test.optimization" = "Test Text Optimization";
 "ai.test.optimization.help" = "Send test text to verify AI optimization functionality";
 "settings.title" = "Settings";
-"settings.tab.general" = "General";
 "settings.tab.voice" = "Voice Input";
 "settings.tab.typing" = "IME & Typing";
 "settings.tab.aiModel" = "AI & Models";

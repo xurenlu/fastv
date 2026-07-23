@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.4.0-rc9] - 2026-07-23
+
+### Changed
+
+- 设置窗口结构调整：
+  - **移除「常用」tab**：其唯一实义项「在 Dock 中隐藏图标」开关删除（该行为保留底层默认，不再从设置暴露）；隐私说明在各 tab 顶部本已可见，空 tab 移除。
+  - **「默认语言」移到「语音输入」tab**：该项只影响语音识别的默认语言，归入语音输入更合语义。
+  - **「输入法·打字」提为第一个 tab 并作为默认选中项**。
+- 最终左侧 5 组顺序：输入法·打字（默认）/ 语音输入 / AI 与模型 / 数据与其他 / 帮助。
+
+### Engineering
+
+- 删除 `GeneralTab.swift`；`SettingsView.SettingsTab` 移除 `.general`、默认值改 `.typing`；`VoiceInputTab` 追加默认语言 section；清理失效 i18n key `settings.tab.general`。
+- 版本号 `2.4.0-rc8` → `2.4.0-rc9`，build `38` → `39`；同步 4 处版本点。
+
 ## [2.4.0-rc8] - 2026-07-23
 
 ### Added
