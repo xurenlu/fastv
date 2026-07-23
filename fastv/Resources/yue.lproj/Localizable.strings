@@ -153,22 +153,6 @@
 "waveform.window.position" = "懸浮工具列位置";
 "waveform.window.size" = "懸浮工具列大小";
 "waveform.window.color" = "懸浮工具列顏色";
-"main.window.skin.section" = "界面皮膚";
-"main.window.skin.footer" = "切換後會即刻套用到主視窗。深色皮膚會用淺色文字，暗底都睇得清楚。";
-"main.window.skin.systemDefault.name" = "系統預設";
-"main.window.skin.systemDefault.description" = "跟隨 macOS 原生外觀，穩陣克制。";
-"main.window.skin.mistForest.name" = "淡雅霧林";
-"main.window.skin.mistForest.description" = "淺綠、暖白同柔和空氣感。";
-"main.window.skin.inkPaper.name" = "水墨宣紙";
-"main.window.skin.inkPaper.description" = "墨色層次配低飽和紙底，安靜有質感。";
-"main.window.skin.sciFiGlow.name" = "科幻光柵";
-"main.window.skin.sciFiGlow.description" = "深色界面配冷光同少量霓虹點綴。";
-"main.window.skin.midnightSlate.name" = "午夜岩藍";
-"main.window.skin.midnightSlate.description" = "深藍黑底配淺色文字，長時間用都穩。";
-"main.window.skin.auroraNoir.name" = "極光暗夜";
-"main.window.skin.auroraNoir.description" = "黑綠暗底配青綠高光，清爽但唔刺眼。";
-"main.window.skin.emberGraphite.name" = "熔火石墨";
-"main.window.skin.emberGraphite.description" = "炭黑底色配暖橙重點，深色但有溫度。";
 "permission.test" = "權限測試";
 "test.microphone.permission" = "測試麥克風權限";
 "test.show.toolbar" = "測試顯示工具列";
@@ -346,6 +330,11 @@
 "ai.test.optimization" = "測試文字優化";
 "ai.test.optimization.help" = "發送測試文字，驗證 AI 優化功能是否正常運作";
 "settings.title" = "設定";
+"settings.tab.general" = "常用";
+"settings.tab.voice" = "語音輸入";
+"settings.tab.typing" = "輸入法·打字";
+"settings.tab.aiModel" = "AI 同模型";
+"settings.tab.data" = "資料同其他";
 "settings.done" = "完成";
 
 // 權限相關Alert
@@ -494,3 +483,11 @@
 "ime.cand.color.label" = "序號色";
 "ime.cand.color.border" = "邊框色";
 "ime.cand.reset" = "回復預設外觀";
+"ime.cand.pageSize" = "每頁候選個數";
+"ime.cand.preset" = "預設皮膚";
+"ime.cand.preset.classicLight" = "經典淺色";
+"ime.cand.preset.night" = "夜幕";
+"ime.cand.preset.wechatGreen" = "清新綠";
+"ime.cand.preset.minimalMono" = "極簡黑白";
+"ime.cand.preset.bigReading" = "大字護眼";
+"ime.cand.preset.verticalInk" = "豎排水墨";

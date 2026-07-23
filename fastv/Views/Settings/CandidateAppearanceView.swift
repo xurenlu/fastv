@@ -74,6 +74,40 @@ struct CandidateAppearanceView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             }
 
+            // 预设皮肤（一键套用，套用后仍可继续微调下面各项）
+            VStack(alignment: .leading, spacing: 6) {
+                Text(NSLocalizedString("ime.cand.preset", comment: ""))
+                    .font(.caption).foregroundStyle(.secondary)
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 8)], spacing: 8) {
+                    ForEach(CandidatePreset.allCases) { preset in
+                        let selected = preset.matches(appearance)
+                        Button {
+                            store.setAppearance(preset.appearance)
+                        } label: {
+                            Text(NSLocalizedString(preset.displayNameKey, comment: ""))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 6)
+                                .background(selected ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.08))
+                                .overlay(RoundedRectangle(cornerRadius: 6)
+                                    .stroke(selected ? Color.accentColor : Color.secondary.opacity(0.25),
+                                            lineWidth: selected ? 1.5 : 1))
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            // 每页候选个数（5~9）
+            Picker(NSLocalizedString("ime.cand.pageSize", comment: ""),
+                   selection: Binding(get: { store.settings.pageSize },
+                                      set: { store.setPageSize($0) })) {
+                ForEach(Array(IMESettings.pageSizeRange), id: \.self) { n in
+                    Text("\(n)").tag(n)
+                }
+            }
+            .pickerStyle(.segmented)
+
             // 排列方向
             Picker(NSLocalizedString("ime.cand.layout", comment: ""),
                    selection: Binding(get: { appearance.layout },

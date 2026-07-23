@@ -119,4 +119,88 @@ final class CandidateAppearanceTests: XCTestCase {
         XCTAssertEqual(CandidateAppearance.default.layout, .horizontal)
         XCTAssertTrue(CandidateAppearance.default.followSystemDarkMode)
     }
+
+    // MARK: - 候选个数 page_size
+
+    func testPageSizeClampsBelowRange() {
+        var s = IMESettings.default
+        s.candidatePageSize = 3
+        XCTAssertEqual(s.pageSize, 5)
+    }
+
+    func testPageSizeClampsAboveRange() {
+        var s = IMESettings.default
+        s.candidatePageSize = 20
+        XCTAssertEqual(s.pageSize, 9)
+    }
+
+    func testPageSizeNilFallsBackToDefault() {
+        var s = IMESettings.default
+        s.candidatePageSize = nil
+        XCTAssertEqual(s.pageSize, IMESettings.defaultPageSize)
+        XCTAssertEqual(s.pageSize, 5)
+    }
+
+    func testPageSizeAcceptsValidValues() {
+        for size in 5...9 {
+            var s = IMESettings.default
+            s.candidatePageSize = size
+            XCTAssertEqual(s.pageSize, size)
+        }
+    }
+
+    func testPatchIncludesPageSize() {
+        let yaml = RimePatchGenerator.customYAML(for: .mixed, enableUserDict: true, pageSize: 7)
+        XCTAssertTrue(yaml.contains("menu/page_size: 7"))
+    }
+
+    func testPatchClampsPageSize() {
+        let yaml = RimePatchGenerator.customYAML(for: .mixed, enableUserDict: true, pageSize: 99)
+        XCTAssertTrue(yaml.contains("menu/page_size: 9"))
+    }
+
+    func testOldSettingsWithoutPageSizeDecodes() throws {
+        let oldJSON = """
+        { "version": 1, "schemaId": "wubi_pinyin", "enableUserDict": true }
+        """
+        let settings = try JSONDecoder().decode(IMESettings.self, from: Data(oldJSON.utf8))
+        XCTAssertNil(settings.candidatePageSize)
+        XCTAssertEqual(settings.pageSize, 5)
+    }
+
+    // MARK: - 候选窗预设皮肤
+
+    func testAllPresetsSanitizeStable() {
+        // 每套预设本身应已在合法范围内（sanitized 不改变它）
+        for preset in CandidatePreset.allCases {
+            XCTAssertEqual(preset.appearance.sanitized(), preset.appearance.sanitized())
+        }
+    }
+
+    func testClassicLightPresetEqualsDefault() {
+        XCTAssertEqual(CandidatePreset.classicLight.appearance, CandidateAppearance.default)
+    }
+
+    func testPresetMatchesItsOwnAppearance() {
+        for preset in CandidatePreset.allCases {
+            XCTAssertTrue(preset.matches(preset.appearance),
+                          "\(preset.rawValue) 应匹配自身外观")
+        }
+    }
+
+    func testVerticalInkPresetIsVertical() {
+        XCTAssertEqual(CandidatePreset.verticalInk.appearance.layout, .vertical)
+    }
+
+    func testBigReadingPresetHasLargeFont() {
+        XCTAssertGreaterThanOrEqual(CandidatePreset.bigReading.appearance.fontSize, 24)
+    }
+
+    func testMinimalMonoHidesComment() {
+        XCTAssertFalse(CandidatePreset.minimalMono.appearance.showComment)
+    }
+
+    func testNightPresetDoesNotFollowSystem() {
+        XCTAssertFalse(CandidatePreset.night.appearance.followSystemDarkMode)
+    }
 }

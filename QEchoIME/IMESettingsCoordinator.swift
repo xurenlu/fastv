@@ -32,8 +32,9 @@ final class IMESettingsCoordinator {
         currentAppearance = settings.appearance
         guard settings != applied else { return }
 
-        // 词频开关落在 *.custom.yaml（主 App 通知前已重写），需要整体重启让 Rime 重新部署
-        if let applied, applied.enableUserDict != settings.enableUserDict {
+        // 词频开关 / 候选个数落在 *.custom.yaml（主 App 通知前已重写），需整体重启让 Rime 重部署
+        if let applied, applied.enableUserDict != settings.enableUserDict
+            || applied.pageSize != settings.pageSize {
             engine.restartForConfigChange()
         }
         if engine.currentSchemaId() != settings.schemaId {

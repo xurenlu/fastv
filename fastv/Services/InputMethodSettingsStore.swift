@@ -48,14 +48,23 @@ final class InputMethodSettingsStore: ObservableObject {
         setAppearance(.default)
     }
 
+    /// 每页候选个数（5~9）
+    func setPageSize(_ size: Int) {
+        var updated = settings
+        updated.candidatePageSize = min(max(size, IMESettings.pageSizeRange.lowerBound),
+                                        IMESettings.pageSizeRange.upperBound)
+        persist(updated)
+    }
+
     private func persist(_ updated: IMESettings) {
         guard updated != settings else { return }
-        let userDictChanged = updated.enableUserDict != settings.enableUserDict
+        // 词频开关或候选个数变化都要重写 custom 补丁并触发 Rime 重部署（外观/方案变更不涉及）
+        let patchChanged = updated.enableUserDict != settings.enableUserDict
+            || updated.pageSize != settings.pageSize
         do {
-            // 仅词频开关变化时才重写 custom 补丁（外观/方案变更不涉及 Rime 部署）；
             // 先写补丁再写设置文件：IME 收到通知重启部署时补丁必须已就位
-            if userDictChanged {
-                try writeCustomPatches(enableUserDict: updated.enableUserDict)
+            if patchChanged {
+                try writeCustomPatches(enableUserDict: updated.enableUserDict, pageSize: updated.pageSize)
             }
             try updated.write()
         } catch {
@@ -66,10 +75,12 @@ final class InputMethodSettingsStore: ObservableObject {
         InputMethodBridgeService.shared.notifySettingsChanged()
     }
 
-    private func writeCustomPatches(enableUserDict: Bool) throws {
+    private func writeCustomPatches(enableUserDict: Bool, pageSize: Int) throws {
         let directory = InputMethodBridgeContract.imeUserDataDirectory()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        for (fileName, content) in RimePatchGenerator.userCustomFiles(enableUserDict: enableUserDict) {
+        for (fileName, content) in RimePatchGenerator.userCustomFiles(
+            enableUserDict: enableUserDict, pageSize: pageSize
+        ) {
             try content.write(
                 to: directory.appendingPathComponent(fileName),
                 atomically: true,

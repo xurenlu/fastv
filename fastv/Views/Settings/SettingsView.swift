@@ -4,6 +4,7 @@
 //
 //  Created by rocky on 2025/11/19.
 //  Refactored to multi-tab structure on 2025/11/29.
+//  Refactored to left sidebar tabs (5 groups) on 2026-07-23.
 //
 
 import SwiftUI
@@ -11,20 +12,34 @@ import AVFoundation
 import AppKit
 
 struct SettingsView: View {
-    @ObservedObject var preferences = UserPreferences.shared
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedTab: SettingsTab = .quick
+    @State private var selectedTab: SettingsTab = .general
 
+    /// 设置分组：常用 / 语音输入 / 输入法·打字 / AI 与模型 / 数据与其他
     enum SettingsTab: String, CaseIterable, Identifiable {
-        case quick = "快速配置"
-        case aiModel = "AI与模型"
-        case data = "数据与其他"
+        case general
+        case voice
+        case typing
+        case aiModel
+        case data
 
         var id: String { rawValue }
 
+        var titleKey: String {
+            switch self {
+            case .general: return "settings.tab.general"
+            case .voice: return "settings.tab.voice"
+            case .typing: return "settings.tab.typing"
+            case .aiModel: return "settings.tab.aiModel"
+            case .data: return "settings.tab.data"
+            }
+        }
+
         var icon: String {
             switch self {
-            case .quick: return "bolt.fill"
+            case .general: return "gearshape.fill"
+            case .voice: return "mic.fill"
+            case .typing: return "keyboard.fill"
             case .aiModel: return "cpu"
             case .data: return "folder.fill"
             }
@@ -33,19 +48,19 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // 自定义标签栏
-                TabBar(selectedTab: $selectedTab)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                    .padding(.bottom, 12)
+            HStack(spacing: 0) {
+                // 左侧竖向 tab 栏
+                sidebar
+                    .frame(width: 176)
+                    .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
 
                 Divider()
 
-                // 内容区域 - 使用 @ViewBuilder 和 id 保持视图状态
+                // 右侧内容区
                 ScrollView {
                     tabContent
                 }
+                .frame(maxWidth: .infinity)
             }
             .navigationTitle(NSLocalizedString("settings.title", comment: ""))
             .toolbar {
@@ -56,80 +71,73 @@ struct SettingsView: View {
                     .keyboardShortcut(.defaultAction)
                 }
             }
-            .frame(minWidth: 640, minHeight: 580)
+            .frame(minWidth: 720, minHeight: 580)
         }
+    }
+
+    // MARK: - 左侧 tab 栏
+
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(SettingsTab.allCases) { tab in
+                SidebarItem(
+                    title: NSLocalizedString(tab.titleKey, comment: ""),
+                    icon: tab.icon,
+                    isSelected: selectedTab == tab
+                ) {
+                    selectedTab = tab
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 10)
+        .padding(.top, 16)
     }
 
     @ViewBuilder
     private var tabContent: some View {
         switch selectedTab {
-        case .quick:
-            QuickSettingsTab()
-                .id("quick")
+        case .general:
+            GeneralTab().id("general")
+        case .voice:
+            VoiceInputTab().id("voice")
+        case .typing:
+            TypingTab().id("typing")
         case .aiModel:
-            AIModelSettingsTab()
-                .id("aiModel")
+            AIModelSettingsTab().id("aiModel")
         case .data:
-            DataOtherSettingsTab()
-                .id("data")
+            DataOtherSettingsTab().id("data")
         }
     }
 }
 
-// MARK: - Tab Bar
+// MARK: - 侧栏项
 
-struct TabBar: View {
-    @Binding var selectedTab: SettingsView.SettingsTab
-    @Namespace private var animation
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(SettingsView.SettingsTab.allCases) { tab in
-                TabBarItem(
-                    tab: tab,
-                    isSelected: selectedTab == tab,
-                    namespace: animation
-                ) {
-                    // 使用更轻量的动画
-                    withAnimation(.linear(duration: 0.15)) {
-                        selectedTab = tab
-                    }
-                }
-            }
-        }
-        .padding(4)
-        .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-    }
-}
-
-struct TabBarItem: View {
-    let tab: SettingsView.SettingsTab
+private struct SidebarItem: View {
+    let title: String
+    let icon: String
     let isSelected: Bool
-    let namespace: Namespace.ID
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: tab.icon)
+            HStack(spacing: 9) {
+                Image(systemName: icon)
                     .font(.system(size: 13))
-                    .symbolRenderingMode(.monochrome)
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-                Text(tab.rawValue)
+                    .frame(width: 20)
+                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                Text(title)
                     .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
                     .foregroundStyle(isSelected ? .primary : .secondary)
+                Spacer(minLength: 0)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
             .background {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(Color(NSColor.selectedContentBackgroundColor))
-                        .matchedGeometryEffect(id: "selectedTab", in: namespace)
-                }
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(isSelected ? Color.accentColor.opacity(0.14) : Color.clear)
             }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

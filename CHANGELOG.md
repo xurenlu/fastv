@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.4.0-rc6] - 2026-07-23
+
+### Added
+
+- **候选个数 5–9 可选**：设置页新增每页候选个数选择（`menu/page_size` 补丁 + IME 重部署），默认 5。
+- **候选窗预设皮肤（一键套用）**：6 套预设，每套都由现有可选项拼成，选中即套用、之后仍可继续微调——经典浅色 / 夜幕 / 清新绿 / 极简黑白 / 大字护眼 / 竖排水墨。设置面板顶部网格点选，当前匹配的高亮。
+
+### Changed
+
+- **设置窗口重构为左侧竖向 tab、5 组**：常用 / 语音输入 / 输入法·打字 / AI 与模型 / 数据与其他。原「快速配置」拆分为「常用（隐私·Dock·界面语言）」「语音输入（快捷键·触发·识别语言·分段·悬浮条·插入方式·权限测试）」「输入法·打字（安装·方案·词频·候选窗·候选个数）」三组，结构更清晰。tab 标题 5 语种本地化。
+- **移除主窗口 7 套界面皮肤**（淡雅雾林/水墨宣纸/科幻光栅/午夜岩蓝/极光暗夜/熔火石墨 + 系统默认）：主窗口固定使用系统默认配色，跟随系统深浅色。旧用户升级后回默认外观（UserDefaults 里遗留的皮肤键被静默忽略，无需迁移）。
+
+### Tests
+
+- `CandidateAppearanceTests` 扩充候选个数（钳制/补丁/旧文件兼容）与 6 套预设特征用例；`IMESettingsTests` 补丁生成器调用同步 pageSize。全套通过。
+
+### Engineering
+
+- `IMESettings.candidatePageSize` 可选字段（旧文件解码 nil 回落默认并钳制 5~9）；`RimePatchGenerator` 加 `pageSize` 参数写 `menu/page_size`；词频或候选个数变化才重写 custom 并触发 Rime 重部署。
+- `CandidatePreset` 枚举（6 套，各自完整 CandidateAppearance）加入共享契约。
+- 删除 `MainWindowSkin` 枚举，保留 `MainWindowSkinPalette.systemDefault` 常量；VoiceInputView 渲染零改动。
+- 设置视图拆分：`GeneralTab` / `VoiceInputTab`（原 QuickSettingsTab 改名）/ `TypingTab`；`SettingsView` 改左侧 sidebar。
+- 版本号 `2.4.0-rc5` → `2.4.0-rc6`，build `35` → `36`；同步 4 处版本点。
+
 ## [2.4.0-rc5] - 2026-07-23
 
 ### Added

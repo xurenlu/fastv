@@ -236,23 +236,185 @@ struct CandidateAppearance: Codable, Equatable {
     }
 }
 
+/// 候选窗预设皮肤：每套皮肤都是一整组现有可选项的取值，一键套用后仍可继续微调。
+/// rawValue 用于稳定标识（不落盘，仅设置面板选中态判断），显示名走 i18n。
+enum CandidatePreset: String, CaseIterable, Identifiable {
+    case classicLight    // 经典浅色（= 默认）
+    case night           // 夜幕
+    case wechatGreen     // 清新绿
+    case minimalMono     // 极简黑白
+    case bigReading      // 大字护眼
+    case verticalInk     // 竖排水墨
+
+    var id: String { rawValue }
+
+    var displayNameKey: String { "ime.cand.preset.\(rawValue)" }
+
+    var appearance: CandidateAppearance {
+        switch self {
+        case .classicLight:
+            return .default
+
+        case .night:
+            // 深色为主、强制不跟随系统（始终暗），科技蓝高亮
+            var a = CandidateAppearance.default
+            a.followSystemDarkMode = false
+            a.cornerRadius = 10
+            a.lightPalette = CandidatePalette(
+                background: CandidateColor(0.16, 0.16, 0.18),
+                text: CandidateColor(0.94, 0.94, 0.96),
+                comment: CandidateColor(0.60, 0.60, 0.64),
+                label: CandidateColor(0.55, 0.55, 0.60),
+                highlightBackground: CandidateColor(0.24, 0.55, 0.98),
+                highlightText: CandidateColor(1, 1, 1),
+                border: CandidateColor(0.30, 0.30, 0.34)
+            )
+            a.darkPalette = a.lightPalette
+            return a
+
+        case .wechatGreen:
+            var a = CandidateAppearance.default
+            a.cornerRadius = 6
+            a.lightPalette = CandidatePalette(
+                background: CandidateColor(0.99, 0.99, 0.99),
+                text: CandidateColor(0.13, 0.13, 0.14),
+                comment: CandidateColor(0.58, 0.58, 0.60),
+                label: CandidateColor(0.64, 0.64, 0.66),
+                highlightBackground: CandidateColor(0.02, 0.76, 0.35),
+                highlightText: CandidateColor(1, 1, 1),
+                border: CandidateColor(0.86, 0.86, 0.88)
+            )
+            a.darkPalette = CandidatePalette(
+                background: CandidateColor(0.15, 0.16, 0.15),
+                text: CandidateColor(0.93, 0.94, 0.93),
+                comment: CandidateColor(0.58, 0.60, 0.58),
+                label: CandidateColor(0.52, 0.54, 0.52),
+                highlightBackground: CandidateColor(0.05, 0.70, 0.35),
+                highlightText: CandidateColor(1, 1, 1),
+                border: CandidateColor(0.28, 0.30, 0.28)
+            )
+            return a
+
+        case .minimalMono:
+            // 极简黑白：无编码提示、直角、黑底白字高亮
+            var a = CandidateAppearance.default
+            a.showComment = false
+            a.cornerRadius = 2
+            a.itemSpacing = 4
+            a.lightPalette = CandidatePalette(
+                background: CandidateColor(1, 1, 1),
+                text: CandidateColor(0.10, 0.10, 0.10),
+                comment: CandidateColor(0.60, 0.60, 0.60),
+                label: CandidateColor(0.70, 0.70, 0.70),
+                highlightBackground: CandidateColor(0.12, 0.12, 0.12),
+                highlightText: CandidateColor(1, 1, 1),
+                border: CandidateColor(0.80, 0.80, 0.80)
+            )
+            a.darkPalette = CandidatePalette(
+                background: CandidateColor(0.10, 0.10, 0.10),
+                text: CandidateColor(0.95, 0.95, 0.95),
+                comment: CandidateColor(0.55, 0.55, 0.55),
+                label: CandidateColor(0.45, 0.45, 0.45),
+                highlightBackground: CandidateColor(0.92, 0.92, 0.92),
+                highlightText: CandidateColor(0.10, 0.10, 0.10),
+                border: CandidateColor(0.30, 0.30, 0.30)
+            )
+            return a
+
+        case .bigReading:
+            // 大字护眼：大字号、暖白底、宽松间距
+            var a = CandidateAppearance.default
+            a.fontSize = 26
+            a.labelFontSize = 16
+            a.itemSpacing = 10
+            a.padding = 12
+            a.cornerRadius = 12
+            a.lightPalette = CandidatePalette(
+                background: CandidateColor(0.99, 0.97, 0.90),
+                text: CandidateColor(0.18, 0.16, 0.12),
+                comment: CandidateColor(0.55, 0.50, 0.42),
+                label: CandidateColor(0.62, 0.57, 0.48),
+                highlightBackground: CandidateColor(0.86, 0.55, 0.20),
+                highlightText: CandidateColor(1, 1, 1),
+                border: CandidateColor(0.82, 0.76, 0.62)
+            )
+            a.darkPalette = CandidatePalette(
+                background: CandidateColor(0.14, 0.13, 0.11),
+                text: CandidateColor(0.95, 0.92, 0.86),
+                comment: CandidateColor(0.62, 0.58, 0.50),
+                label: CandidateColor(0.52, 0.48, 0.42),
+                highlightBackground: CandidateColor(0.86, 0.58, 0.24),
+                highlightText: CandidateColor(1, 1, 1),
+                border: CandidateColor(0.32, 0.30, 0.26)
+            )
+            return a
+
+        case .verticalInk:
+            // 竖排水墨：竖排、宋体（缺失回退系统）、米色纸感
+            var a = CandidateAppearance.default
+            a.layout = .vertical
+            a.fontName = "Songti SC"
+            a.fontSize = 20
+            a.cornerRadius = 4
+            a.itemSpacing = 4
+            a.lightPalette = CandidatePalette(
+                background: CandidateColor(0.96, 0.94, 0.87),
+                text: CandidateColor(0.16, 0.14, 0.11),
+                comment: CandidateColor(0.52, 0.46, 0.36),
+                label: CandidateColor(0.60, 0.54, 0.44),
+                highlightBackground: CandidateColor(0.42, 0.28, 0.20),
+                highlightText: CandidateColor(0.98, 0.95, 0.88),
+                border: CandidateColor(0.72, 0.64, 0.50)
+            )
+            a.darkPalette = CandidatePalette(
+                background: CandidateColor(0.15, 0.14, 0.12),
+                text: CandidateColor(0.92, 0.89, 0.82),
+                comment: CandidateColor(0.60, 0.55, 0.46),
+                label: CandidateColor(0.50, 0.46, 0.38),
+                highlightBackground: CandidateColor(0.60, 0.42, 0.30),
+                highlightText: CandidateColor(0.98, 0.95, 0.88),
+                border: CandidateColor(0.34, 0.30, 0.24)
+            )
+            return a
+        }
+    }
+
+    /// 判断某外观是否恰好等于本预设（用于设置面板高亮当前选中的预设）
+    func matches(_ appearance: CandidateAppearance) -> Bool {
+        self.appearance.sanitized() == appearance.sanitized()
+    }
+}
+
 /// IME 设置（主 App 设置页与输入法菜单共同维护，JSON 落盘于 IME 用户数据目录）
 struct IMESettings: Codable, Equatable {
     var version: Int
     var schemaId: String
     var enableUserDict: Bool
+    /// 每页候选个数（5~9）；旧设置文件无此字段时解码为 nil，经 `pageSize` 计算属性回落默认
+    var candidatePageSize: Int?
     /// 候选窗外观；旧设置文件无此字段时解码为 nil，经 `appearance` 计算属性回落默认值
     var candidateAppearance: CandidateAppearance?
+
+    /// 候选个数允许范围
+    static let pageSizeRange = 5...9
+    static let defaultPageSize = 5
 
     static let `default` = IMESettings(
         version: InputMethodBridgeContract.protocolVersion,
         schemaId: IMESchema.mixed.rawValue,
         enableUserDict: true,
+        candidatePageSize: defaultPageSize,
         candidateAppearance: .default
     )
 
     var schema: IMESchema {
         IMESchema(rawValue: schemaId) ?? .mixed
+    }
+
+    /// 候选个数读取入口：缺失或越界时钳制到 5~9
+    var pageSize: Int {
+        min(max(candidatePageSize ?? Self.defaultPageSize, Self.pageSizeRange.lowerBound),
+            Self.pageSizeRange.upperBound)
     }
 
     /// 外观读取入口：缺失或损坏时回落默认并钳制，渲染侧只认这个
@@ -287,7 +449,9 @@ struct IMESettings: Codable, Equatable {
 /// 输出必须与 QEchoIME/RimeData 随包的 *.custom.yaml 默认内容保持同构：
 /// 随包文件覆盖「默认设置」场景，用户改设置后主 App 用本生成器写用户目录同名文件（优先级更高）。
 enum RimePatchGenerator {
-    static func customYAML(for schema: IMESchema, enableUserDict: Bool) -> String {
+    static func customYAML(for schema: IMESchema, enableUserDict: Bool, pageSize: Int) -> String {
+        let clampedPage = min(max(pageSize, IMESettings.pageSizeRange.lowerBound),
+                              IMESettings.pageSizeRange.upperBound)
         var lines: [String] = [
             "# 由轻语输入法自动生成，请勿手改；设置请在 QEcho（轻语）App 中调整。",
             "patch:",
@@ -306,15 +470,17 @@ enum RimePatchGenerator {
             lines.append("  key_binder/bindings/+:")
             lines.append("    - { when: has_menu, accept: semicolon, send: 2 }")
         }
+        lines.append("  menu/page_size: \(clampedPage)")
         lines.append("  translator/enable_user_dict: \(enableUserDict)")
         return lines.joined(separator: "\n") + "\n"
     }
 
     /// 把当前设置展开为用户目录里的全部 custom 文件内容（文件名 → 内容）
-    static func userCustomFiles(enableUserDict: Bool) -> [String: String] {
+    static func userCustomFiles(enableUserDict: Bool, pageSize: Int) -> [String: String] {
         var files: [String: String] = [:]
         for schema in IMESchema.allCases {
-            files["\(schema.rawValue).custom.yaml"] = customYAML(for: schema, enableUserDict: enableUserDict)
+            files["\(schema.rawValue).custom.yaml"] =
+                customYAML(for: schema, enableUserDict: enableUserDict, pageSize: pageSize)
         }
         return files
     }

@@ -125,22 +125,6 @@
 "waveform.window.position" = "Toolbar Position";
 "waveform.window.size" = "Toolbar Size";
 "waveform.window.color" = "Toolbar Color";
-"main.window.skin.section" = "Interface Skin";
-"main.window.skin.footer" = "Changes apply to the main window immediately. Dark skins use light text for readable contrast.";
-"main.window.skin.systemDefault.name" = "System Default";
-"main.window.skin.systemDefault.description" = "Follows the native macOS appearance with a restrained feel.";
-"main.window.skin.mistForest.name" = "Mist Forest";
-"main.window.skin.mistForest.description" = "Soft greens, warm whites, and an airy surface.";
-"main.window.skin.inkPaper.name" = "Ink Paper";
-"main.window.skin.inkPaper.description" = "Muted paper tones with calm ink-like contrast.";
-"main.window.skin.sciFiGlow.name" = "Sci-Fi Glow";
-"main.window.skin.sciFiGlow.description" = "Dark surfaces with cool light and subtle neon accents.";
-"main.window.skin.midnightSlate.name" = "Midnight Slate";
-"main.window.skin.midnightSlate.description" = "Deep blue-black with light text for long sessions.";
-"main.window.skin.auroraNoir.name" = "Aurora Noir";
-"main.window.skin.auroraNoir.description" = "Black-green depth with fresh cyan highlights.";
-"main.window.skin.emberGraphite.name" = "Ember Graphite";
-"main.window.skin.emberGraphite.description" = "Charcoal surfaces with a warm ember accent.";
 "permission.test" = "Permission Test";
 "test.microphone.permission" = "Test Microphone Permission";
 "test.show.toolbar" = "Test Show Toolbar";
@@ -318,6 +302,11 @@
 "ai.test.optimization" = "Test Text Optimization";
 "ai.test.optimization.help" = "Send test text to verify AI optimization functionality";
 "settings.title" = "Settings";
+"settings.tab.general" = "General";
+"settings.tab.voice" = "Voice Input";
+"settings.tab.typing" = "IME & Typing";
+"settings.tab.aiModel" = "AI & Models";
+"settings.tab.data" = "Data & More";
 "settings.done" = "Done";
 
 // Permission Alerts
@@ -645,3 +634,11 @@
 "ime.cand.color.label" = "Number Color";
 "ime.cand.color.border" = "Border";
 "ime.cand.reset" = "Reset to Default";
+"ime.cand.pageSize" = "Candidates per Page";
+"ime.cand.preset" = "Preset Themes";
+"ime.cand.preset.classicLight" = "Classic Light";
+"ime.cand.preset.night" = "Night";
+"ime.cand.preset.wechatGreen" = "Fresh Green";
+"ime.cand.preset.minimalMono" = "Minimal Mono";
+"ime.cand.preset.bigReading" = "Large & Easy";
+"ime.cand.preset.verticalInk" = "Vertical Ink";

@@ -8,51 +8,12 @@
 import SwiftUI
 import AVFoundation
 
-/// Tab 1: 快速配置
-/// 包含：语音输入、快捷键、识别语言、悬浮工具条、界面语言
-struct QuickSettingsTab: View {
+/// 设置 - 语音输入：快捷键、触发方式、识别语言、智能分段、悬浮工具条、文本插入、权限测试。
+struct VoiceInputTab: View {
     @ObservedObject var preferences = UserPreferences.shared
-    
+
     var body: some View {
         Form {
-            // 通用 / 外观
-            Section {
-                // 隐私锚点：让用户在每天最常去的设置入口也能看到「本地处理」承诺。
-                HStack(spacing: 8) {
-                    Image(systemName: "lock.shield.fill")
-                        .foregroundStyle(.green)
-                    Text(NSLocalizedString("settings.privacy.local.processing", comment: ""))
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 2)
-
-                Toggle(NSLocalizedString("hide.dock.icon", comment: ""), isOn: $preferences.hideDockIcon)
-                Text(NSLocalizedString("hide.dock.icon.description", comment: ""))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } header: {
-                Text(NSLocalizedString("settings.section.general", comment: ""))
-            }
-
-            Section {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
-                    ForEach(MainWindowSkin.allCases, id: \.self) { skin in
-                        MainWindowSkinCard(
-                            skin: skin,
-                            isSelected: preferences.mainWindowSkin == skin
-                        ) {
-                            preferences.mainWindowSkin = skin
-                        }
-                    }
-                }
-                .padding(.vertical, 4)
-            } header: {
-                Text(NSLocalizedString("main.window.skin.section", comment: ""))
-            } footer: {
-                Text(NSLocalizedString("main.window.skin.footer", comment: ""))
-            }
-
             // 语音输入配置
             Section {
                 VStack(alignment: .leading, spacing: 16) {
@@ -439,30 +400,6 @@ struct QuickSettingsTab: View {
                 }
             }
 
-            // 输入法（实验性）
-            InputMethodSettingsSection()
-
-            // 候选窗外观
-            CandidateAppearanceView()
-
-            // 界面语言设置
-            Section {
-                Picker(NSLocalizedString("default.language", comment: ""), selection: Binding(
-                    get: { preferences.defaultLanguage },
-                    set: { newValue in
-                        preferences.defaultLanguage = newValue
-                        LocalizationManager.shared.currentLanguage = newValue
-                    }
-                )) {
-                    ForEach(SupportedLanguage.allCases, id: \.self) { language in
-                        Text(language.nativeName).tag(language.rawValue)
-                    }
-                }
-            } header: {
-                Text(NSLocalizedString("language", comment: ""))
-            } footer: {
-                Text(NSLocalizedString("language.description", comment: ""))
-            }
         }
         .formStyle(.grouped)
     }
@@ -602,113 +539,6 @@ struct QuickSettingsTab: View {
     }
 }
 
-private struct MainWindowSkinCard: View {
-    let skin: MainWindowSkin
-    let isSelected: Bool
-    let action: () -> Void
-
-    private var palette: MainWindowSkinPalette {
-        skin.palette
-    }
-
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 10) {
-                MainWindowSkinPreview(skin: skin)
-                    .frame(height: 54)
-
-                HStack(alignment: .top, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(skin.displayName)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(palette.primaryTextColor)
-                            .lineLimit(1)
-                        Text(skin.detail)
-                            .font(.caption)
-                            .foregroundStyle(palette.secondaryTextColor)
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    Spacer(minLength: 0)
-
-                    if isSelected {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(palette.accentColor)
-                    }
-                }
-            }
-            .padding(10)
-            .frame(maxWidth: .infinity, minHeight: 134, alignment: .topLeading)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(palette.surfaceColor)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .strokeBorder(isSelected ? palette.accentColor.opacity(0.78) : palette.borderColor, lineWidth: isSelected ? 1.5 : 1)
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct MainWindowSkinPreview: View {
-    let skin: MainWindowSkin
-
-    private var palette: MainWindowSkinPalette {
-        skin.palette
-    }
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: palette.backgroundColors,
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(palette.accentColor)
-                        .frame(width: 7, height: 7)
-                    Circle()
-                        .fill(palette.accentSecondaryColor)
-                        .frame(width: 7, height: 7)
-                    Capsule()
-                        .fill(palette.primaryTextColor.opacity(0.14))
-                        .frame(width: 36, height: 7)
-
-                    Spacer()
-
-                    Image(systemName: skin.iconName)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(palette.accentColor)
-                }
-
-                HStack(spacing: 5) {
-                    RoundedRectangle(cornerRadius: 2, style: .continuous)
-                        .fill(palette.primaryTextColor.opacity(0.30))
-                        .frame(width: 46, height: 6)
-                    RoundedRectangle(cornerRadius: 2, style: .continuous)
-                        .fill(palette.secondaryTextColor.opacity(0.26))
-                        .frame(width: 26, height: 6)
-                }
-            }
-            .padding(9)
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .strokeBorder(palette.borderColor, lineWidth: 1)
-        )
-    }
-}
-
 #Preview {
-    QuickSettingsTab()
+    VoiceInputTab()
 }
