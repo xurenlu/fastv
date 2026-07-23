@@ -304,6 +304,9 @@
 "ai.test.optimization.help" = "发送测试文本，验证 AI 优化功能是否正常工作";
 "settings.title" = "设置";
 "settings.tab.voice" = "语音输入";
+"voice.subtab.general" = "设置";
+"voice.subtab.stats" = "统计与历史";
+"voice.subtab.powerMode" = "Power Mode";
 "settings.tab.typing" = "输入法·打字";
 "settings.tab.aiModel" = "AI 与模型";
 "settings.tab.data" = "数据与其他";

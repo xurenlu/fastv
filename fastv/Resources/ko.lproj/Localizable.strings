@@ -332,6 +332,9 @@
 "ai.test.optimization.help" = "테스트 텍스트를 보내 AI 최적화 기능이 정상적으로 작동하는지 확인";
 "settings.title" = "설정";
 "settings.tab.voice" = "음성 입력";
+"voice.subtab.general" = "설정";
+"voice.subtab.stats" = "통계 및 기록";
+"voice.subtab.powerMode" = "Power Mode";
 "settings.tab.typing" = "입력기·타이핑";
 "settings.tab.aiModel" = "AI 및 모델";
 "settings.tab.data" = "데이터 및 기타";
