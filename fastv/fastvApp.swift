@@ -434,9 +434,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// 打开设置窗口
+    ///
+    /// 设置窗现在就是 App 的主窗口（WindowGroup 直接渲染 SettingsView），
+    /// 因此这里只需把主窗口拉到前面即可，不再单独 sheet 弹设置。
     @objc private func openSettingsWindow() {
-        // 发送通知打开设置窗口
-        NotificationCenter.default.post(name: .openSettings, object: nil)
+        _ = MainWindowPresenter.bringToFront()
     }
 
     /// 监听输入法菜单「打开轻语设置…」的分布式通知（通知不携带任何用户数据）

@@ -22,7 +22,6 @@ let isRunningUnderXCTest: Bool = {
 }()
 
 struct ContentView: View {
-    @State private var showSettings = false
     @ObservedObject private var preferences = UserPreferences.shared
 
     var body: some View {
@@ -45,24 +44,10 @@ struct ContentView: View {
             if !preferences.hasCompletedOnboarding {
                 OnboardingView()
             } else {
-                VoiceInputView()
-                    .frame(minWidth: 560, minHeight: 520)
-                    .toolbar {
-                        ToolbarItem(placement: .automatic) {
-                            Button(action: { showSettings = true }) {
-                                Label(NSLocalizedString("settings", comment: ""), systemImage: "gearshape")
-                            }
-                            .help(NSLocalizedString("settings", comment: ""))
-                            .focusable(false)
-                        }
-                    }
-                    .sheet(isPresented: $showSettings) {
-                        SettingsView()
-                            .frame(minWidth: 800, idealWidth: 900, maxWidth: 1000, minHeight: 600, idealHeight: 700, maxHeight: 800)
-                    }
-                    .onReceive(NotificationCenter.default.publisher(for: .openSettings)) { _ in
-                        showSettings = true
-                    }
+                // 设置窗现在就是打开 App 看到的主窗口；测试输入框 / 统计 / 历史
+                // 已并入设置窗的「语音输入」tab。
+                SettingsView()
+                    .frame(minWidth: 720, idealWidth: 900, minHeight: 580)
             }
         }
         .onChange(of: preferences.hasCompletedOnboarding) { _, completed in
@@ -71,12 +56,6 @@ struct ContentView: View {
             }
         }
     }
-}
-
-// MARK: - Notifications
-
-extension Notification.Name {
-    static let openSettings = Notification.Name("openSettings")
 }
 
 #Preview {
