@@ -37,26 +37,6 @@ struct DataOtherSettingsTab: View {
                 Text(NSLocalizedString("performance.monitor", comment: ""))
             }
 
-            // 关于
-            Section {
-                Button(action: {
-                    AboutWindowOpener.open()
-                }) {
-                    HStack {
-                        Image(systemName: "info.circle.fill")
-                            .foregroundStyle(.blue)
-                        Text(NSLocalizedString("about", comment: ""))
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .buttonStyle(.plain)
-            } header: {
-                Text(NSLocalizedString("about", comment: ""))
-            }
-            
             // 支持与推荐
             Section {
                 // 官方支持页

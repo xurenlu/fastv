@@ -33,10 +33,10 @@
     <string>APPL</string>
 
     <key>CFBundleShortVersionString</key>
-    <string>2.4.0-rc12</string>
+    <string>2.4.0-rc13</string>
 
     <key>CFBundleVersion</key>
-    <string>42</string>
+    <string>43</string>
 
     <key>LSMinimumSystemVersion</key>
     <string>$(MACOSX_DEPLOYMENT_TARGET)</string>
