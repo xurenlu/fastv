@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.4.0-rc5] - 2026-07-23
+
+### Added
+
+- **自绘候选窗 + 全面外观定制**：抛弃系统 `IMKCandidates`（只能横竖排、无法定制字体配色），改为轻语自绘的无边框浮动 `NSPanel` + 自绘 `NSView`，跟随组字光标定位、支持点击选字。设置 → 快速配置 新增「候选窗外观」区块，带**实时预览**（可切浅色/深色预览）：
+  - **排列方向**：横排 / 竖排。
+  - **字体与字号**：候选字体（系统默认或 PingFang/Songti/Kaiti 等已安装中文字体）、候选字号、序号/编码提示字号。
+  - **配色主题**：背景、文字、选中背景、选中文字、编码提示、序号、边框 7 个颜色，**浅色/深色两套独立可调**，可开「配色跟随系统深浅色」自动切换；内置浅色 + 深色两套默认配色。
+  - **外观细节**：圆角、候选间距、内边距，以及「显示候选序号」「显示编码/拼音提示」开关。
+  - 一键「恢复默认外观」。
+- 外观设置经 `qecho-ime-settings.json` 落盘，改动即时通知输入法进程重绘（不触发 Rime 重新部署，调色无卡顿）。
+
+### Tests
+
+- 新增 `CandidateAppearanceTests` 12 例：颜色 hex 解析（6/8 位、非法输入）、往返、字号/间距钳制、外观编解码、**旧设置文件无 `candidateAppearance` 字段的向后兼容**、明暗预设区分。全套 80 测通过。
+
+### Engineering
+
+- 候选窗模型 `CandidateAppearance` / `CandidatePalette` / `CandidateColor` / `CandidateLayout` 加入共享契约（两 target + 单测共用，不依赖 AppKit）；`IMESettings.candidateAppearance` 为可选字段，旧文件解码为 nil 后经 `appearance` 计算属性回落默认并钳制。
+- QEchoIME 新增 `CandidateWindow`（NSPanel 定位/明暗解析）、`CandidateContentView`（自绘布局与绘制，横竖排共用测量保证点击命中一致）；`main.swift` 移除 IMKCandidates。
+- 版本号 `2.4.0-rc4` → `2.4.0-rc5`，build `34` → `35`；同步 4 处版本点。
+
 ## [2.4.0-rc4] - 2026-07-23
 
 ### Fixed

@@ -17,7 +17,7 @@ PROJECT_PATH = File.expand_path('../fastv.xcodeproj', __dir__)
 SRCROOT = File.dirname(PROJECT_PATH)
 IME_TARGET_NAME = 'QEchoIME'
 IME_BUNDLE_ID = 'com.17push.inputmethod.QEchoIME'
-MARKETING_VERSION = '2.4.0-rc4'
+MARKETING_VERSION = '2.4.0-rc5'
 DEPLOYMENT_TARGET = '14.6'
 DEVELOPMENT_TEAM = 'ZH2S7D6PL6'
 EMBED_PHASE_NAME = 'Embed Input Method'
@@ -76,7 +76,7 @@ def ensure_source(target, file_ref)
 end
 
 %w[main.swift QEchoIMEController.swift VoiceCommitServer.swift RimeEngine.swift
-   IMESettingsCoordinator.swift].each do |name|
+   IMESettingsCoordinator.swift CandidateWindow.swift CandidateContentView.swift].each do |name|
   ensure_source(ime_target, ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME', name)))
 end
 ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME', 'Info.plist')) # 只挂引用，不进编译

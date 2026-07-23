@@ -616,3 +616,32 @@
 "ime.scheme.pinyin" = "纯拼音";
 "ime.userdict.toggle" = "动态词频调整（用户词库）";
 "ime.shortcuts.hint" = "候选快捷键：数字选字 · 空格首选 · 分号次选 · 引号三选（纯五笔）· -/= 与 ,/。翻页 · Tab 轮换候选 · 回车上屏原始编码 · Shift 切中英 · ` 拼音反查五笔";
+
+/* 候选窗外观 */
+"ime.cand.section" = "候选窗外观";
+"ime.cand.preview" = "实时预览";
+"ime.cand.preview.light" = "浅色";
+"ime.cand.preview.dark" = "深色";
+"ime.cand.layout" = "排列方向";
+"ime.cand.layout.horizontal" = "横排";
+"ime.cand.layout.vertical" = "竖排";
+"ime.cand.font" = "候选字体";
+"ime.cand.font.system" = "系统默认";
+"ime.cand.fontSize" = "候选字号";
+"ime.cand.labelFontSize" = "序号/编码字号";
+"ime.cand.corner" = "圆角";
+"ime.cand.spacing" = "候选间距";
+"ime.cand.padding" = "内边距";
+"ime.cand.showLabel" = "显示候选序号";
+"ime.cand.showComment" = "显示编码/拼音提示";
+"ime.cand.followDark" = "配色跟随系统深浅色";
+"ime.cand.colors.light" = "浅色配色";
+"ime.cand.colors.dark" = "深色配色";
+"ime.cand.color.bg" = "背景色";
+"ime.cand.color.text" = "文字色";
+"ime.cand.color.hlBg" = "选中背景色";
+"ime.cand.color.hlText" = "选中文字色";
+"ime.cand.color.comment" = "编码提示色";
+"ime.cand.color.label" = "序号色";
+"ime.cand.color.border" = "边框色";
+"ime.cand.reset" = "恢复默认外观";
