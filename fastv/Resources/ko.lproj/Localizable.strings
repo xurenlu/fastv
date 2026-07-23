@@ -77,7 +77,7 @@
 
 // 음성 입력
 "voice.input" = "음성 입력";
-"voice.input.history" = "기록";
+"voice.input.history" = "음성 입력 기록";
 "no.records" = "기록 없음";
 "press.shortcut.to.start" = "단축키를 눌러 음성 입력 시작";
 "press.shortcut.to.speak" = "단축키를 눌러 말하기";
@@ -184,6 +184,7 @@
 "key" = "키";
 "minute" = "분";
 "seconds.short" = "초";
+"stats.voice.section" = "음성 입력 통계";
 "stats.today" = "오늘";
 "stats.all" = "전체";
 "stats.characters" = "글자 수";

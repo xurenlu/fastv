@@ -231,6 +231,16 @@ private struct StatsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
+            // 区块标题：明确这些数据来自语音输入
+            HStack(spacing: 6) {
+                Image(systemName: "mic.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(palette.accentColor)
+                Text(NSLocalizedString("stats.voice.section", comment: ""))
+                    .font(.headline)
+                    .foregroundStyle(palette.primaryTextColor)
+            }
+
             // 今日 / 累计 双卡片
             HStack(spacing: 16) {
                 VoiceInputStatCard(

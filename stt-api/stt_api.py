@@ -33,7 +33,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # 版本号（与主项目保持一致）
-API_VERSION = "2.4.0-rc9"
+API_VERSION = "2.4.0-rc10"
 
 app = FastAPI(
     title="FastV STT API",

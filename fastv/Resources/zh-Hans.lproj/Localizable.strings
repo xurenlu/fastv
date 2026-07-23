@@ -49,7 +49,7 @@
 
 // 语音输入
 "voice.input" = "语音输入";
-"voice.input.history" = "历史记录";
+"voice.input.history" = "语音输入历史";
 "no.records" = "暂无记录";
 "press.shortcut.to.start" = "按下快捷键开始语音输入";
 "press.shortcut.to.speak" = "按下快捷键开始说话";
@@ -156,6 +156,7 @@
 "key" = "键";
 "minute" = "分";
 "seconds.short" = "秒";
+"stats.voice.section" = "语音输入统计";
 "stats.today" = "今日";
 "stats.all" = "累计";
 "stats.characters" = "字数";
