@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.4.0-rc7] - 2026-07-23
+
+### Fixed
+
+- 设置窗口左侧 tab 点击后残留蓝色键盘焦点边框：`SidebarItem` 加 `.focusable(false)` 去除。
+
+### Changed
+
+- 推荐应用统一为精致网格并在两处展示：抽出共享 `RecommendedAppsGrid`（8 个 App：WillDeep / TimeBill / 轻图 / 轻阅 / GitWise / 象墨 / 轻邮 / 轻记，卡片带图标·名称·简介·跳转，链接 83d.me/products），关于窗口与设置页「数据与其他」共用同一份数据；列表与 museterm 关于窗对齐（不含轻语自身）。
+- 设置页「数据与其他」原先手工硬编码的两个推荐（妙墨 / 时间帐单，SF Symbol 占位图标 + 中文硬编码 + App Store 链接）替换为上述统一网格；「性能监控 / 内存监控 / 支持与推荐 / 官方支持页」等硬编码文案补齐 5 语种本地化。
+
+### Engineering
+
+- 新增 `fastv/Views/RecommendedAppsView.swift`（`RecommendedApp` 枚举 + `RecommendedAppsGrid` + `RecommendedAppCard`）；`AboutView` 移除内部重复的推荐枚举/卡片改用共享网格。
+- 版本号 `2.4.0-rc6` → `2.4.0-rc7`，build `36` → `37`；同步 4 处版本点。
+
 ## [2.4.0-rc6] - 2026-07-23
 
 ### Added

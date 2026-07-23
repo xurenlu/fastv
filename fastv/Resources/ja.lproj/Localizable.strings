@@ -307,6 +307,10 @@
 "settings.tab.typing" = "入力方式・タイピング";
 "settings.tab.aiModel" = "AI とモデル";
 "settings.tab.data" = "データとその他";
+"performance.monitor" = "パフォーマンス";
+"memory.monitor" = "メモリモニター";
+"support.and.recommend" = "サポートとおすすめ";
+"support.official.page" = "公式サポートページ";
 "settings.done" = "完了";
 
 // 権限関連Alert

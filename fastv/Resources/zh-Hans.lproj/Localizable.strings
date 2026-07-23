@@ -307,6 +307,10 @@
 "settings.tab.typing" = "输入法·打字";
 "settings.tab.aiModel" = "AI 与模型";
 "settings.tab.data" = "数据与其他";
+"performance.monitor" = "性能监控";
+"memory.monitor" = "内存监控";
+"support.and.recommend" = "支持与推荐";
+"support.official.page" = "官方支持页";
 "settings.done" = "完成";
 
 // 权限相关Alert
