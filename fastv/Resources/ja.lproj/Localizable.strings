@@ -304,6 +304,9 @@
 "ai.test.optimization.help" = "テストテキストを送信してAI最適化機能を検証";
 "settings.title" = "設定";
 "settings.tab.voice" = "音声入力";
+"voice.subtab.general" = "設定";
+"voice.subtab.stats" = "統計と履歴";
+"voice.subtab.powerMode" = "Power Mode";
 "settings.tab.typing" = "入力方式・タイピング";
 "settings.tab.aiModel" = "AI とモデル";
 "settings.tab.data" = "データとその他";

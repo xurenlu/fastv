@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.4.0-rc12] - 2026-07-24
+
+### Changed
+
+- **「语音输入」tab 拆为 3 个二级子 tab**（顶部 segmented 切换）：
+  - **设置**：语音/AI 校正快捷键、触发方式三模式、识别语言、智能分段、尾缓冲、悬浮工具条、文本插入、权限测试、默认语言，以及测试输入框。
+  - **统计与历史**：语音输入统计（今日/累计）与语音输入历史。
+  - **Power Mode**：场景感知 prompt 模板的启用开关与场景规则编辑（`ContextProfileEditorView`）。
+- **Power Mode 从「AI 与模型」tab 移到「语音输入 → Power Mode」子 tab**：它是输入行为相关设置，归入语音输入更合语义、更易发现。
+- 3 个子 tab 标题 5 语种本地化。
+
+### Engineering
+
+- `VoiceInputTab` 加 `VoiceSubtab` 枚举与 segmented 切换，body 拆为 `generalForm` / `statsForm` / `powerModeForm`；`AIModelSettingsTab` 移除 Power Mode section 与不再使用的 `contextProfileManager`。
+- 版本号 `2.4.0-rc11` → `2.4.0-rc12`，build `41` → `42`；同步 4 处版本点。
+
 ## [2.4.0-rc11] - 2026-07-24
 
 ### Changed

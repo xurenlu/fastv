@@ -27,12 +27,52 @@ private extension EnvironmentValues {
 struct VoiceInputTab: View {
     @ObservedObject var preferences = UserPreferences.shared
     @ObservedObject private var historyManager = VoiceInputHistoryManager.shared
+    @ObservedObject private var contextProfileManager = ContextProfileManager.shared
     @State private var testInputText: String = ""
     @FocusState private var isTestInputFocused: Bool
     @State private var showClearHistoryConfirm = false
     @State private var copiedRecordId: UUID?
+    @State private var subtab: VoiceSubtab = .general
+
+    /// 语音输入的二级子 tab
+    enum VoiceSubtab: String, CaseIterable, Identifiable {
+        case general    // 杂项设置 + 测试框
+        case stats      // 统计与历史
+        case powerMode  // Power Mode 场景感知
+        var id: String { rawValue }
+        var titleKey: String {
+            switch self {
+            case .general: return "voice.subtab.general"
+            case .stats: return "voice.subtab.stats"
+            case .powerMode: return "voice.subtab.powerMode"
+            }
+        }
+    }
 
     var body: some View {
+        VStack(spacing: 0) {
+            Picker("", selection: $subtab) {
+                ForEach(VoiceSubtab.allCases) { tab in
+                    Text(NSLocalizedString(tab.titleKey, comment: "")).tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 4)
+
+            switch subtab {
+            case .general: generalForm
+            case .stats: statsForm
+            case .powerMode: powerModeForm
+            }
+        }
+    }
+
+    // MARK: - 子 tab：杂项设置 + 测试框
+
+    private var generalForm: some View {
         Form {
             // 语音输入配置
             Section {
@@ -447,7 +487,14 @@ struct VoiceInputTab: View {
                 )
                 .environment(\.mainWindowPalette, MainWindowSkinPalette.systemDefault)
             }
+        }
+        .formStyle(.grouped)
+    }
 
+    // MARK: - 子 tab：统计与历史
+
+    private var statsForm: some View {
+        Form {
             // 语音输入统计
             Section {
                 StatsSection(historyManager: historyManager)
@@ -474,6 +521,40 @@ struct VoiceInputTab: View {
         } message: {
             Text(NSLocalizedString("clear.all.confirm.message", comment: ""))
         }
+    }
+
+    // MARK: - 子 tab：Power Mode（场景感知 prompt 模板）
+
+    private var powerModeForm: some View {
+        Form {
+            Section {
+                Toggle(
+                    NSLocalizedString("context.profile.enable.power.mode", comment: ""),
+                    isOn: $contextProfileManager.enablePowerMode
+                )
+
+                NavigationLink {
+                    ContextProfileEditorView()
+                        .navigationTitle(NSLocalizedString("context.profile.title", comment: ""))
+                        .frame(minWidth: 780, minHeight: 580)
+                } label: {
+                    HStack {
+                        Image(systemName: "rectangle.and.text.magnifyingglass")
+                        Text(NSLocalizedString("context.profile.title", comment: ""))
+                        Spacer()
+                        Text("\(contextProfileManager.profiles.count) " + NSLocalizedString("context.profile.count.suffix", comment: ""))
+                            .foregroundStyle(.secondary)
+                            .font(.caption)
+                    }
+                }
+                .disabled(!contextProfileManager.enablePowerMode)
+            } header: {
+                Text(NSLocalizedString("context.profile.section.header", comment: ""))
+            } footer: {
+                Text(NSLocalizedString("context.profile.section.footer", comment: ""))
+            }
+        }
+        .formStyle(.grouped)
     }
 
     // MARK: - 历史记录复制
