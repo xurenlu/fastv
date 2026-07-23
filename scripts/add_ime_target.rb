@@ -17,7 +17,7 @@ PROJECT_PATH = File.expand_path('../fastv.xcodeproj', __dir__)
 SRCROOT = File.dirname(PROJECT_PATH)
 IME_TARGET_NAME = 'QEchoIME'
 IME_BUNDLE_ID = 'com.17push.inputmethod.QEchoIME'
-MARKETING_VERSION = '2.4.0-rc1'
+MARKETING_VERSION = '2.4.0-rc2'
 DEPLOYMENT_TARGET = '14.6'
 DEVELOPMENT_TEAM = 'ZH2S7D6PL6'
 EMBED_PHASE_NAME = 'Embed Input Method'
@@ -53,6 +53,11 @@ ime_target.build_configurations.each do |config|
   s['ENABLE_HARDENED_RUNTIME'] = 'YES'
   s['SKIP_INSTALL'] = 'YES'
   s['COMBINE_HIDPI_IMAGES'] = 'YES'
+  # librime 集成
+  s['SWIFT_OBJC_BRIDGING_HEADER'] = 'QEchoIME/QEchoIME-Bridging-Header.h'
+  s['HEADER_SEARCH_PATHS'] = ['$(inherited)', '$(SRCROOT)/ThirdParty/librime/include']
+  s['LIBRARY_SEARCH_PATHS'] = ['$(inherited)', '$(SRCROOT)/ThirdParty/librime/lib']
+  s['LD_RUNPATH_SEARCH_PATHS'] = ['$(inherited)', '@executable_path/../Frameworks']
 end
 
 # ---------- 2. QEchoIME 源文件 ----------
@@ -70,13 +75,42 @@ def ensure_source(target, file_ref)
   target.add_file_references([file_ref]) unless already
 end
 
-%w[main.swift QEchoIMEController.swift VoiceCommitServer.swift].each do |name|
+%w[main.swift QEchoIMEController.swift VoiceCommitServer.swift RimeEngine.swift].each do |name|
   ensure_source(ime_target, ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME', name)))
 end
 ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME', 'Info.plist')) # 只挂引用，不进编译
+ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME', 'QEchoIME-Bridging-Header.h'))
 
-# 共享契约：musetype 经同步 group 自动入编，这里只需补 QEchoIME 侧
+# 共享文件：musetype 经同步 group 自动入编，这里只需补 QEchoIME 侧
 ensure_source(ime_target, ensure_ref(ime_group, CONTRACT_PATH))
+ensure_source(ime_target, ensure_ref(ime_group, File.join(SRCROOT, 'fastv/Services/RimeKeyMapping.swift')))
+
+# ---------- 2.5 librime：链接 + 嵌入 dylib + RimeData 资源 ----------
+
+dylib_ref = ensure_ref(ime_group, File.join(SRCROOT, 'ThirdParty/librime/lib/librime.1.dylib'))
+unless ime_target.frameworks_build_phase.files_references.include?(dylib_ref)
+  ime_target.frameworks_build_phase.add_file_reference(dylib_ref)
+  puts '✅ QEchoIME 链接 librime.1.dylib'
+end
+
+embed_libs = ime_target.copy_files_build_phases.find { |p| p.name == 'Embed Libraries' }
+unless embed_libs
+  embed_libs = ime_target.new_copy_files_build_phase('Embed Libraries')
+  embed_libs.symbol_dst_subfolder_spec = :frameworks
+  puts '✅ 创建 QEchoIME Embed Libraries phase'
+end
+unless embed_libs.files_references.include?(dylib_ref)
+  dylib_build_file = embed_libs.add_file_reference(dylib_ref)
+  dylib_build_file.settings = { 'ATTRIBUTES' => %w[CodeSignOnCopy] }
+  puts '✅ librime.1.dylib 加入嵌入列表'
+end
+
+rimedata_ref = ime_group.children.find { |c| c.path.to_s.end_with?('RimeData') }
+rimedata_ref ||= ime_group.new_reference(File.join(SRCROOT, 'QEchoIME/RimeData'))
+unless ime_target.resources_build_phase.files_references.include?(rimedata_ref)
+  ime_target.add_resources([rimedata_ref])
+  puts '✅ RimeData 目录加入 bundle 资源'
+end
 
 # ---------- 3. 依赖 + 嵌入 ----------
 

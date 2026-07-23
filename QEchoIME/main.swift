@@ -17,9 +17,15 @@ guard let connectionName = Bundle.main.object(forInfoDictionaryKey: "InputMethod
 
 // IMKServer 必须持有到进程退出，系统经它路由键盘事件
 let server = IMKServer(name: connectionName, bundleIdentifier: bundleIdentifier)
-guard server != nil else {
+guard let server else {
     fatalError("QEchoIME: IMKServer 创建失败（连接名 \(connectionName)）")
 }
+
+// 系统单列候选窗，随组字状态 show/hide
+QEchoPanels.candidates = IMKCandidates(
+    server: server,
+    panelType: kIMKSingleColumnScrollingCandidatePanel
+)
 
 VoiceCommitServer.shared.start()
 

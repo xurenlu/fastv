@@ -15,17 +15,17 @@ final class VoiceCommitServer {
 
     private var port: CFMessagePort?
     private var runLoopSource: CFRunLoopSource?
-    private weak var activeController: IMKInputController?
+    private weak var activeController: QEchoIMEController?
 
     private init() {}
 
     // MARK: - 活跃 client 注册（由 QEchoIMEController 在焦点切换时调用）
 
-    func register(activeController controller: IMKInputController) {
+    func register(activeController controller: QEchoIMEController) {
         activeController = controller
     }
 
-    func unregister(controller: IMKInputController) {
+    func unregister(controller: QEchoIMEController) {
         if activeController === controller {
             activeController = nil
         }
@@ -79,13 +79,12 @@ final class VoiceCommitServer {
             // reason 只带错误类别，不回传用户文本
             return VoiceCommitReply(ok: false, reason: "decode-failed")
         }
-        guard let controller = activeController, let client = controller.client() else {
+        guard let controller = activeController else {
             return VoiceCommitReply(ok: false, reason: "no-active-client")
         }
-        client.insertText(
-            payload.text,
-            replacementRange: NSRange(location: NSNotFound, length: NSNotFound)
-        )
+        guard controller.commitVoiceText(payload.text) else {
+            return VoiceCommitReply(ok: false, reason: "no-active-client")
+        }
         return VoiceCommitReply(ok: true, reason: nil)
     }
 }
