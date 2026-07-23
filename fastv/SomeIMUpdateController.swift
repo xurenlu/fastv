@@ -6,9 +6,10 @@ enum SomeIMUpdateConfiguration {
     nonisolated static let appID = "qecho"
     nonisolated static let platform = "macos"
     nonisolated static let channel = "stable"
+    nonisolated static let appcastServiceBaseURL = "https://some.im"
 
     nonisolated static var feedURL: URL? {
-        var components = URLComponents(string: "https://some.im")
+        var components = URLComponents(string: appcastServiceBaseURL)
         components?.path = "/api/v1/public/app-updates/appcast.xml"
         components?.queryItems = [
             URLQueryItem(name: "app_id", value: appID),

@@ -24,13 +24,10 @@ struct AboutView: View {
 
                 Divider()
 
-                privacySection
-
-                Divider()
-
                 recommendedAppsSection
             }
-            .padding(24)
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .frame(width: Self.defaultWindowSize.width, height: Self.defaultWindowSize.height)
         .background(Color(nsColor: .windowBackgroundColor))
@@ -39,61 +36,33 @@ struct AboutView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 22) {
+        HStack(alignment: .center, spacing: 18) {
             AboutPenguinAnimationView()
                 .frame(width: 128, height: 128)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text(NSLocalizedString("app.name", comment: ""))
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(NSLocalizedString("app.name", comment: ""))
+                        .font(.title2.weight(.semibold))
 
-                Text("v\(AppVersionManager.shortVersion)")
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    Text("v\(AppVersionManager.shortVersion)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
 
                 Text(NSLocalizedString("about.summary", comment: ""))
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 2)
-
-                Link(destination: URL(string: "https://83d.me/products/qecho")!) {
-                    Label(NSLocalizedString("about.author_homepage", comment: ""), systemImage: "arrow.up.right")
-                        .font(.callout.weight(.medium))
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 4)
-            }
-        }
-    }
-
-    private var privacySection: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "lock.shield.fill")
-                .font(.title2)
-                .foregroundStyle(.green)
-                .frame(width: 28)
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text(NSLocalizedString("about.privacy.title", comment: ""))
-                    .font(.headline)
-
-                Text(NSLocalizedString("about.privacy.body", comment: ""))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                Link(destination: URL(string: "https://83d.me")!) {
+                    Label(NSLocalizedString("about.author_homepage", comment: ""), systemImage: "link")
+                        .font(.subheadline.weight(.medium))
+                }
+                .buttonStyle(.link)
             }
         }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.72))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.38), lineWidth: 1)
-        )
     }
 
     private var recommendedAppsSection: some View {
@@ -176,6 +145,8 @@ private enum AboutRecommendedApp: String, CaseIterable, Identifiable {
     case timeBill
     case museUploader
     case markReader
+    case gitWise
+    case veilPic
     case museMail
     case museMate
 
@@ -199,6 +170,10 @@ private enum AboutRecommendedApp: String, CaseIterable, Identifiable {
             return "AboutAppMuseUploaderIcon"
         case .markReader:
             return "AboutAppMarkReaderIcon"
+        case .gitWise:
+            return "AboutAppGitWiseIcon"
+        case .veilPic:
+            return "AboutAppVeilPicIcon"
         case .museMail:
             return "AboutAppMuseMailIcon"
         case .museMate:
@@ -216,6 +191,10 @@ private enum AboutRecommendedApp: String, CaseIterable, Identifiable {
             return URL(string: "https://83d.me/products/qpic")!
         case .markReader:
             return URL(string: "https://83d.me/products/qmarkview")!
+        case .gitWise:
+            return URL(string: "https://83d.me/products/gitwise")!
+        case .veilPic:
+            return URL(string: "https://83d.me/products/qpic")!
         case .museMail:
             return URL(string: "https://83d.me/products/qmailmate")!
         case .museMate:
@@ -232,13 +211,14 @@ private struct AboutRecommendedAppCard: View {
             HStack(alignment: .center, spacing: 10) {
                 Image(app.iconAssetName)
                     .resizable()
+                    .interpolation(.high)
                     .scaledToFit()
-                    .frame(width: 34, height: 34)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .frame(width: 42, height: 42)
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(NSLocalizedString(app.nameKey, comment: ""))
-                        .font(.callout.weight(.semibold))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
 
@@ -249,14 +229,15 @@ private struct AboutRecommendedAppCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Spacer(minLength: 4)
+                Spacer(minLength: 0)
 
                 Image(systemName: "arrow.up.right")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Color.accentColor)
+                    .accessibilityHidden(true)
             }
             .padding(10)
-            .frame(minHeight: 62)
+            .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(Color(nsColor: .controlBackgroundColor))
