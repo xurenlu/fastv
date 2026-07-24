@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.4.1-rc2] - 2026-07-24
+
+### Changed
+
+- **品牌产物名 `QEcho` → `Qecho`**（避免大小写混排造成的误解）。全链路统一：
+  - 主 App 产物名 `Qecho.app`（可执行 `Qecho`），英文/日/韩显示名与 `CFBundleDisplayName` 均为 `Qecho`；中文/粤语「轻语 / 輕語」不变。
+  - 输入法：target/产物 `QechoIME`、bundle id 与输入源 ID `com.17push.inputmethod.QechoIME`、`InputMethodConnectionName`、`InputMethodServerControllerClass` 及类名 `QechoIMEController`、`QechoPanels`、用户数据目录 `~/Library/Application Support/QechoIME/`、图标 `QechoIMETemplate.pdf`、输入源菜单显示名 `Qecho IME`（中文仍「轻语输入法」）全部同步。
+  - 主 App bundle id `com.17push.musetype` **保持不变**（不影响已授予的麦克风/辅助功能权限与 Sparkle 更新）。
+- **升级提示**：因输入源 ID 与用户数据目录变更，升级后需在设置「输入法·打字」重新「安装并启用」轻语输入法（可能需注销重登），旧输入法的用户词库/候选窗设置会重置为默认。
+
+### Engineering
+
+- `scripts/add_ime_target.rb`（target 名 / bundle id / 资源引用）、契约常量、IME 源码类名与日志前缀、5 语种文案同步；`InputMethodBridgeContractTests` 断言随之更新，全套测试通过。
+- 版本号 `2.4.1-rc1` → `2.4.1-rc2`，build `44` → `45`；同步 4 处版本点。
+
 ## [2.4.1-rc1] - 2026-07-24
 
 ### Fixed

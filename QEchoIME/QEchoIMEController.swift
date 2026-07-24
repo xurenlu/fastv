@@ -1,6 +1,6 @@
 //
 //  QEchoIMEController.swift
-//  QEchoIME
+//  QechoIME
 //
 //  IMKit 输入控制器：把键盘事件喂给 librime（wubi_pinyin 五笔·拼音混打），
 //  维护组字区 marked text 与自绘候选窗，并承接语音上屏通道。
@@ -10,12 +10,12 @@ import Cocoa
 import InputMethodKit
 
 /// 进程级共享面板（由 main.swift 在启动时创建）
-enum QEchoPanels {
+enum QechoPanels {
     static var candidateWindow: CandidateWindow?
 }
 
-@objc(QEchoIMEController)
-final class QEchoIMEController: IMKInputController {
+@objc(QechoIMEController)
+final class QechoIMEController: IMKInputController {
 
     private static let notFoundRange = NSRange(location: NSNotFound, length: NSNotFound)
 
@@ -29,7 +29,7 @@ final class QEchoIMEController: IMKInputController {
         IMESettingsCoordinator.shared.applyIfNeeded()
         VoiceCommitServer.shared.register(activeController: self)
         // 候选窗点击选字回调绑定到当前 controller
-        QEchoPanels.candidateWindow?.onSelect = { [weak self] index in
+        QechoPanels.candidateWindow?.onSelect = { [weak self] index in
             self?.selectCandidateByClick(index)
         }
     }
@@ -39,7 +39,7 @@ final class QEchoIMEController: IMKInputController {
         if let client = sender as? IMKTextInput & NSObjectProtocol {
             flushRawInput(to: client)
         }
-        QEchoPanels.candidateWindow?.hide()
+        QechoPanels.candidateWindow?.hide()
         VoiceCommitServer.shared.unregister(controller: self)
         super.deactivateServer(sender)
     }
@@ -115,7 +115,7 @@ final class QEchoIMEController: IMKInputController {
         let preedit = state?.preedit ?? ""
         guard !preedit.isEmpty else {
             clearMarkedText(of: client)
-            QEchoPanels.candidateWindow?.hide()
+            QechoPanels.candidateWindow?.hide()
             return
         }
 
@@ -138,7 +138,7 @@ final class QEchoIMEController: IMKInputController {
         state: RimeEngine.CompositionState?,
         client: IMKTextInput & NSObjectProtocol
     ) {
-        guard let window = QEchoPanels.candidateWindow else { return }
+        guard let window = QechoPanels.candidateWindow else { return }
         guard let state, !state.candidates.isEmpty else {
             window.hide()
             return
@@ -191,13 +191,13 @@ final class QEchoIMEController: IMKInputController {
     override func commitComposition(_ sender: Any!) {
         guard let client = sender as? IMKTextInput & NSObjectProtocol else { return }
         flushRawInput(to: client)
-        QEchoPanels.candidateWindow?.hide()
+        QechoPanels.candidateWindow?.hide()
     }
 
     // MARK: - 输入法菜单（菜单栏输入源下拉，结构参考主流中文输入法）
 
     override func menu() -> NSMenu! {
-        let menu = NSMenu(title: "QEcho")
+        let menu = NSMenu(title: "Qecho")
 
         let settingsItem = NSMenuItem(
             title: Self.localized("ime.menu.openSettings"),
@@ -305,7 +305,7 @@ final class QEchoIMEController: IMKInputController {
         if RimeEngine.shared.ready, RimeEngine.shared.isComposing {
             RimeEngine.shared.clearComposition()
             clearMarkedText(of: client)
-            QEchoPanels.candidateWindow?.hide()
+            QechoPanels.candidateWindow?.hide()
         }
         client.insertText(text, replacementRange: Self.notFoundRange)
         return true

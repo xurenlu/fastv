@@ -2,7 +2,7 @@
 //  InputMethodSettingsSection.swift
 //  fastv
 //
-//  「输入法（实验性）」设置区块：安装 / 启用 QEchoIME 系统输入法。
+//  「输入法（实验性）」设置区块：安装 / 启用 QechoIME 系统输入法。
 //
 
 import SwiftUI

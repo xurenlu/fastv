@@ -1,6 +1,6 @@
 //
 //  IMESettingsCoordinator.swift
-//  QEchoIME
+//  QechoIME
 //
 //  IME 侧设置协调：读取 IME 用户目录的设置文件并应用到 RimeEngine。
 //  设置文件由主 App（设置页）写入并经 CFMessagePort 通知；
@@ -51,7 +51,7 @@ final class IMESettingsCoordinator {
         do {
             try settings.write()
         } catch {
-            NSLog("QEchoIME: 设置文件写入失败 \(error.localizedDescription)")
+            NSLog("QechoIME: 设置文件写入失败 \(error.localizedDescription)")
         }
         applied = settings
     }

@@ -4,7 +4,7 @@
 //
 //  macOS 键盘事件到 Rime（X11 keysym）键值的纯函数映射，以及
 //  Rime UTF-8 光标偏移到 NSRange（UTF-16）的转换。
-//  本文件同时编译进 musetype（供单测）与 QEchoIME 两个 target，不依赖 AppKit。
+//  本文件同时编译进 musetype（供单测）与 QechoIME 两个 target，不依赖 AppKit。
 //
 
 import Foundation

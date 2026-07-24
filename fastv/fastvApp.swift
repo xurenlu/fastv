@@ -225,7 +225,7 @@ private struct ContextualRewriteOutcome {
 
 private func insertVoiceText(_ text: String, preferences: UserPreferences) {
     // 选中轻语输入法时优先走系统输入法通道上屏（IMKTextInput.insertText），失败回退传统插入
-    if InputMethodBridgeService.shared.isQEchoInputSourceSelected,
+    if InputMethodBridgeService.shared.isQechoInputSourceSelected,
        InputMethodBridgeService.shared.commitViaInputMethod(text) {
         print("✅ [fastvApp] 文本经输入法通道上屏")
         return

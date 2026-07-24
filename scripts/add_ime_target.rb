@@ -1,12 +1,12 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# 把 QEchoIME 输入法 target 集成进 fastv.xcodeproj。
+# 把 QechoIME 输入法 target 集成进 fastv.xcodeproj。
 # 说明：本工程使用 Xcode 16 文件系统同步 group（fastv/ → musetype、fastvTests/ → fastvTests），
 # 主 App 与测试的新增源文件自动入编，这里只需要：
-#   1. 创建 QEchoIME app target 并配置构建设置
+#   1. 创建 QechoIME app target 并配置构建设置
 #   2. 挂 QEchoIME/ 下源文件 + 共享契约文件（fastv/Services/InputMethodBridgeContract.swift）
-#   3. musetype 依赖 QEchoIME，并把 QEchoIME.app 嵌入主 App 的 Resources
+#   3. musetype 依赖 QechoIME，并把 QechoIME.app 嵌入主 App 的 Resources
 # 幂等：重复执行不会产生重复 target / 文件引用 / build phase。
 #
 # 用法：LC_ALL=en_US.UTF-8 ruby scripts/add_ime_target.rb
@@ -15,9 +15,9 @@ require 'xcodeproj'
 
 PROJECT_PATH = File.expand_path('../fastv.xcodeproj', __dir__)
 SRCROOT = File.dirname(PROJECT_PATH)
-IME_TARGET_NAME = 'QEchoIME'
-IME_BUNDLE_ID = 'com.17push.inputmethod.QEchoIME'
-MARKETING_VERSION = '2.4.1-rc1'
+IME_TARGET_NAME = 'QechoIME'
+IME_BUNDLE_ID = 'com.17push.inputmethod.QechoIME'
+MARKETING_VERSION = '2.4.1-rc2'
 DEPLOYMENT_TARGET = '14.6'
 DEVELOPMENT_TEAM = 'ZH2S7D6PL6'
 EMBED_PHASE_NAME = 'Embed Input Method'
@@ -28,7 +28,7 @@ project = Xcodeproj::Project.open(PROJECT_PATH)
 main_target = project.targets.find { |t| t.name == 'musetype' }
 abort '❌ 找不到 musetype target' unless main_target
 
-# ---------- 1. QEchoIME target ----------
+# ---------- 1. QechoIME target ----------
 
 ime_target = project.targets.find { |t| t.name == IME_TARGET_NAME }
 if ime_target
@@ -60,9 +60,9 @@ ime_target.build_configurations.each do |config|
   s['LD_RUNPATH_SEARCH_PATHS'] = ['$(inherited)', '@executable_path/../Frameworks']
 end
 
-# ---------- 2. QEchoIME 源文件 ----------
+# ---------- 2. QechoIME 源文件 ----------
 
-ime_group = project.main_group['QEchoIME'] || project.main_group.new_group('QEchoIME', 'QEchoIME')
+ime_group = project.main_group['QechoIME'] || project.main_group.new_group('QechoIME', 'QEchoIME')
 
 def ensure_ref(group, path)
   name = File.basename(path)
@@ -82,7 +82,7 @@ end
 ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME', 'Info.plist')) # 只挂引用，不进编译
 ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME', 'QEchoIME-Bridging-Header.h'))
 
-# 共享文件：musetype 经同步 group 自动入编，这里只需补 QEchoIME 侧
+# 共享文件：musetype 经同步 group 自动入编，这里只需补 QechoIME 侧
 ensure_source(ime_target, ensure_ref(ime_group, CONTRACT_PATH))
 ensure_source(ime_target, ensure_ref(ime_group, File.join(SRCROOT, 'fastv/Services/RimeKeyMapping.swift')))
 
@@ -91,14 +91,14 @@ ensure_source(ime_target, ensure_ref(ime_group, File.join(SRCROOT, 'fastv/Servic
 dylib_ref = ensure_ref(ime_group, File.join(SRCROOT, 'ThirdParty/librime/lib/librime.1.dylib'))
 unless ime_target.frameworks_build_phase.files_references.include?(dylib_ref)
   ime_target.frameworks_build_phase.add_file_reference(dylib_ref)
-  puts '✅ QEchoIME 链接 librime.1.dylib'
+  puts '✅ QechoIME 链接 librime.1.dylib'
 end
 
 embed_libs = ime_target.copy_files_build_phases.find { |p| p.name == 'Embed Libraries' }
 unless embed_libs
   embed_libs = ime_target.new_copy_files_build_phase('Embed Libraries')
   embed_libs.symbol_dst_subfolder_spec = :frameworks
-  puts '✅ 创建 QEchoIME Embed Libraries phase'
+  puts '✅ 创建 QechoIME Embed Libraries phase'
 end
 unless embed_libs.files_references.include?(dylib_ref)
   dylib_build_file = embed_libs.add_file_reference(dylib_ref)
@@ -115,10 +115,10 @@ end
 
 # ---------- 2.6 输入源图标 + 菜单本地化资源 ----------
 
-icon_ref = ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME/Resources/QEchoIMETemplate.pdf'))
+icon_ref = ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME/Resources/QechoIMETemplate.pdf'))
 unless ime_target.resources_build_phase.files_references.include?(icon_ref)
   ime_target.add_resources([icon_ref])
-  puts '✅ 输入源图标 QEchoIMETemplate.pdf 加入 bundle 资源'
+  puts '✅ 输入源图标 QechoIMETemplate.pdf 加入 bundle 资源'
 end
 
 %w[zh-Hans en ja ko yue].each do |locale|
@@ -135,7 +135,7 @@ end
 
 unless main_target.dependencies.any? { |d| d.target == ime_target }
   main_target.add_dependency(ime_target)
-  puts '✅ 添加 musetype → QEchoIME 依赖'
+  puts '✅ 添加 musetype → QechoIME 依赖'
 end
 
 embed_phase = main_target.copy_files_build_phases.find { |p| p.name == EMBED_PHASE_NAME }
@@ -149,7 +149,7 @@ product_ref = ime_target.product_reference
 unless embed_phase.files_references.include?(product_ref)
   build_file = embed_phase.add_file_reference(product_ref)
   build_file.settings = { 'ATTRIBUTES' => %w[CodeSignOnCopy RemoveHeadersOnCopy] }
-  puts '✅ 把 QEchoIME.app 加入嵌入列表'
+  puts '✅ 把 QechoIME.app 加入嵌入列表'
 end
 
 project.save

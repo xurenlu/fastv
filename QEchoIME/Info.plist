@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>轻语 QEcho</string>
+	<string>轻语 Qecho</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>QEchoIME</string>
+	<string>QechoIME</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -21,9 +21,9 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>InputMethodConnectionName</key>
-	<string>QEchoIME_1_Connection</string>
+	<string>QechoIME_1_Connection</string>
 	<key>InputMethodServerControllerClass</key>
-	<string>QEchoIMEController</string>
+	<string>QechoIMEController</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
 	<key>LSBackgroundOnly</key>
@@ -33,23 +33,23 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>TISInputSourceID</key>
-	<string>com.17push.inputmethod.QEchoIME</string>
+	<string>com.17push.inputmethod.QechoIME</string>
 	<key>TISIntendedLanguage</key>
 	<string>zh-Hans</string>
 	<key>tsInputMethodIconFileKey</key>
-	<string>QEchoIMETemplate.pdf</string>
+	<string>QechoIMETemplate.pdf</string>
 	<key>tsInputMethodLocalizedNamesKey</key>
 	<dict>
 		<key>en</key>
-		<string>QEcho IME</string>
+		<string>Qecho IME</string>
 		<key>zh-Hans</key>
 		<string>轻语输入法</string>
 		<key>zh-Hant</key>
 		<string>輕語輸入法</string>
 		<key>ja</key>
-		<string>QEcho IME</string>
+		<string>Qecho IME</string>
 		<key>ko</key>
-		<string>QEcho IME</string>
+		<string>Qecho IME</string>
 	</dict>
 </dict>
 </plist>

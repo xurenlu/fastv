@@ -21,13 +21,13 @@
 		5BF0D2C15CFD2D97BAA290ED /* ko.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 5C6D0C74C65B90C85BF42D1E /* ko.lproj */; };
 		5E86896F0D95FD4912BC9BA0 /* librime.1.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 75B03F1385C914281CA5C0AA /* librime.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		67DE1C2DF0605ED09DBADCB0 /* RimeData in Resources */ = {isa = PBXBuildFile; fileRef = 25F6EC8B468C2C63E6AEF0F4 /* RimeData */; };
-		6F086E88051E878AE6CCD0C1 /* QEchoIME.app in Embed Input Method */ = {isa = PBXBuildFile; fileRef = 161CCC51A8A655CDDEF940EC /* QEchoIME.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		6F086E88051E878AE6CCD0C1 /* QechoIME.app in Embed Input Method */ = {isa = PBXBuildFile; fileRef = 161CCC51A8A655CDDEF940EC /* QechoIME.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		7038947BB83302B308667997 /* RimeKeyMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1E0956AA3CE5CAA15A3F0C /* RimeKeyMapping.swift */; };
 		77E2B04870BCC62160466925 /* CandidateWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7F4509B83DC08B788CAAF61 /* CandidateWindow.swift */; };
 		83D8D749F9FC51049A38C126 /* ja.lproj in Resources */ = {isa = PBXBuildFile; fileRef = FB90A590446AE9870DD41395 /* ja.lproj */; };
 		941B8D178AAD8CCDE66EAAE9 /* VoiceCommitServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BDF9BC00900F082BE15E5E /* VoiceCommitServer.swift */; };
 		BFF20D58A2686398E68CFC67 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 7C864D9382D3A405BCBC8404 /* Sparkle */; };
-		D9EC6D6105A3D99D6B2E95EF /* QEchoIMETemplate.pdf in Resources */ = {isa = PBXBuildFile; fileRef = CBA7C4CF06A1BCCA6D79B5D8 /* QEchoIMETemplate.pdf */; };
+		D9EC6D6105A3D99D6B2E95EF /* QechoIMETemplate.pdf in Resources */ = {isa = PBXBuildFile; fileRef = CBA7C4CF06A1BCCA6D79B5D8 /* QechoIMETemplate.pdf */; };
 		FA25F396398CF0E9EA3E07B5 /* yue.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 2BAD2DBC36242ACF4FFB0F7C /* yue.lproj */; };
 /* End PBXBuildFile section */
 
@@ -51,7 +51,7 @@
 			containerPortal = 5C0423762ECD792D00821B50 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 5FD5B7B8FA3DFFC2678F555A;
-			remoteInfo = QEchoIME;
+			remoteInfo = QechoIME;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -62,7 +62,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 7;
 			files = (
-				6F086E88051E878AE6CCD0C1 /* QEchoIME.app in Embed Input Method */,
+				6F086E88051E878AE6CCD0C1 /* QechoIME.app in Embed Input Method */,
 			);
 			name = "Embed Input Method";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -83,12 +83,12 @@
 /* Begin PBXFileReference section */
 		1381F3DF4433FDFF87E2538C /* CandidateContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CandidateContentView.swift; sourceTree = "<group>"; };
 		157FCB7A6158E71E6A21CFEE /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
-		161CCC51A8A655CDDEF940EC /* QEchoIME.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QEchoIME.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		161CCC51A8A655CDDEF940EC /* QechoIME.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QechoIME.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		25F6EC8B468C2C63E6AEF0F4 /* RimeData */ = {isa = PBXFileReference; includeInIndex = 1; path = RimeData; sourceTree = "<group>"; };
 		29D214D841CB811225CD3A43 /* Pods-typecho.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-typecho.debug.xcconfig"; path = "Target Support Files/Pods-typecho/Pods-typecho.debug.xcconfig"; sourceTree = "<group>"; };
 		2A3DC7D8EC1D2ABF9008C1BA /* QEchoIMEController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QEchoIMEController.swift; sourceTree = "<group>"; };
 		2BAD2DBC36242ACF4FFB0F7C /* yue.lproj */ = {isa = PBXFileReference; includeInIndex = 1; name = yue.lproj; path = Resources/yue.lproj; sourceTree = "<group>"; };
-		5C04237E2ECD792D00821B50 /* QEcho.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QEcho.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5C04237E2ECD792D00821B50 /* Qecho.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Qecho.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C04238D2ECD793000821B50 /* typecho.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = typecho.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C0423972ECD793000821B50 /* fastvUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = fastvUITests.xctest; path = typecho.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C1000012F00000100527815 /* musetype.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = musetype.xctestplan; sourceTree = "<group>"; };
@@ -102,7 +102,7 @@
 		B505B67EC4521A859283FEB7 /* QEchoIME-Bridging-Header.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "QEchoIME-Bridging-Header.h"; sourceTree = "<group>"; };
 		B7F4509B83DC08B788CAAF61 /* CandidateWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CandidateWindow.swift; sourceTree = "<group>"; };
 		C727F3C565389AB0D3348583 /* IMESettingsCoordinator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IMESettingsCoordinator.swift; sourceTree = "<group>"; };
-		CBA7C4CF06A1BCCA6D79B5D8 /* QEchoIMETemplate.pdf */ = {isa = PBXFileReference; includeInIndex = 1; name = QEchoIMETemplate.pdf; path = Resources/QEchoIMETemplate.pdf; sourceTree = "<group>"; };
+		CBA7C4CF06A1BCCA6D79B5D8 /* QechoIMETemplate.pdf */ = {isa = PBXFileReference; includeInIndex = 1; name = QechoIMETemplate.pdf; path = Resources/QechoIMETemplate.pdf; sourceTree = "<group>"; };
 		DC0B03A35A134716360C9BD8 /* Pods-musetype.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-musetype.release.xcconfig"; path = "Target Support Files/Pods-musetype/Pods-musetype.release.xcconfig"; sourceTree = "<group>"; };
 		E0E1228C032E765F33D04BD5 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E331E50F0E4972CC7798BF5B /* main.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
@@ -184,7 +184,7 @@
 			path = Pods;
 			sourceTree = "<group>";
 		};
-		55EE162CADD65DA18C42BA0A /* QEchoIME */ = {
+		55EE162CADD65DA18C42BA0A /* QechoIME */ = {
 			isa = PBXGroup;
 			children = (
 				E331E50F0E4972CC7798BF5B /* main.swift */,
@@ -203,11 +203,11 @@
 				FB90A590446AE9870DD41395 /* ja.lproj */,
 				5C6D0C74C65B90C85BF42D1E /* ko.lproj */,
 				2BAD2DBC36242ACF4FFB0F7C /* yue.lproj */,
-				CBA7C4CF06A1BCCA6D79B5D8 /* QEchoIMETemplate.pdf */,
+				CBA7C4CF06A1BCCA6D79B5D8 /* QechoIMETemplate.pdf */,
 				B7F4509B83DC08B788CAAF61 /* CandidateWindow.swift */,
 				1381F3DF4433FDFF87E2538C /* CandidateContentView.swift */,
 			);
-			name = QEchoIME;
+			name = QechoIME;
 			path = QEchoIME;
 			sourceTree = "<group>";
 		};
@@ -221,17 +221,17 @@
 				5C04237F2ECD792D00821B50 /* Products */,
 				0966A4D65B81DE6EE4B14886 /* Pods */,
 				E65830A71AE08364D55B68BA /* Frameworks */,
-				55EE162CADD65DA18C42BA0A /* QEchoIME */,
+				55EE162CADD65DA18C42BA0A /* QechoIME */,
 			);
 			sourceTree = "<group>";
 		};
 		5C04237F2ECD792D00821B50 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				5C04237E2ECD792D00821B50 /* QEcho.app */,
+				5C04237E2ECD792D00821B50 /* Qecho.app */,
 				5C04238D2ECD793000821B50 /* typecho.xctest */,
 				5C0423972ECD793000821B50 /* fastvUITests.xctest */,
-				161CCC51A8A655CDDEF940EC /* QEchoIME.app */,
+				161CCC51A8A655CDDEF940EC /* QechoIME.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -282,7 +282,7 @@
 				7C864D9382D3A405BCBC8404 /* Sparkle */,
 			);
 			productName = musetype;
-			productReference = 5C04237E2ECD792D00821B50 /* QEcho.app */;
+			productReference = 5C04237E2ECD792D00821B50 /* Qecho.app */;
 			productType = "com.apple.product-type.application";
 		};
 		5C04238C2ECD793000821B50 /* fastvTests */ = {
@@ -327,9 +327,9 @@
 			productReference = 5C0423972ECD793000821B50 /* fastvUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		5FD5B7B8FA3DFFC2678F555A /* QEchoIME */ = {
+		5FD5B7B8FA3DFFC2678F555A /* QechoIME */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 578F316AFCC398B3759152BE /* Build configuration list for PBXNativeTarget "QEchoIME" */;
+			buildConfigurationList = 578F316AFCC398B3759152BE /* Build configuration list for PBXNativeTarget "QechoIME" */;
 			buildPhases = (
 				8839997755450A0EE50D7B6D /* Sources */,
 				D9F244D82B9DD0959BA87FB3 /* Frameworks */,
@@ -340,9 +340,9 @@
 			);
 			dependencies = (
 			);
-			name = QEchoIME;
-			productName = QEchoIME;
-			productReference = 161CCC51A8A655CDDEF940EC /* QEchoIME.app */;
+			name = QechoIME;
+			productName = QechoIME;
+			productReference = 161CCC51A8A655CDDEF940EC /* QechoIME.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -392,7 +392,7 @@
 				5C04237D2ECD792D00821B50 /* musetype */,
 				5C04238C2ECD793000821B50 /* fastvTests */,
 				5C0423962ECD793000821B50 /* fastvUITests */,
-				5FD5B7B8FA3DFFC2678F555A /* QEchoIME */,
+				5FD5B7B8FA3DFFC2678F555A /* QechoIME */,
 			);
 		};
 /* End PBXProject section */
@@ -408,7 +408,7 @@
 				83D8D749F9FC51049A38C126 /* ja.lproj in Resources */,
 				5BF0D2C15CFD2D97BAA290ED /* ko.lproj in Resources */,
 				FA25F396398CF0E9EA3E07B5 /* yue.lproj in Resources */,
-				D9EC6D6105A3D99D6B2E95EF /* QEchoIMETemplate.pdf in Resources */,
+				D9EC6D6105A3D99D6B2E95EF /* QechoIMETemplate.pdf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -575,8 +575,8 @@
 		};
 		862763D45966A04270978FE6 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			name = QEchoIME;
-			target = 5FD5B7B8FA3DFFC2678F555A /* QEchoIME */;
+			name = QechoIME;
+			target = 5FD5B7B8FA3DFFC2678F555A /* QechoIME */;
 			targetProxy = B5CE447450E1179B75E53319 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -607,9 +607,9 @@
 					"$(SRCROOT)/ThirdParty/librime/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.1-rc1";
-				PRODUCT_BUNDLE_IDENTIFIER = com.17push.inputmethod.QEchoIME;
-				PRODUCT_NAME = QEchoIME;
+				MARKETING_VERSION = "2.4.1-rc2";
+				PRODUCT_BUNDLE_IDENTIFIER = com.17push.inputmethod.QechoIME;
+				PRODUCT_NAME = QechoIME;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "QEchoIME/QEchoIME-Bridging-Header.h";
@@ -746,7 +746,7 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 44;
+				CURRENT_PROJECT_VERSION = 45;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -783,14 +783,14 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.1-rc1";
+				MARKETING_VERSION = "2.4.1-rc2";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.17push.musetype;
 				PRODUCT_MODULE_NAME = musetype;
-				PRODUCT_NAME = QEcho;
+				PRODUCT_NAME = Qecho;
 				REGISTER_APP_GROUPS = YES;
 				SCRIPTING_DEFINITION_FILE = fastv/fastv.sdef;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -812,7 +812,7 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 44;
+				CURRENT_PROJECT_VERSION = 45;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -849,14 +849,14 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.1-rc1";
+				MARKETING_VERSION = "2.4.1-rc2";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.17push.musetype;
 				PRODUCT_MODULE_NAME = musetype;
-				PRODUCT_NAME = QEcho;
+				PRODUCT_NAME = Qecho;
 				REGISTER_APP_GROUPS = YES;
 				SCRIPTING_DEFINITION_FILE = fastv/fastv.sdef;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -875,7 +875,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 44;
+				CURRENT_PROJECT_VERSION = 45;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -895,7 +895,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.1-rc1";
+				MARKETING_VERSION = "2.4.1-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -903,7 +903,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/QEcho.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/QEcho";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Qecho.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Qecho";
 			};
 			name = Debug;
 		};
@@ -913,7 +913,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 44;
+				CURRENT_PROJECT_VERSION = 45;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -933,7 +933,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.1-rc1";
+				MARKETING_VERSION = "2.4.1-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -941,7 +941,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/QEcho.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/QEcho";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Qecho.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Qecho";
 			};
 			name = Release;
 		};
@@ -950,10 +950,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 44;
+				CURRENT_PROJECT_VERSION = 45;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.4.1-rc1";
+				MARKETING_VERSION = "2.4.1-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -970,10 +970,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 44;
+				CURRENT_PROJECT_VERSION = 45;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.4.1-rc1";
+				MARKETING_VERSION = "2.4.1-rc2";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -1010,9 +1010,9 @@
 					"$(SRCROOT)/ThirdParty/librime/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.1-rc1";
-				PRODUCT_BUNDLE_IDENTIFIER = com.17push.inputmethod.QEchoIME;
-				PRODUCT_NAME = QEchoIME;
+				MARKETING_VERSION = "2.4.1-rc2";
+				PRODUCT_BUNDLE_IDENTIFIER = com.17push.inputmethod.QechoIME;
+				PRODUCT_NAME = QechoIME;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "QEchoIME/QEchoIME-Bridging-Header.h";
@@ -1023,7 +1023,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		578F316AFCC398B3759152BE /* Build configuration list for PBXNativeTarget "QEchoIME" */ = {
+		578F316AFCC398B3759152BE /* Build configuration list for PBXNativeTarget "QechoIME" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2684B25151F640DCC5B89EB2 /* Release */,

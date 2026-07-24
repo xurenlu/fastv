@@ -2,21 +2,21 @@
 //  InputMethodBridgeContract.swift
 //  fastv
 //
-//  主 App（轻语）与 QEchoIME 输入法进程之间的桥接契约。
-//  本文件同时编译进 musetype 与 QEchoIME 两个 target，修改字段时同步递增 protocolVersion。
+//  主 App（轻语）与 QechoIME 输入法进程之间的桥接契约。
+//  本文件同时编译进 musetype 与 QechoIME 两个 target，修改字段时同步递增 protocolVersion。
 //
 
 import Foundation
 
 enum InputMethodBridgeContract {
     /// 输入法 app 的 bundle id（安装到 ~/Library/Input Methods 的产物）
-    static let inputMethodBundleID = "com.17push.inputmethod.QEchoIME"
+    static let inputMethodBundleID = "com.17push.inputmethod.QechoIME"
 
     /// 主 App（轻语）的 bundle id，输入法菜单「打开轻语设置」用
     static let mainAppBundleID = "com.17push.musetype"
 
     /// TIS 输入源 ID，与 QEchoIME/Info.plist 的 TISInputSourceID 保持一致
-    static let inputSourceID = "com.17push.inputmethod.QEchoIME"
+    static let inputSourceID = "com.17push.inputmethod.QechoIME"
 
     /// 语音上屏 CFMessagePort 端口名（IME 进程作为服务端监听）
     static let voiceCommitPortName = "com.17push.musetype.ime.voice-commit"
@@ -35,17 +35,17 @@ enum InputMethodBridgeContract {
     /// 主 App 打开设置窗口的分布式通知名（输入法菜单「轻语设置…」触发；不携带任何用户数据）
     static let openSettingsDistributedNotification = "com.17push.musetype.ime.open-settings"
 
-    /// IME 用户数据目录：~/Library/Application Support/QEchoIME/
+    /// IME 用户数据目录：~/Library/Application Support/QechoIME/
     /// 与 RimeEngine 的 user_data_dir 保持一致；主 App 与 IME 进程都按此路径读写。
     static func imeUserDataDirectory() -> URL {
         FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("QEchoIME", isDirectory: true)
+            .appendingPathComponent("QechoIME", isDirectory: true)
     }
 
     /// 判断某个 TIS 输入源 ID 是否属于轻语输入法。
     /// 未来接入 librime 后可能出现 `<inputSourceID>.<mode>` 形式的输入模式子 ID。
-    static func isQEchoInputSource(id: String) -> Bool {
+    static func isQechoInputSource(id: String) -> Bool {
         id == inputSourceID || id.hasPrefix(inputSourceID + ".")
     }
 }
@@ -446,14 +446,14 @@ struct IMESettings: Codable, Equatable {
 }
 
 /// 生成各方案的 Rime custom 补丁。
-/// 输出必须与 QEchoIME/RimeData 随包的 *.custom.yaml 默认内容保持同构：
+/// 输出必须与 QechoIME/RimeData 随包的 *.custom.yaml 默认内容保持同构：
 /// 随包文件覆盖「默认设置」场景，用户改设置后主 App 用本生成器写用户目录同名文件（优先级更高）。
 enum RimePatchGenerator {
     static func customYAML(for schema: IMESchema, enableUserDict: Bool, pageSize: Int) -> String {
         let clampedPage = min(max(pageSize, IMESettings.pageSizeRange.lowerBound),
                               IMESettings.pageSizeRange.upperBound)
         var lines: [String] = [
-            "# 由轻语输入法自动生成，请勿手改；设置请在 QEcho（轻语）App 中调整。",
+            "# 由轻语输入法自动生成，请勿手改；设置请在 Qecho（轻语）App 中调整。",
             "patch:",
         ]
         switch schema {

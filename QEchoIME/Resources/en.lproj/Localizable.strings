@@ -1,5 +1,5 @@
-/* QEcho IME menu */
-"ime.menu.openSettings" = "Open QEcho Settings…";
+/* Qecho IME menu */
+"ime.menu.openSettings" = "Open Qecho Settings…";
 "ime.scheme.mixed" = "Wubi + Pinyin Mixed";
 "ime.scheme.wubi" = "Wubi Only (86)";
 "ime.scheme.pinyin" = "Pinyin Only";

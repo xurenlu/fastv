@@ -2,7 +2,7 @@
 //  InputMethodInstaller.swift
 //  fastv
 //
-//  把随主 App 分发的 QEchoIME.app 安装到 ~/Library/Input Methods，
+//  把随主 App 分发的 QechoIME.app 安装到 ~/Library/Input Methods，
 //  并通过 TIS 注册、启用输入源。选中输入源仍由用户在系统输入法菜单完成。
 //
 
@@ -13,7 +13,7 @@ import Combine
 @MainActor
 final class InputMethodInstaller: ObservableObject {
     enum InstallState: Equatable {
-        /// 构建产物里没有嵌入 QEchoIME.app（打包问题）
+        /// 构建产物里没有嵌入 QechoIME.app（打包问题）
         case embeddedMissing
         case notInstalled
         case installedDisabled
@@ -30,12 +30,12 @@ final class InputMethodInstaller: ObservableObject {
     }
 
     var embeddedIMEURL: URL? {
-        Bundle.main.url(forResource: "QEchoIME", withExtension: "app")
+        Bundle.main.url(forResource: "QechoIME", withExtension: "app")
     }
 
     var installedIMEURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Input Methods/QEchoIME.app", isDirectory: true)
+            .appendingPathComponent("Library/Input Methods/QechoIME.app", isDirectory: true)
     }
 
     func refresh() {
@@ -54,7 +54,7 @@ final class InputMethodInstaller: ObservableObject {
         }
     }
 
-    /// 安装（或更新）并启用输入法。覆盖 ~/Library/Input Methods 里旧版 QEchoIME.app 属预期升级行为。
+    /// 安装（或更新）并启用输入法。覆盖 ~/Library/Input Methods 里旧版 QechoIME.app 属预期升级行为。
     func installAndEnable() {
         lastError = nil
         guard let embedded = embeddedIMEURL else {
