@@ -1,5 +1,5 @@
-/* QEcho IME メニュー */
-"ime.menu.openSettings" = "QEcho 設定を開く…";
+/* Qecho IME メニュー */
+"ime.menu.openSettings" = "Qecho 設定を開く…";
 "ime.scheme.mixed" = "五筆＋拼音ミックス";
 "ime.scheme.wubi" = "五筆のみ（86 版）";
 "ime.scheme.pinyin" = "拼音のみ";

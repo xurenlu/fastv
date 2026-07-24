@@ -2,7 +2,7 @@
 //  InputMethodBridgeService.swift
 //  fastv
 //
-//  语音文本经系统输入法通道上屏：当用户当前选中的输入源是轻语输入法（QEchoIME）时，
+//  语音文本经系统输入法通道上屏：当用户当前选中的输入源是轻语输入法（QechoIME）时，
 //  把转写文本经 CFMessagePort 发给输入法进程，由 IMKTextInput.insertText 提交，
 //  比 CGEvent 模拟按键 / 剪贴板粘贴更可靠。发送失败时调用方回退传统插入方式。
 //
@@ -19,13 +19,13 @@ final class InputMethodBridgeService {
     private init() {}
 
     /// 当前系统选中的键盘输入源是否为轻语输入法
-    var isQEchoInputSourceSelected: Bool {
+    var isQechoInputSourceSelected: Bool {
         guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
               let idPointer = TISGetInputSourceProperty(source, kTISPropertyInputSourceID) else {
             return false
         }
         let id = Unmanaged<CFString>.fromOpaque(idPointer).takeUnretainedValue() as String
-        return InputMethodBridgeContract.isQEchoInputSource(id: id)
+        return InputMethodBridgeContract.isQechoInputSource(id: id)
     }
 
     /// 尝试经输入法通道上屏；返回 false 时调用方应回退到 CGEvent / 剪贴板方案

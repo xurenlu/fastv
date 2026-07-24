@@ -1,9 +1,9 @@
 //
 //  RimeEngine.swift
-//  QEchoIME
+//  QechoIME
 //
 //  librime C API 的 Swift 封装。方案数据来自 bundle 的 RimeData/（含预编译词典），
-//  用户词典与日志放 ~/Library/Application Support/QEchoIME/。
+//  用户词典与日志放 ~/Library/Application Support/QechoIME/。
 //  所有调用都在主线程（IMK 事件与 CFMessagePort 回调均在主 RunLoop）。
 //
 
@@ -40,13 +40,13 @@ final class RimeEngine {
     func startIfNeeded() {
         guard !ready else { return }
         guard let sharedDataURL = Bundle.main.resourceURL?.appendingPathComponent("RimeData") else {
-            NSLog("QEchoIME: bundle 里找不到 RimeData 目录")
+            NSLog("QechoIME: bundle 里找不到 RimeData 目录")
             return
         }
         let fileManager = FileManager.default
         let userDataURL = fileManager
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("QEchoIME", isDirectory: true)
+            .appendingPathComponent("QechoIME", isDirectory: true)
         let logURL = userDataURL.appendingPathComponent("logs", isDirectory: true)
         try? fileManager.createDirectory(at: logURL, withIntermediateDirectories: true)
 
@@ -59,7 +59,7 @@ final class RimeEngine {
         traits.staging_dir = Self.leakedCString(userDataURL.appendingPathComponent("build").path)
         traits.log_dir = Self.leakedCString(logURL.path)
         traits.distribution_name = Self.leakedCString("轻语输入法")
-        traits.distribution_code_name = Self.leakedCString("QEchoIME")
+        traits.distribution_code_name = Self.leakedCString("QechoIME")
         traits.distribution_version = Self.leakedCString(
             Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
         )
@@ -79,7 +79,7 @@ final class RimeEngine {
         session = rime.create_session?() ?? 0
         ready = session != 0
         if !ready {
-            NSLog("QEchoIME: Rime session 创建失败")
+            NSLog("QechoIME: Rime session 创建失败")
         }
     }
 

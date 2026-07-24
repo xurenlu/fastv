@@ -1,6 +1,6 @@
 //
 //  VoiceCommitServer.swift
-//  QEchoIME
+//  QechoIME
 //
 //  接收主 App（轻语）经 CFMessagePort 发来的语音转写文本，
 //  通过当前活跃的 IMK client 走系统输入法通道上屏（IMKTextInput.insertText）。
@@ -15,17 +15,17 @@ final class VoiceCommitServer {
 
     private var port: CFMessagePort?
     private var runLoopSource: CFRunLoopSource?
-    private weak var activeController: QEchoIMEController?
+    private weak var activeController: QechoIMEController?
 
     private init() {}
 
-    // MARK: - 活跃 client 注册（由 QEchoIMEController 在焦点切换时调用）
+    // MARK: - 活跃 client 注册（由 QechoIMEController 在焦点切换时调用）
 
-    func register(activeController controller: QEchoIMEController) {
+    func register(activeController controller: QechoIMEController) {
         activeController = controller
     }
 
-    func unregister(controller: QEchoIMEController) {
+    func unregister(controller: QechoIMEController) {
         if activeController === controller {
             activeController = nil
         }
@@ -58,7 +58,7 @@ final class VoiceCommitServer {
             &context,
             nil
         ) else {
-            NSLog("QEchoIME: 语音上屏端口创建失败（端口名可能被其他进程占用）")
+            NSLog("QechoIME: 语音上屏端口创建失败（端口名可能被其他进程占用）")
             return
         }
 

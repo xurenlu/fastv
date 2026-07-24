@@ -1,5 +1,5 @@
-/* QEcho IME 메뉴 */
-"ime.menu.openSettings" = "QEcho 설정 열기…";
+/* Qecho IME 메뉴 */
+"ime.menu.openSettings" = "Qecho 설정 열기…";
 "ime.scheme.mixed" = "오필+병음 혼합";
 "ime.scheme.wubi" = "오필 전용(86판)";
 "ime.scheme.pinyin" = "병음 전용";

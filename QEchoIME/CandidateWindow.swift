@@ -1,6 +1,6 @@
 //
 //  CandidateWindow.swift
-//  QEchoIME
+//  QechoIME
 //
 //  自绘候选窗：无边框浮动 NSPanel + 自绘 NSView，替代系统 IMKCandidates。
 //  支持横排/竖排、字体/字号、明暗两套配色、圆角/间距/内边距、序号与编码提示显隐。

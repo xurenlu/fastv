@@ -1,12 +1,12 @@
 /* 
   Localizable.strings
-  QEcho
+  Qecho
 
   한국어
 */
 
 // 일반
-"app.name" = "QEcho";
+"app.name" = "Qecho";
 "someim.update.check" = "업데이트 확인…";
 "settings.section.general" = "일반";
 "hide.dock.icon" = "Dock에서 아이콘 숨기기";
@@ -195,7 +195,7 @@
 "stats.realtime.factor.unit" = "배";
 
 // 온보딩
-"onboarding.welcome" = "QEcho에 오신 것을 환영합니다";
+"onboarding.welcome" = "Qecho에 오신 것을 환영합니다";
 "onboarding.set.shortcut.title" = "단축키 설정";
 "onboarding.set.shortcut.description" = "음성 입력을 시작할 전역 단축키를 설정하세요";
 "onboarding.select.language.title" = "기본 언어 선택";
@@ -273,7 +273,7 @@
 "model.download.url.placeholder" = "모델 다운로드 주소를 입력하세요";
 
 // 환영 페이지
-"welcome.title" = "QEcho에 오신 것을 환영합니다";
+"welcome.title" = "Qecho에 오신 것을 환영합니다";
 "welcome.subtitle" = "스마트 음성 입력";
 "welcome.feature.global.shortcut" = "전역 단축키";
 "welcome.feature.global.shortcut.desc" = "단축키를 설정하여 모든 앱의 입력 필드에서 단축키를 눌러 말하고 텍스트를 입력할 수 있습니다";
@@ -288,7 +288,7 @@
 
 // 권한 관련
 "microphone.permission.required" = "마이크 권한 필요";
-"microphone.permission.description" = "음성 입력 기능은 마이크 접근이 필요합니다.\n\n다음 단계를 따라 권한을 부여하세요:\n1. \"시스템 설정\" 열기\n2. \"개인정보 보호 및 보안\" > \"마이크\"로 이동\n3. QEcho 찾아서 체크\n4. 앱 재시작";
+"microphone.permission.description" = "음성 입력 기능은 마이크 접근이 필요합니다.\n\n다음 단계를 따라 권한을 부여하세요:\n1. \"시스템 설정\" 열기\n2. \"개인정보 보호 및 보안\" > \"마이크\"로 이동\n3. Qecho 찾아서 체크\n4. 앱 재시작";
 "open.system.settings" = "시스템 설정 열기";
 "later" = "나중에";
 "microphone.in.use" = "마이크 사용 중";
@@ -346,7 +346,7 @@
 /* 도움말 탭 */
 "settings.tab.help" = "도움말";
 "help.section.shortcuts" = "입력기 단축키";
-"help.shortcuts.footer" = "위 단축키는 「QEcho IME」가 선택되고 조합 중(화면에 후보 창이 있는 상태)일 때 작동합니다. 페이지 넘김 키 - 와 = 는 주류 오필/병음 입력기의 관례이며, , 와 。 로도 페이지를 넘길 수 있습니다.";
+"help.shortcuts.footer" = "위 단축키는 「Qecho IME」가 선택되고 조합 중(화면에 후보 창이 있는 상태)일 때 작동합니다. 페이지 넘김 키 - 와 = 는 주류 오필/병음 입력기의 관례이며, , 와 。 로도 페이지를 넘길 수 있습니다.";
 "help.sc.digits" = "숫자 키를 눌러 해당 번호의 후보를 입력합니다.";
 "help.sc.space" = "현재 강조된(첫 번째) 후보를 입력합니다.";
 "help.sc.semicolon" = "두 번째 후보를 입력합니다(차선).";
@@ -374,9 +374,9 @@
 
 "help.section.install" = "입력기 설치 및 문제 해결";
 "help.install.steps.title" = "설치 및 활성화 방법";
-"help.install.steps.body" = "「입력기·타이핑」 페이지에서 「설치 및 활성화」를 누르면 QEcho IME가 ~/Library/Input Methods에 설치되고 등록됩니다. 그런 다음 메뉴 막대의 입력 메뉴(또는 시스템 설정 → 키보드 → 입력 소스)에서 「QEcho IME」를 선택하세요.";
+"help.install.steps.body" = "「입력기·타이핑」 페이지에서 「설치 및 활성화」를 누르면 Qecho IME가 ~/Library/Input Methods에 설치되고 등록됩니다. 그런 다음 메뉴 막대의 입력 메뉴(또는 시스템 설정 → 키보드 → 입력 소스)에서 「Qecho IME」를 선택하세요.";
 "help.install.notShown.title" = "목록에 입력기가 보이지 않을 때";
-"help.install.notShown.body" = "macOS는 입력 소스 목록을 바로 새로 고치지 않을 때가 있습니다. 로그아웃 후 다시 로그인하세요. 로그인 후에도 나타나지 않으면 시스템 설정 → 키보드 → 입력 소스 → 「+」 → 중국어 간체 에서 「QEcho IME」를 수동으로 추가하세요.";
+"help.install.notShown.body" = "macOS는 입력 소스 목록을 바로 새로 고치지 않을 때가 있습니다. 로그아웃 후 다시 로그인하세요. 로그인 후에도 나타나지 않으면 시스템 설정 → 키보드 → 입력 소스 → 「+」 → 중국어 간체 에서 「Qecho IME」를 수동으로 추가하세요.";
 "help.install.icon.title" = "메뉴 막대 아이콘이 갱신되지 않을 때";
 "help.install.icon.body" = "시스템은 입력 소스 아이콘을 캐시합니다. 업데이트 후에도 이전 아이콘이 표시되면 로그아웃 후 다시 로그인하면 새로 고쳐집니다. 또는 터미널에서 killall com.apple.TextInputMenuAgent 를 실행한 뒤 입력기를 다시 선택하세요.";
 "help.install.schemes.title" = "오필 / 병음 / 혼합 전환";
@@ -392,7 +392,7 @@
 "help.faq.relogin.title" = "왜 자꾸 로그아웃 후 다시 로그인하라고 하나요?";
 "help.faq.relogin.body" = "시스템 입력기 프로세스는 macOS가 관리하며, 입력기 구성 요소를 업데이트한 뒤에도 이전 프로세스가 메모리에 남아 있을 수 있습니다. 로그아웃 후 다시 로그인하면 시스템이 새 버전을 불러옵니다. 이는 플랫폼의 동작 방식이며 오류가 아닙니다.";
 "help.faq.voiceVsType.title" = "음성과 타이핑은 하나의 입력기인가요?";
-"help.faq.voiceVsType.body" = "네. 「QEcho IME」를 선택하면 키보드로 직접 치면 Rime 엔진을 통한 타이핑(오필·병음 혼합 입력)이 되고, 음성 단축키를 눌러 말하면 음성 전사가 됩니다. 둘 다 동일한 시스템 입력기 채널을 통해 입력됩니다.";
+"help.faq.voiceVsType.body" = "네. 「Qecho IME」를 선택하면 키보드로 직접 치면 Rime 엔진을 통한 타이핑(오필·병음 혼합 입력)이 되고, 음성 단축키를 눌러 말하면 음성 전사가 됩니다. 둘 다 동일한 시스템 입력기 채널을 통해 입력됩니다.";
 
 "help.section.more" = "추가 도움말";
 "settings.done" = "완료";
@@ -401,13 +401,13 @@
 "permission.test.trigger" = "권한 요청 트리거";
 "permission.test.description" = "시스템 권한 대화 상자를 트리거하기 위해 마이크에 액세스를 시도합니다.\n\n권한 대화 상자가 나타나면 \"허용\"을 클릭하세요.";
 "permission.request.title" = "마이크 권한 요청";
-"permission.request.description" = "시스템이 권한 요청 대화 상자를 표시합니다.\n\n\"허용\"을 클릭하여 QEcho가 마이크에 액세스할 수 있도록 권한을 부여하세요.";
+"permission.request.description" = "시스템이 권한 요청 대화 상자를 표시합니다.\n\n\"허용\"을 클릭하여 Qecho가 마이크에 액세스할 수 있도록 권한을 부여하세요.";
 "permission.granted.title" = "✅ 마이크 권한 부여됨";
 "permission.granted.description" = "마이크 권한을 성공적으로 부여했습니다!\n\n이제 음성 입력 기능을 사용할 수 있습니다.";
 "permission.already.granted.title" = "✅ 마이크 권한 부여됨";
 "permission.already.granted.description" = "이미 마이크 권한을 부여했습니다.\n\n음성 입력 기능을 직접 사용할 수 있습니다.";
 "permission.denied.title" = "⚠️ 마이크 권한 거부됨";
-"permission.denied.description" = "음성 입력 기능은 마이크 권한이 필요합니다.\n\n다음 단계를 따라 수동으로 권한을 부여하세요:\n1. \"시스템 설정\" 열기\n2. \"개인정보 보호 및 보안\" > \"마이크\"로 이동\n3. QEcho 찾아서 체크";
+"permission.denied.description" = "음성 입력 기능은 마이크 권한이 필요합니다.\n\n다음 단계를 따라 수동으로 권한을 부여하세요:\n1. \"시스템 설정\" 열기\n2. \"개인정보 보호 및 보안\" > \"마이크\"로 이동\n3. Qecho 찾아서 체크";
 "continue" = "계속";
 "great" = "좋습니다";
 
@@ -507,7 +507,7 @@
 "ime.install.button" = "설치 및 활성화";
 "ime.reinstall.button" = "업데이트 및 재활성화";
 "ime.refresh" = "상태 새로 고침";
-"ime.hint" = "설치 후 메뉴 막대의 입력 메뉴(또는 시스템 설정 → 키보드 → 입력 소스)에서 \"QEcho IME\"를 선택하세요. QEcho IME가 선택된 동안 타이핑은 Rime 엔진(오필+병음 혼합 입력 지원)으로 처리되며, 음성 텍스트는 시스템 입력기 채널로 입력되어 키 입력 시뮬레이션보다 안정적입니다. 설치 후 목록에 표시되지 않으면 로그아웃 후 다시 로그인하세요.";
+"ime.hint" = "설치 후 메뉴 막대의 입력 메뉴(또는 시스템 설정 → 키보드 → 입력 소스)에서 \"Qecho IME\"를 선택하세요. Qecho IME가 선택된 동안 타이핑은 Rime 엔진(오필+병음 혼합 입력 지원)으로 처리되며, 음성 텍스트는 시스템 입력기 채널로 입력되어 키 입력 시뮬레이션보다 안정적입니다. 설치 후 목록에 표시되지 않으면 로그아웃 후 다시 로그인하세요.";
 "ime.scheme.label" = "입력 방식";
 "ime.scheme.mixed" = "오필+병음 혼합";
 "ime.scheme.wubi" = "오필 전용(86판)";

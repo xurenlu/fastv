@@ -1,6 +1,6 @@
 /* 
   Localizable.strings
-  QEcho
+  Qecho
 
   中文简体
 */
@@ -167,7 +167,7 @@
 "stats.realtime.factor.unit" = "倍";
 
 // 引导流程
-"onboarding.welcome" = "欢迎使用 QEcho";
+"onboarding.welcome" = "欢迎使用 Qecho";
 "onboarding.set.shortcut.title" = "设置快捷键";
 "onboarding.set.shortcut.description" = "请设置一个全局快捷键来启动语音输入";
 "onboarding.select.language.title" = "选择默认语言";
@@ -245,7 +245,7 @@
 "model.download.url.placeholder" = "请输入模型下载地址";
 
 // 欢迎页面
-"welcome.title" = "欢迎使用 QEcho";
+"welcome.title" = "欢迎使用 Qecho";
 "welcome.subtitle" = "智能语音输入法";
 "welcome.feature.global.shortcut" = "全局快捷键";
 "welcome.feature.global.shortcut.desc" = "设置快捷键，在任何应用的输入框中按下快捷键即可说话输入文字";
@@ -260,7 +260,7 @@
 
 // 权限相关
 "microphone.permission.required" = "需要麦克风权限";
-"microphone.permission.description" = "语音输入功能需要访问麦克风。\n\n请按以下步骤授权：\n1. 打开\"系统设置\"\n2. 进入\"隐私与安全性\" > \"麦克风\"\n3. 找到 QEcho 并勾选\n4. 重启应用";
+"microphone.permission.description" = "语音输入功能需要访问麦克风。\n\n请按以下步骤授权：\n1. 打开\"系统设置\"\n2. 进入\"隐私与安全性\" > \"麦克风\"\n3. 找到 Qecho 并勾选\n4. 重启应用";
 "open.system.settings" = "打开系统设置";
 "later" = "稍后";
 "microphone.in.use" = "麦克风正在使用中";
@@ -373,13 +373,13 @@
 "permission.test.trigger" = "尝试触发权限请求";
 "permission.test.description" = "即将尝试访问麦克风以触发系统权限对话框。\n\n如果弹出权限对话框，请点击\"允许\"。";
 "permission.request.title" = "请求麦克风权限";
-"permission.request.description" = "系统将弹出权限请求对话框。\n\n请点击\"允许\"以授权 QEcho 访问麦克风。";
+"permission.request.description" = "系统将弹出权限请求对话框。\n\n请点击\"允许\"以授权 Qecho 访问麦克风。";
 "permission.granted.title" = "✅ 麦克风权限已授权";
 "permission.granted.description" = "您已成功授权麦克风权限！\n\n现在可以使用语音输入功能了。";
 "permission.already.granted.title" = "✅ 麦克风权限已授权";
 "permission.already.granted.description" = "您已经授权了麦克风权限。\n\n可以直接使用语音输入功能。";
 "permission.denied.title" = "⚠️ 麦克风权限被拒绝";
-"permission.denied.description" = "语音输入功能需要麦克风权限。\n\n请按以下步骤手动授权：\n1. 打开\"系统设置\"\n2. 进入\"隐私与安全性\" > \"麦克风\"\n3. 找到 QEcho 并勾选";
+"permission.denied.description" = "语音输入功能需要麦克风权限。\n\n请按以下步骤手动授权：\n1. 打开\"系统设置\"\n2. 进入\"隐私与安全性\" > \"麦克风\"\n3. 找到 Qecho 并勾选";
 "continue" = "继续";
 "great" = "太好了";
 
