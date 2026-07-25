@@ -15,6 +15,7 @@ struct HelpTab: View {
             voiceGuideSection
             troubleshootSection
             faqSection
+            updateSection
             aboutLinkSection
         }
         .formStyle(.grouped)
@@ -83,6 +84,40 @@ struct HelpTab: View {
         } header: {
             Text(NSLocalizedString("help.section.faq", comment: ""))
         }
+    }
+
+    // MARK: - 版本与更新
+
+    private var updateSection: some View {
+        Section {
+            HStack {
+                Image(systemName: "info.circle").foregroundStyle(.secondary)
+                Text(NSLocalizedString("help.update.current", comment: ""))
+                Spacer()
+                Text(appVersionText)
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            Button {
+                SomeIMUpdateController.shared.checkForUpdates()
+            } label: {
+                HStack {
+                    Image(systemName: "arrow.triangle.2.circlepath").foregroundStyle(.blue)
+                    Text(NSLocalizedString("help.update.check", comment: ""))
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        } header: {
+            Text(NSLocalizedString("help.section.update", comment: ""))
+        }
+    }
+
+    private var appVersionText: String {
+        let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "-"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "-"
+        return "v\(short) (\(build))"
     }
 
     // MARK: - 支持链接

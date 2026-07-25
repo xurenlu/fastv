@@ -367,6 +367,9 @@
 "help.faq.voiceVsType.body" = "はい。「Qecho IME」を選択すると、直接キーボードで打つと Rime エンジンによるタイピング（五筆・拼音混打）となり、音声ショートカットを押しながら話すと音声文字起こしになります。どちらもシステム入力メソッドのチャンネルから統一して入力されます。";
 
 "help.section.more" = "その他のヘルプ";
+"help.section.update" = "バージョンとアップデート";
+"help.update.current" = "現在のバージョン";
+"help.update.check" = "アップデートを確認…";
 "settings.done" = "完了";
 
 // 権限関連Alert

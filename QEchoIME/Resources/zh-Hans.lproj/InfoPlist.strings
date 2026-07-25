@@ -1,0 +1,4 @@
+/* 输入源菜单显示名：系统取本地化 CFBundleName（TIS kTISPropertyLocalizedName），
+   tsInputMethodLocalizedNamesKey 在新版 macOS 不生效，必须靠本文件 */
+"CFBundleName" = "轻语输入法";
+"CFBundleDisplayName" = "轻语输入法";

@@ -367,6 +367,9 @@
 "help.faq.voiceVsType.body" = "Yes. Once Qecho IME is selected, typing directly goes through the Rime engine (Wubi + Pinyin mixed input), and holding the voice shortcut to speak goes through voice transcription — both are committed through the same system input method channel.";
 
 "help.section.more" = "More Help";
+"help.section.update" = "Version & Updates";
+"help.update.current" = "Current Version";
+"help.update.check" = "Check for Updates…";
 "settings.done" = "Done";
 
 // Permission Alerts

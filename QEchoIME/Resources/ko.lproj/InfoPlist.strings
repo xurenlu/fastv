@@ -1,0 +1,3 @@
+/* 입력 소스 메뉴 표시 이름 (zh-Hans 참고) */
+"CFBundleName" = "Qecho IME";
+"CFBundleDisplayName" = "Qecho IME";
