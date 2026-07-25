@@ -395,6 +395,9 @@
 "help.faq.voiceVsType.body" = "係。揀咗「輕語輸入法」之後，直接敲鍵盤就行 Rime 引擎打字（五筆·拼音混打），撳住語音快捷鍵講嘢就行語音轉寫，兩者都由系統輸入法通道統一上屏。";
 
 "help.section.more" = "更多說明";
+"help.section.update" = "版本與更新";
+"help.update.current" = "目前版本";
+"help.update.check" = "檢查更新…";
 "settings.done" = "完成";
 
 // 權限相關Alert

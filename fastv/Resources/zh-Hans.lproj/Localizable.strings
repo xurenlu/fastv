@@ -367,6 +367,9 @@
 "help.faq.voiceVsType.body" = "是。选中「轻语输入法」后，直接敲键盘走 Rime 引擎打字（五笔·拼音混打），按住语音快捷键说话则走语音转写，两者都从系统输入法通道统一上屏。";
 
 "help.section.more" = "更多帮助";
+"help.section.update" = "版本与更新";
+"help.update.current" = "当前版本";
+"help.update.check" = "检查更新…";
 "settings.done" = "完成";
 
 // 权限相关Alert

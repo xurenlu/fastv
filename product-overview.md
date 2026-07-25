@@ -1,6 +1,6 @@
 # Product Overview
 
-> 最后更新：2026-07-25 | 当前版本：v2.4.1-rc4
+> 最后更新：2026-07-25 | 当前版本：v2.4.1-rc5
 
 ## 当前设计思路
 
@@ -37,6 +37,7 @@
 
 ## 版本记录
 
+- `2.4.1-rc5`：修输入源菜单显示英文原名「QechoIME」——系统取本地化 CFBundleName 而非 tsInputMethodLocalizedNamesKey，补 5 语种 InfoPlist.strings（中文「轻语输入法」）；帮助 tab 新增「版本与更新」区块（当前版本 + 检查更新入口）。已知：some.im 更新服务端 qecho/macos/stable 通道未建（404），需服务端配置后自动更新才可用。
 - `2.4.1-rc4`：修输入源菜单图标偏小——模板 PDF 画布实为 12pt（px/pt 折算坑）且图形占比仅 72%；改为真 16pt 画布 + viewBox 裁留白到 88% 占比，与其它输入法图标视觉对齐。
 - `2.4.1-rc3`：移除设置窗口右上角冗余的「完成」按钮（窗口自带关闭按钮），一并删掉不再使用的 `@Environment(\.dismiss)`。
 - `2.4.1-rc2`：品牌产物名 QEcho → Qecho（避免大小写误解）。主 App 产物 Qecho.app、英/日/韩显示名 Qecho；输入法 target/bundle id/输入源 ID/类名/数据目录/图标全部同步为 QechoIME；主 App bundle id com.17push.musetype 不变（保权限与更新）。升级后需重新安装启用输入法、旧词库重置。

@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.4.1-rc5] - 2026-07-25
+
+### Added
+
+- 设置「帮助」tab 新增「版本与更新」区块：显示当前版本号 + 「检查更新…」入口（复用 Sparkle `SomeIMUpdateController`，与 App 菜单里的检查更新同一通道），5 语种文案。
+
+### Known Issues
+
+- 自动更新服务端尚未就绪：`some.im` appcast 接口对 `app_id=qecho&platform=macos&channel=stable` 返回 404「update channel not found」，需在更新服务上创建该通道并发布 appcast；另实测国内访问 `some.im`（Cloudflare）TLS 握手间歇性失败（6 次中 2 次被掐），检查更新偶发「获取升级信息时出现错误」属网络因素。`Info.plist` 未配 `SUPublicEDKey`，正式分发前建议补 EdDSA 签名链。
+
+### Fixed
+
+- 修输入源菜单里显示英文原名「QechoIME」而非「轻语输入法」的问题。根因：系统取输入源显示名走的是 bundle 本地化 `CFBundleName`（TIS `kTISPropertyLocalizedName`），`tsInputMethodLocalizedNamesKey` 在当前 macOS 上不生效，而 IME 包里没有 `InfoPlist.strings`，于是回退到原文 CFBundleName。修复：给 5 个 lproj 补 `InfoPlist.strings` 本地化 `CFBundleName`/`CFBundleDisplayName`（zh-Hans「轻语输入法」、yue「輕語輸入法」、en/ja/ko「Qecho IME」）。名称缓存可能需注销重登刷新。
+
+### Engineering
+
+- 版本号 `2.4.1-rc4` → `2.4.1-rc5`，build `47` → `48`；同步 4 处版本点。
+
 ## [2.4.1-rc4] - 2026-07-25
 
 ### Fixed

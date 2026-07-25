@@ -395,6 +395,9 @@
 "help.faq.voiceVsType.body" = "네. 「Qecho IME」를 선택하면 키보드로 직접 치면 Rime 엔진을 통한 타이핑(오필·병음 혼합 입력)이 되고, 음성 단축키를 눌러 말하면 음성 전사가 됩니다. 둘 다 동일한 시스템 입력기 채널을 통해 입력됩니다.";
 
 "help.section.more" = "추가 도움말";
+"help.section.update" = "버전 및 업데이트";
+"help.update.current" = "현재 버전";
+"help.update.check" = "업데이트 확인…";
 "settings.done" = "완료";
 
 // 권한 관련 알림
