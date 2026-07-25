@@ -1,9 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" role="img" aria-label="QEcho IME menu bar template icon">
+<svg xmlns="http://www.w3.org/2000/svg" width="16pt" height="16pt" viewBox="1.5 1.5 13 13" role="img" aria-label="QEcho IME menu bar template icon">
   <!--
     输入源菜单/菜单栏模板图，16×16pt 画布（对齐系统 CVIconTemplate 量级）。
     纯黑不透明 + 透明背景，macOS 按明暗主题自动反色。
     图形为脉冲外环 + 麦克风主体（声波竖条 even-odd 镂空）+ U 形托架 + 底座，
     坐标由 1024 版按 ÷64 缩放而来。
+    viewBox 裁掉四周留白（图形实际范围 1.75–14.25），使图形占画布 ~88%，
+    与菜单里其它输入法图标的视觉尺寸对齐；否则渲染出来明显小一圈。
   -->
 
   <!-- 脉冲外环：描边 + dash 缺口 -->
