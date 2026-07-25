@@ -12,7 +12,6 @@ import AVFoundation
 import AppKit
 
 struct SettingsView: View {
-    @Environment(\.dismiss) private var dismiss
     @State private var selectedTab: SettingsTab = .typing
 
     /// 设置分组：输入法·打字（默认）/ 语音输入 / AI 与模型 / 数据与其他 / 帮助
@@ -63,14 +62,6 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity)
             }
             .navigationTitle(NSLocalizedString("settings.title", comment: ""))
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(NSLocalizedString("settings.done", comment: "")) {
-                        dismiss()
-                    }
-                    .keyboardShortcut(.defaultAction)
-                }
-            }
             .frame(minWidth: 720, minHeight: 580)
         }
     }
