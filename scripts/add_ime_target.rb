@@ -17,7 +17,7 @@ PROJECT_PATH = File.expand_path('../fastv.xcodeproj', __dir__)
 SRCROOT = File.dirname(PROJECT_PATH)
 IME_TARGET_NAME = 'QechoIME'
 IME_BUNDLE_ID = 'com.17push.inputmethod.QechoIME'
-MARKETING_VERSION = '2.5.0-rc1'
+MARKETING_VERSION = '2.5.0-rc2'
 DEPLOYMENT_TARGET = '14.6'
 DEVELOPMENT_TEAM = 'ZH2S7D6PL6'
 EMBED_PHASE_NAME = 'Embed Input Method'
@@ -45,7 +45,7 @@ ime_target.build_configurations.each do |config|
   s['PRODUCT_BUNDLE_IDENTIFIER'] = IME_BUNDLE_ID
   s['PRODUCT_NAME'] = IME_TARGET_NAME
   s['MARKETING_VERSION'] = MARKETING_VERSION
-  s['CURRENT_PROJECT_VERSION'] = '49'
+  s['CURRENT_PROJECT_VERSION'] = '50'
   s['SWIFT_VERSION'] = '5.0'
   s['MACOSX_DEPLOYMENT_TARGET'] = DEPLOYMENT_TARGET
   s['CODE_SIGN_STYLE'] = 'Automatic'

@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.5.0-rc2] - 2026-07-28
+
+### Removed
+
+- 移除源码零引用的 GRDB.swift 6.25.0 历史依赖；由于它是项目唯一的 CocoaPod，同时清理 `Podfile`、锁文件、Pods 工程引用、聚合 framework、构建阶段与残留搜索路径，主 App 不再携带或链接 `GRDB.framework`。
+
+### Changed
+
+- 单元测试与 Release 构建恢复为直接使用 `fastv.xcodeproj`，无需预构建 GRDB / Pods target；保留独立的 Sparkle Swift Package 依赖。
+- 更新 README 与历史集成文档，源码构建不再提示 `pod install`，已下线的邮箱说明明确归档。
+
+### Engineering
+
+- 版本号 `2.5.0-rc1` → `2.5.0-rc2`，build `49` → `50`；主 App、QechoIME、测试 target、STT API 与 `X-API-Version` 响应头保持一致。
+
 ## [2.5.0-rc1] - 2026-07-28
 
 ### Added

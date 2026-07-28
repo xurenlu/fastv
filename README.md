@@ -4,7 +4,7 @@
 
 > v2.0.0 起，妙打收敛为**纯语音输入工具**；邮箱、视频、Todo 等历史产品线已不在主线。
 >
-> 当前版本：**v2.2.0-rc5**。最近一轮按 VoiceInk / Superwhisper / TypeWhisper / Wispr Flow / VocaMac 做了竞品调研，补齐了**热键三模式 / 术语包 / Power Mode / 跟随光标**四件套，增强 AI 语音输入的轻度结构化整理、中英混合术语校正、同 App 短上下文联想校正，并刷新关于窗口。
+> 当前版本：**v2.5.0-rc2**。除语音输入外，当前版本包含 QechoIME 中文输入法、Shift 临时英文输入，以及与动态候选开关解耦的本地候选采用习惯学习。
 
 ## ✨ 核心功能
 
@@ -46,8 +46,7 @@
 ```bash
 git clone https://github.com/xurenlu/fastv.git
 cd fastv
-pod install
-open fastv.xcworkspace
+open fastv.xcodeproj
 ```
 
 ### 2. 授权

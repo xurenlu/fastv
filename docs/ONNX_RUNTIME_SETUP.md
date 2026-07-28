@@ -27,24 +27,7 @@
    ```
 7. 选择最新版本并点击 "Add Package"
 
-### 方法 2：使用 CocoaPods
-
-1. 在项目根目录创建 `Podfile`：
-   ```ruby
-   platform :osx, '11.0'
-   use_frameworks!
-   
-   target 'fastv' do
-     pod 'onnxruntime-mobile-objc', '~> 1.15.0'
-   end
-   ```
-
-2. 运行安装命令：
-   ```bash
-   pod install
-   ```
-
-3. 之后使用 `.xcworkspace` 文件打开项目
+> 当前项目不支持 CocoaPods。ONNX Runtime 使用仓库内 `Libraries/onnxruntime/current/` 的受控 C API 二进制。
 
 ## 更新 ONNXRuntimeWrapper
 
@@ -80,4 +63,3 @@
 1. 确认依赖已正确添加
 2. 检查 `ONNXRuntimeWrapper.swift` 中的实现是否正确
 3. 查看 Xcode 构建日志中的详细错误信息
-
