@@ -27,6 +27,7 @@
 		83D8D749F9FC51049A38C126 /* ja.lproj in Resources */ = {isa = PBXBuildFile; fileRef = FB90A590446AE9870DD41395 /* ja.lproj */; };
 		941B8D178AAD8CCDE66EAAE9 /* VoiceCommitServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BDF9BC00900F082BE15E5E /* VoiceCommitServer.swift */; };
 		BFF20D58A2686398E68CFC67 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 7C864D9382D3A405BCBC8404 /* Sparkle */; };
+		C1A0D0017A28000100000001 /* CandidateLearningStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A0D0027A28000100000001 /* CandidateLearningStore.swift */; };
 		D9EC6D6105A3D99D6B2E95EF /* QechoIMETemplate.pdf in Resources */ = {isa = PBXBuildFile; fileRef = CBA7C4CF06A1BCCA6D79B5D8 /* QechoIMETemplate.pdf */; };
 		FA25F396398CF0E9EA3E07B5 /* yue.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 2BAD2DBC36242ACF4FFB0F7C /* yue.lproj */; };
 /* End PBXBuildFile section */
@@ -103,6 +104,7 @@
 		B7F4509B83DC08B788CAAF61 /* CandidateWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CandidateWindow.swift; sourceTree = "<group>"; };
 		C727F3C565389AB0D3348583 /* IMESettingsCoordinator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IMESettingsCoordinator.swift; sourceTree = "<group>"; };
 		CBA7C4CF06A1BCCA6D79B5D8 /* QechoIMETemplate.pdf */ = {isa = PBXFileReference; includeInIndex = 1; name = QechoIMETemplate.pdf; path = Resources/QechoIMETemplate.pdf; sourceTree = "<group>"; };
+		C1A0D0027A28000100000001 /* CandidateLearningStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CandidateLearningStore.swift; path = ../fastv/Services/CandidateLearningStore.swift; sourceTree = "<group>"; };
 		DC0B03A35A134716360C9BD8 /* Pods-musetype.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-musetype.release.xcconfig"; path = "Target Support Files/Pods-musetype/Pods-musetype.release.xcconfig"; sourceTree = "<group>"; };
 		E0E1228C032E765F33D04BD5 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E331E50F0E4972CC7798BF5B /* main.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
@@ -192,6 +194,7 @@
 				A2BDF9BC00900F082BE15E5E /* VoiceCommitServer.swift */,
 				E0E1228C032E765F33D04BD5 /* Info.plist */,
 				FCD07884DD621A291E5C0E9B /* InputMethodBridgeContract.swift */,
+				C1A0D0027A28000100000001 /* CandidateLearningStore.swift */,
 				913A75EE857762F3687D2531 /* RimeEngine.swift */,
 				B505B67EC4521A859283FEB7 /* QEchoIME-Bridging-Header.h */,
 				8F1E0956AA3CE5CAA15A3F0C /* RimeKeyMapping.swift */,
@@ -552,6 +555,7 @@
 				5504FF08BCB6CEF78B991E39 /* QEchoIMEController.swift in Sources */,
 				941B8D178AAD8CCDE66EAAE9 /* VoiceCommitServer.swift in Sources */,
 				52922B0CAD2D41FD8F675951 /* InputMethodBridgeContract.swift in Sources */,
+				C1A0D0017A28000100000001 /* CandidateLearningStore.swift in Sources */,
 				18B271FC03AFF5A0C617F180 /* RimeEngine.swift in Sources */,
 				7038947BB83302B308667997 /* RimeKeyMapping.swift in Sources */,
 				0E0666A25212AF71B10D9FE1 /* IMESettingsCoordinator.swift in Sources */,
@@ -589,7 +593,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 49;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -607,7 +611,7 @@
 					"$(SRCROOT)/ThirdParty/librime/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.1-rc5";
+				MARKETING_VERSION = "2.5.0-rc1";
 				PRODUCT_BUNDLE_IDENTIFIER = com.17push.inputmethod.QechoIME;
 				PRODUCT_NAME = QechoIME;
 				SDKROOT = macosx;
@@ -746,7 +750,7 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 49;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -783,7 +787,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.1-rc5";
+				MARKETING_VERSION = "2.5.0-rc1";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
@@ -812,7 +816,7 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 49;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -849,7 +853,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.1-rc5";
+				MARKETING_VERSION = "2.5.0-rc1";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
@@ -875,7 +879,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 49;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -895,7 +899,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.1-rc5";
+				MARKETING_VERSION = "2.5.0-rc1";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -913,7 +917,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 49;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -933,7 +937,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.1-rc5";
+				MARKETING_VERSION = "2.5.0-rc1";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -950,10 +954,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 49;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.4.1-rc5";
+				MARKETING_VERSION = "2.5.0-rc1";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -970,10 +974,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 49;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.4.1-rc5";
+				MARKETING_VERSION = "2.5.0-rc1";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -992,7 +996,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 49;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1010,7 +1014,7 @@
 					"$(SRCROOT)/ThirdParty/librime/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.4.1-rc5";
+				MARKETING_VERSION = "2.5.0-rc1";
 				PRODUCT_BUNDLE_IDENTIFIER = com.17push.inputmethod.QechoIME;
 				PRODUCT_NAME = QechoIME;
 				SDKROOT = macosx;

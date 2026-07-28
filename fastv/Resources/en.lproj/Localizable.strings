@@ -329,7 +329,7 @@
 "help.sc.tab" = "Cycle the highlight through candidates.";
 "help.sc.return" = "Commit the raw code you typed (no selection — output the letters as entered).";
 "help.sc.esc" = "Clear the current composition and cancel this input.";
-"help.sc.shift" = "Toggle Chinese / English input (a quick tap switches to direct English input).";
+"help.sc.shift" = "In Chinese mode, commits the current raw English code and stays in Chinese when Han candidates exist; switches to English only when none exist.";
 "help.sc.backtick" = "Pinyin reverse lookup: when you forget a character's Wubi code, type ` then its pinyin, and candidates will show the matching Wubi code.";
 
 "help.section.voice" = "Voice Input Guide";
@@ -667,7 +667,8 @@
 "ime.scheme.wubi" = "Wubi Only (86)";
 "ime.scheme.pinyin" = "Pinyin Only";
 "ime.userdict.toggle" = "Adaptive word frequency (user dictionary)";
-"ime.shortcuts.hint" = "Candidate shortcuts: digits select · Space commits first · Semicolon 2nd · Apostrophe 3rd (Wubi-only) · -/= and ,/. page · Tab cycles · Return commits raw input · Shift toggles Chinese/English · ` Pinyin reverse lookup";
+"ime.userdict.learning.hint" = "When off, learned frequency does not reorder candidates. Candidate adoption rates are still learned and stored locally, and are never uploaded.";
+"ime.shortcuts.hint" = "Candidate shortcuts: digits select · Space commits first · Semicolon 2nd · Apostrophe 3rd (Wubi-only) · -/= and ,/. page · Tab cycles · Return commits raw input · Shift commits English and stays Chinese when Han candidates exist; otherwise switches to English · ` Pinyin reverse lookup";
 
 /* Candidate window appearance */
 "ime.cand.section" = "Candidate Window";

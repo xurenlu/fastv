@@ -154,6 +154,12 @@ final class RimeEngine {
         rime.clear_composition?(session)
     }
 
+    /// 当前未转换的原始输入码，不改变组字状态。
+    func rawInput() -> String {
+        guard ensureSession() else { return "" }
+        return rime.get_input?(session).map { String(cString: $0) } ?? ""
+    }
+
     /// 取出当前原始输入串并清空组字区（焦点切换时兜底上屏用）
     func takeRawInput() -> String? {
         guard ensureSession() else { return nil }

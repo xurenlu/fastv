@@ -17,7 +17,7 @@ PROJECT_PATH = File.expand_path('../fastv.xcodeproj', __dir__)
 SRCROOT = File.dirname(PROJECT_PATH)
 IME_TARGET_NAME = 'QechoIME'
 IME_BUNDLE_ID = 'com.17push.inputmethod.QechoIME'
-MARKETING_VERSION = '2.4.1-rc2'
+MARKETING_VERSION = '2.5.0-rc1'
 DEPLOYMENT_TARGET = '14.6'
 DEVELOPMENT_TEAM = 'ZH2S7D6PL6'
 EMBED_PHASE_NAME = 'Embed Input Method'
@@ -45,7 +45,7 @@ ime_target.build_configurations.each do |config|
   s['PRODUCT_BUNDLE_IDENTIFIER'] = IME_BUNDLE_ID
   s['PRODUCT_NAME'] = IME_TARGET_NAME
   s['MARKETING_VERSION'] = MARKETING_VERSION
-  s['CURRENT_PROJECT_VERSION'] = '1'
+  s['CURRENT_PROJECT_VERSION'] = '49'
   s['SWIFT_VERSION'] = '5.0'
   s['MACOSX_DEPLOYMENT_TARGET'] = DEPLOYMENT_TARGET
   s['CODE_SIGN_STYLE'] = 'Automatic'
@@ -85,6 +85,7 @@ ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME', 'QEchoIME-Bridging-Header.h
 # 共享文件：musetype 经同步 group 自动入编，这里只需补 QechoIME 侧
 ensure_source(ime_target, ensure_ref(ime_group, CONTRACT_PATH))
 ensure_source(ime_target, ensure_ref(ime_group, File.join(SRCROOT, 'fastv/Services/RimeKeyMapping.swift')))
+ensure_source(ime_target, ensure_ref(ime_group, File.join(SRCROOT, 'fastv/Services/CandidateLearningStore.swift')))
 
 # ---------- 2.5 librime：链接 + 嵌入 dylib + RimeData 资源 ----------
 

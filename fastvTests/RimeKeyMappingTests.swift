@@ -43,6 +43,91 @@ final class RimeKeyMappingTests: XCTestCase {
         XCTAssertNil(RimeKeyMapping.keysym(macKeyCode: 99, characters: "\u{10}"))
     }
 
+    // MARK: - 独立 Shift 策略
+
+    func testStandaloneShiftCommitsRawInputOnlyForHanCandidatesInChineseMode() {
+        XCTAssertTrue(
+            RimeKeyMapping.shouldCommitRawInputOnStandaloneShift(
+                isASCIIMode: false,
+                candidates: ["输入", "書入"]
+            )
+        )
+        XCTAssertFalse(
+            RimeKeyMapping.shouldCommitRawInputOnStandaloneShift(
+                isASCIIMode: false,
+                candidates: ["hello", "123"]
+            )
+        )
+        XCTAssertFalse(
+            RimeKeyMapping.shouldCommitRawInputOnStandaloneShift(
+                isASCIIMode: true,
+                candidates: ["输入"]
+            )
+        )
+    }
+
+    func testHanCandidateDetectionCoversCommonAndSupplementaryIdeographs() {
+        XCTAssertTrue(RimeKeyMapping.containsHanCharacter("轻语"))
+        XCTAssertTrue(RimeKeyMapping.containsHanCharacter("候选（推荐）"))
+        XCTAssertTrue(RimeKeyMapping.containsHanCharacter("\u{20000}"))
+        XCTAssertFalse(RimeKeyMapping.containsHanCharacter("Qecho 123"))
+    }
+
+    func testCandidateSelectionShortcutsMapToCurrentPageIndexes() {
+        XCTAssertEqual(
+            RimeKeyMapping.selectedCandidateIndex(
+                for: RimeKeyMapping.XK_space,
+                highlightedIndex: 3,
+                candidateCount: 5,
+                apostropheSelectsThird: false
+            ),
+            3
+        )
+        XCTAssertEqual(
+            RimeKeyMapping.selectedCandidateIndex(
+                for: 49,
+                highlightedIndex: 0,
+                candidateCount: 5,
+                apostropheSelectsThird: false
+            ),
+            0
+        )
+        XCTAssertEqual(
+            RimeKeyMapping.selectedCandidateIndex(
+                for: 59,
+                highlightedIndex: 0,
+                candidateCount: 5,
+                apostropheSelectsThird: false
+            ),
+            1
+        )
+        XCTAssertEqual(
+            RimeKeyMapping.selectedCandidateIndex(
+                for: 39,
+                highlightedIndex: 0,
+                candidateCount: 5,
+                apostropheSelectsThird: true
+            ),
+            2
+        )
+        XCTAssertNil(
+            RimeKeyMapping.selectedCandidateIndex(
+                for: 39,
+                highlightedIndex: 0,
+                candidateCount: 5,
+                apostropheSelectsThird: false
+            )
+        )
+        XCTAssertNil(
+            RimeKeyMapping.selectedCandidateIndex(
+                for: 57,
+                highlightedIndex: 0,
+                candidateCount: 5,
+                apostropheSelectsThird: false
+            )
+        )
+    }
+
     // MARK: - 修饰键掩码
 
     func testModifierMaskComposition() {
