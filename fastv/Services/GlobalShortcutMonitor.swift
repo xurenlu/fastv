@@ -288,6 +288,14 @@ class GlobalShortcutMonitor {
             handleFNKeyEvent(event, targetModifiers: targetModifiersFiltered)
             return
         }
+
+        // 主快捷鍵不是 FN、但次快捷鍵（AI 校正）是 FN 時，FN 自身的事件同樣需要走 FN 分支，
+        // 否則 FN+Control 永遠不會被識別。只認 keyCode 0x3F，避免方向鍵等自帶 .function
+        // 標誌的普通按鍵被錯誤吞掉。
+        if secondaryKeyCode == 0x3F && event.keyCode == 0x3F {
+            handleFNKeyEvent(event, targetModifiers: targetModifiersFiltered)
+            return
+        }
         
         // 特殊处理单独的Control键（左Control键码：0x3B，右Control键码：0x3E）
         // 注意：这里我们使用特殊的keyCode 0xFFFF 来表示"单独的Control键"
@@ -334,6 +342,10 @@ class GlobalShortcutMonitor {
         let isFNKeyByCode = event.keyCode == 0x3F
         let isFNKey = isFNKeyByCode && hasFunctionFlag
 
+        // 主快捷鍵本身是否為 FN。若不是（例如主快捷鍵是 ⌥V、次快捷鍵才是 FN+Control），
+        // 則單按 FN 不得觸發純語音輸入，只有 FN+Control 才算命中次快捷鍵。
+        let primaryIsFN = targetKeyCode == 0x3F
+
         switch event.type {
         case .flagsChanged:
             // 对于flagsChanged事件，主要依赖function标志位的变化
@@ -360,13 +372,13 @@ class GlobalShortcutMonitor {
             if hasCtrl && secondaryKeyCode == 0x3F && secondaryModifiers?.contains(.control) == true {
                 // FN+Control → 語音輸入+AI校正
                 detectedType = .voiceInputWithAI
-            } else if !hasCtrl && targetModifiers.isEmpty {
+            } else if !hasCtrl && primaryIsFN && targetModifiers.isEmpty {
                 // 純 FN → 純語音輸入
                 detectedType = .voiceInput
-            } else if eventModifiers == targetModifiers {
+            } else if primaryIsFN && eventModifiers == targetModifiers {
                 // 其他情況：檢查是否匹配主快捷鍵
                 detectedType = .voiceInput
-            } else if hasCtrl {
+            } else if hasCtrl && primaryIsFN {
                 // 有 Ctrl 但沒有配置次快捷鍵，仍視為語音輸入+AI（向後兼容）
                 detectedType = .voiceInputWithAI
             } else {
@@ -428,7 +440,7 @@ class GlobalShortcutMonitor {
             // 对于keyDown事件，必须同时满足keyCode和function标志位
             guard isFNKey else { return }
             print("🔑 [GlobalShortcutMonitor] FN键 keyDown: modifiers=\(eventModifiers.rawValue), 目标modifiers=\(targetModifiers.rawValue)")
-            if eventModifiers == targetModifiers && !isKeyPressed {
+            if primaryIsFN && eventModifiers == targetModifiers && !isKeyPressed {
                 print("✅ [GlobalShortcutMonitor] FN键按下匹配！立即触发 onShortcutPressed")
                 isKeyPressed = true
                 hasOtherKeyPressedWithFN = false

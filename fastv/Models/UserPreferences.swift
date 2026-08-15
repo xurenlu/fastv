@@ -793,14 +793,17 @@ class UserPreferences: ObservableObject {
         if let savedKeyCode = defaults.object(forKey: Keys.voiceInputShortcutKeyCode) as? UInt16 {
             voiceInputShortcutKeyCode = savedKeyCode
         } else {
-            voiceInputShortcutKeyCode = 0x09 // V键
+            // 默认使用 FN 键：与设置页「恢复默认」、帮助文案 fn.key.hint 保持一致。
+            // 注意：init 内的初始化赋值不触发 willSet，因此这里只影响从未改过快捷键的用户，
+            // 已显式设置过的用户仍读取自己的存储值。
+            voiceInputShortcutKeyCode = 0x3F // FN键
         }
-        
+
         if let savedModifiers = defaults.object(forKey: Keys.voiceInputShortcutModifiers) as? UInt {
             voiceInputShortcutModifiers = NSEvent.ModifierFlags(rawValue: savedModifiers)
         } else {
-            // 默认使用 Option 键作为修饰键
-            voiceInputShortcutModifiers = .option
+            // 默认 FN 单键，不带任何修饰键
+            voiceInputShortcutModifiers = []
         }
         
         // 語音輸入+AI校正快捷鍵（默認 FN+Control）
