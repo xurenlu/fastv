@@ -49,6 +49,10 @@ private struct IncrementalSegmentInfo {
 
 // 智能分段轉寫結果緩存：邊說邊轉但不插入，鬆鍵時一次性合併輸出（利於 AI 優化整段）
 private var incrementalTranscriptionResults: [IncrementalSegmentInfo] = []
+/// 過短分段的音頻結轉緩衝：extractCurrentSegmentWithTiming 會無條件清空段落緩衝，
+/// 若此處因時長不足直接丟棄，這段音頻將永久丟失（表現為句子中間吞字）。
+/// 改為結轉到下一段開頭一起轉寫，保證任何錄進來的音頻都不會被扔掉。
+private var incrementalCarryOverRecording: VoiceRecording?
 private var currentSessionLiveInsertedText = ""
 // 智能分段本輪累計：語音時長、識別耗時（用於統計）
 private var currentSessionIncrementalAudioSeconds: TimeInterval = 0
@@ -75,26 +79,32 @@ private func performIncrementalSegmentTranscription() async {
     let language = TranscriptLanguage(rawValue: UserPreferences.shared.voiceInputLanguage) ?? .zh
 
     guard let result = try? await voiceService.extractCurrentSegmentWithTiming() else { return }
-    guard result.duration >= VoiceInputDurationThreshold.minimumIncrementalSegment else {
-        print("⚠️ [fastvApp] 智能分段：段落過短(\(String(format: "%.1f", result.duration))s)，跳過")
+
+    // 先併入上一輪結轉的過短音頻，再判斷時長
+    let merged = mergeWithIncrementalCarryOver(result.recording)
+    guard merged.durationSeconds >= VoiceInputDurationThreshold.minimumIncrementalSegment else {
+        // 不丟棄：結轉到下一段一起轉寫，避免吞字
+        incrementalCarryOverRecording = merged
+        print("⚠️ [fastvApp] 智能分段：段落過短(\(String(format: "%.1f", merged.durationSeconds))s)，結轉至下一段")
         return
     }
+    incrementalCarryOverRecording = nil
 
-    currentSessionIncrementalAudioSeconds += result.duration
+    currentSessionIncrementalAudioSeconds += merged.durationSeconds
 
     // 檢測到停頓、開始轉寫時，立即切換為轉文字中的轉圈樣式
     waveformManager.setTranscribing()
 
     let transcribeStart = CFAbsoluteTimeGetCurrent()
     do {
-        var text = try await SpeechTranscriber.transcribe(recording: result.recording, language: language, enableCTCDeduplication: nil)
+        var text = try await SpeechTranscriber.transcribe(recording: merged, language: language, enableCTCDeduplication: nil)
         currentSessionIncrementalTranscriptionSeconds += CFAbsoluteTimeGetCurrent() - transcribeStart
         if CommonMistakeManager.shared.enableAutoCorrection {
             text = TextCorrectionService.shared.correctText(text)
         }
         guard !text.isEmpty else { return }
 
-        let segmentInfo = IncrementalSegmentInfo(audio: result.recording, transcript: text)
+        let segmentInfo = IncrementalSegmentInfo(audio: merged, transcript: text)
         incrementalTranscriptionResults.append(segmentInfo)
         print("✅ [fastvApp] 智能分段轉寫緩存: \(text.prefix(30))... (共\(incrementalTranscriptionResults.count)段)")
 
@@ -113,6 +123,26 @@ private func performIncrementalSegmentTranscription() async {
 
     // 轉寫完成，恢復錄音狀態（用戶可繼續說話）
     waveformManager.setRecording()
+}
+
+/// 將結轉緩衝中的過短音頻拼到本段前面，返回合併後的錄音。
+/// 採樣率/聲道不一致時（正常不會發生，錄音會話中格式固定）放棄結轉，只返回本段，避免拼出雜音。
+private func mergeWithIncrementalCarryOver(_ recording: VoiceRecording) -> VoiceRecording {
+    guard let carry = incrementalCarryOverRecording, !carry.pcmData.isEmpty else {
+        return recording
+    }
+    guard carry.sampleRate == recording.sampleRate,
+          carry.channelCount == recording.channelCount else {
+        print("⚠️ [fastvApp] 結轉音頻格式不一致，放棄結轉")
+        incrementalCarryOverRecording = nil
+        return recording
+    }
+    print("🔗 [fastvApp] 併入結轉音頻 \(String(format: "%.2f", carry.durationSeconds))s")
+    return VoiceRecording(
+        pcmData: carry.pcmData + recording.pcmData,
+        sampleRate: recording.sampleRate,
+        channelCount: recording.channelCount
+    )
 }
 
 /// 動態規劃分批：每批至少 minSegments 段、至少 minDuration 秒、最多 maxDuration 秒
@@ -885,6 +915,7 @@ struct fastvApp: App {
         currentSessionUsesLiveInsertion = !needsAI
         currentSessionUsesIncremental = currentSessionUsesLiveInsertion || preferences.enableIncrementalTranscription
         incrementalTranscriptionResults = []
+        incrementalCarryOverRecording = nil
         currentSessionLiveInsertedText = ""
         currentSessionIncrementalAudioSeconds = 0
         currentSessionIncrementalTranscriptionSeconds = 0
@@ -965,6 +996,7 @@ struct fastvApp: App {
         currentSessionUsesLiveInsertion = !needsAI
         currentSessionUsesIncremental = currentSessionUsesLiveInsertion || preferences.enableIncrementalTranscription
         incrementalTranscriptionResults = []
+        incrementalCarryOverRecording = nil
         currentSessionLiveInsertedText = ""
         currentSessionIncrementalAudioSeconds = 0
         currentSessionIncrementalTranscriptionSeconds = 0
@@ -1148,11 +1180,15 @@ struct fastvApp: App {
             
             // 轉寫剩餘段落並合併
             let minRemainingDuration = fullText.isEmpty ? VoiceInputDurationThreshold.minimumIncrementalSegment : VoiceInputDurationThreshold.minimumRemainingWhenHasCache
-            if let result = remainingSegmentResult, result.duration >= minRemainingDuration {
-                currentSessionIncrementalAudioSeconds += result.duration
+            // 末段同樣要併入結轉緩衝，否則錄音末尾被切出的過短片段會連同結轉音頻一起丟失
+            let remainingRecording = remainingSegmentResult.map { mergeWithIncrementalCarryOver($0.recording) }
+                ?? incrementalCarryOverRecording
+            incrementalCarryOverRecording = nil
+            if let remaining = remainingRecording, remaining.durationSeconds >= minRemainingDuration {
+                currentSessionIncrementalAudioSeconds += remaining.durationSeconds
                 let transcribeStart = CFAbsoluteTimeGetCurrent()
                 do {
-                    var remainingText = try await SpeechTranscriber.transcribe(recording: result.recording, language: TranscriptLanguage(rawValue: preferences.voiceInputLanguage) ?? .zh, enableCTCDeduplication: nil)
+                    var remainingText = try await SpeechTranscriber.transcribe(recording: remaining, language: TranscriptLanguage(rawValue: preferences.voiceInputLanguage) ?? .zh, enableCTCDeduplication: nil)
                     currentSessionIncrementalTranscriptionSeconds += CFAbsoluteTimeGetCurrent() - transcribeStart
                     if CommonMistakeManager.shared.enableAutoCorrection {
                         remainingText = TextCorrectionService.shared.correctText(remainingText)
