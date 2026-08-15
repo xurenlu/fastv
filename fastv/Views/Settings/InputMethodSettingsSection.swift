@@ -60,6 +60,10 @@ struct InputMethodSettingsSection: View {
                 )
             )
 
+            Text(NSLocalizedString("ime.userdict.learning.hint", comment: ""))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
             Text(NSLocalizedString("ime.shortcuts.hint", comment: ""))
                 .font(.caption)
                 .foregroundStyle(.secondary)

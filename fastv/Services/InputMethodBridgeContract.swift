@@ -32,6 +32,9 @@ enum InputMethodBridgeContract {
     /// IME 设置文件名（位于 IME 用户数据目录，主 App 写、IME 读；输入法菜单切方案时 IME 也回写）
     static let settingsFileName = "qecho-ime-settings.json"
 
+    /// 候选采用率统计文件名；IME 始终在本机记录，不受动态词频开关影响。
+    static let candidateLearningFileName = "candidate-adoption-statistics.json"
+
     /// 主 App 打开设置窗口的分布式通知名（输入法菜单「轻语设置…」触发；不携带任何用户数据）
     static let openSettingsDistributedNotification = "com.17push.musetype.ime.open-settings"
 

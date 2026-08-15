@@ -20,6 +20,7 @@ final class QechoIMEController: IMKInputController {
     private static let notFoundRange = NSRange(location: NSNotFound, length: NSNotFound)
 
     private var lastModifiers: NSEvent.ModifierFlags = []
+    private var shiftUsedAsModifier = false
 
     // MARK: - 生命周期
 
@@ -27,6 +28,8 @@ final class QechoIMEController: IMKInputController {
         super.activateServer(sender)
         RimeEngine.shared.startIfNeeded()
         IMESettingsCoordinator.shared.applyIfNeeded()
+        lastModifiers = []
+        shiftUsedAsModifier = false
         VoiceCommitServer.shared.register(activeController: self)
         // 候选窗点击选字回调绑定到当前 controller
         QechoPanels.candidateWindow?.onSelect = { [weak self] index in
@@ -39,6 +42,7 @@ final class QechoIMEController: IMKInputController {
         if let client = sender as? IMKTextInput & NSObjectProtocol {
             flushRawInput(to: client)
         }
+        CandidateLearningStore.shared.flush()
         QechoPanels.candidateWindow?.hide()
         VoiceCommitServer.shared.unregister(controller: self)
         super.deactivateServer(sender)
@@ -58,12 +62,15 @@ final class QechoIMEController: IMKInputController {
 
         switch event.type {
         case .flagsChanged:
-            handleFlagsChanged(event)
+            let handled = handleFlagsChanged(event, client: client)
             syncState(with: client)
-            return false
+            return handled
         case .keyDown:
-            guard !event.modifierFlags.contains(.command) else { return false }
             let flags = event.modifierFlags
+            if flags.contains(.shift) {
+                shiftUsedAsModifier = true
+            }
+            guard !flags.contains(.command) else { return false }
             let characters = flags.contains(.control)
                 ? event.charactersIgnoringModifiers
                 : event.characters
@@ -77,7 +84,24 @@ final class QechoIMEController: IMKInputController {
                 command: false,
                 capsLock: flags.contains(.capsLock)
             )
+            let candidateState = engine.snapshot()
+            let rawInput = engine.rawInput()
             let handled = engine.processKey(keysym: keysym, modifiers: mask)
+            if handled,
+               let candidateState,
+               let selectedIndex = RimeKeyMapping.selectedCandidateIndex(
+                    for: keysym,
+                    highlightedIndex: candidateState.highlightedIndex,
+                    candidateCount: candidateState.candidates.count,
+                    apostropheSelectsThird: engine.currentSchemaId() == IMESchema.wubi.rawValue
+               ) {
+                recordCandidateSelection(
+                    state: candidateState,
+                    rawInput: rawInput,
+                    selectedIndex: selectedIndex,
+                    source: .keyboard
+                )
+            }
             syncState(with: client)
             return handled
         default:
@@ -85,22 +109,42 @@ final class QechoIMEController: IMKInputController {
         }
     }
 
-    /// Shift 抬起切中英文（由 Rime ascii_composer 决定行为），只透传按下/抬起事件
-    private func handleFlagsChanged(_ event: NSEvent) {
+    /// 独立 Shift：有汉字候选时上屏原始英文且保持中文；否则交给 Rime 切中英文。
+    private func handleFlagsChanged(
+        _ event: NSEvent,
+        client: IMKTextInput & NSObjectProtocol
+    ) -> Bool {
         let previous = lastModifiers
         let current = event.modifierFlags
         lastModifiers = current
         let shiftWas = previous.contains(.shift)
         let shiftNow = current.contains(.shift)
-        guard shiftWas != shiftNow else { return }
+        guard shiftWas != shiftNow else { return false }
         if shiftNow {
-            _ = RimeEngine.shared.processKey(keysym: RimeKeyMapping.XK_Shift_L, modifiers: 0)
-        } else {
-            _ = RimeEngine.shared.processKey(
-                keysym: RimeKeyMapping.XK_Shift_L,
-                modifiers: RimeKeyMapping.shiftMask | RimeKeyMapping.releaseMask
-            )
+            shiftUsedAsModifier = false
+            return false
         }
+
+        defer { shiftUsedAsModifier = false }
+        guard !shiftUsedAsModifier else { return false }
+
+        let engine = RimeEngine.shared
+        let candidates = engine.snapshot()?.candidates.map(\.text) ?? []
+        if RimeKeyMapping.shouldCommitRawInputOnStandaloneShift(
+            isASCIIMode: engine.option("ascii_mode"),
+            candidates: candidates
+        ) {
+            guard let rawInput = engine.takeRawInput(), !rawInput.isEmpty else { return false }
+            client.insertText(rawInput, replacementRange: Self.notFoundRange)
+            return true
+        }
+
+        _ = engine.processKey(keysym: RimeKeyMapping.XK_Shift_L, modifiers: 0)
+        _ = engine.processKey(
+            keysym: RimeKeyMapping.XK_Shift_L,
+            modifiers: RimeKeyMapping.shiftMask | RimeKeyMapping.releaseMask
+        )
+        return false
     }
 
     // MARK: - 状态同步（上屏 + 组字区 + 候选窗）
@@ -165,10 +209,39 @@ final class QechoIMEController: IMKInputController {
 
     /// 候选窗点击选字：当前页内序号 index
     private func selectCandidateByClick(_ index: Int) {
-        guard RimeEngine.shared.selectCandidate(onCurrentPage: index) else { return }
+        let engine = RimeEngine.shared
+        let candidateState = engine.snapshot()
+        let rawInput = engine.rawInput()
+        guard engine.selectCandidate(onCurrentPage: index) else { return }
+        if let candidateState {
+            recordCandidateSelection(
+                state: candidateState,
+                rawInput: rawInput,
+                selectedIndex: index,
+                source: .mouse
+            )
+        }
         if let client = client() {
             syncState(with: client)
         }
+    }
+
+    private func recordCandidateSelection(
+        state: RimeEngine.CompositionState,
+        rawInput: String,
+        selectedIndex: Int,
+        source: CandidateSelectionSource
+    ) {
+        guard state.candidates.indices.contains(selectedIndex) else { return }
+        CandidateLearningStore.shared.recordSelection(
+            schemaId: RimeEngine.shared.currentSchemaId() ?? IMESchema.mixed.rawValue,
+            inputCode: rawInput,
+            candidates: state.candidates.map(\.text),
+            selectedIndex: selectedIndex,
+            pageNumber: state.pageNumber,
+            dynamicRankingEnabled: IMESettingsCoordinator.shared.currentUserDictEnabled,
+            source: source
+        )
     }
 
     private func clearMarkedText(of client: IMKTextInput & NSObjectProtocol) {

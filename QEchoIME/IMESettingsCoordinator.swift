@@ -18,6 +18,8 @@ final class IMESettingsCoordinator {
 
     /// 候选窗渲染用的当前外观（缺失回落默认并钳制）；随设置变更即时刷新
     private(set) var currentAppearance: CandidateAppearance = .default
+    /// 仅控制 Rime 用户词典是否参与动态排序；独立采用率学习始终记录。
+    private(set) var currentUserDictEnabled = IMESettings.default.enableUserDict
 
     private init() {}
 
@@ -30,6 +32,7 @@ final class IMESettingsCoordinator {
         let settings = IMESettings.load()
         // 外观变更不涉及引擎，单独刷新（即使 settings 整体没变也保证首帧有值）
         currentAppearance = settings.appearance
+        currentUserDictEnabled = settings.enableUserDict
         guard settings != applied else { return }
 
         // 词频开关 / 候选个数落在 *.custom.yaml（主 App 通知前已重写），需整体重启让 Rime 重部署
@@ -54,5 +57,6 @@ final class IMESettingsCoordinator {
             NSLog("QechoIME: 设置文件写入失败 \(error.localizedDescription)")
         }
         applied = settings
+        currentUserDictEnabled = settings.enableUserDict
     }
 }

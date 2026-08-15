@@ -22,6 +22,14 @@ class SilenceDetector: ObservableObject {
     var relativeThreshold: Float = 0.3         // 相对阈值百分比(0.3表示30%),当电平下降到峰值的此百分比时也视为静音
     var minimumSilenceDuration: TimeInterval = 1.5  // 最短静音持续时长(秒)
     var windowSize: Int = 10                  // 滑动窗口大小(采样点数)
+
+    /// 峰值衰减系数：每帧将说话峰值按此比例缓慢回落。
+    /// 峰值若只增不减，一次重音（或咳嗽、敲键盘）会把相对阈值长期抬高，
+    /// 导致同一句话后半段的正常音量被误判为静音，把句子从中间切开。
+    var peakDecayFactor: Float = 0.98
+    /// 相对检测触发的静音，需要更长的持续时长才认定为句子结束。
+    /// 绝对阈值静音是"真没声音"，相对下降更可能只是句中换气。
+    var relativeSilenceDurationMultiplier: Double = 1.5
     
     // 状态
     @Published private(set) var isSilent = false
@@ -37,6 +45,8 @@ class SilenceDetector: ObservableObject {
     
     // 触发控制：确保每次静音段只触发一次回调
     private var hasTriggeredForCurrentSilence: Bool = false
+    // 当前静音段是否由绝对阈值判定（否则为相对下降判定，需要更长时长才切段）
+    private var currentSilenceIsAbsolute: Bool = false
     
     // 回调
     var onSilenceDetected: ((TimeInterval) -> Void)?
@@ -54,6 +64,7 @@ class SilenceDetector: ObservableObject {
         speechPeakLevel = 0.0
         hasDetectedSpeech = false
         hasTriggeredForCurrentSilence = false
+        currentSilenceIsAbsolute = false
     }
     
     /// 处理新的音频电平数据
@@ -76,6 +87,9 @@ class SilenceDetector: ObservableObject {
         if level > speechPeakLevel {
             speechPeakLevel = level
             hasDetectedSpeech = true
+        } else {
+            // 峰值缓慢回落，跟随近期音量而非整段历史最大值
+            speechPeakLevel *= peakDecayFactor
         }
         
         // 混合检测：绝对阈值 OR 相对下降检测
@@ -98,16 +112,25 @@ class SilenceDetector: ObservableObject {
                 silenceStartTime = now
                 isSilent = true
                 hasTriggeredForCurrentSilence = false  // 新的静音段，重置触发标志
+                currentSilenceIsAbsolute = absoluteSilent
                 let detectionType = absoluteSilent ? "绝对阈值" : "相对下降"
                 print("🔇 [SilenceDetector] 检测到静音开始(\(detectionType)), 当前电平=\(String(format: "%.4f", averageLevel)), 峰值=\(String(format: "%.4f", speechPeakLevel))")
+            } else if absoluteSilent {
+                // 静音期间电平继续下降到绝对阈值以下，按真静音处理
+                currentSilenceIsAbsolute = true
             }
-            
+
             // 计算静音持续时长
             if let startTime = silenceStartTime {
                 currentSilenceDuration = now.timeIntervalSince(startTime)
-                
+
+                // 相对下降判定的静音更可能是句中换气，要求更长的持续时长才切段
+                let requiredDuration = currentSilenceIsAbsolute
+                    ? minimumSilenceDuration
+                    : minimumSilenceDuration * relativeSilenceDurationMultiplier
+
                 // 如果达到最小静音时长且尚未触发过,立即触发回调
-                if currentSilenceDuration >= minimumSilenceDuration && !hasTriggeredForCurrentSilence {
+                if currentSilenceDuration >= requiredDuration && !hasTriggeredForCurrentSilence {
                     hasTriggeredForCurrentSilence = true  // 标记已触发，避免重复
                     print("🔇 [SilenceDetector] 检测到有效静音段,持续时长: \(String(format: "%.2f", currentSilenceDuration))秒 → 立即触发转写")
                     onSilenceDetected?(currentSilenceDuration)
@@ -123,6 +146,7 @@ class SilenceDetector: ObservableObject {
                 speechPeakLevel = 0.0
                 hasDetectedSpeech = false
                 hasTriggeredForCurrentSilence = false
+                currentSilenceIsAbsolute = false
             }
             isSilent = false
             silenceStartTime = nil

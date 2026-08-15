@@ -39,6 +39,53 @@ enum RimeKeyMapping {
     static let XK_Shift_L: Int32 = 0xFFE1
     static let XK_Shift_R: Int32 = 0xFFE2
 
+    /// 中文模式下，独立 Shift 仅在当前页存在汉字候选时提交原始英文编码。
+    /// 无汉字候选或已经处于英文模式时，Shift 仍交给 Rime 切换中英文。
+    nonisolated static func shouldCommitRawInputOnStandaloneShift(
+        isASCIIMode: Bool,
+        candidates: [String]
+    ) -> Bool {
+        !isASCIIMode && candidates.contains(where: containsHanCharacter)
+    }
+
+    nonisolated static func containsHanCharacter(_ text: String) -> Bool {
+        text.unicodeScalars.contains { scalar in
+            switch scalar.value {
+            case 0x3400...0x4DBF,   // CJK Extension A
+                 0x4E00...0x9FFF,   // CJK Unified Ideographs
+                 0xF900...0xFAFF,   // CJK Compatibility Ideographs
+                 0x20000...0x2FA1F: // CJK Extensions B–F + Compatibility Supplement
+                return true
+            default:
+                return false
+            }
+        }
+    }
+
+    /// 从当前页候选菜单快捷键推导被采用的页内序号。
+    nonisolated static func selectedCandidateIndex(
+        for keysym: Int32,
+        highlightedIndex: Int,
+        candidateCount: Int,
+        apostropheSelectsThird: Bool
+    ) -> Int? {
+        let index: Int?
+        switch keysym {
+        case XK_space:
+            index = highlightedIndex
+        case 49...57:
+            index = Int(keysym - 49)
+        case 59:
+            index = 1
+        case 39 where apostropheSelectsThird:
+            index = 2
+        default:
+            index = nil
+        }
+        guard let index, (0..<candidateCount).contains(index) else { return nil }
+        return index
+    }
+
     // MARK: - 键值映射
 
     /// mac 虚拟键码 + 事件字符 → X11 keysym。

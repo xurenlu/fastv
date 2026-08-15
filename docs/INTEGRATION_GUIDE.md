@@ -20,24 +20,7 @@
 7. 点击 **"Add Package"**
 8. 确保 "fastv" target 被选中，点击 **"Add Package"**
 
-### 方法 B：CocoaPods
-
-1. 在项目根目录创建 `Podfile`：
-   ```ruby
-   platform :osx, '11.0'
-   use_frameworks!
-   
-   target 'fastv' do
-     pod 'onnxruntime-mobile-objc', '~> 1.15.0'
-   end
-   ```
-
-2. 运行安装：
-   ```bash
-   pod install
-   ```
-
-3. 之后使用 `fastv.xcworkspace` 打开项目（而不是 `.xcodeproj`）
+> 当前项目不支持 CocoaPods。请勿创建 `Podfile` 或切换到 `.xcworkspace`；仓库内 ONNX Runtime C API 是当前受控实现。
 
 ## 步骤 2：启用 ONNX Runtime 实现
 
@@ -155,4 +138,3 @@
 2. 模型文件完整性
 3. 依赖版本兼容性
 4. 系统要求（macOS 11.0+）
-

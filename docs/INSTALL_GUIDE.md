@@ -43,23 +43,9 @@
 
 如果你想通过命令行添加，可以创建一个 Package.swift 文件，但 macOS 项目通常直接在 Xcode 中管理更方便。
 
-## 如果必须使用 CocoaPods
+## 依赖策略
 
-如果你坚持使用 CocoaPods，需要：
-
-1. **设置代理**（端口 7856）：
-   ```bash
-   export https_proxy=http://127.0.0.1:7856
-   export http_proxy=http://127.0.0.1:7856
-   export all_proxy=socks5://127.0.0.1:7856
-   ```
-
-2. **尝试使用 C API 版本**（需要手动集成）：
-   - 下载 ONNX Runtime C API
-   - 手动添加到项目中
-   - 创建桥接头文件
-
-**不推荐此方案**，因为 macOS 支持不完善且配置复杂。
+当前项目不支持 CocoaPods，也不接受通过 `Podfile` 添加依赖。ONNX Runtime 使用仓库内受控的 C API 二进制，Sparkle 使用 Swift Package Manager。
 
 ## 验证安装
 
@@ -95,4 +81,3 @@
 4. 构建并运行
 
 **不需要执行任何命令行命令！**
-
