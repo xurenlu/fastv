@@ -141,7 +141,7 @@ enum AIProtocolType: String, Codable, CaseIterable {
         case .dashScope:
             return ["qwen-flash", "qwen3.5-flash", "qwen3.5-plus", "qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext", "qwen-vl-plus", "qwen-vl-max"]
         case .ollama:
-            return ["gemma2:2b", "deepseek-r1:1.5b", "qwen2.5:7b", "llama3.2:3b"]
+            return ["gemma4:e4b-it-qat", "gemma4:e2b-it-qat", "gemma2:2b", "qwen2.5:7b", "llama3.2:3b", "deepseek-r1:1.5b"]
         case .claude:
             return ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-sonnet-20240229"]
         case .someIM:
@@ -182,11 +182,17 @@ enum AIProtocolType: String, Codable, CaseIterable {
         }
     }
     
+    /// 历史版本给 Ollama 用的 5 秒超时。本地 4B~8B 模型冷加载就要 5~8 秒，这个值必然超时，
+    /// 读取旧配置时一次性抬到新的默认值（见 `AIServiceProfile.init(from:)`）。
+    static let legacyOllamaTimeout: Double = 5.0
+
     /// 默认超时时间（秒）
     var defaultTimeout: Double {
         switch self {
         case .ollama:
-            return 5.0       // 本地服务，响应快
+            // 本地模型不等于快：实测 gemma4:e4b-it-qat 关思考后冷启动 8 秒（含 6.5 秒加载）、
+            // 热调用 1.6 秒；换更大的模型或开着思考只会更久。留 60 秒，够冷加载也不至于死等。
+            return 60.0
         case .dashScope:
             return 60.0      // DashScope 云端 API，推理较慢
         case .claude:
@@ -373,7 +379,12 @@ struct AIServiceProfile: Codable, Identifiable, Equatable {
         endpoint = try container.decodeIfPresent(String.self, forKey: .endpoint) ?? protocolType.defaultEndpoint ?? ""
         apiKey = try container.decodeIfPresent(String.self, forKey: .apiKey) ?? ""
         defaultModel = try container.decodeIfPresent(String.self, forKey: .defaultModel) ?? (protocolType.recommendedModels.first ?? "")
-        timeout = try container.decodeIfPresent(Double.self, forKey: .timeout) ?? protocolType.defaultTimeout
+        let storedTimeout = try container.decodeIfPresent(Double.self, forKey: .timeout) ?? protocolType.defaultTimeout
+        // 迁移：历史 Ollama 配置存的是 5 秒（"本地服务响应快"的旧假设），本地模型光冷加载就不止
+        // 5 秒，旧值会让每次 AI 校正都超时失败。只抬升不高于旧默认值的配置，用户手调过的更大值保留。
+        timeout = (protocolType == .ollama && storedTimeout <= AIProtocolType.legacyOllamaTimeout)
+            ? protocolType.defaultTimeout
+            : storedTimeout
         isDefault = try container.decodeIfPresent(Bool.self, forKey: .isDefault) ?? false
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt

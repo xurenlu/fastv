@@ -303,9 +303,11 @@ class AIServiceAdapter {
             var body: [String: Any] = [
                 "model": effectiveModel,
                 "prompt": prompt,
-                "stream": false
+                "stream": false,
+                // 关掉思考模式，否则 gemma4 这类模型会先吐一大段思考，实测慢一个数量级
+                OllamaRequestDefaults.thinkingKey: OllamaRequestDefaults.thinkingEnabled
             ]
-            
+
             if let systemPrompt = systemPrompt {
                 body["system"] = systemPrompt
             }

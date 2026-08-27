@@ -37,6 +37,9 @@ struct OllamaModelInfo: Identifiable {
 enum OllamaLibrary {
     /// 常用模型列表：(name, sizeBytes, parameterSize)
     static let popularModels: [(name: String, sizeBytes: Int64, parameterSize: String)] = [
+        // Gemma 4（QAT 量化版，本机语音修正实测最佳质量/速度平衡；调用时已统一关思考模式）
+        ("gemma4:e4b-it-qat", 6_150_000_000, "7.5B"),
+        ("gemma4:e2b-it-qat", 4_340_000_000, "4.6B"),
         // 小模型 - 适合语音优化、快速响应
         ("gemma2:2b", 1_573_000_000, "2B"),
         ("deepseek-r1:1.5b", 1_200_000_000, "1.5B"),

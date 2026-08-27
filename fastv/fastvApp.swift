@@ -960,6 +960,19 @@ struct fastvApp: App {
         )
     }
 
+    /// AI 校正若绑定的是本地 Ollama，则在录音开始时并行预热该模型（失败静默跳过）
+    private static func warmUpLocalAIModelIfNeeded() {
+        let config = UserPreferences.shared.getConfig(for: .voiceInputOptimization)
+        guard config.profile.protocolType == .ollama else { return }
+        Task { @MainActor in
+            await OllamaService.shared.warmUpModel(
+                endpoint: config.profile.effectiveEndpoint,
+                model: config.model,
+                apiToken: config.profile.apiKey.isEmpty ? nil : config.profile.apiKey
+            )
+        }
+    }
+
     /// 快捷键按下立即响应（同步路径，最小化延迟）
     /// 执行关键操作：显示波形窗口、启动录音
     private static func handleShortcutPressedImmediate(shortcutType: ShortcutType = .voiceInput) {
@@ -991,6 +1004,11 @@ struct fastvApp: App {
         incrementalBatchPartition = []
         incrementalBatchRefinedTexts = []
         SpeechModelPreloadManager.shared.warmUpForImmediateVoiceInput()
+        if needsAI {
+            // AI 校正走本地 Ollama 时，模型冷加载要 6~8 秒。趁着现在开始录音，并行把它拉进内存，
+            // 松手时直接进生成，不用盯着转圈等加载。非本地服务不做任何事。
+            warmUpLocalAIModelIfNeeded()
+        }
 
         let voiceService = VoiceInputService.shared
         let waveformManager = WaveformWindowManager.shared

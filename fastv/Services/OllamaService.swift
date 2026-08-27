@@ -8,6 +8,22 @@
 import Foundation
 import AppKit
 
+/// Ollama 原生请求（`/api/generate`）的统一默认值
+enum OllamaRequestDefaults {
+    /// 是否让模型输出思考过程。
+    ///
+    /// gemma4 这类带 thinking 的模型默认会先吐一大段思考再给结果，对语音输入是纯粹的负担。
+    /// 本机实测 `gemma4:e4b-it-qat` 修正一句口语（2026-08-27，Ollama 0.32.9）：
+    /// - 开思考：冷启动 29.7s，热调用 20.9s
+    /// - 关思考：冷启动 8.0s，热调用 1.6s
+    /// 语音输入要的是松手即上屏，思考过程既不展示也不利用，因此所有 Ollama 调用一律关掉。
+    /// 不支持思考的模型收到该字段会被忽略（实测 gemma3 / qwen2.5 / llama3.2 均正常返回）。
+    static let thinkingEnabled = false
+
+    /// 请求体里的思考开关字段名
+    static let thinkingKey = "think"
+}
+
 /// Ollama AI 服务
 @MainActor
 class OllamaService {
@@ -21,6 +37,51 @@ class OllamaService {
         case openAI
     }
     
+    /// 最近一次预热的 (模型, 时间)，用于节流
+    private var lastWarmUp: (model: String, at: Date)?
+
+    /// 同一模型的预热节流间隔（秒）。Ollama 的 keep_alive 远长于此，重复预热纯属浪费。
+    private static let warmUpThrottleInterval: TimeInterval = 60
+
+    /// 预热本地模型：空 prompt + keep_alive，只把权重加载进内存，不生成任何 token。
+    ///
+    /// 本机实测 `gemma4:e4b-it-qat` 冷加载 6.5~7.5 秒——若等到松开快捷键才开始加载，
+    /// 用户就要盯着转圈干等。改在按下 AI 快捷键（即开始录音）时并行预热，录音时长通常
+    /// 足以覆盖加载，松手后直接进生成。预热失败不影响主流程，静默吞掉即可。
+    func warmUpModel(endpoint: String, model: String, apiToken: String?, keepAlive: String = "10m") async {
+        guard !model.isEmpty else { return }
+        if let lastWarmUp, lastWarmUp.model == model,
+           Date().timeIntervalSince(lastWarmUp.at) < Self.warmUpThrottleInterval {
+            return
+        }
+        lastWarmUp = (model, Date())
+
+        guard let url = try? Self.buildAPIURL(endpoint: endpoint, useChatCompletions: false) else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = apiToken, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        // 不带 prompt：Ollama 只加载模型并返回 done_reason = "load"
+        let body: [String: Any] = [
+            "model": model,
+            "keep_alive": keepAlive
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: body) else { return }
+        request.httpBody = data
+        request.timeoutInterval = AIProtocolType.ollama.defaultTimeout
+
+        let start = CFAbsoluteTimeGetCurrent()
+        do {
+            _ = try await URLSession.shared.data(for: request)
+            let elapsed = CFAbsoluteTimeGetCurrent() - start
+            print("🔥 [OllamaService] 模型预热完成: \(model)，耗时 \(String(format: "%.1f", elapsed)) 秒")
+        } catch {
+            print("ℹ️ [OllamaService] 模型预热跳过: \(error.localizedDescription)")
+        }
+    }
+
     /// 检测 API 类型
     static func detectAPIType(endpoint: String) -> APIType {
         let lowercased = endpoint.lowercased()
@@ -282,6 +343,7 @@ class OllamaService {
                 "prompt": userPrompt,
                 "system": enhancedSystemPrompt,
                 "stream": false,
+                OllamaRequestDefaults.thinkingKey: OllamaRequestDefaults.thinkingEnabled,
                 "options": [
                     "temperature": 0.3,  // 较低的温度使输出更确定
                     "top_p": 0.9
@@ -802,6 +864,7 @@ class OllamaService {
             "prompt": prompt,
             "images": [base64Image],
             "stream": false,
+            OllamaRequestDefaults.thinkingKey: OllamaRequestDefaults.thinkingEnabled,
             "options": [
                 "temperature": 0.2,  // 较低温度以获得更确定的描述
                 "top_p": 0.9
@@ -940,6 +1003,7 @@ class OllamaService {
             "prompt": prompt,
             "images": [base64Image1, base64Image2],
             "stream": false,
+            OllamaRequestDefaults.thinkingKey: OllamaRequestDefaults.thinkingEnabled,
             "options": [
                 "temperature": 0.2,
                 "top_p": 0.9
@@ -1125,6 +1189,7 @@ class OllamaService {
                 "prompt": text,
                 "system": systemPrompt,
                 "stream": false,
+                OllamaRequestDefaults.thinkingKey: OllamaRequestDefaults.thinkingEnabled,
                 "options": [
                     "temperature": 0.3,
                     "top_p": 0.9
