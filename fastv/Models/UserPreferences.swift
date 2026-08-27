@@ -1169,7 +1169,7 @@ class UserPreferences: ObservableObject {
             endpoint: oldEndpoint,
             apiKey: aiAPIToken,
             defaultModel: aiModel,
-            timeout: aiTimeout,
+            timeout: effectiveLegacyTimeout(for: protocolType),
             isDefault: true
         )
         
@@ -1252,9 +1252,19 @@ class UserPreferences: ObservableObject {
             endpoint: aiAPIEndpoint,
             apiKey: aiAPIToken,
             defaultModel: aiModel,
-            timeout: aiTimeout
+            timeout: effectiveLegacyTimeout(for: .ollama)
         )
-        return (fallbackProfile, aiModel, aiTimeout)
+        return (fallbackProfile, aiModel, fallbackProfile.timeout)
+    }
+
+    /// 旧版单一配置（`aiTimeout`）的超时换算。
+    /// Ollama 的历史默认是 5 秒，撑不住本地模型冷加载（实测 gemma4:e4b 关思考也要 8 秒），
+    /// 这里把不高于旧默认值的配置抬到协议默认超时；用户手调过的更大值原样保留。
+    private func effectiveLegacyTimeout(for protocolType: AIProtocolType) -> Double {
+        if protocolType == .ollama, aiTimeout <= AIProtocolType.legacyOllamaTimeout {
+            return protocolType.defaultTimeout
+        }
+        return aiTimeout
     }
     
     /// 添加或更新 Profile
