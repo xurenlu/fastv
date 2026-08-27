@@ -128,6 +128,25 @@ class StatusBarManager: NSObject, ObservableObject {
     }
 
     private func applyActivity(_ activity: Activity, to button: NSStatusBarButton) {
+        // 闲置且缺辅助功能权限：全局热键收不到任何事件，按 FN 是彻底没反应的。
+        // 这种「功能已死但界面正常」最坑人，直接用橙色警示图标顶在菜单栏上。
+        if activity == .idle, !AccessibilityTrustWatcher.isTrusted {
+            let warningTooltip = NSLocalizedString(
+                "statusbar.hotkey.notReady",
+                value: "语音输入未就绪：缺少辅助功能权限，FN 快捷键不会响应",
+                comment: ""
+            )
+            let warning = NSImage(
+                systemSymbolName: "exclamationmark.triangle.fill",
+                accessibilityDescription: warningTooltip
+            )
+            warning?.isTemplate = false
+            button.contentTintColor = .systemOrange
+            button.image = warning
+            button.toolTip = warningTooltip
+            return
+        }
+
         let tooltip = NSLocalizedString(activity.tooltipKey, comment: "")
 
         // 闲置态用品牌脉冲麦克风图标（与 AppIcon 视觉一致，模板渲染跟随
@@ -159,6 +178,35 @@ class StatusBarManager: NSObject, ObservableObject {
         guard let statusItem = statusItem else { return }
 
         let menu = NSMenu()
+        menu.delegate = self
+        populate(menu)
+        statusItem.menu = menu
+    }
+
+    /// 填充菜单项。权限提示项随授权状态变化，因此每次菜单展开都重填一遍。
+    private func populate(_ menu: NSMenu) {
+        menu.removeAllItems()
+
+        // 缺辅助功能权限时全局热键静默失效（按 FN 毫无反应且没有任何提示），
+        // 这条置顶入口负责让「按了没反应」能自证并一键跳到授权页。
+        if !AccessibilityTrustWatcher.isTrusted {
+            let notReadyItem = NSMenuItem(
+                title: NSLocalizedString(
+                    "statusbar.hotkey.notReady.menu",
+                    value: "语音输入未就绪：缺少辅助功能权限",
+                    comment: ""
+                ),
+                action: #selector(openAccessibilitySettings(_:)),
+                keyEquivalent: ""
+            )
+            notReadyItem.target = self
+            notReadyItem.image = NSImage(
+                systemSymbolName: "exclamationmark.triangle.fill",
+                accessibilityDescription: nil
+            )
+            menu.addItem(notReadyItem)
+            menu.addItem(NSMenuItem.separator())
+        }
 
         let appName = NSLocalizedString("app.name", comment: "")
         let showMenuItem = NSMenuItem(
@@ -178,8 +226,6 @@ class StatusBarManager: NSObject, ObservableObject {
         )
         quitMenuItem.target = self
         menu.addItem(quitMenuItem)
-
-        statusItem.menu = menu
     }
 
     @objc private func showMainWindow(_ sender: NSMenuItem) {
@@ -193,6 +239,23 @@ class StatusBarManager: NSObject, ObservableObject {
 
     @objc private func quitApplication(_ sender: NSMenuItem) {
         NSApplication.shared.terminate(nil)
+    }
+
+    @objc private func openAccessibilitySettings(_ sender: NSMenuItem) {
+        Task { @MainActor in
+            AccessibilityTrustWatcher.openSystemSettings()
+        }
+    }
+
+    /// 重新渲染菜单栏图标的就绪状态（辅助功能权限刚授权时调用）
+    func refreshReadiness() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let button = self.statusBarButton else { return }
+            self.applyActivity(self.activity, to: button)
+            if let menu = self.statusItem?.menu {
+                self.populate(menu)
+            }
+        }
     }
 
     func show() {
@@ -210,5 +273,15 @@ class StatusBarManager: NSObject, ObservableObject {
         }
         statusItem = nil
         statusBarButton = nil
+    }
+}
+
+extension StatusBarManager: NSMenuDelegate {
+    /// 菜单展开时重填一次：顺手检查辅助功能权限，刚授权就能立刻自愈（重新注册热键 + 收起警示项）
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        Task { @MainActor in
+            AccessibilityTrustWatcher.shared.checkNow()
+        }
+        populate(menu)
     }
 }

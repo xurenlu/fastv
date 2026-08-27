@@ -14,6 +14,8 @@
 "statusbar.activity.recording" = "録音中…";
 "statusbar.activity.transcribing" = "文字起こし中…";
 "statusbar.activity.polishing" = "AI 最適化中…";
+"statusbar.hotkey.notReady" = "音声入力は使用できません：アクセシビリティ権限がなく、FN キーが反応しません";
+"statusbar.hotkey.notReady.menu" = "音声入力は使用できません：アクセシビリティ権限が必要";
 "quit" = "終了";
 "about.privacy.title" = "プライバシーの約束";
 "about.privacy.body" = "音声認識はすべてこのデバイス上で行われ、ネットワーク接続は不要です。録音データはサーバーに送信されません。AI 最適化を使う場合も、送信するのは文字起こし結果のテキストのみ（オフにもできます）。オフラインでも動作します。";

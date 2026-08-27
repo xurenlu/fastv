@@ -14,6 +14,8 @@
 "statusbar.activity.recording" = "錄緊音…";
 "statusbar.activity.transcribing" = "轉緊文字…";
 "statusbar.activity.polishing" = "AI 執緊靚…";
+"statusbar.hotkey.notReady" = "語音輸入未就緒：冇輔助功能權限，撳 FN 唔會有反應";
+"statusbar.hotkey.notReady.menu" = "語音輸入未就緒：要開輔助功能權限";
 "quit" = "離開";
 "about.title" = "關於 %@";
 "about.developer" = "開發者";

@@ -26,6 +26,9 @@ final class QechoIMEController: IMKInputController {
 
     override func activateServer(_ sender: Any!) {
         super.activateServer(sender)
+        // 语音输入（FN 热键、录音、转写）住在主 App，主 App 不在跑时按 FN 毫无反应。
+        // 焦点每进一次输入框就检查一次，必要时静默拉起（内部有节流与用户退出抑制）。
+        MainAppLauncher.shared.ensureMainAppRunning()
         RimeEngine.shared.startIfNeeded()
         IMESettingsCoordinator.shared.applyIfNeeded()
         lastModifiers = []
@@ -317,23 +320,7 @@ final class QechoIMEController: IMKInputController {
     }
 
     @objc private func openMainAppSettings(_ sender: Any?) {
-        let workspace = NSWorkspace.shared
-        if let appURL = workspace.urlForApplication(
-            withBundleIdentifier: InputMethodBridgeContract.mainAppBundleID
-        ) {
-            workspace.openApplication(at: appURL, configuration: NSWorkspace.OpenConfiguration())
-        }
-        let post = {
-            DistributedNotificationCenter.default().postNotificationName(
-                Notification.Name(InputMethodBridgeContract.openSettingsDistributedNotification),
-                object: nil,
-                userInfo: nil,
-                deliverImmediately: true
-            )
-        }
-        post()
-        // 主 App 冷启动时首个通知可能赶不上观察者注册，延迟补发一次
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: post)
+        MainAppLauncher.shared.openMainAppSettings()
     }
 
     @objc private func selectSchemaFromMenu(_ sender: Any?) {

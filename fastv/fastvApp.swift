@@ -352,6 +352,12 @@ private struct ShortcutConfig: Equatable {
 
 private var lastShortcutConfig: ShortcutConfig?
 
+/// 快捷键配置变更订阅。热键装配已脱离窗口生命周期，订阅随进程存活，不再挂在 SwiftUI @State 上。
+private var shortcutConfigCancellables = Set<AnyCancellable>()
+
+/// 语音输入是否已装配。装配点从主窗口 onAppear 移到 AppDelegate，这里保证幂等。
+private var voiceInputDidSetup = false
+
 /// 应用代理，用于监听应用退出事件
 class AppDelegate: NSObject, NSApplicationDelegate {
     // 保存观察者引用，用于清理
@@ -378,6 +384,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("📱 [AppDelegate] 应用启动完成，初始化状态栏")
         StatusBarManager.shared.show()
 
+        let isBackgroundLaunch = BackgroundLaunchController.shared.isBackgroundLaunch
+        if isBackgroundLaunch {
+            print("🤫 [AppDelegate] 静默启动（由输入法拉起）：只起托盘与全局热键，不显示主窗口")
+        } else {
+            // 用户主动打开了主 App，视为撤销「不再自动拉起」的意图
+            AutoLaunchSuppression.clear()
+        }
+
+        // 语音输入装配（麦克风/辅助功能权限 + FN 全局热键 + 配置监听）。
+        // 必须在这里而不是主窗口 onAppear：静默启动没有窗口，挂窗口上等于热键永不注册。
+        fastvApp.setupVoiceInput()
+
+        // 静默启动没有窗口 onAppear，模型预热在这里补一刀（幂等），
+        // 否则用户第一次按 FN 要干等模型加载。
+        if isBackgroundLaunch {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                SpeechModelPreloadManager.shared.startPreloadIfNeeded()
+            }
+        }
 
         // 设置应用不自动退出（关闭窗口时保留在后台）
         // Dock 图标显隐由用户偏好决定：隐藏时用 .accessory（仅菜单栏常驻），否则 .regular。
@@ -424,6 +449,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// - 隐藏：`.accessory`（Dock 无图标，仅菜单栏 StatusBar 常驻）。
     /// - 显示：`.regular`，并激活 App 让窗口回到前台（从 accessory 切回时需要）。
     static func applyDockIconPolicy() {
+        // 静默启动（输入法拉起）期间一律 .accessory 且不抢焦点：
+        // 用户只是切了输入法，没要求把轻语弹到面前。用户主动要窗口后即恢复常规策略。
+        if BackgroundLaunchController.shared.shouldKeepWindowHidden {
+            NSApplication.shared.setActivationPolicy(.accessory)
+            return
+        }
         let hide = UserPreferences.shared.hideDockIcon
         let policy: NSApplication.ActivationPolicy = hide ? .accessory : .regular
         NSApplication.shared.setActivationPolicy(policy)
@@ -567,6 +598,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// 用户主动退出（托盘「退出」/ Cmd+Q / 关机注销）：写抑制标记，
+    /// 输入法在同一次开机会话内不再自动把主 App 拉回来——否则用户会发现这玩意儿杀不死。
+    /// 崩溃不会走到这里，因此崩溃后输入法仍会正常兜底拉起。
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if isRunningUnderXCTest { return .terminateNow }
+        do {
+            try AutoLaunchSuppression.write()
+            print("🛑 [AppDelegate] 已记录用户主动退出，本次开机内输入法不再自动拉起主 App")
+        } catch {
+            print("⚠️ [AppDelegate] 写入自动拉起抑制标记失败：\(error.localizedDescription)")
+        }
+        return .terminateNow
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         if isRunningUnderXCTest { return }
         print("🧹 [AppDelegate] 应用即将退出，清理资源")
@@ -668,9 +713,8 @@ struct fastvApp: App {
                         window.title = NSLocalizedString("app.name", comment: "应用名称")
                     }
 
-                    // 延迟初始化，确保窗口已显示
-                    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
-                    setupVoiceInput()
+                    // 语音输入（权限 + FN 热键）已由 AppDelegate 在启动时装配，
+                    // 不再挂在窗口出现上——静默启动没有窗口，挂这里等于永远不注册。
 
                     // 主窗口先完成首屏展示，再静默预热语音模型，避免大模型加载拖慢启动体感。
                     try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5秒
@@ -686,30 +730,45 @@ struct fastvApp: App {
     }
     
     /// 清理波形窗口（兜底方案）
-    private func cleanupWaveformWindow() {
+    private static func cleanupWaveformWindow() {
         print("🧹 [fastvApp] 清理波形窗口（兜底方案）")
         WaveformWindowManager.shared.cleanup()
     }
     
-    private func setupVoiceInput() {
+    /// 装配语音输入：权限、全局热键、配置监听。
+    ///
+    /// 由 `AppDelegate.applicationDidFinishLaunching` 调用，**不再挂在主窗口 onAppear 上**。
+    /// 输入法把主 App 静默拉起时根本没有窗口，热键若依赖窗口出现就永远不会注册——
+    /// 那正是「选了轻语输入法但按 FN 没反应，打开设置才好」的病根。
+    static func setupVoiceInput() {
         // 确保在主线程执行
         guard Thread.isMainThread else {
             DispatchQueue.main.async {
-                self.setupVoiceInput()
+                setupVoiceInput()
             }
             return
         }
-        
+
+        guard !voiceInputDidSetup else {
+            print("ℹ️ [fastvApp] 语音输入已装配，跳过重复初始化")
+            return
+        }
+        voiceInputDidSetup = true
+
         // 请求麦克风权限（异步，不阻塞）
         Task { @MainActor in
             requestMicrophonePermission()
         }
-        
+
         // 请求辅助功能权限（异步，不阻塞）
         Task { @MainActor in
             let hasAccessibility = TextInsertionService.checkAccessibilityPermission()
             if hasAccessibility {
                 print("✅ [fastvApp] 辅助功能权限已授权")
+            } else if BackgroundLaunchController.shared.isBackgroundLaunch {
+                // 静默启动是输入法拉起来的，用户没主动开 App，这时候弹系统授权框属于骚扰。
+                // 改由菜单栏图标警示 + AccessibilityTrustWatcher 等待授权。
+                print("⚠️ [fastvApp] 静默启动且未获辅助功能权限，改由菜单栏提示引导授权")
             } else {
                 print("⚠️ [fastvApp] 辅助功能权限未授权，请求权限...")
                 print("💡 [fastvApp] 提示：系统将弹出权限请求对话框，请点击'打开系统偏好设置'")
@@ -718,33 +777,41 @@ struct fastvApp: App {
                 TextInsertionService.requestAccessibilityPermission()
             }
         }
-        
-        // 设置全局快捷键监听（延迟执行，确保应用已完全启动）
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1秒延迟
-            setupGlobalShortcut()
+
+        // 立即注册全局快捷键监听：无窗口进程同样要能听 FN
+        setupGlobalShortcut()
+
+        // 权限到手后重新注册监听（未授权时注册的监听器不会自动复活）
+        AccessibilityTrustWatcher.shared.onTrustGranted = {
+            reapplyShortcutMonitoringAfterTrustGranted()
         }
+        AccessibilityTrustWatcher.shared.startIfNeeded()
 
         // 监听设置变化（由 AppDelegate 转发）
         setupShortcutConfigObserver()
     }
 
+    /// 辅助功能权限刚授权：强制重新注册全局监听，并刷新菜单栏就绪状态
+    @MainActor
+    private static func reapplyShortcutMonitoringAfterTrustGranted() {
+        lastShortcutConfig = nil // 绕过「配置未变化」的早退，强制重新注册
+        applyShortcutConfigIfNeeded(reason: "accessibility trust granted")
+        StatusBarManager.shared.refreshReadiness()
+    }
+
     /// 监听快捷键配置变化
-    private func setupShortcutConfigObserver() {
+    private static func setupShortcutConfigObserver() {
         NotificationCenter.default.publisher(for: .shortcutConfigDidChange)
             .debounce(for: .milliseconds(100), scheduler: DispatchQueue.main)
             .sink { _ in
                 Task { @MainActor in
-                    self.applyShortcutConfigIfNeeded(reason: "shortcutConfigDidChange")
+                    applyShortcutConfigIfNeeded(reason: "shortcutConfigDidChange")
                 }
             }
-            .store(in: &cancellables)
+            .store(in: &shortcutConfigCancellables)
     }
 
-    // Combine cancellables 用于管理订阅
-    @State private var cancellables = Set<AnyCancellable>()
-    
-    private func requestMicrophonePermission() {
+    private static func requestMicrophonePermission() {
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
         print("🎤 [fastvApp] 当前麦克风权限状态: \(status.rawValue) - \(microphoneStatusDescription(status))")
         
@@ -773,7 +840,7 @@ struct fastvApp: App {
                         }
                         
                         // 显示提示对话框
-                        self.showMicrophonePermissionDeniedAlert()
+                        showMicrophonePermissionDeniedAlert()
                     }
                 }
             }
@@ -790,14 +857,14 @@ struct fastvApp: App {
             
             // 显示提示对话框
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                self.showMicrophonePermissionDeniedAlert()
+                showMicrophonePermissionDeniedAlert()
             }
         @unknown default:
             print("⚠️ [fastvApp] 未知的权限状态: \(status.rawValue)")
         }
     }
     
-    private func microphoneStatusDescription(_ status: AVAuthorizationStatus) -> String {
+    private static func microphoneStatusDescription(_ status: AVAuthorizationStatus) -> String {
         switch status {
         case .notDetermined:
             return "未确定（系统将请求权限）"
@@ -813,7 +880,7 @@ struct fastvApp: App {
     }
     
     @MainActor
-    private func showMicrophonePermissionDeniedAlert() {
+    private static func showMicrophonePermissionDeniedAlert() {
         let alert = NSAlert()
         alert.messageText = NSLocalizedString("microphone.permission.required", comment: "")
         alert.informativeText = NSLocalizedString("microphone.permission.description", comment: "")
@@ -830,11 +897,11 @@ struct fastvApp: App {
         }
     }
     
-    private func setupGlobalShortcut() {
+    private static func setupGlobalShortcut() {
         // 确保在主线程执行
         guard Thread.isMainThread else {
             DispatchQueue.main.async {
-                self.setupGlobalShortcut()
+                setupGlobalShortcut()
             }
             return
         }
@@ -868,7 +935,7 @@ struct fastvApp: App {
     }
     
     @MainActor
-    private func applyShortcutConfigIfNeeded(reason: String) {
+    private static func applyShortcutConfigIfNeeded(reason: String) {
         let preferences = UserPreferences.shared
         let newConfig = ShortcutConfig(
             isEnabled: true,
@@ -880,9 +947,9 @@ struct fastvApp: App {
             print("ℹ️ [fastvApp] 快捷鍵配置未變化（原因: \(reason)），跳過重新註冊")
             return
         }
-        
+
         lastShortcutConfig = newConfig
-        
+
         print("🔧 [fastvApp] 快捷鍵配置已更新（原因: \(reason)），重新註冊監聽")
         // 傳遞雙快捷鍵配置
         GlobalShortcutMonitor.shared.startMonitoring(
@@ -895,11 +962,11 @@ struct fastvApp: App {
 
     /// 快捷键按下立即响应（同步路径，最小化延迟）
     /// 执行关键操作：显示波形窗口、启动录音
-    private func handleShortcutPressedImmediate(shortcutType: ShortcutType = .voiceInput) {
+    private static func handleShortcutPressedImmediate(shortcutType: ShortcutType = .voiceInput) {
         // 确保在主线程执行
         guard Thread.isMainThread else {
             DispatchQueue.main.async {
-                self.handleShortcutPressedImmediate(shortcutType: shortcutType)
+                handleShortcutPressedImmediate(shortcutType: shortcutType)
             }
             return
         }
@@ -984,7 +1051,7 @@ struct fastvApp: App {
     }
 
     @MainActor
-    private func handleShortcutPressed(shortcutType: ShortcutType = .voiceInput) async {
+    private static func handleShortcutPressed(shortcutType: ShortcutType = .voiceInput) async {
         let needsAI = shortcutType == .voiceInputWithAI
         print("🎤 [fastvApp] handleShortcutPressed: 開始處理快捷鍵按下事件（類型: \(shortcutType), 需要AI: \(needsAI)）")
         
@@ -1065,7 +1132,7 @@ struct fastvApp: App {
     
     /// 显示麦克风被占用的提示
     @MainActor
-    private func showMicrophoneInUseAlert() {
+    private static func showMicrophoneInUseAlert() {
         let alert = NSAlert()
         alert.messageText = NSLocalizedString("microphone.in.use", comment: "")
         alert.informativeText = NSLocalizedString("microphone.in.use.description", comment: "")
@@ -1076,7 +1143,7 @@ struct fastvApp: App {
     
     /// 显示麦克风权限被拒绝的提示
     @MainActor
-    private func showMicrophonePermissionAlert() {
+    private static func showMicrophonePermissionAlert() {
         let alert = NSAlert()
         alert.messageText = NSLocalizedString("microphone.permission.required", comment: "")
         alert.informativeText = NSLocalizedString("microphone.permission.description", comment: "")
@@ -1094,7 +1161,7 @@ struct fastvApp: App {
     }
     
     @MainActor
-    private func handleShortcutReleased(shortcutType: ShortcutType = .voiceInput) async {
+    private static func handleShortcutReleased(shortcutType: ShortcutType = .voiceInput) async {
         let needsAI = currentVoiceInputNeedsAI || shortcutType == .voiceInputWithAI
         print("🎤 [fastvApp] handleShortcutReleased: 開始處理快捷鍵釋放事件（類型: \(shortcutType), 需要AI: \(needsAI)）")
         
@@ -1445,7 +1512,7 @@ struct fastvApp: App {
     
     /// 檢查 AI 服務是否已配置
     @MainActor
-    private func isAIServiceConfigured() -> Bool {
+    private static func isAIServiceConfigured() -> Bool {
         hasConfiguredAIService()
     }
 }
