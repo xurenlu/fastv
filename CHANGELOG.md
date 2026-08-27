@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.5.0-rc5] - 2026-08-27
+
+### Added
+
+- 支持用本地 Ollama 上的 Gemma 4（`gemma4:e4b-it-qat` / `gemma4:e2b-it-qat`）做语音输入 AI 校正：两者进入 Ollama 推荐模型列表与可下载模型库（含体积与参数量），设置页拉取本地模型即可直接选用。
+- 按下 AI 校正快捷键（默认 FN+Control）开始录音时，若该场景绑定的是本地 Ollama，并行预热目标模型（空 prompt + `keep_alive`，只加载权重不生成），把 6~8 秒的冷加载藏进录音时间里；同模型 60 秒内只预热一次，预热失败静默跳过，不影响录音与转写。
+
+### Fixed
+
+- 所有 Ollama 原生请求统一关闭思考模式（`think: false`）。gemma4 这类带 thinking 的模型默认会先输出一大段思考再给结果，本机实测 `gemma4:e4b-it-qat` 修正一句口语：开思考冷启动 29.7 秒、热调用 20.9 秒；关掉后冷启动 8.0 秒、热调用 1.6 秒——快了一个数量级，而修正质量（错别字、标点）没有差别。不支持思考的模型收到该字段会被忽略（Ollama 0.32.9 实测 gemma3 / qwen2.5 / llama3.2 均正常）。
+- 修复 Ollama 服务 5 秒默认超时导致本地模型必然失败：本地不等于快，4B~8B 模型光冷加载就要 5~8 秒，旧默认值让每次 AI 校正都超时。现默认超时改为 60 秒，并对历史配置做一次性迁移（只抬升不高于旧默认值的配置，用户手调过的更大值保留），旧版单配置降级路径同样适用。
+
+### Engineering
+
+- 新增 `OllamaRequestDefaults` 收拢思考开关，替代散落在 5 处请求体里的裸字面量；新增 `OllamaService.warmUpModel` 与 `AIProtocolType.legacyOllamaTimeout`。
+- 新增 `OllamaLocalModelTests` 6 例：请求体关思考、非 Ollama 协议不带该字段、gemma4 出现在推荐与模型库、已下载模型不重复出现在可下载列表、默认超时覆盖冷加载、历史 5 秒配置被迁移而用户手调值保留。
+- 版本号 `2.5.0-rc4` → `2.5.0-rc5`，build `52` → `53`；主 App、QechoIME、测试 target、STT API 与 `X-API-Version` 响应头保持一致。
+
+### Known Issues
+
+- 关思考后修正同一句口语的实测耗时（本机 Apple Silicon，模型常驻内存）：e4b（7.5B）1.6 秒，e2b（4.6B）2.1~2.9 秒——两者都在秒级，e2b 并不明显更快，长文本会更久。首次调用仍有冷加载开销，预热只覆盖「按 AI 校正快捷键」这条路径。
+
 ## [2.5.0-rc4] - 2026-08-27
 
 ### Fixed
