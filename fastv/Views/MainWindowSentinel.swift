@@ -48,6 +48,12 @@ struct MainWindowSentinel: NSViewRepresentable {
             window.identifier = NSUserInterfaceItemIdentifier(mainContentWindowId)
         }
 
+        // 1.5 静默启动（输入法拉起）：SwiftUI 的 WindowGroup 一定会建窗，这里建完即隐。
+        //     用户只是切了输入法，不该被弹一个设置窗口。
+        if MainActor.assumeIsolated({ BackgroundLaunchController.shared.shouldKeepWindowHidden }) {
+            window.orderOut(nil)
+        }
+
         // 2. 红色关闭按钮 → 隐藏（不 close）
         if let closeButton = window.standardWindowButton(.closeButton),
            closeButton.target !== MainWindowCloseInterceptor.shared {
@@ -69,6 +75,10 @@ enum MainWindowPresenter {
     /// 尝试找回并显示主内容窗口。命中返回 true；未命中（窗口已被销毁）返回 false。
     @MainActor
     static func bringToFront() -> Bool {
+        // 用户主动要窗口了：退出静默启动态，恢复常规 Dock / 激活策略
+        BackgroundLaunchController.shared.markWindowRevealed()
+        AppDelegate.applyDockIconPolicy()
+
         // 不管哪条路径，都先激活 App
         NSApp.activate(ignoringOtherApps: true)
 

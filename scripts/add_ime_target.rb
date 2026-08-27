@@ -76,7 +76,8 @@ def ensure_source(target, file_ref)
 end
 
 %w[main.swift QEchoIMEController.swift VoiceCommitServer.swift RimeEngine.swift
-   IMESettingsCoordinator.swift CandidateWindow.swift CandidateContentView.swift].each do |name|
+   IMESettingsCoordinator.swift CandidateWindow.swift CandidateContentView.swift
+   MainAppLauncher.swift].each do |name|
   ensure_source(ime_target, ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME', name)))
 end
 ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME', 'Info.plist')) # 只挂引用，不进编译
@@ -86,6 +87,7 @@ ensure_ref(ime_group, File.join(SRCROOT, 'QEchoIME', 'QEchoIME-Bridging-Header.h
 ensure_source(ime_target, ensure_ref(ime_group, CONTRACT_PATH))
 ensure_source(ime_target, ensure_ref(ime_group, File.join(SRCROOT, 'fastv/Services/RimeKeyMapping.swift')))
 ensure_source(ime_target, ensure_ref(ime_group, File.join(SRCROOT, 'fastv/Services/CandidateLearningStore.swift')))
+ensure_source(ime_target, ensure_ref(ime_group, File.join(SRCROOT, 'fastv/Services/MainAppLaunchPolicy.swift')))
 
 # ---------- 2.5 librime：链接 + 嵌入 dylib + RimeData 资源 ----------
 

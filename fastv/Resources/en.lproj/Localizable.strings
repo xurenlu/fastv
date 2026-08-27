@@ -14,6 +14,8 @@
 "statusbar.activity.recording" = "Recording…";
 "statusbar.activity.transcribing" = "Transcribing…";
 "statusbar.activity.polishing" = "Polishing with AI…";
+"statusbar.hotkey.notReady" = "Voice input not ready: Accessibility permission missing, the FN hotkey won't respond";
+"statusbar.hotkey.notReady.menu" = "Voice input not ready: grant Accessibility permission";
 "quit" = "Quit";
 "about.privacy.title" = "Privacy promise";
 "about.privacy.body" = "Speech-to-text happens entirely on this device. Recordings are never uploaded. AI polishing (if enabled) only sends the transcribed text, never the audio. Works offline.";

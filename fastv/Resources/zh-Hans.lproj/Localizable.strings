@@ -14,6 +14,8 @@
 "statusbar.activity.recording" = "正在录音…";
 "statusbar.activity.transcribing" = "正在转写…";
 "statusbar.activity.polishing" = "AI 优化中…";
+"statusbar.hotkey.notReady" = "语音输入未就绪：缺少辅助功能权限，FN 快捷键不会响应";
+"statusbar.hotkey.notReady.menu" = "语音输入未就绪：缺少辅助功能权限";
 "quit" = "退出";
 "about.privacy.title" = "隐私承诺";
 "about.privacy.body" = "语音转写全部在本机完成，无需联网。录音数据不会发送到任何服务器，使用 AI 优化时也只发送转写后的纯文本（且可关闭）。断网照常可用。";

@@ -14,6 +14,8 @@
 "statusbar.activity.recording" = "녹음 중…";
 "statusbar.activity.transcribing" = "변환 중…";
 "statusbar.activity.polishing" = "AI 다듬는 중…";
+"statusbar.hotkey.notReady" = "음성 입력 준비 안 됨: 손쉬운 사용 권한이 없어 FN 단축키가 반응하지 않습니다";
+"statusbar.hotkey.notReady.menu" = "음성 입력 준비 안 됨: 손쉬운 사용 권한 필요";
 "quit" = "종료";
 "about.title" = "%@ 정보";
 "about.developer" = "개발자";
