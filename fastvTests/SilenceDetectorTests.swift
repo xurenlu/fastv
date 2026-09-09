@@ -11,13 +11,29 @@ import Testing
 import Foundation
 @testable import musetype
 
+/// 假时钟：由测试手动推进，替代真实 wall-clock。
+/// 用 Task.sleep 断言时序会在高负载机器上睡过头（实测 0.35 秒睡成 0.6 秒以上），
+/// 让"还没到时长不该切段"的断言假阳性失败。
+private final class FakeClock {
+    private var current = Date(timeIntervalSinceReferenceDate: 0)
+
+    func now() -> Date { current }
+
+    func advance(by seconds: TimeInterval) {
+        current = current.addingTimeInterval(seconds)
+    }
+}
+
 @Suite("SilenceDetector")
 @MainActor
 struct SilenceDetectorTests {
 
     /// 构造一个只看单帧、不做滑动平均的检测器，便于精确断言阈值行为
-    private func makeDetector(peakDecayFactor: Float) -> SilenceDetector {
-        let detector = SilenceDetector()
+    private func makeDetector(
+        peakDecayFactor: Float,
+        now: @escaping () -> Date = Date.init
+    ) -> SilenceDetector {
+        let detector = SilenceDetector(now: now)
         detector.windowSize = 1
         detector.silenceThreshold = 0.01
         detector.relativeThreshold = 0.25
@@ -83,8 +99,10 @@ struct SilenceDetectorTests {
     }
 
     @Test("相对下降触发的静音需要更长持续时长才切段")
-    func relativeSilenceRequiresLongerDuration() async throws {
-        let detector = makeDetector(peakDecayFactor: 1.0)  // 关掉衰减，稳定维持相对静音
+    func relativeSilenceRequiresLongerDuration() {
+        let clock = FakeClock()
+        // 关掉衰减，稳定维持相对静音
+        let detector = makeDetector(peakDecayFactor: 1.0, now: clock.now)
         detector.minimumSilenceDuration = 0.2
         detector.relativeSilenceDurationMultiplier = 3.0   // 相对静音需 0.6 秒
 
@@ -96,13 +114,33 @@ struct SilenceDetectorTests {
         detector.processAudioLevel(0.1)  // 进入相对静音
 
         // 0.35 秒：已超过绝对静音所需的 0.2 秒，但未达相对静音所需的 0.6 秒
-        try await Task.sleep(nanoseconds: 350_000_000)
+        clock.advance(by: 0.35)
         detector.processAudioLevel(0.1)
         #expect(recorder.durations.isEmpty)
 
-        // 累计超过 0.6 秒后应触发
-        try await Task.sleep(nanoseconds: 350_000_000)
+        // 累计 0.7 秒，超过相对静音所需的 0.6 秒后应触发
+        clock.advance(by: 0.35)
         detector.processAudioLevel(0.1)
+        #expect(recorder.durations.count == 1)
+        #expect(recorder.durations.first == 0.7)
+    }
+
+    @Test("绝对静音在到达 minimumSilenceDuration 时即切段")
+    func absoluteSilenceTriggersAtMinimumDuration() {
+        let clock = FakeClock()
+        let detector = makeDetector(peakDecayFactor: 1.0, now: clock.now)
+        detector.minimumSilenceDuration = 0.2
+        detector.relativeSilenceDurationMultiplier = 3.0
+
+        final class Recorder { var durations: [TimeInterval] = [] }
+        let recorder = Recorder()
+        detector.onSilenceDetected = { recorder.durations.append($0) }
+
+        detector.processAudioLevel(0.6)
+        detector.processAudioLevel(0.001)  // 低于绝对阈值，进入真静音
+
+        clock.advance(by: 0.2)
+        detector.processAudioLevel(0.001)
         #expect(recorder.durations.count == 1)
     }
 }
