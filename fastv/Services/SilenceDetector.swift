@@ -37,7 +37,11 @@ class SilenceDetector: ObservableObject {
     
     private var audioLevelHistory: [Float] = []
     private var silenceStartTime: Date?
-    private var lastUpdateTime: Date = Date()
+    private var lastUpdateTime: Date
+
+    /// 可注入时钟：默认取系统当前时间，测试中用假时钟手动推进，
+    /// 避免时序断言依赖 wall-clock 在高负载机器上产生假阳性失败。
+    private let now: () -> Date
     
     // 相对检测相关
     private var speechPeakLevel: Float = 0.0   // 说话时的峰值电平
@@ -52,7 +56,10 @@ class SilenceDetector: ObservableObject {
     var onSilenceDetected: ((TimeInterval) -> Void)?
     var onSpeechDetected: (() -> Void)?
     
-    init() {}
+    init(now: @escaping () -> Date = Date.init) {
+        self.now = now
+        self.lastUpdateTime = now()
+    }
     
     /// 重置检测器
     func reset() {
@@ -60,7 +67,7 @@ class SilenceDetector: ObservableObject {
         silenceStartTime = nil
         isSilent = false
         currentSilenceDuration = 0
-        lastUpdateTime = Date()
+        lastUpdateTime = now()
         speechPeakLevel = 0.0
         hasDetectedSpeech = false
         hasTriggeredForCurrentSilence = false
@@ -72,7 +79,7 @@ class SilenceDetector: ObservableObject {
     /// - Returns: 检测结果
     @discardableResult
     func processAudioLevel(_ level: Float) -> SilenceDetection {
-        let now = Date()
+        let currentTime = now()
         
         // 添加到历史记录
         audioLevelHistory.append(level)
@@ -109,7 +116,7 @@ class SilenceDetector: ObservableObject {
             // 静音状态
             if !isSilent {
                 // 刚进入静音
-                silenceStartTime = now
+                silenceStartTime = currentTime
                 isSilent = true
                 hasTriggeredForCurrentSilence = false  // 新的静音段，重置触发标志
                 currentSilenceIsAbsolute = absoluteSilent
@@ -122,7 +129,7 @@ class SilenceDetector: ObservableObject {
 
             // 计算静音持续时长
             if let startTime = silenceStartTime {
-                currentSilenceDuration = now.timeIntervalSince(startTime)
+                currentSilenceDuration = currentTime.timeIntervalSince(startTime)
 
                 // 相对下降判定的静音更可能是句中换气，要求更长的持续时长才切段
                 let requiredDuration = currentSilenceIsAbsolute
@@ -153,7 +160,7 @@ class SilenceDetector: ObservableObject {
             currentSilenceDuration = 0
         }
         
-        lastUpdateTime = now
+        lastUpdateTime = currentTime
         
         return SilenceDetection(isSilent: currentIsSilent, duration: currentSilenceDuration)
     }
