@@ -48,8 +48,15 @@ final class SpeechModelPreloadManager {
             isPreloading = true
             isPreloadComplete = false
             let startTime = CFAbsoluteTimeGetCurrent()
-            
-            Task.detached(priority: .utility) {
+
+            // 必须用 .userInitiated 而不是 .utility：ONNX Runtime 的线程池是在建会话时懒创建的，
+            // 这些线程会继承创建者的 QoS 并一直沿用。用 .utility 预加载等于把整个进程后续每一次
+            // 推理都钉在低优先级上——本机实测同配置下 utility QoS 比正常优先级慢 1.5~2 倍。
+            //
+            // 2.0.0-rc10 当初降到 .utility 是为了不让模型加载拖慢启动首屏；这个诉求现在由调用方
+            // 的延迟满足（主窗口 1.5 秒、静默启动 3 秒后才调本方法），所以这里不必再压优先级。
+            // 若日后又出现「启动变慢」，请加大调用方延迟，不要把这里降回 .utility。
+            Task.detached(priority: .userInitiated) {
                 let loaded = await SpeechTranscriptionModel.shared.preload()
                 let duration = CFAbsoluteTimeGetCurrent() - startTime
 

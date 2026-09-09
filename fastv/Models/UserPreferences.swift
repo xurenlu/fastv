@@ -900,8 +900,17 @@ class UserPreferences: ObservableObject {
         useDirectTextInsertion = defaults.object(forKey: Keys.useDirectTextInsertion) as? Bool ?? true
         
         // 模型下载设置
-        // 默认下载地址
-        modelDownloadURL = defaults.string(forKey: Keys.modelDownloadURL) ?? "https://cdn.wxside.com/upload/202511/1763737361-dTESP.onnx"
+        // 默认下载地址指向官方 int8 加速版；用户没改过地址时，把历史 fp32 地址一次性迁移过来，
+        // 手动填过自定义地址的保持不动。
+        let storedModelURL = defaults.string(forKey: Keys.modelDownloadURL)
+        let resolvedModelURL = SpeechModelLocator.migratedDownloadURL(from: storedModelURL)
+        if storedModelURL != resolvedModelURL {
+            defaults.set(resolvedModelURL, forKey: Keys.modelDownloadURL)
+            if storedModelURL != nil {
+                print("🔄 [UserPreferences] 模型下载地址已迁移到加速版：\(resolvedModelURL)")
+            }
+        }
+        modelDownloadURL = resolvedModelURL
         
         // 默认模型存储路径：~/Library/Application Support/fastv/Models/sensevoice-small/
         if let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
