@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.5.0-rc7] - 2026-09-10
+
+### Fixed
+
+- 修复单元测试 `relativeSilenceRequiresLongerDuration` 在高负载机器上假阳性失败：它原先用真实 `Task.sleep(0.35 秒)` 配合 `SilenceDetector` 内部的 `Date()` 计时，去断言「0.35 秒还不该切段」。系统负载高时 `Task.sleep` 会明显睡过头（实测 load 150 的机器上睡到 0.6 秒以上），静音时长直接跨过 0.6 秒的相对静音门槛，回调提前触发，断言失败——与被测逻辑无关。2026-09-09 在 Release 配置下跑测试时就撞上过一次。
+
+### Engineering
+
+- `SilenceDetector` 改为可注入时钟：新增 `init(now: @escaping () -> Date = Date.init)`，内部 `silenceStartTime`、`lastUpdateTime` 与 `processAudioLevel` 的取时统一走该闭包。默认参数保持 `Date.init`，`SilenceDetector()` 的所有现有调用点行为不变。
+- 上述测试改用假时钟手动推进时间，完全去掉真实 sleep，既不再依赖 wall-clock，也从秒级降到微秒级；Release 配置下用 24 个忙循环压满 8 核（load 约 190）连跑 20 次全通过。
+- 补充 `absoluteSilenceTriggersAtMinimumDuration`：绝对阈值静音在 `minimumSilenceDuration` 到点即切段，与相对静音需要更长时长形成对照。
+- 记一条构建约定：`ENABLE_TESTABILITY` 只在 Debug 配置打开，要在 Release 下跑单测必须给 `xcodebuild` 显式加 `ENABLE_TESTABILITY=YES`，否则 `@testable import musetype` 会以「unable to resolve Swift module dependency」在编译阶段失败。
+- 版本号 `2.5.0-rc6` → `2.5.0-rc7`，build `54` → `55`；主 App、QechoIME、测试 target、STT API 与 `X-API-Version` 响应头保持一致。
+
 ## [2.5.0-rc6] - 2026-09-09
 
 ### Fixed
