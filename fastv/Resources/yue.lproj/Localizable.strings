@@ -204,7 +204,7 @@
 "onboarding.select.language.description" = "選擇您最常用的語音輸入語言。您可以在設定中隨時更改。";
 "onboarding.download.model.title" = "下載模型檔案";
 "onboarding.download.model.description" = "首次使用需要下載語音識別模型檔案";
-"onboarding.model.size.warning" = "模型檔案較大（894MB），請耐心等待";
+"onboarding.model.size.warning" = "模型檔案大約 %@MB，請耐心等待";
 "onboarding.model.other.files" = "其他配置檔案將使用內建資源";
 "onboarding.downloading" = "正在下載";
 "onboarding.download.complete" = "下載完成";
@@ -271,6 +271,18 @@
 "model.download.error.cannot.get.file.size" = "無法取得檔案大小，下載可能失敗";
 "model.download.already.exists" = "%@ 已存在，跳過";
 "model.download.url.label" = "下載地址：";
+
+// 模型版本（加速版 / 標準版）
+"model.variant.int8" = "加速版";
+"model.variant.float32" = "標準版";
+"model.info.current.variant" = "而家用緊：%@（%@ MB）";
+"model.upgrade.available.title" = "可以升級去加速版模型";
+"model.upgrade.available.detail" = "加速版體積 %@ MB，識別速度大約係標準版嘅兩倍，識別結果一樣。";
+"model.upgrade.action" = "升級";
+"model.upgrade.cleanup.title" = "要唔要刪咗舊嘅標準版模型？";
+"model.upgrade.cleanup.message" = "加速版已經準備好。刪咗舊嘅標準版模型可以釋放大約 %@ MB 磁碟空間。";
+"model.upgrade.cleanup.confirm" = "刪除舊模型";
+"model.upgrade.cleanup.keep" = "保留";
 "model.download.edit.url" = "修改地址";
 "model.download.url.placeholder" = "請輸入模型下載地址";
 

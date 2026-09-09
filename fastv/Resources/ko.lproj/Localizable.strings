@@ -204,7 +204,7 @@
 "onboarding.select.language.description" = "가장 자주 사용하는 음성 입력 언어를 선택하세요. 설정에서 언제든지 변경할 수 있습니다.";
 "onboarding.download.model.title" = "모델 파일 다운로드";
 "onboarding.download.model.description" = "처음 사용 시 음성 인식 모델 파일을 다운로드해야 합니다";
-"onboarding.model.size.warning" = "모델 파일이 큽니다(894MB), 잠시 기다려 주세요";
+"onboarding.model.size.warning" = "모델 파일은 약 %@MB입니다. 잠시 기다려 주세요";
 "onboarding.model.other.files" = "다른 구성 파일은 내장 리소스를 사용합니다";
 "onboarding.downloading" = "다운로드 중";
 "onboarding.download.complete" = "다운로드 완료";
@@ -271,6 +271,18 @@
 "model.download.error.cannot.get.file.size" = "파일 크기를 가져올 수 없습니다. 다운로드가 실패했을 수 있습니다";
 "model.download.already.exists" = "%@ 이미 존재, 건너뜀";
 "model.download.url.label" = "다운로드 주소:";
+
+// 모델 종류 (고속판 / 표준판)
+"model.variant.int8" = "고속판";
+"model.variant.float32" = "표준판";
+"model.info.current.variant" = "사용 중: %@ (%@ MB)";
+"model.upgrade.available.title" = "고속판 모델로 업그레이드할 수 있습니다";
+"model.upgrade.available.detail" = "고속판은 %@ MB이며 인식 속도가 표준판의 약 두 배이고 인식 결과는 동일합니다.";
+"model.upgrade.action" = "업그레이드";
+"model.upgrade.cleanup.title" = "이전 표준판 모델을 삭제할까요?";
+"model.upgrade.cleanup.message" = "고속판이 준비되었습니다. 이전 표준판 모델을 삭제하면 약 %@ MB의 디스크 공간이 확보됩니다.";
+"model.upgrade.cleanup.confirm" = "이전 모델 삭제";
+"model.upgrade.cleanup.keep" = "유지";
 "model.download.edit.url" = "주소 수정";
 "model.download.url.placeholder" = "모델 다운로드 주소를 입력하세요";
 

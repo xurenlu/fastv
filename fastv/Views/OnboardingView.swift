@@ -321,7 +321,12 @@ struct ModelDownloadStep: View {
                 Image(systemName: "info.circle.fill")
                     .font(.caption)
                     .foregroundStyle(.orange)
-                Text("onboarding.model.size.warning")
+                Text(
+                    String(
+                        format: NSLocalizedString("onboarding.model.size.warning", comment: ""),
+                        "\(SpeechModelLocator.variant(forDownloadURL: preferences.modelDownloadURL).approximateMegabytes)"
+                    )
+                )
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }

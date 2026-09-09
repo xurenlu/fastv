@@ -17,6 +17,8 @@ struct AIModelSettingsTab: View {
     @State private var builtInRulesCount = 0
     @State private var customRulesCount = 0
     @State private var modelExists = false
+    @State private var installedModelVariant: SpeechModelVariant?
+    @State private var canUpgradeModel = false
     @State private var aiServiceCount = 0
     @State private var scenarioBindingCount = 0
 
@@ -209,9 +211,9 @@ struct AIModelSettingsTab: View {
                         Image(systemName: "arrow.down.circle")
                         Text("下载语音转写模型")
                         Spacer()
-                        if modelExists {
-                            Text("已下载")
-                                .foregroundStyle(.green)
+                        if let variant = installedModelVariant {
+                            Text(variant.displayName)
+                                .foregroundStyle(canUpgradeModel ? .orange : .green)
                                 .font(.caption)
                         } else {
                             Text("未下载")
@@ -223,7 +225,11 @@ struct AIModelSettingsTab: View {
             } header: {
                 Text("语音转写模型")
             } footer: {
-                Text("SenseVoice（阿里达摩院）- 低延迟、中文优化、10秒音频约70ms")
+                if canUpgradeModel {
+                    Text("SenseVoice（阿里达摩院）。当前是标准版；加速版体积 \(SpeechModelVariant.preferred.approximateMegabytes)MB、速度约为标准版两倍且识别结果一致，可在此升级。")
+                } else {
+                    Text("SenseVoice（阿里达摩院）- 低延迟、中文优化，本机 6 秒语音约 150ms")
+                }
             }
         }
         .formStyle(.grouped)
@@ -240,6 +246,8 @@ struct AIModelSettingsTab: View {
         builtInRulesCount = CommonMistakeManager.shared.builtInRulesCount()
         customRulesCount = CommonMistakeManager.shared.customRulesCount()
         modelExists = ModelDownloader.shared.checkModelFilesExist()
+        installedModelVariant = SpeechModelLocator.resolvedVariant()
+        canUpgradeModel = SpeechModelLocator.canUpgradeToPreferred()
         aiServiceCount = preferences.aiServiceProfiles.count
         scenarioBindingCount = preferences.aiScenarioBindings.count
     }
