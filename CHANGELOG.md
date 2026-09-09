@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.5.0-rc8] - 2026-09-10
+
+### Fixed
+
+- 修复正式发布版麦克风完全不可用：装上之后语音输入按下去没反应，设置页显示「麦克风权限已拒绝」，而系统「隐私与安全性 → 麦克风」里既不弹授权框、也根本不出现「轻语」这一条。
+  根因在发布引擎（new83d `release_mac_apps.rb`）而不是本仓库代码：它给 App 重签时要先定位编译产物里的 entitlements（`.xcent`），用的是**区分大小写**的文件名字符串比较，而 macOS 文件系统不区分大小写；匹配不上就 fallback 到「候选里的第一个」。本仓库产物在 `2.4.1-rc2` 从 `QEcho` 改名为 `Qecho`，而引擎配置仍写着 `QEcho`，于是每次都匹配失败，抓到了内嵌输入法 `QechoIME` 那份**空** entitlements，再用它把主 App 整体重签，`com.apple.security.device.audio-input` 就此被抹掉。Hardened Runtime 下没有这条 entitlement 就完全拿不到麦克风，且系统不会给出任何提示。
+  **影响范围：从 `2.4.1-rc2` 起的每一个正式发布版麦克风都是坏的**，只是此前一直用本地开发签名的构建，没被发现。整条发布链路（构建、公证、上传、appcast）对此没有任何一步报错。
+  修复已落在 new83d `0.20.0-rc4`：文件名匹配改为不区分大小写；匹配不上且候选多于一个时直接中止发布并列出候选，不再猜；重签后新增 entitlements 落地校验，签名里少任何一个键就中止。本版是修复后重新构建的第一个版本。
+
+### Engineering
+
+- 版本号 `2.5.0-rc7` → `2.5.0-rc8`，build `55` → `56`；主 App、QechoIME、测试 target、STT API 与 `X-API-Version` 响应头保持一致。
+- 验收方式：安装后 `codesign -d --entitlements - --xml /Applications/Qecho.app` 必须能看到 `com.apple.security.device.audio-input`。rc7 及更早的正式版这里是空的。
+
 ## [2.5.0-rc7] - 2026-09-10
 
 ### Fixed
