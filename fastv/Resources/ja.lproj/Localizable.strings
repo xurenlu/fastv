@@ -176,7 +176,7 @@
 "onboarding.select.language.description" = "最もよく使用する音声入力言語を選択してください。設定でいつでも変更できます。";
 "onboarding.download.model.title" = "モデルファイルをダウンロード";
 "onboarding.download.model.description" = "初回使用時は音声認識モデルファイルのダウンロードが必要です";
-"onboarding.model.size.warning" = "モデルファイルは大きい（894MB）ため、しばらくお待ちください";
+"onboarding.model.size.warning" = "モデルファイルは約 %@MB です。しばらくお待ちください";
 "onboarding.model.other.files" = "その他の設定ファイルは組み込みリソースを使用します";
 "onboarding.downloading" = "ダウンロード中";
 "onboarding.download.complete" = "ダウンロード完了";
@@ -243,6 +243,18 @@
 "model.download.error.cannot.get.file.size" = "ファイルサイズを取得できません。ダウンロードが失敗した可能性があります";
 "model.download.already.exists" = "%@は既に存在します。スキップします";
 "model.download.url.label" = "ダウンロードURL:";
+
+// モデルの種類（高速版 / 標準版）
+"model.variant.int8" = "高速版";
+"model.variant.float32" = "標準版";
+"model.info.current.variant" = "使用中：%@（%@ MB）";
+"model.upgrade.available.title" = "高速版モデルにアップグレードできます";
+"model.upgrade.available.detail" = "高速版は %@ MB で、認識速度は標準版の約2倍、認識結果は同一です。";
+"model.upgrade.action" = "アップグレード";
+"model.upgrade.cleanup.title" = "古い標準版モデルを削除しますか？";
+"model.upgrade.cleanup.message" = "高速版の準備ができました。古い標準版モデルを削除すると約 %@ MB のディスク容量が空きます。";
+"model.upgrade.cleanup.confirm" = "古いモデルを削除";
+"model.upgrade.cleanup.keep" = "残す";
 "model.download.edit.url" = "URLを編集";
 "model.download.url.placeholder" = "モデルダウンロードURLを入力してください";
 

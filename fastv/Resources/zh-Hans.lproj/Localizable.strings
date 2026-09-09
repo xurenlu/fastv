@@ -176,7 +176,7 @@
 "onboarding.select.language.description" = "选择您最常用的语音输入语言。您可以在设置中随时更改。";
 "onboarding.download.model.title" = "下载模型文件";
 "onboarding.download.model.description" = "首次使用需要下载语音识别模型文件";
-"onboarding.model.size.warning" = "模型文件较大（894MB），请耐心等待";
+"onboarding.model.size.warning" = "模型文件约 %@MB，请耐心等待";
 "onboarding.model.other.files" = "其他配置文件将使用内置资源";
 "onboarding.downloading" = "正在下载";
 "onboarding.download.complete" = "下载完成";
@@ -243,6 +243,18 @@
 "model.download.error.cannot.get.file.size" = "无法获取文件大小，下载可能失败";
 "model.download.already.exists" = "%@ 已存在，跳过";
 "model.download.url.label" = "下载地址:";
+
+// 模型变体（加速版 / 标准版）
+"model.variant.int8" = "加速版";
+"model.variant.float32" = "标准版";
+"model.info.current.variant" = "当前使用：%@（%@ MB）";
+"model.upgrade.available.title" = "可升级到加速版模型";
+"model.upgrade.available.detail" = "加速版体积 %@ MB，识别速度约为标准版的两倍，识别结果一致。";
+"model.upgrade.action" = "升级";
+"model.upgrade.cleanup.title" = "要删除旧的标准版模型吗？";
+"model.upgrade.cleanup.message" = "加速版已就绪。删除旧的标准版模型可释放约 %@ MB 磁盘空间。";
+"model.upgrade.cleanup.confirm" = "删除旧模型";
+"model.upgrade.cleanup.keep" = "保留";
 "model.download.edit.url" = "修改地址";
 "model.download.url.placeholder" = "请输入模型下载地址";
 

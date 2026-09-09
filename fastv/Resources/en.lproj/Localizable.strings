@@ -176,7 +176,7 @@
 "onboarding.select.language.description" = "Select your most commonly used voice input language. You can change it anytime in settings.";
 "onboarding.download.model.title" = "Download Model";
 "onboarding.download.model.description" = "First-time use requires downloading the voice recognition model file";
-"onboarding.model.size.warning" = "Model file is large (894MB), please be patient";
+"onboarding.model.size.warning" = "The model file is about %@MB, please be patient";
 "onboarding.model.other.files" = "Other configuration files will use built-in resources";
 "onboarding.downloading" = "Downloading";
 "onboarding.download.complete" = "Download Complete";
@@ -243,6 +243,18 @@
 "model.download.error.cannot.get.file.size" = "Cannot get file size, download may have failed";
 "model.download.already.exists" = "%@ already exists, skipping";
 "model.download.url.label" = "Download URL:";
+
+// Model variants (fast / standard)
+"model.variant.int8" = "Fast";
+"model.variant.float32" = "Standard";
+"model.info.current.variant" = "In use: %@ (%@ MB)";
+"model.upgrade.available.title" = "A faster model is available";
+"model.upgrade.available.detail" = "The fast model is %@ MB and runs about twice as fast, with identical transcripts.";
+"model.upgrade.action" = "Upgrade";
+"model.upgrade.cleanup.title" = "Delete the old standard model?";
+"model.upgrade.cleanup.message" = "The fast model is ready. Deleting the old standard model frees about %@ MB of disk space.";
+"model.upgrade.cleanup.confirm" = "Delete Old Model";
+"model.upgrade.cleanup.keep" = "Keep";
 "model.download.edit.url" = "Edit URL";
 "model.download.url.placeholder" = "Enter model download URL";
 

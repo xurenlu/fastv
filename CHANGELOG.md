@@ -1,5 +1,32 @@
 # Changelog
 
+## [2.5.0-rc6] - 2026-09-09
+
+### Fixed
+
+- 修复语音识别慢：停顿或松键之后经常要再等好几秒才出字。四处叠加造成的，逐条改掉后本机（M2）Release 构建走 App 完整链路实测：6 秒语音识别耗时中位数 0.130 秒、最慢 0.172 秒，实时率 0.02，识别结果不变。新旧配置同条件交错对比 2/6/12 秒语音分别快 9.2 / 9.7 / 6.7 倍。
+  - **ONNX 线程配置踩了两个坑**。线程数原本取 `max(4, 逻辑核数)`，在 Apple Silicon 上把 4 个能效核也拉进线程池，整个并行区被最慢的核拖住；同时线程池默认自旋等待，机器一忙就和别的进程互相抢核。本机（M2，4 性能核 + 4 能效核）交错实测 6 秒语音：8 线程 + 自旋 479ms、8 线程关自旋 156ms、4 线程 151ms。现改为只用性能核（上限 8）并关闭自旋。
+  - **模型 5 分钟空闲就被卸载**，而 fp32 重新加载要 12~19 秒。用户「隔一会儿再说一句」必然撞上冷加载——历史记录里 1~2 秒短句识别耗时 6~8 秒基本都是这么来的。加速版常驻内存约 250MB，现不再定时卸载（历史 fp32 保留 30 分钟空闲阈值，内存超 4GB 时两者都卸）。
+  - **启动预加载用了 `.utility` 优先级**。ONNX Runtime 的线程池在建会话时懒创建并继承创建者的 QoS，于是整个进程后续每一次推理都被钉在低优先级上，实测慢 1.5~2 倍。改为 `.userInitiated`。
+  - **模型加载后第一次推理额外慢**（本机 203ms vs 稳态 69ms，惰性分配开销），这笔账原本全记在用户第一次说话上。现在加载完立刻空跑一次预热。
+- 修复松键后的两段等待被串起来算：尾缓冲（继续录 0.3 秒）和「等上一段分段转写算完」互不依赖，原本先睡满尾缓冲再去等转写，两段时间直接相加。现改为并发，只花两者中较长的那个。
+- 修复智能分段模式白白重采样整段录音：该模式的最终文本来自各分段加末段，整段 PCM 从来没被用过，`stopRecording()` 却照样把它拼接 + 重采样一遍，说得越久这一步越贵。现在该模式直接丢弃整段音频。
+- 修复音频缓冲拼接是平方复杂度：`buffers.reduce(Data(), +)` 每加一段都新分配并整体拷贝，改为预留容量后逐段 append。
+
+### Added
+
+- 分发官方 int8 量化模型（`iic/SenseVoiceSmall-onnx` 的 `model_quant.onnx`，241MB，托管在 `img.niuwoai.com`），取代原先 937MB 的 fp32 导出，成为新装用户的默认模型。15 句中文测试集上与 fp32 输出逐字一致，本机推理耗时约为 fp32 的一半，体积只有四分之一。
+- 模型改为双变体共存：加速版落 `model.int8.onnx`、历史版本落 `model.onnx`，加载时优先加速版。老用户升级后不必重新下载即可拿到线程、常驻、预热三项提速；设置页「模型文件状态」多一条升级入口，装好加速版后会询问是否删除旧的标准版以释放约 894MB 磁盘。
+- 模型下载地址默认指向官方加速版，并对历史默认地址做一次性迁移；用户手动填过的自定义地址保持不动。
+
+### Engineering
+
+- 新增 `SpeechModelVariant` / `SpeechModelLocator`（`fastv/Models/SpeechModelVariant.swift`）统一收口模型路径、期望体积、下载地址与变体解析。此前 `SpeechTranscriber`、`SpeechTranscriptionModel`、`ModelDownloader` 各自拼一遍 `model.onnx` 路径和 `937615562` 这个魔法数字。
+- 新增 `ONNXRuntimeWrapper.recommendedIntraOpThreadCount()`（按 `hw.perflevel0.physicalcpu` 取性能核，Intel 退回物理核数，夹到 2~8）、`VoiceInputService.stopRecordingDiscardingAudio()` 与 `teardownRecording()`、`ModelDownloader.removeModelFile(variant:)`。
+- 新增 `SpeechModelVariantTests` 14 例：默认变体、文件名互不覆盖、体积与地址对应、1KB 容差校验、下载地址迁移（历史值迁移 / 自定义值保留 / 幂等）、由地址反推变体、线程数上下界。
+- 新增 `SpeechTranscriptionIntegrationTests`：走 App 自己的完整链路（kaldi-native-fbank → LFR → CMVN → ONNX → CTC 解码）跑真实 wav，校验字错率。默认跳过，需同时满足本机已装模型且设置 `TEST_RUNNER_QECHO_ASR_FIXTURE_DIR` 指向 wav + 同名 txt 的素材目录。本机 15 句实测字错率 3.36%。
+- 版本号 `2.5.0-rc5` → `2.5.0-rc6`，build `53` → `54`；主 App、QechoIME、测试 target、STT API 与 `X-API-Version` 响应头保持一致。
+
 ## [2.5.0-rc5] - 2026-08-27
 
 ### Added

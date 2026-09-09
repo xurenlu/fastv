@@ -1178,6 +1178,15 @@ struct fastvApp: App {
         }
     }
     
+    /// 松键后的尾缓冲：继续录一小段再切段，减少末尾吞字。
+    /// 刻意标 nonisolated——它要和「等待进行中的分段转写」并发跑，不该占用主线程。
+    nonisolated private static func waitReleaseTailBuffer(seconds: TimeInterval) async {
+        guard seconds > 0 else { return }
+        print("⏳ [fastvApp] 尾缓冲 \(String(format: "%.2f", seconds)) 秒，继续录音...")
+        try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+        print("✅ [fastvApp] 尾缓冲结束")
+    }
+
     @MainActor
     private static func handleShortcutReleased(shortcutType: ShortcutType = .voiceInput) async {
         let needsAI = currentVoiceInputNeedsAI || shortcutType == .voiceInputWithAI
@@ -1206,33 +1215,43 @@ struct fastvApp: App {
         
         // 松开后尾缓冲：继续录音一小段时间，减少末尾内容丢失（用户可能还在说最后几个字）
         let tailBuffer = max(0, min(1.0, preferences.voiceInputReleaseTailBufferSeconds))
-        if tailBuffer > 0 {
-            print("⏳ [fastvApp] 尾缓冲 \(String(format: "%.2f", tailBuffer)) 秒，继续录音...")
-            try? await Task.sleep(nanoseconds: UInt64(tailBuffer * 1_000_000_000))
-            print("✅ [fastvApp] 尾缓冲结束")
-        }
-        
+
         // 智能分段模式：先提取剩余段落（須在 stopRecording 之前，因 extract 要求 isRecording）
         var remainingSegmentResult: VoiceInputService.SegmentResult?
         if currentSessionUsesIncremental {
-            // 先等待進行中的分段轉寫完成，再提取剩餘段落，保證插入順序
+            // 尾缓冲和「等上一段转写算完」都是纯等待，而且互不依赖：前者在等麦克风多收 0.3 秒，
+            // 后者在等 CPU 算完上一段。旧实现串行做，两段等待时间直接相加；这里并发，
+            // 只花两者中较长的那一个。
+            async let tailBufferElapsed: Void = waitReleaseTailBuffer(seconds: tailBuffer)
             await incrementalTranscriptionTask?.value
+            await tailBufferElapsed
             incrementalTranscriptionTask = nil
             remainingSegmentResult = try? await voiceService.extractCurrentSegmentWithTiming()
             currentSessionSilenceDetector?.reset()
             currentSessionSilenceDetector?.onSilenceDetected = nil
             currentSessionSilenceDetector = nil
+        } else {
+            await waitReleaseTailBuffer(seconds: tailBuffer)
         }
-        
-        // 停止录音
+
+        // 停止录音。
+        // 智能分段模式下整段录音根本用不到（最终文本来自各分段 + 末段），旧实现却照样把整段 PCM
+        // 拼起来再重采样一遍：说得越久这一步越贵，纯属让用户白等。
         print("🎤 [fastvApp] 停止录音...")
-        guard let recording = try? await voiceService.stopRecording() else {
-            print("❌ [fastvApp] 停止录音失败或返回空录音数据")
-            waveformManager.hide()
-            return
+        var fullRecording: VoiceRecording?
+        if currentSessionUsesIncremental {
+            await voiceService.stopRecordingDiscardingAudio()
+            print("✅ [fastvApp] 录音已停止（智能分段模式，跳过整段重采样）")
+        } else {
+            guard let stopped = try? await voiceService.stopRecording() else {
+                print("❌ [fastvApp] 停止录音失败或返回空录音数据")
+                waveformManager.hide()
+                return
+            }
+            fullRecording = stopped
+            print("✅ [fastvApp] 录音已停止，PCM字节数: \(stopped.pcmData.count)")
         }
-        print("✅ [fastvApp] 录音已停止，PCM字节数: \(recording.pcmData.count)")
-        
+
         // 智能分段模式：合併緩存分段 + 剩餘段落，一次性輸出（支持 AI 優化整段）
         if currentSessionUsesIncremental {
             // 按動態規劃分批：若某批二次轉寫已完成則替換該批零碎結果，否則用零碎結果
@@ -1378,6 +1397,13 @@ struct fastvApp: App {
         }
         
         // 非智能分段：整段轉寫
+        guard let recording = fullRecording else {
+            print("❌ [fastvApp] 缺少整段录音数据")
+            waveformManager.hide()
+            currentVoiceInputNeedsAI = false
+            return
+        }
+
         // 录音过短时提示用户，避免识别不准
         let recordingDuration = recording.durationSeconds
         if recordingDuration < VoiceInputDurationThreshold.minimumRecommended {

@@ -685,8 +685,123 @@ class VoiceInputService: ObservableObject {
     func stopRecording() async throws -> VoiceRecording? {
         print("🎤 [VoiceInputService] stopRecording() 被调用，当前 isRecording=\(isRecording)")
 
-        guard isRecording else {
+        guard let buffers = teardownRecording() else {
             print("ℹ️ [VoiceInputService] 未在录音中，返回 nil")
+            return nil
+        }
+
+        guard !buffers.isEmpty,
+              let originalFormat = recordingOriginalFormat else {
+            print("⚠️ [VoiceInputService] 录音数据为空或未知原始格式")
+            recordingOriginalFormat = nil
+            return nil
+        }
+        recordingOriginalFormat = nil
+
+        // 提取需要的参数值，避免在后台任务中访问实例属性
+        let sampleRate = recordingSampleRate
+        let channels = recordingChannels
+        let onConverted = self.onConvertedAudioData
+
+        // 如果启用了实时保存回调，分批转换并实时保存
+        if onConverted != nil {
+            // 分批处理音频数据，每批约2秒的数据（16kHz * 2秒 * 4字节 = 128KB）
+            var allConvertedData = Data()
+
+            for i in stride(from: 0, to: buffers.count, by: max(1, buffers.count / 10)) {
+                let endIndex = min(i + max(1, buffers.count / 10), buffers.count)
+                let batchBuffers = Array(buffers[i..<endIndex])
+                let batchData = Self.concatenated(batchBuffers)
+
+                if !batchData.isEmpty {
+                    do {
+                        let converted = try await Task.detached(priority: .userInitiated) {
+                            try await self.convertPCMData(
+                                batchData,
+                                originalFormat: originalFormat,
+                                toSampleRate: sampleRate,
+                                toChannels: channels
+                            )
+                        }.value
+
+                        allConvertedData.append(converted.pcmData)
+
+                        // 实时调用回调
+                        if let callback = self.onConvertedAudioData {
+                            await MainActor.run {
+                                callback(converted.pcmData)
+                            }
+                        }
+                    } catch {
+                        print("⚠️ [VoiceInputService] 批量转换失败: \(error)")
+                    }
+                }
+            }
+
+            // 返回合并后的数据
+            if !allConvertedData.isEmpty {
+                let recording = VoiceRecording(
+                    pcmData: allConvertedData,
+                    sampleRate: sampleRate,
+                    channelCount: Int(channels)
+                )
+                print("✅ [VoiceInputService] 录音已停止，返回内存音频数据，字节数=\(recording.pcmData.count)")
+                return recording
+            }
+        }
+
+        // 如果没有启用实时保存，使用原来的方式一次性转换
+        let combinedData = Self.concatenated(buffers)
+
+        // 将转码操作移到后台线程，避免阻塞 UI
+        do {
+            let recording = try await Task.detached(priority: .userInitiated) {
+                try await self.convertPCMData(
+                    combinedData,
+                    originalFormat: originalFormat,
+                    toSampleRate: sampleRate,
+                    toChannels: channels
+                )
+            }.value
+
+            print("✅ [VoiceInputService] 录音已停止，返回内存音频数据，字节数=\(recording.pcmData.count)")
+            return recording
+        } catch {
+            print("⚠️ [VoiceInputService] PCM转换失败: \(error)")
+            return nil
+        }
+    }
+
+    /// 停止录音并直接丢弃整段音频。
+    ///
+    /// 智能分段模式下最终文本来自各分段加末段，整段 PCM 从来没被用过，
+    /// 却仍要拼接 + 重采样一遍——说得越久越贵，纯粹是让用户在松键后白等。
+    func stopRecordingDiscardingAudio() async {
+        print("🎤 [VoiceInputService] stopRecordingDiscardingAudio() 被调用，当前 isRecording=\(isRecording)")
+        guard teardownRecording() != nil else {
+            print("ℹ️ [VoiceInputService] 未在录音中，无需停止")
+            return
+        }
+        recordingOriginalFormat = nil
+        onConvertedAudioData = nil
+    }
+
+    /// 把多段缓冲拼成一块 Data。
+    ///
+    /// 原先用 `buffers.reduce(Data(), +)`：每加一段都新分配一块并整体拷贝，
+    /// 复杂度是段数的平方，长录音尤其明显。这里一次预留够容量再逐段 append。
+    nonisolated private static func concatenated(_ buffers: [Data]) -> Data {
+        var combined = Data(capacity: buffers.reduce(0) { $0 + $1.count })
+        for buffer in buffers {
+            combined.append(buffer)
+        }
+        return combined
+    }
+
+    /// 停掉引擎、定时器与回调并取出录音缓冲。
+    /// - Returns: 录音缓冲；未在录音中时返回 nil。
+    private func teardownRecording() -> [Data]? {
+        guard isRecording else {
             return nil
         }
 
@@ -734,88 +849,9 @@ class VoiceInputService: ObservableObject {
             return result
         }
         
-        guard !buffers.isEmpty,
-              let originalFormat = recordingOriginalFormat else {
-            print("⚠️ [VoiceInputService] 录音数据为空或未知原始格式")
-            recordingOriginalFormat = nil
-            return nil
-        }
-        recordingOriginalFormat = nil
-        
-        // 提取需要的参数值，避免在后台任务中访问实例属性
-        let sampleRate = recordingSampleRate
-        let channels = recordingChannels
-        let onConverted = self.onConvertedAudioData
-        
-        // 如果启用了实时保存回调，分批转换并实时保存
-        if onConverted != nil {
-            // 分批处理音频数据，每批约2秒的数据（16kHz * 2秒 * 4字节 = 128KB）
-            var allConvertedData = Data()
-            
-            for i in stride(from: 0, to: buffers.count, by: max(1, buffers.count / 10)) {
-                let endIndex = min(i + max(1, buffers.count / 10), buffers.count)
-                let batchBuffers = Array(buffers[i..<endIndex])
-                let batchData = batchBuffers.reduce(Data(), +)
-                
-                if !batchData.isEmpty {
-                    do {
-                        let converted = try await Task.detached(priority: .userInitiated) {
-                            try await self.convertPCMData(
-                                batchData,
-                                originalFormat: originalFormat,
-                                toSampleRate: sampleRate,
-                                toChannels: channels
-                            )
-                        }.value
-                        
-                        allConvertedData.append(converted.pcmData)
-                        
-                        // 实时调用回调
-                        if let callback = self.onConvertedAudioData {
-                            await MainActor.run {
-                                callback(converted.pcmData)
-                            }
-                        }
-                    } catch {
-                        print("⚠️ [VoiceInputService] 批量转换失败: \(error)")
-                    }
-                }
-            }
-            
-            // 返回合并后的数据
-            if !allConvertedData.isEmpty {
-                let recording = VoiceRecording(
-                    pcmData: allConvertedData,
-                    sampleRate: sampleRate,
-                    channelCount: Int(channels)
-                )
-                print("✅ [VoiceInputService] 录音已停止，返回内存音频数据，字节数=\(recording.pcmData.count)")
-                return recording
-            }
-        }
-        
-        // 如果没有启用实时保存，使用原来的方式一次性转换
-        let combinedData = buffers.reduce(Data(), +)
-        
-        // 将转码操作移到后台线程，避免阻塞 UI
-        do {
-            let recording = try await Task.detached(priority: .userInitiated) {
-                try await self.convertPCMData(
-                    combinedData,
-                    originalFormat: originalFormat,
-                    toSampleRate: sampleRate,
-                    toChannels: channels
-                )
-            }.value
-            
-            print("✅ [VoiceInputService] 录音已停止，返回内存音频数据，字节数=\(recording.pcmData.count)")
-            return recording
-        } catch {
-            print("⚠️ [VoiceInputService] PCM转换失败: \(error)")
-            return nil
-        }
+        return buffers
     }
-    
+
     /// 取消录音（不保存文件）
     func cancelRecording() {
         Task { @MainActor in
@@ -951,7 +987,7 @@ class VoiceInputService: ObservableObject {
         // 更新段落时间（提取后）
         lastSegmentTime = Date()
         
-        let combinedData = buffers.reduce(Data(), +)
+        let combinedData = Self.concatenated(buffers)
         let duration = segmentEndTime - segmentStartTime
         print("📊 [VoiceInputService] 提取段落数据: \(combinedData.count) 字节, 时长: \(String(format: "%.1f", duration))秒")
         

@@ -9,23 +9,12 @@ import Foundation
 import AVFoundation
 
 struct SpeechTranscriber {
-    // 获取模型目录（优先使用下载的模型）
-    private static func getModelDirectory() -> URL {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let appDir = appSupport.appendingPathComponent(NSLocalizedString("app.name", comment: ""))
-        return appDir.appendingPathComponent("Models/sensevoice-small")
-    }
-    
-    // model.onnx 文件使用下载的版本（不包含在 Bundle 中）
+    // 模型权重使用下载的版本（不包含在 Bundle 中），路径统一由 SpeechModelLocator 决定：
+    // 优先加速版 int8，没有才回退历史 fp32。
     private static var modelPath: URL? {
-        let downloadedPath = getModelDirectory().appendingPathComponent("model.onnx")
-        if FileManager.default.fileExists(atPath: downloadedPath.path) {
-            return downloadedPath
-        }
-        // 如果不存在，返回 nil（不再回退到 Bundle）
-        return nil
+        SpeechModelLocator.resolvedModelURL()
     }
-    
+
     // tokens.json 文件从 Bundle 中读取（随 app 提供）
     private static var tokensPath: URL? {
         // 首先尝试在子目录中查找
