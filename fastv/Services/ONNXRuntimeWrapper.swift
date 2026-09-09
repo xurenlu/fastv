@@ -13,6 +13,15 @@ import Foundation
 // 通过桥接头文件 ONNXRuntimeBridge.h 访问 C API
 // C API 类型和函数在桥接头文件中定义
 
+/// ONNX Runtime 会话配置键。
+///
+/// 这些键定义在 `onnxruntime_session_options_config_keys.h`，该头文件没有进桥接头
+/// （里面几百个 `static const char*` 全量导入会污染整个模块），这里按官方常量名镜像。
+private enum ORTSessionConfigKey {
+    /// 对应 `kOrtSessionOptionsConfigAllowIntraOpSpinning`。
+    static let allowIntraOpSpinning = "session.intra_op.allow_spinning"
+}
+
 class ONNXRuntimeWrapper {
     private var session: OpaquePointer? // OrtSession*
     private var env: OpaquePointer? // OrtEnv*
@@ -51,6 +60,30 @@ class ONNXRuntimeWrapper {
         self.env = env
     }
     
+    /// ONNX Runtime intra-op 线程数：只用性能核，且不超过 8。
+    ///
+    /// Apple Silicon 上 `hw.perflevel0.physicalcpu` 就是性能核数（M2 为 4，M1 Pro 为 8）；
+    /// Intel Mac 没有这个键，退回物理核数（超线程对 GEMM 帮助很小）。上限 8 是因为
+    /// SenseVoice-small 的并行区不大，线程再多只会增加同步开销。
+    static func recommendedIntraOpThreadCount() -> Int {
+        let performanceCores = sysctlInt32("hw.perflevel0.physicalcpu")
+        let physicalCores = sysctlInt32("hw.physicalcpu")
+        let candidate = performanceCores
+            ?? physicalCores
+            ?? ProcessInfo.processInfo.activeProcessorCount
+        return min(8, max(2, candidate))
+    }
+
+    /// 读取 int32 类型的 sysctl 值，读不到返回 nil。
+    private static func sysctlInt32(_ name: String) -> Int? {
+        var value: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        guard sysctlbyname(name, &value, &size, nil, 0) == 0, value > 0 else {
+            return nil
+        }
+        return Int(value)
+    }
+
     func loadModel(from path: String) throws {
         guard let api = api else {
             throw VideoProcessingError.modelLoadFailed("API 未初始化")
@@ -79,8 +112,11 @@ class ONNXRuntimeWrapper {
             }
         }
         
-        // 性能优化：设置多线程
-        let numThreads = max(4, ProcessInfo.processInfo.activeProcessorCount)
+        // 性能优化：线程数只用性能核。
+        // 旧实现取 max(4, 逻辑核数)，在 Apple Silicon 上会把 4 个能效核一起拉进线程池，
+        // 整个并行区被最慢的能效核拖住。本机（M2，4 性能核 + 4 能效核）交错实测 6 秒语音：
+        // 8 线程 479ms、4 线程 151ms。
+        let numThreads = Self.recommendedIntraOpThreadCount()
         status = api.pointee.SetIntraOpNumThreads(sessionOptions, Int32(numThreads))
         if status != nil {
             let errorMsg = getErrorMessage(from: status, api: api)
@@ -89,7 +125,22 @@ class ONNXRuntimeWrapper {
         } else {
             print("✅ ONNX Runtime 使用 \(numThreads) 个线程")
         }
-        
+
+        // 关闭线程池自旋等待。
+        // 自旋让空闲工作线程忙等下一个并行区，机器一忙就会和其他进程互相抢核：
+        // 同样是 8 线程，开自旋 479ms、关自旋 156ms。轻语是常驻后台的工具，
+        // 不该在两次识别之间空烧 CPU 和电量。
+        ORTSessionConfigKey.allowIntraOpSpinning.withCString { key in
+            "0".withCString { value in
+                let spinStatus = api.pointee.AddSessionConfigEntry(sessionOptions, key, value)
+                if spinStatus != nil {
+                    let errorMsg = getErrorMessage(from: spinStatus, api: api)
+                    api.pointee.ReleaseStatus(spinStatus)
+                    print("⚠️ 关闭线程自旋失败: \(errorMsg)")
+                }
+            }
+        }
+
         // 设置图优化级别
         status = api.pointee.SetSessionGraphOptimizationLevel(sessionOptions, ORT_ENABLE_ALL)
         if status != nil {
@@ -97,7 +148,7 @@ class ONNXRuntimeWrapper {
             api.pointee.ReleaseStatus(status)
             print("⚠️ 设置图优化级别失败: \(errorMsg)")
         }
-        
+
         // 创建会话
         // 在 macOS 上，ORTCHAR_T 是 char，所以直接使用 path
         var session: OpaquePointer?
