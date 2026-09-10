@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.5.0-rc10] - 2026-09-10
+
+### Fixed
+
+- 修复「说完之后再按快捷键，悬浮条容易出不来」：`setAICorrected` / `setAICorrectionFailed` / `setAICorrectionDisabled` 用裸的 `DispatchQueue.main.asyncAfter { hide() }` 排延迟隐藏，没有任何人能取消。于是上一轮遗留的 hide 会在下一轮 `show()` 之后到点触发，把刚显示出来的新窗口直接关掉（`hide()` 里的延迟清理还会顺手把新窗口引用置空）。现改为持有可取消的 `DispatchWorkItem`，并在 `show()`、`setRecording()`、`setTranscribing()`、`setAICorrecting()` 与 `cleanup()` 时一律撤销待执行的隐藏。
+- 修复纯语音输入结束后悬浮条还顶着一个 AI 图标多停 0.8 秒：没走 AI 的普通语音输入（单按 FN）此前也调 `setAICorrectionDisabled()`，显示 `sparkles`（AI 未启用）图标。用户根本没请求 AI，这个提示既没有信息量，又把收起时间拖长。现新增 `finishWithoutAICorrection()` 直接收起；`setAICorrectionDisabled()` 只保留给「按了 AI 校正快捷键但服务未配置」这一种真正值得提示的情况。
+
+### Engineering
+
+- 新增 `WaveformHideSchedulingTests` 3 例：上一轮的延迟隐藏不能关掉下一轮刚显示的窗口、切回处理中状态会撤销待执行的隐藏、纯语音输入结束立即收起。已验证前两条对旧实现失败（精确复现新窗口被关掉），对修复版通过。
+- 版本号 `2.5.0-rc9` → `2.5.0-rc10`，build `57` → `58`；主 App、QechoIME、测试 target、STT API 与 `X-API-Version` 响应头保持一致。
+
 ## [2.5.0-rc9] - 2026-09-10
 
 ### Fixed

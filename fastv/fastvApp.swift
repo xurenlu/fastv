@@ -1311,7 +1311,7 @@ struct fastvApp: App {
             }
             
             guard !fullText.isEmpty else {
-                waveformManager.setAICorrectionDisabled()
+                waveformManager.finishWithoutAICorrection()
                 currentSessionUsesIncremental = false
                 currentSessionUsesLiveInsertion = false
                 currentVoiceInputNeedsAI = false
@@ -1319,7 +1319,8 @@ struct fastvApp: App {
             }
 
             if currentSessionUsesLiveInsertion {
-                waveformManager.setAICorrectionDisabled()
+                // 实时插入模式必然是纯语音输入（没走 AI），不该显示 AI 未启用图标
+                waveformManager.finishWithoutAICorrection()
                 let audioSec = currentSessionIncrementalAudioSeconds > 0 ? currentSessionIncrementalAudioSeconds : nil
                 let transSec = currentSessionIncrementalTranscriptionSeconds > 0 ? currentSessionIncrementalTranscriptionSeconds : nil
                 VoiceInputHistoryManager.shared.add(text: fullText, audioDurationSeconds: audioSec, transcriptionDurationSeconds: transSec)
@@ -1381,8 +1382,11 @@ struct fastvApp: App {
                     print("⚠️ [fastvApp] AI 優化失敗，使用原始文本: \(error.localizedDescription)")
                     waveformManager.setAICorrectionFailed()
                 }
-            } else {
+            } else if needsAI {
+                // 用户按了 AI 校正快捷键但服务没配置，值得给个提示
                 waveformManager.setAICorrectionDisabled()
+            } else {
+                waveformManager.finishWithoutAICorrection()
             }
             
             insertVoiceText(text, preferences: preferences)
@@ -1407,7 +1411,8 @@ struct fastvApp: App {
         // 录音过短时提示用户，避免识别不准
         let recordingDuration = recording.durationSeconds
         if recordingDuration < VoiceInputDurationThreshold.minimumRecommended {
-            waveformManager.setAICorrectionDisabled()
+            // 马上要弹提示框了，悬浮条先收掉，别在弹框后面顶着一个 AI 图标空转
+            waveformManager.finishWithoutAICorrection()
             let alert = NSAlert()
             alert.messageText = NSLocalizedString("voice.recording.too.short.title", comment: "")
             alert.informativeText = NSLocalizedString("voice.recording.too.short.message", comment: "")
@@ -1516,11 +1521,13 @@ struct fastvApp: App {
             } else {
                 if needsAI {
                     print("ℹ️ [fastvApp] AI 服務未配置，跳過 AI 優化")
+                    // 用户按了 AI 校正快捷键但服务没配置，值得给个提示（0.8 秒后自动收起）
+                    waveformManager.setAICorrectionDisabled()
                 } else {
                     print("ℹ️ [fastvApp] 使用純語音輸入模式（FN鍵），不進行 AI 優化")
+                    // 纯语音输入没走 AI，直接收起，不显示 AI 图标
+                    waveformManager.finishWithoutAICorrection()
                 }
-                // AI修正未啟用：設置未啟用狀態（會自動在0.8秒後隱藏窗口）
-                waveformManager.setAICorrectionDisabled()
             }
             
             // 先插入文本（优先保证用户体验）

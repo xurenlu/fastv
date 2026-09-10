@@ -26,6 +26,14 @@ class WaveformWindowManager: ObservableObject {
     private var window: NSWindow?
     private var hostingView: NSHostingView<WaveformView>?
     private var cleanupTask: DispatchWorkItem?
+
+    /// 待执行的延迟隐藏任务。
+    ///
+    /// 必须持有引用才能取消：此前三个 `setAICorrection*` 方法用裸的
+    /// `DispatchQueue.main.asyncAfter { hide() }` 排延迟隐藏，谁都取消不掉。
+    /// 于是「说完一句 → 0.8 秒内再按快捷键」会撞上上一轮遗留的 hide：新窗口刚显示出来
+    /// 就被它关掉，表现为「再按快捷键悬浮条出不来」。
+    private var pendingHideTask: DispatchWorkItem?
     /// 跟随光标 timer：当 waveformWindowPosition == .followCursor 时启动，
     /// 每 50ms 重算 origin 让窗口跟着 caret / 鼠标走。
     private var followCursorTimer: Timer?
@@ -40,10 +48,14 @@ class WaveformWindowManager: ObservableObject {
     /// 显示波形窗口
     func show() {
         print("📊 [WaveformWindowManager] show() 被调用")
-        
+
         // 取消之前的清理任务
         cleanupTask?.cancel()
         cleanupTask = nil
+
+        // 关键：取消上一轮排下的延迟隐藏。
+        // 否则「说完一句 → 0.8 秒内再按快捷键」时，旧的 hide 会把这一轮刚显示的窗口关掉。
+        cancelPendingHide()
         
         // 如果窗口已存在，先关闭它
         if let existingWindow = window {
@@ -210,20 +222,25 @@ class WaveformWindowManager: ObservableObject {
     
     /// 切换到录音状态（智能分段转写完成后恢复）
     func setRecording() {
+        cancelPendingHide()
         state = .recording
     }
-    
+
     /// 切换到转文字状态
     func setTranscribing() {
         print("📊 [WaveformWindowManager] 切换到转文字状态")
+        // 这三个状态都表示「还在干活」，必须撤掉上一轮排下的延迟隐藏，
+        // 否则窗口会在处理中途被关掉。
+        cancelPendingHide()
         // 立即切换状态，不使用动画延迟，确保用户感觉不到停顿
         state = .transcribing
         audioLevel = 0.0
     }
-    
+
     /// 设置AI修正状态
     func setAICorrecting() {
         print("📊 [WaveformWindowManager] 设置AI修正中状态")
+        cancelPendingHide()
         state = .aiCorrecting
         audioLevel = 0.0
     }
@@ -233,35 +250,56 @@ class WaveformWindowManager: ObservableObject {
         print("📊 [WaveformWindowManager] 设置AI修正成功状态")
         state = .aiCorrected
         audioLevel = 0.0
-        
-        // 1秒后自动隐藏窗口
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            self?.hide()
-        }
+        scheduleHide(after: 1.0)
     }
-    
+
     /// 设置AI修正失败状态（会自动在0.8秒后隐藏）
     func setAICorrectionFailed() {
         print("📊 [WaveformWindowManager] 设置AI修正失败状态")
         state = .aiCorrectionFailed
         audioLevel = 0.0
-        
-        // 0.8秒后自动隐藏窗口
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-            self?.hide()
-        }
+        scheduleHide(after: 0.8)
     }
-    
-    /// 设置AI修正未启用状态（会自动在0.8秒后隐藏）
+
+    /// 设置AI修正未启用状态（会自动在0.8秒后隐藏）。
+    ///
+    /// 只用于「用户按了 AI 校正快捷键、但 AI 服务没配置」——这时告诉他一声是有意义的。
+    /// 纯语音输入没走 AI，请用 `finishWithoutAICorrection()`，不要在这里显示 AI 图标。
     func setAICorrectionDisabled() {
         print("📊 [WaveformWindowManager] 设置AI修正未启用状态")
         state = .aiCorrectionDisabled
         audioLevel = 0.0
-        
-        // 0.8秒后自动隐藏窗口
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-            self?.hide()
+        scheduleHide(after: 0.8)
+    }
+
+    /// 纯语音输入结束：直接收起，不显示任何 AI 状态。
+    ///
+    /// 此前这条路径也走 `setAICorrectionDisabled()`，于是没用 AI 的普通语音输入结束后，
+    /// 悬浮条还要顶着一个 `sparkles`（AI 未启用）图标多停 0.8 秒。用户根本没请求 AI，
+    /// 这个提示既没有信息量，又把收起时间拖长了。
+    func finishWithoutAICorrection() {
+        print("📊 [WaveformWindowManager] 纯语音输入完成，直接收起")
+        cancelPendingHide()
+        hide()
+    }
+
+    /// 排一个可取消的延迟隐藏，覆盖掉之前排过的那个。
+    private func scheduleHide(after delay: TimeInterval) {
+        cancelPendingHide()
+        let task = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            self.pendingHideTask = nil
+            self.hide()
         }
+        pendingHideTask = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: task)
+    }
+
+    /// 取消待执行的延迟隐藏。新一轮录音开始、或状态回到「还在干活」时必须调用，
+    /// 否则上一轮遗留的 hide 会把这一轮刚显示的窗口关掉。
+    private func cancelPendingHide() {
+        pendingHideTask?.cancel()
+        pendingHideTask = nil
     }
     
     /// 强制清理窗口（用于应用退出时的兜底方案）
@@ -271,6 +309,7 @@ class WaveformWindowManager: ObservableObject {
         // 取消所有延迟任务
         cleanupTask?.cancel()
         cleanupTask = nil
+        cancelPendingHide()
         stopFollowCursorTimer()
 
         guard let window = window else {
