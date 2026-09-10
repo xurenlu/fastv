@@ -46,6 +46,24 @@ enum CursorPositionLocator {
         return clampedRect(origin: preferred, size: windowSize, into: bounds, margin: margin)
     }
 
+    /// 悬浮指示器该出现在哪块屏幕。
+    ///
+    /// **不要用 `NSScreen.main`**：它返回的是「包含当前键盘焦点窗口的屏幕」，而轻语是常驻
+    /// 后台的附属型 App，平时没有键窗口，这种情况下它基本固定落回主显示器。用户在副屏上
+    /// 打字按下快捷键时，指示器会被画到主屏，从用户视角看就是「悬浮条完全不显示」。
+    ///
+    /// 这里改用鼠标所在屏幕：跨屏切换几乎总是伴随鼠标移动，且取鼠标位置是同步的、
+    /// 零成本的，不像 AX 查询那样会给按键路径增加延迟。
+    static func activeScreen() -> NSScreen? {
+        screenContaining(point: NSEvent.mouseLocation) ?? NSScreen.main ?? NSScreen.screens.first
+    }
+
+    /// `activeScreen()` 的纯函数版本，便于在没有真实多显示器的机器上做单测。
+    /// - Returns: 命中的屏幕下标；点不在任何屏幕内时返回 nil。
+    static func indexOfScreen(containing point: NSPoint, in frames: [CGRect]) -> Int? {
+        frames.firstIndex { $0.contains(point) }
+    }
+
     // MARK: - 内部
 
     /// 把矩形 clamp 到 bounds 内，留出 margin。算法纯函数，可单测。

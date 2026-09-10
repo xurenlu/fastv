@@ -297,9 +297,11 @@ class WaveformWindowManager: ObservableObject {
     
     /// 计算窗口位置
     private func calculateWindowFrame() -> NSRect {
-        // 优先获取当前活跃的屏幕（用户正在使用的屏幕）
-        // 在全屏模式下，NSScreen.main 可能不是用户实际使用的屏幕
-        let screen = NSScreen.main ?? NSScreen.screens.first
+        // 取用户当前正在用的那块屏（鼠标所在屏），不是 NSScreen.main。
+        // NSScreen.main 返回「包含键盘焦点窗口的屏幕」，而轻语常驻后台、平时没有键窗口，
+        // 于是它基本固定落回主显示器：用户在副屏打字按下快捷键，指示器却画到了主屏上，
+        // 看起来就是「悬浮条完全不显示」。详见 CursorPositionLocator.activeScreen()。
+        let screen = CursorPositionLocator.activeScreen()
         guard let screen = screen else {
             let size = UserPreferences.shared.waveformWindowStyle.size
             return NSRect(x: 0, y: 0, width: size.width, height: size.height)

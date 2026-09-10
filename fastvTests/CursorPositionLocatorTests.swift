@@ -94,4 +94,68 @@ struct CursorPositionLocatorTests {
         #expect(WaveformWindowPosition.followCursor.isFollowingCursor)
         #expect(!WaveformWindowPosition.bottomCenter.isFollowingCursor)
     }
+
+    // MARK: - 多显示器下的屏幕选取
+    //
+    // 用户反馈「悬浮条有时候完全不显示」。真相是它显示在了另一块屏上：固定位置
+    // （正中下方等）原先用 NSScreen.main 定位，而该 API 返回「包含键盘焦点窗口的
+    // 屏幕」，轻语常驻后台没有键窗口，于是基本固定落回主显示器。用户在副屏打字，
+    // 指示器却画到主屏。这几条锁住「按点选屏」的语义。
+
+    /// 主屏 2560×1600 在原点，外接 4K（缩放 1920×1080）挂在右侧——与报告该问题的机器一致。
+    private var dualScreenFrames: [CGRect] {
+        [
+            CGRect(x: 0, y: 0, width: 2560, height: 1600),
+            CGRect(x: 2560, y: 0, width: 1920, height: 1080)
+        ]
+    }
+
+    @Test("鼠标在主屏 → 选中主屏")
+    func picksPrimaryWhenPointerOnPrimary() {
+        let index = CursorPositionLocator.indexOfScreen(
+            containing: NSPoint(x: 1280, y: 800),
+            in: dualScreenFrames
+        )
+        #expect(index == 0)
+    }
+
+    @Test("鼠标在副屏 → 选中副屏，不落回主屏")
+    func picksSecondaryWhenPointerOnSecondary() {
+        let index = CursorPositionLocator.indexOfScreen(
+            containing: NSPoint(x: 3520, y: 540),
+            in: dualScreenFrames
+        )
+        #expect(index == 1, "鼠标在副屏时必须选副屏，否则指示器会画到用户看不见的屏上")
+    }
+
+    @Test("主屏左侧的副屏（负坐标空间）同样能命中")
+    func picksScreenInNegativeCoordinateSpace() {
+        let frames = [
+            CGRect(x: 0, y: 0, width: 2560, height: 1600),
+            CGRect(x: -1920, y: 0, width: 1920, height: 1080)
+        ]
+        #expect(CursorPositionLocator.indexOfScreen(containing: NSPoint(x: -960, y: 540), in: frames) == 1)
+        #expect(CursorPositionLocator.indexOfScreen(containing: NSPoint(x: 100, y: 100), in: frames) == 0)
+    }
+
+    @Test("点不在任何屏幕内 → 返回 nil，由调用方兜底")
+    func returnsNilWhenPointOutsideAllScreens() {
+        #expect(CursorPositionLocator.indexOfScreen(containing: NSPoint(x: 9999, y: 9999), in: dualScreenFrames) == nil)
+        #expect(CursorPositionLocator.indexOfScreen(containing: .zero, in: []) == nil)
+    }
+
+    @Test("跟随光标模式把窗口 clamp 在锚点所在的副屏内")
+    func followCursorStaysOnAnchorScreen() {
+        // 锚点在右侧副屏靠右边缘，窗口不能溢出到主屏或屏幕外
+        let secondary = CGRect(x: 2560, y: 0, width: 1920, height: 1080)
+        let size = CGSize(width: 200, height: 60)
+        let rect = CursorPositionLocator.clampedRect(
+            origin: NSPoint(x: secondary.maxX - 20, y: 500),
+            size: size,
+            into: secondary,
+            margin: 8
+        )
+        #expect(rect.maxX <= secondary.maxX - 8)
+        #expect(rect.minX >= secondary.minX + 8)
+    }
 }
