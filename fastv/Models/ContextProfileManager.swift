@@ -30,7 +30,7 @@ final class ContextProfileManager: ObservableObject {
     }
 
     private init() {
-        enablePowerMode = UserDefaults.standard.object(forKey: Keys.enablePowerMode) as? Bool ?? true
+        enablePowerMode = UserDefaults.standard.object(forKey: Keys.enablePowerMode) as? Bool ?? UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
         load()
         initializeBuiltInsIfNeeded()
         migrateBuiltInsForLightStructureIfNeeded()

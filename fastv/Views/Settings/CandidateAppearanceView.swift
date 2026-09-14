@@ -27,6 +27,7 @@ extension CandidateColor {
 // MARK: - 主面板
 
 struct CandidateAppearanceView: View {
+    var compact = false
     @ObservedObject private var store = InputMethodSettingsStore.shared
 
     /// 预览用的深浅色切换（不改设置，只切预览）
@@ -118,6 +119,12 @@ struct CandidateAppearanceView: View {
             }
             .pickerStyle(.segmented)
 
+            sliderRow(titleKey: "ime.cand.fontSize", value: appearance.fontSize, range: 12...48, step: 1) { v in
+                update { $0.fontSize = v }
+            }
+
+            if !compact {
+            DisclosureGroup(NSLocalizedString("experience.appearance.advanced", comment: "")) {
             // 字体
             Picker(NSLocalizedString("ime.cand.font", comment: ""),
                    selection: Binding(get: { appearance.fontName ?? "" },
@@ -129,9 +136,6 @@ struct CandidateAppearanceView: View {
             }
 
             // 字号
-            sliderRow(titleKey: "ime.cand.fontSize", value: appearance.fontSize, range: 12...48, step: 1) { v in
-                update { $0.fontSize = v }
-            }
             sliderRow(titleKey: "ime.cand.labelFontSize", value: appearance.labelFontSize, range: 8...24, step: 1) { v in
                 update { $0.labelFontSize = v }
             }
@@ -172,6 +176,8 @@ struct CandidateAppearanceView: View {
 
             Button(NSLocalizedString("ime.cand.reset", comment: "")) {
                 store.resetAppearance()
+            }
+            }
             }
         } header: {
             Text(NSLocalizedString("ime.cand.section", comment: ""))

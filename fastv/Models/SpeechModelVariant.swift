@@ -93,7 +93,9 @@ nonisolated enum SpeechModelLocator {
 
     /// 该变体是否已经装好。
     static func isInstalled(_ variant: SpeechModelVariant) -> Bool {
-        FileManager.default.fileExists(atPath: fileURL(for: variant).path)
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: fileURL(for: variant).path),
+              let size = attributes[.size] as? Int64 else { return false }
+        return matchesExpectedSize(variant, byteSize: size)
     }
 
     /// 已安装的变体，按选取顺序排列。
@@ -103,7 +105,9 @@ nonisolated enum SpeechModelLocator {
 
     /// 实际会被加载的变体。
     static func resolvedVariant() -> SpeechModelVariant? {
-        installedVariants().first
+        if let name = UserDefaults.standard.string(forKey: "preferredSpeechModel"),
+           let selected = SpeechModelVariant(rawValue: name), isInstalled(selected) { return selected }
+        return installedVariants().first
     }
 
     /// 实际会被加载的模型文件；一个都没装时返回 nil。

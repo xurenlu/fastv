@@ -90,7 +90,7 @@
 		2A3DC7D8EC1D2ABF9008C1BA /* QEchoIMEController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QEchoIMEController.swift; sourceTree = "<group>"; };
 		2BAD2DBC36242ACF4FFB0F7C /* yue.lproj */ = {isa = PBXFileReference; includeInIndex = 1; name = yue.lproj; path = Resources/yue.lproj; sourceTree = "<group>"; };
 		3691BEDE4B029E732C77C84A /* MainAppLauncher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MainAppLauncher.swift; sourceTree = "<group>"; };
-		5C04237E2ECD792D00821B50 /* Qecho.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Qecho.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5C04237E2ECD792D00821B50 /* QEcho.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QEcho.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C04238D2ECD793000821B50 /* typecho.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = typecho.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C0423972ECD793000821B50 /* fastvUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = fastvUITests.xctest; path = typecho.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C1000012F00000100527815 /* musetype.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = musetype.xctestplan; sourceTree = "<group>"; };
@@ -218,7 +218,7 @@
 		5C04237F2ECD792D00821B50 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				5C04237E2ECD792D00821B50 /* Qecho.app */,
+				5C04237E2ECD792D00821B50 /* QEcho.app */,
 				5C04238D2ECD793000821B50 /* typecho.xctest */,
 				5C0423972ECD793000821B50 /* fastvUITests.xctest */,
 				161CCC51A8A655CDDEF940EC /* QechoIME.app */,
@@ -269,7 +269,7 @@
 				7C864D9382D3A405BCBC8404 /* Sparkle */,
 			);
 			productName = musetype;
-			productReference = 5C04237E2ECD792D00821B50 /* Qecho.app */;
+			productReference = 5C04237E2ECD792D00821B50 /* QEcho.app */;
 			productType = "com.apple.product-type.application";
 		};
 		5C04238C2ECD793000821B50 /* fastvTests */ = {
@@ -536,7 +536,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 58;
+				CURRENT_PROJECT_VERSION = 64;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -554,7 +554,7 @@
 					"$(SRCROOT)/ThirdParty/librime/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.5.0-rc10";
+				MARKETING_VERSION = "2.6.0";
 				PRODUCT_BUNDLE_IDENTIFIER = com.17push.inputmethod.QechoIME;
 				PRODUCT_NAME = QechoIME;
 				SDKROOT = macosx;
@@ -692,7 +692,7 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 58;
+				CURRENT_PROJECT_VERSION = 64;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -729,14 +729,15 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.5.0-rc10";
+				MARKETING_VERSION = "2.6.0";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.17push.musetype;
 				PRODUCT_MODULE_NAME = musetype;
-				PRODUCT_NAME = Qecho;
+				PRODUCT_NAME = QEcho;
+				EXECUTABLE_NAME = Qecho;
 				REGISTER_APP_GROUPS = YES;
 				SCRIPTING_DEFINITION_FILE = fastv/fastv.sdef;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -757,7 +758,7 @@
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 58;
+				CURRENT_PROJECT_VERSION = 64;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -794,14 +795,15 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.5.0-rc10";
+				MARKETING_VERSION = "2.6.0";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lonnxruntime",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.17push.musetype;
 				PRODUCT_MODULE_NAME = musetype;
-				PRODUCT_NAME = Qecho;
+				PRODUCT_NAME = QEcho;
+				EXECUTABLE_NAME = Qecho;
 				REGISTER_APP_GROUPS = YES;
 				SCRIPTING_DEFINITION_FILE = fastv/fastv.sdef;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -820,7 +822,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 58;
+				CURRENT_PROJECT_VERSION = 64;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -839,7 +841,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.5.0-rc10";
+				MARKETING_VERSION = "2.6.0";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -847,7 +849,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Qecho.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Qecho";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/QEcho.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Qecho";
 			};
 			name = Debug;
 		};
@@ -857,7 +859,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 58;
+				CURRENT_PROJECT_VERSION = 64;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -876,7 +878,7 @@
 					"$(PROJECT_DIR)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.5.0-rc10";
+				MARKETING_VERSION = "2.6.0";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2Tests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -884,7 +886,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Qecho.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Qecho";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/QEcho.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Qecho";
 			};
 			name = Release;
 		};
@@ -893,10 +895,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 58;
+				CURRENT_PROJECT_VERSION = 64;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.5.0-rc10";
+				MARKETING_VERSION = "2.6.0";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -913,10 +915,10 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = fastv/fastv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 58;
+				CURRENT_PROJECT_VERSION = 64;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "2.5.0-rc10";
+				MARKETING_VERSION = "2.6.0";
 				PRODUCT_BUNDLE_IDENTIFIER = com.wxside.fastv2UITests;
 				PRODUCT_NAME = typecho;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -935,7 +937,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 58;
+				CURRENT_PROJECT_VERSION = 64;
 				DEVELOPMENT_TEAM = ZH2S7D6PL6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -953,7 +955,7 @@
 					"$(SRCROOT)/ThirdParty/librime/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = "2.5.0-rc10";
+				MARKETING_VERSION = "2.6.0";
 				PRODUCT_BUNDLE_IDENTIFIER = com.17push.inputmethod.QechoIME;
 				PRODUCT_NAME = QechoIME;
 				SDKROOT = macosx;

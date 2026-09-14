@@ -25,7 +25,10 @@ private extension EnvironmentValues {
 /// 设置 - 语音输入：快捷键、触发方式、识别语言、智能分段、悬浮工具条、文本插入、权限测试，
 /// 以及测试输入框、语音输入统计、语音输入历史（原主窗口内容并入此 tab）。
 struct VoiceInputTab: View {
+    var initialSubtab: VoiceSubtab = .general
+    var showsSubtabs = true
     @ObservedObject var preferences = UserPreferences.shared
+    @ObservedObject private var mistakes = CommonMistakeManager.shared
     @ObservedObject private var historyManager = VoiceInputHistoryManager.shared
     @ObservedObject private var contextProfileManager = ContextProfileManager.shared
     @State private var testInputText: String = ""
@@ -51,6 +54,7 @@ struct VoiceInputTab: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if showsSubtabs {
             Picker("", selection: $subtab) {
                 ForEach(VoiceSubtab.allCases) { tab in
                     Text(NSLocalizedString(tab.titleKey, comment: "")).tag(tab)
@@ -62,18 +66,29 @@ struct VoiceInputTab: View {
             .padding(.top, 16)
             .padding(.bottom, 4)
 
+            }
             switch subtab {
             case .general: generalForm
             case .stats: statsForm
             case .powerMode: powerModeForm
             }
-        }
+        }.onAppear { subtab = initialSubtab }
     }
 
     // MARK: - 子 tab：杂项设置 + 测试框
 
     private var generalForm: some View {
         Form {
+            Section {
+                NavigationLink("experience.voice.model") { SpeechModelSettingsView() }
+            }
+            Section("experience.voice.correction") {
+                Toggle("experience.voice.correctLocally", isOn: $mistakes.enableAutoCorrection)
+                NavigationLink("experience.voice.correctionRules") { CommonMistakeManagementView() }
+                DisclosureGroup("experience.voice.advanced") {
+                    Toggle("experience.voice.ctc", isOn: $preferences.enableCTCDeduplication)
+                }
+            }
             // 语音输入配置
             Section {
                 VStack(alignment: .leading, spacing: 16) {

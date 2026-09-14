@@ -7,138 +7,87 @@
 
 import SwiftUI
 import AppKit
+import AVFoundation
 
 struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var currentStep = 0
-    @State private var isDownloading = false
-    @State private var downloadProgress: Double = 0.0
-    @State private var downloadStatus: String = ""
-    @State private var downloadError: Error?
-
+    @AppStorage("inputExperienceOnboardingStep") private var currentStep = 0
+    @AppStorage("inputExperienceWantsVoice") private var wantsVoice = false
     @ObservedObject private var preferences = UserPreferences.shared
     @ObservedObject private var downloader = ModelDownloader.shared
-
-    /// v2.0.0-rc3 精简：5 步 → 2 步。
-    ///
-    /// 设计动机来自竞品调研：SuperWhisper 因「15-30 分钟配置劝退新用户」吃了苦头。
-    /// 我们的策略 = **默认值敢拍板**：
-    /// - 输入语言：默认系统语言（中文环境用 zh，其它用 auto）
-    /// - 快捷键：默认值已存在（在 UserPreferences 初始化时）
-    /// - AI 优化：默认关（不强求 API Key，避免没配 key 报错的首次体验崩盘）
-    ///
-    /// 用户首次启动只需走 2 步：模型下载 → 完成。其它配置在「设置」里随时可改。
-    /// 旧的 LanguageSelectionStep / ShortcutSetupStep / AIConfigurationStep /
-    /// UsageGuideStep 代码保留（未删），供未来「重新引导」或 settings 复用。
-    private static let totalSteps = 2
+    @State private var testText = ""
+    private let steps = ["experience.onboarding.input", "experience.onboarding.appearance",
+                         "experience.onboarding.voice", "experience.onboarding.ai", "experience.onboarding.finish"]
 
     var body: some View {
-        VStack(spacing: 0) {
-            // 步骤指示器
-            HStack(spacing: 8) {
-                ForEach(0..<Self.totalSteps, id: \.self) { index in
-                    Circle()
-                        .fill(index <= currentStep ? Color.accentColor : Color.gray.opacity(0.3))
-                        .frame(width: 8, height: 8)
-                }
-            }
-            .padding(.top, 30)
-            .padding(.bottom, 20)
-
-            // 内容区域
-            ScrollView {
-                Group {
-                    switch currentStep {
-                    case 0:
-                        ModelDownloadStep(
-                            isDownloading: $isDownloading,
-                            downloadProgress: $downloadProgress,
-                            downloadStatus: $downloadStatus,
-                            downloadError: $downloadError
-                        )
-                    case 1:
-                        OnboardingCompletionStep()
-                    default:
-                        ModelDownloadStep(
-                            isDownloading: $isDownloading,
-                            downloadProgress: $downloadProgress,
-                            downloadStatus: $downloadStatus,
-                            downloadError: $downloadError
-                        )
-                    }
-                }
-                .transition(.opacity)
-            }
-
-            // 底部按钮
-            HStack {
-                if currentStep > 0 {
-                    Button(NSLocalizedString("onboarding.previous", comment: "")) {
-                        withAnimation {
-                            currentStep -= 1
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                }
-
-                Spacer()
-
-                Button(currentStep == Self.totalSteps - 1
-                       ? NSLocalizedString("onboarding.complete", comment: "")
-                       : NSLocalizedString("onboarding.next", comment: "")) {
-                    if currentStep == Self.totalSteps - 1 {
-                        // 完成引导
-                        preferences.markOnboardingCompleted()
-                        dismiss()
-                    } else if currentStep == 0 {
-                        // 从模型下载步骤进入完成页之前，异步确认模型确实在
-                        Task { @MainActor in
-                            let modelExists = await ModelDownloader.shared.checkModelFilesExistAsync()
-                            if modelExists {
-                                preferences.isModelDownloaded = true
+        NavigationStack {
+            VStack(spacing: 0) {
+                HStack(alignment: .top, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        Text("experience.onboarding.title").font(.title2.bold())
+                        ForEach(steps.indices, id: \.self) { index in
+                            HStack {
+                                Image(systemName: index < currentStep ? "checkmark.circle.fill" : "\(index + 1).circle")
+                                Text(NSLocalizedString(steps[index], comment: ""))
                             }
-                            withAnimation {
-                                currentStep += 1
+                            .foregroundStyle(index == currentStep ? Color.accentColor : .secondary)
+                            .font(.callout)
+                        }
+                        Spacer()
+                    }.padding(24).frame(width: 200)
+                    Divider()
+                    Form {
+                        switch currentStep {
+                        case 0:
+                            InputChoiceSection()
+                        case 1:
+                            CandidateAppearanceView(compact: true)
+                        case 2:
+                            Section {
+                                Toggle("experience.onboarding.enableVoice", isOn: $wantsVoice)
+                                Text("experience.onboarding.voiceHint").foregroundStyle(.secondary)
+                                if wantsVoice {
+                                    SpeechModelSettingsView()
+                                    Button("experience.onboarding.microphone") {
+                                        AVCaptureDevice.requestAccess(for: .audio) { _ in }
+                                    }
+                                }
+                            }
+                        case 3:
+                            AITriggerSection()
+                            AudioRetentionSection()
+                        default:
+                            InputMethodSettingsSection()
+                            Section("experience.onboarding.try") {
+                                TextField("experience.onboarding.tryPlaceholder", text: $testText, axis: .vertical)
+                                Text("experience.onboarding.tryHint").font(.caption).foregroundStyle(.secondary)
+                                Text(preferences.isModelDownloaded ? "experience.onboarding.voiceReady" : "experience.onboarding.voiceLater")
                             }
                         }
-                    } else {
-                        withAnimation {
-                            currentStep += 1
-                        }
+                    }.formStyle(.grouped)
+                }
+                Divider()
+                HStack {
+                    if currentStep > 0 {
+                        Button("onboarding.previous") { currentStep -= 1 }
                     }
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(currentStep == 0 && !preferences.isModelDownloaded)
+                    Spacer()
+                    if downloader.isDownloading {
+                        ProgressView(value: downloader.downloadProgress).frame(width: 100)
+                        Text("experience.onboarding.downloading").font(.caption)
+                    }
+                    Button(currentStep == steps.count - 1 ? "onboarding.complete" : "onboarding.next") {
+                        if currentStep == steps.count - 1 {
+                            preferences.markOnboardingCompleted()
+                            UserDefaults.standard.set(1, forKey: "inputExperienceOnboardingVersion")
+                            currentStep = 0
+                            dismiss()
+                        } else { currentStep += 1 }
+                    }.buttonStyle(.borderedProminent)
+                }.padding(20)
             }
-            .padding(20)
-        }
-        .frame(width: 720, height: 560)
-        .onAppear {
-            // 初始化识别语言设置（如果还没有选择，默认为中文）
-            if preferences.voiceInputLanguage.isEmpty || preferences.voiceInputLanguage == "auto" {
-                preferences.voiceInputLanguage = "zh"
-            }
-            
-            // 初始化应用界面语言设置（如果还没有选择）
-            if preferences.defaultLanguage.isEmpty {
-                // 使用系统语言或默认中文
-                let systemLanguage = Locale.preferredLanguages.first ?? "zh-Hans"
-                let supportedLanguage = SupportedLanguage.allCases.first { $0.rawValue == systemLanguage } ?? .chinese
-                preferences.defaultLanguage = supportedLanguage.rawValue
-                LocalizationManager.shared.currentLanguage = supportedLanguage.rawValue
-            } else {
-                // 确保LocalizationManager使用已保存的语言
-                LocalizationManager.shared.currentLanguage = preferences.defaultLanguage
-            }
-            
-            // 异步检查模型文件，避免阻塞UI
-            Task { @MainActor in
-                let modelExists = await ModelDownloader.shared.checkModelFilesExistAsync()
-                if modelExists {
-                    preferences.isModelDownloaded = true
-                }
-            }
+            .frame(minWidth: 800, idealWidth: 960, minHeight: 640, idealHeight: 720)
+            .onAppear { currentStep = min(max(currentStep, 0), steps.count - 1) }
         }
     }
 }
@@ -401,7 +350,7 @@ struct ModelDownloadStep: View {
             
             if downloader.isDownloading {
                 VStack(spacing: 16) {
-                    ProgressView(value: downloadProgress)
+                    ProgressView(value: downloader.downloadProgress)
                         .progressViewStyle(.linear)
                     
                     VStack(spacing: 8) {

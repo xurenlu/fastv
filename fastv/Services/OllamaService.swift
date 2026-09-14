@@ -224,7 +224,8 @@ class OllamaService {
     /// 根据语音指令只改写当前输入框中的一个片段（通常是选中文本或光标前最近一句）。
     func rewriteActiveInputFragment(
         originalFragment: String,
-        spokenInstruction: String
+        spokenInstruction: String,
+        configuration: VoiceAIConfiguration? = nil
     ) async throws -> String {
         let systemPrompt = """
 你是一个语音输入文本回改助手。你只负责改写给定片段，不处理片段之外的内容。
@@ -252,6 +253,17 @@ class OllamaService {
 请只输出改写后的片段。
 """
 
+        if let configuration {
+            let result = try await optimizeTranscript(
+                text: userPrompt, profile: configuration.profile,
+                model: configuration.model, timeout: configuration.timeout,
+                systemPrompt: systemPrompt, useMistakes: true, useHighFrequencyWords: true)
+            guard !result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw NSError(domain: "VoiceAI", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: NSLocalizedString("experience.ai.empty", comment: "")])
+            }
+            return result
+        }
         return try await optimizeTranscript(
             text: userPrompt,
             scenario: .voiceInputOptimization,

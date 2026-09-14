@@ -203,7 +203,7 @@ struct AIModelSettingsTab: View {
             // 语音转写模型
             Section {
                 NavigationLink {
-                    OnboardingView()
+                    SpeechModelSettingsView()
                         .navigationTitle("模型下载")
                         .frame(minWidth: 600, minHeight: 500)
                 } label: {
@@ -263,11 +263,12 @@ struct AIModelSettingsTab: View {
         
         Task {
             do {
-                let config = preferences.getConfig(for: .voiceInputOptimization)
-                let (optimizedText, duration) = try await OllamaService.shared.testOptimization(
-                    profile: config.profile,
-                    systemPrompt: preferences.aiSystemPrompt
-                )
+                guard let config = VoiceAIConfiguration.resolve() else {
+                    throw NSError(domain: "VoiceAI", code: 2, userInfo: [NSLocalizedDescriptionKey: NSLocalizedString("experience.ai.unconfigured", comment: "")])
+                }
+                let start = Date()
+                let optimizedText = try await config.optimize("嗯那个我今天想去超市买点东西然后呢顺便看看有没有什么优惠活动")
+                let duration = Date().timeIntervalSince(start)
                 
                 await MainActor.run {
                     showOptimizationTestResult(

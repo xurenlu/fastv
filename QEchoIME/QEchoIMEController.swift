@@ -235,7 +235,8 @@ final class QechoIMEController: IMKInputController {
         selectedIndex: Int,
         source: CandidateSelectionSource
     ) {
-        guard state.candidates.indices.contains(selectedIndex) else { return }
+        guard IMESettingsCoordinator.shared.recordsCandidateUsage,
+              state.candidates.indices.contains(selectedIndex) else { return }
         CandidateLearningStore.shared.recordSelection(
             schemaId: RimeEngine.shared.currentSchemaId() ?? IMESchema.mixed.rawValue,
             inputCode: rawInput,

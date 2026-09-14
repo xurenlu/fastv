@@ -11,10 +11,11 @@ struct TypingTab: View {
     var body: some View {
         Form {
             // 系统输入法（安装 / 方案 / 词频 / 快捷键说明）
+            InputChoiceSection()
             InputMethodSettingsSection()
 
             // 候选窗外观（预设皮肤 / 候选个数 / 方向 / 字体 / 配色 / 细节）
-            CandidateAppearanceView()
+
         }
         .formStyle(.grouped)
     }

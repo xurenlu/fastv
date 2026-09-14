@@ -33,6 +33,8 @@ private enum VoiceInputDurationThreshold {
 private var voiceInputStartTime: Date?
 // 記錄當前語音輸入是否需要 AI 校正
 private var currentVoiceInputNeedsAI: Bool = false
+private var currentVoiceAIConfiguration: VoiceAIConfiguration?
+private var currentEvaluationSession: VoiceEvaluationSession?
 // 本次錄音會話是否啟用智能分段
 private var currentSessionUsesIncremental: Bool = false
 // 普通語音輸入下邊轉邊插入；AI 模式仍保留鬆鍵後整段優化
@@ -74,6 +76,7 @@ private let enableBatchRefinementTranscription = false
 /// 同時啟動二次拼接轉寫：多段音頻合併後再轉寫，準確率更高；鬆鍵時若已完成則替換零碎結果
 @MainActor
 private func performIncrementalSegmentTranscription() async {
+    let evaluation = currentEvaluationSession
     let voiceService = VoiceInputService.shared
     let waveformManager = WaveformWindowManager.shared
     let language = TranscriptLanguage(rawValue: UserPreferences.shared.voiceInputLanguage) ?? .zh
@@ -96,8 +99,10 @@ private func performIncrementalSegmentTranscription() async {
     waveformManager.setTranscribing()
 
     let transcribeStart = CFAbsoluteTimeGetCurrent()
+    evaluation?.append(merged)
     do {
         var text = try await SpeechTranscriber.transcribe(recording: merged, language: language, enableCTCDeduplication: nil)
+        evaluation?.record.rawText += text
         currentSessionIncrementalTranscriptionSeconds += CFAbsoluteTimeGetCurrent() - transcribeStart
         if CommonMistakeManager.shared.enableAutoCorrection {
             text = TextCorrectionService.shared.correctText(text)
@@ -106,7 +111,7 @@ private func performIncrementalSegmentTranscription() async {
 
         let segmentInfo = IncrementalSegmentInfo(audio: merged, transcript: text)
         incrementalTranscriptionResults.append(segmentInfo)
-        print("✅ [fastvApp] 智能分段轉寫緩存: \(text.prefix(30))... (共\(incrementalTranscriptionResults.count)段)")
+        print("✅ [fastvApp] 智能分段轉寫緩存: \(text.count)... (共\(incrementalTranscriptionResults.count)段)")
 
         if currentSessionUsesLiveInsertion {
             insertVoiceText(text, preferences: UserPreferences.shared)
@@ -118,6 +123,7 @@ private func performIncrementalSegmentTranscription() async {
             scheduleBatchRefinementTranscription(language: language)
         }
     } catch {
+        evaluation?.record.status = "recognitionFailed"
         print("❌ [fastvApp] 智能分段轉寫失敗: \(error)")
     }
 
@@ -269,28 +275,7 @@ private func insertVoiceText(_ text: String, preferences: UserPreferences) {
 
 @MainActor
 private func hasConfiguredAIService() -> Bool {
-    let preferences = UserPreferences.shared
-
-    if let defaultProfile = preferences.getDefaultProfile() {
-        let hasEndpoint = !defaultProfile.endpoint.isEmpty
-        let hasModel = !defaultProfile.defaultModel.isEmpty
-
-        if hasEndpoint && hasModel {
-            print("✅ [fastvApp] AI 服務已配置: \(defaultProfile.name) (\(defaultProfile.defaultModel))")
-            return true
-        }
-    }
-
-    let hasLegacyEndpoint = !preferences.aiAPIEndpoint.isEmpty
-    let hasLegacyModel = !preferences.aiModel.isEmpty
-
-    if hasLegacyEndpoint && hasLegacyModel {
-        print("✅ [fastvApp] AI 服務已配置（舊版配置）: \(preferences.aiAPIEndpoint) (\(preferences.aiModel))")
-        return true
-    }
-
-    print("⚠️ [fastvApp] AI 服務未配置")
-    return false
+    VoiceAIConfiguration.resolve() != nil
 }
 
 /// AI 快捷键下，识别“修改/润色/重写上一句”等语音指令后，只回改当前输入框中的选区或最近一句。
@@ -298,9 +283,10 @@ private func hasConfiguredAIService() -> Bool {
 private func performContextualRewriteIfNeeded(
     spokenText: String,
     preferences: UserPreferences,
-    waveformManager: WaveformWindowManager
+    waveformManager: WaveformWindowManager,
+    configuration: VoiceAIConfiguration?
 ) async -> ContextualRewriteOutcome {
-    guard preferences.enableAIContextualRewrite, hasConfiguredAIService() else {
+    guard preferences.enableAIContextualRewrite, let configuration else {
         return ContextualRewriteOutcome(attempted: false, rewrittenText: nil)
     }
 
@@ -320,7 +306,7 @@ private func performContextualRewriteIfNeeded(
     do {
         let rewrittenText = try await OllamaService.shared.rewriteActiveInputFragment(
             originalFragment: context.targetText,
-            spokenInstruction: spokenText
+            spokenInstruction: spokenText, configuration: configuration
         )
         let success = contextService.replaceTarget(in: context, with: rewrittenText)
         if success {
@@ -335,12 +321,12 @@ private func performContextualRewriteIfNeeded(
         } else {
             waveformManager.setAICorrectionFailed()
             print("⚠️ [fastvApp] AI 上下文回改失败：当前输入框不支持直接回写")
-            return ContextualRewriteOutcome(attempted: true, rewrittenText: nil)
+            return ContextualRewriteOutcome(attempted: false, rewrittenText: nil)
         }
     } catch {
         waveformManager.setAICorrectionFailed()
         print("⚠️ [fastvApp] AI 上下文回改失败: \(error.localizedDescription)")
-        return ContextualRewriteOutcome(attempted: true, rewrittenText: nil)
+        return ContextualRewriteOutcome(attempted: false, rewrittenText: nil)
     }
 }
 
@@ -984,12 +970,15 @@ struct fastvApp: App {
             return
         }
 
-        let needsAI = shortcutType == .voiceInputWithAI
+        let needsAI = InputExperiencePreferences.shared.aiTrigger.shouldProcess(isAIShortcut: shortcutType == .voiceInputWithAI)
         print("🎤 [fastvApp] handleShortcutPressedImmediate: 立即响应快捷鍵（類型: \(shortcutType), 需要AI: \(needsAI)）")
 
         // 記錄開始時間和是否需要 AI
         voiceInputStartTime = Date()
         currentVoiceInputNeedsAI = needsAI
+        currentVoiceAIConfiguration = needsAI ? VoiceAIConfiguration.resolve() : nil
+        currentEvaluationSession = InputExperiencePreferences.shared.retainAudio ? VoiceEvaluationSession() : nil
+        currentEvaluationSession?.record.aiModel = currentVoiceAIConfiguration?.model
 
         let preferences = UserPreferences.shared
         currentSessionUsesLiveInsertion = !needsAI
@@ -1070,12 +1059,15 @@ struct fastvApp: App {
 
     @MainActor
     private static func handleShortcutPressed(shortcutType: ShortcutType = .voiceInput) async {
-        let needsAI = shortcutType == .voiceInputWithAI
+        let needsAI = InputExperiencePreferences.shared.aiTrigger.shouldProcess(isAIShortcut: shortcutType == .voiceInputWithAI)
         print("🎤 [fastvApp] handleShortcutPressed: 開始處理快捷鍵按下事件（類型: \(shortcutType), 需要AI: \(needsAI)）")
         
         // 記錄開始時間和是否需要 AI
         voiceInputStartTime = Date()
         currentVoiceInputNeedsAI = needsAI
+        currentVoiceAIConfiguration = needsAI ? VoiceAIConfiguration.resolve() : nil
+        currentEvaluationSession = InputExperiencePreferences.shared.retainAudio ? VoiceEvaluationSession() : nil
+        currentEvaluationSession?.record.aiModel = currentVoiceAIConfiguration?.model
         
         let preferences = UserPreferences.shared
         currentSessionUsesLiveInsertion = !needsAI
@@ -1189,7 +1181,14 @@ struct fastvApp: App {
 
     @MainActor
     private static func handleShortcutReleased(shortcutType: ShortcutType = .voiceInput) async {
-        let needsAI = currentVoiceInputNeedsAI || shortcutType == .voiceInputWithAI
+        let needsAI = currentVoiceInputNeedsAI
+        let evaluation = currentEvaluationSession
+        let aiConfiguration = currentVoiceAIConfiguration
+        defer {
+            evaluation?.finish()
+            currentEvaluationSession = nil
+            currentVoiceAIConfiguration = nil
+        }
         print("🎤 [fastvApp] handleShortcutReleased: 開始處理快捷鍵釋放事件（類型: \(shortcutType), 需要AI: \(needsAI)）")
         
         // 计算持续时间
@@ -1289,10 +1288,12 @@ struct fastvApp: App {
                 ?? incrementalCarryOverRecording
             incrementalCarryOverRecording = nil
             if let remaining = remainingRecording, remaining.durationSeconds >= minRemainingDuration {
+                evaluation?.append(remaining)
                 currentSessionIncrementalAudioSeconds += remaining.durationSeconds
                 let transcribeStart = CFAbsoluteTimeGetCurrent()
                 do {
                     var remainingText = try await SpeechTranscriber.transcribe(recording: remaining, language: TranscriptLanguage(rawValue: preferences.voiceInputLanguage) ?? .zh, enableCTCDeduplication: nil)
+                    evaluation?.record.rawText += remainingText
                     currentSessionIncrementalTranscriptionSeconds += CFAbsoluteTimeGetCurrent() - transcribeStart
                     if CommonMistakeManager.shared.enableAutoCorrection {
                         remainingText = TextCorrectionService.shared.correctText(remainingText)
@@ -1306,10 +1307,14 @@ struct fastvApp: App {
                         }
                     }
                 } catch {
+                    evaluation?.record.status = "recognitionFailed"
                     print("❌ [fastvApp] 智能分段剩餘轉寫失敗: \(error)")
                 }
             }
             
+            evaluation?.record.correctedText = fullText
+            evaluation?.record.finalText = fullText
+            evaluation?.record.recognitionSeconds = currentSessionIncrementalTranscriptionSeconds
             guard !fullText.isEmpty else {
                 waveformManager.finishWithoutAICorrection()
                 currentSessionUsesIncremental = false
@@ -1338,15 +1343,17 @@ struct fastvApp: App {
                 text = TextCorrectionService.shared.correctText(text)
             }
             
-            let shouldDoAI = needsAI && isAIServiceConfigured()
-            if shouldDoAI {
+            let shouldDoAI = needsAI && aiConfiguration != nil
+            if shouldDoAI && shortcutType == .voiceInputWithAI {
                 let rewriteOutcome = await performContextualRewriteIfNeeded(
                     spokenText: text,
                     preferences: preferences,
-                    waveformManager: waveformManager
+                    waveformManager: waveformManager, configuration: aiConfiguration
                 )
                 if rewriteOutcome.attempted {
                     if let rewrittenText = rewriteOutcome.rewrittenText {
+                        evaluation?.record.finalText = rewrittenText
+                        evaluation?.record.status = "rewritten"
                         let audioSec = currentSessionIncrementalAudioSeconds > 0 ? currentSessionIncrementalAudioSeconds : nil
                         let transSec = currentSessionIncrementalTranscriptionSeconds > 0 ? currentSessionIncrementalTranscriptionSeconds : nil
                         VoiceInputHistoryManager.shared.add(text: rewrittenText, audioDurationSeconds: audioSec, transcriptionDurationSeconds: transSec)
@@ -1362,23 +1369,12 @@ struct fastvApp: App {
                 waveformManager.setAICorrecting()
                 do {
                     // Power Mode：按前台 App / 浏览器 URL 选 prompt 模板，未启用或未命中走默认。
-                    let ctx = AppContextResolver.shared.resolve()
-                    let systemPrompt = ContextProfileManager.shared.resolveSystemPrompt(
-                        defaultPrompt: preferences.aiSystemPrompt,
-                        context: ctx,
-                        transcript: text
-                    )
-                    let referenceContext = ActiveTextInputContextService.shared.captureShortReferenceContext()
-                    text = try await OllamaService.shared.optimizeTranscript(
-                        text: text,
-                        scenario: .voiceInputOptimization,
-                        systemPrompt: systemPrompt,
-                        useMistakes: true,
-                        useHighFrequencyWords: true,
-                        referenceContext: referenceContext
-                    )
+                    evaluation?.record.correctedText = text
+                    text = try await aiConfiguration!.optimize(text)
+                    evaluation?.record.status = "ai"
                     waveformManager.setAICorrected()
                 } catch {
+                    evaluation?.record.status = "aiFailed"
                     print("⚠️ [fastvApp] AI 優化失敗，使用原始文本: \(error.localizedDescription)")
                     waveformManager.setAICorrectionFailed()
                 }
@@ -1389,6 +1385,7 @@ struct fastvApp: App {
                 waveformManager.finishWithoutAICorrection()
             }
             
+            evaluation?.record.finalText = text
             insertVoiceText(text, preferences: preferences)
             let audioSec = currentSessionIncrementalAudioSeconds > 0 ? currentSessionIncrementalAudioSeconds : nil
             let transSec = currentSessionIncrementalTranscriptionSeconds > 0 ? currentSessionIncrementalTranscriptionSeconds : nil
@@ -1409,6 +1406,7 @@ struct fastvApp: App {
         }
 
         // 录音过短时提示用户，避免识别不准
+        evaluation?.append(recording)
         let recordingDuration = recording.durationSeconds
         if recordingDuration < VoiceInputDurationThreshold.minimumRecommended {
             // 马上要弹提示框了，悬浮条先收掉，别在弹框后面顶着一个 AI 图标空转
@@ -1433,7 +1431,9 @@ struct fastvApp: App {
             let audioDuration = recording.durationSeconds
             let transcribeStart = CFAbsoluteTimeGetCurrent()
             var text = try await SpeechTranscriber.transcribe(recording: recording, language: language, enableCTCDeduplication: nil)
+            evaluation?.record.rawText = text
             let transcriptionDuration = CFAbsoluteTimeGetCurrent() - transcribeStart
+            evaluation?.record.recognitionSeconds = transcriptionDuration
             print("✅ [fastvApp] 语音转文字成功，文本长度: \(text.count)")
             // 转录完成后主动回收 C/ObjC 层 autorelease 对象，便于释放大块 PCM 等内存
             autoreleasepool { }
@@ -1455,20 +1455,22 @@ struct fastvApp: App {
             // - FN：純語音輸入，不進行 AI 校正
             // - FN+Control：語音輸入 + AI 校正
             // 注意：即使用戶按了 AI 校正快捷鍵，如果 AI 服務未配置也不會進行校正
-            let shouldDoAI = needsAI && isAIServiceConfigured()
+            let shouldDoAI = needsAI && aiConfiguration != nil
             
             if needsAI && !shouldDoAI {
                 print("⚠️ [fastvApp] 用戶按下了 AI 校正快捷鍵，但 AI 服務未配置，跳過 AI 校正")
             }
 
-            if shouldDoAI {
+            if shouldDoAI && shortcutType == .voiceInputWithAI {
                 let rewriteOutcome = await performContextualRewriteIfNeeded(
                     spokenText: text,
                     preferences: preferences,
-                    waveformManager: waveformManager
+                    waveformManager: waveformManager, configuration: aiConfiguration
                 )
                 if rewriteOutcome.attempted {
                     if let rewrittenText = rewriteOutcome.rewrittenText {
+                        evaluation?.record.finalText = rewrittenText
+                        evaluation?.record.status = "rewritten"
                         VoiceInputHistoryManager.shared.add(
                             text: rewrittenText,
                             audioDurationSeconds: audioDuration > 0 ? audioDuration : nil,
@@ -1488,21 +1490,9 @@ struct fastvApp: App {
                 let aiStartTime = Date()
                 do {
                     // Power Mode：上下文路由 prompt 模板，未命中走默认。
-                    let ctx = AppContextResolver.shared.resolve()
-                    let systemPrompt = ContextProfileManager.shared.resolveSystemPrompt(
-                        defaultPrompt: preferences.aiSystemPrompt,
-                        context: ctx,
-                        transcript: text
-                    )
-                    let referenceContext = ActiveTextInputContextService.shared.captureShortReferenceContext()
-                    let optimizedText = try await OllamaService.shared.optimizeTranscript(
-                        text: text,
-                        scenario: .voiceInputOptimization,
-                        systemPrompt: systemPrompt,
-                        useMistakes: true,
-                        useHighFrequencyWords: true,
-                        referenceContext: referenceContext
-                    )
+                    evaluation?.record.correctedText = text
+                    let optimizedText = try await aiConfiguration!.optimize(text)
+                    evaluation?.record.status = "ai"
                     let aiDuration = Date().timeIntervalSince(aiStartTime)
                     print("✅ [fastvApp] AI 優化完成，耗時: \(String(format: "%.2f", aiDuration))秒")
                     print("📝 [fastvApp] AI 优化文本长度: \(text.count) -> \(optimizedText.count)")
@@ -1513,6 +1503,7 @@ struct fastvApp: App {
                     // AI 優化完成後回收可能產生的臨時對象
                     autoreleasepool { }
                 } catch {
+                    evaluation?.record.status = "aiFailed"
                     print("⚠️ [fastvApp] AI 優化失敗，使用原始文本: \(error.localizedDescription)")
                     // AI 優化失敗不影響主流程，繼續使用原始文本
                     // AI修正失敗：設置失敗狀態（會自動在0.8秒後隱藏窗口）
@@ -1530,6 +1521,8 @@ struct fastvApp: App {
                 }
             }
             
+            evaluation?.record.finalText = text
+            if evaluation?.record.correctedText.isEmpty == true { evaluation?.record.correctedText = text }
             // 先插入文本（优先保证用户体验）
             if !text.isEmpty {
                 insertVoiceText(text, preferences: preferences)
@@ -1552,6 +1545,7 @@ struct fastvApp: App {
             // 如果AI优化成功，窗口会在显示成功状态1秒后自动隐藏
             
         } catch {
+            evaluation?.record.status = "recognitionFailed"
             print("❌ [fastvApp] 语音转文字失败: \(error)")
             // 转文字失败时也要隐藏窗口
             waveformManager.hide()

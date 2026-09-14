@@ -393,6 +393,8 @@ struct IMESettings: Codable, Equatable {
     var version: Int
     var schemaId: String
     var enableUserDict: Bool
+    var recordCandidateUsage: Bool?
+    var recordsCandidateUsage: Bool { recordCandidateUsage ?? true }
     /// 每页候选个数（5~9）；旧设置文件无此字段时解码为 nil，经 `pageSize` 计算属性回落默认
     var candidatePageSize: Int?
     /// 候选窗外观；旧设置文件无此字段时解码为 nil，经 `appearance` 计算属性回落默认值

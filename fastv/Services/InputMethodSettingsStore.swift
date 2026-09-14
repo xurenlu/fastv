@@ -24,6 +24,12 @@ final class InputMethodSettingsStore: ObservableObject {
         settings = IMESettings.load()
     }
 
+    func setCandidateUsageRecording(_ enabled: Bool) {
+        var updated = settings
+        updated.recordCandidateUsage = enabled
+        persist(updated)
+    }
+
     func setSchema(_ schema: IMESchema) {
         var updated = settings
         updated.schemaId = schema.rawValue

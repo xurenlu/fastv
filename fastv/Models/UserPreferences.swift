@@ -877,7 +877,8 @@ class UserPreferences: ObservableObject {
         // 默认使用更强的推理模型（如deepseek-r1:1.5b），如果没有配置则使用AI优化模型
         correctionDetectionModel = defaults.string(forKey: Keys.correctionDetectionModel) ?? ""
         correctionDetectionTimeout = defaults.object(forKey: Keys.correctionDetectionTimeout) as? Double ?? 10.0 // 默认 10 秒超时（错误检测需要更多时间）
-        enableAIContextualRewrite = defaults.object(forKey: Keys.enableAIContextualRewrite) as? Bool ?? true
+        enableAIContextualRewrite = defaults.object(forKey: Keys.enableAIContextualRewrite) as? Bool
+            ?? defaults.bool(forKey: Keys.hasCompletedOnboarding)
         
         // 默认系统提示词：强化中文场景的改口识别、中英混合规则与轻度结构化。
         // 安全规则原封不动（反 prompt injection）。

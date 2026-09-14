@@ -23,6 +23,12 @@ import AppKit
 /// 主窗口标识符。供 StatusBarManager / AppDelegate 在 `NSApp.windows` 里定位。
 let mainContentWindowId = "museTypeMainContentWindow"
 
+/// 主窗口的实际 NSWindow 约束。SwiftUI view 的 `minWidth` 不一定能覆盖
+/// WindowGroup 恢复出来的旧窗口尺寸，因此必须在 NSWindow 层再约束一次。
+enum MainWindowLayout {
+    static let minimumSize = NSSize(width: 900, height: 640)
+}
+
 struct MainWindowSentinel: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
@@ -48,6 +54,8 @@ struct MainWindowSentinel: NSViewRepresentable {
             window.identifier = NSUserInterfaceItemIdentifier(mainContentWindowId)
         }
 
+        enforceMinimumSize(window)
+
         // 1.5 静默启动（输入法拉起）：SwiftUI 的 WindowGroup 一定会建窗，这里建完即隐。
         //     用户只是切了输入法，不该被弹一个设置窗口。
         if MainActor.assumeIsolated({ BackgroundLaunchController.shared.shouldKeepWindowHidden }) {
@@ -60,6 +68,19 @@ struct MainWindowSentinel: NSViewRepresentable {
             closeButton.target = MainWindowCloseInterceptor.shared
             closeButton.action = #selector(MainWindowCloseInterceptor.hideMainWindow(_:))
         }
+    }
+
+    private func enforceMinimumSize(_ window: NSWindow) {
+        let minimumSize = MainWindowLayout.minimumSize
+        window.minSize = minimumSize
+        guard window.frame.width < minimumSize.width || window.frame.height < minimumSize.height else {
+            return
+        }
+
+        var frame = window.frame
+        frame.size.width = max(frame.size.width, minimumSize.width)
+        frame.size.height = max(frame.size.height, minimumSize.height)
+        window.setFrame(frame, display: false)
     }
 }
 

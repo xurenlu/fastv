@@ -14,11 +14,19 @@ import AppKit
 struct SettingsView: View {
     @State private var selectedTab: SettingsTab = .typing
 
+    private enum Layout {
+        static let sidebarWidth: CGFloat = 196
+        static let sidebarHorizontalPadding: CGFloat = 14
+        static let sidebarTopPadding: CGFloat = 12
+    }
+
     /// 设置分组：输入法·打字（默认）/ 语音输入 / AI 与模型 / 数据与其他 / 帮助
     enum SettingsTab: String, CaseIterable, Identifiable {
         case typing
+        case appearance
         case voice
         case aiModel
+        case history
         case data
         case help
 
@@ -26,10 +34,12 @@ struct SettingsView: View {
 
         var titleKey: String {
             switch self {
-            case .typing: return "settings.tab.typing"
+            case .typing: return "experience.nav.input"
+            case .appearance: return "experience.nav.appearance"
+            case .history: return "experience.nav.history"
             case .voice: return "settings.tab.voice"
-            case .aiModel: return "settings.tab.aiModel"
-            case .data: return "settings.tab.data"
+            case .aiModel: return "experience.nav.ai"
+            case .data: return "experience.nav.privacy"
             case .help: return "settings.tab.help"
             }
         }
@@ -37,6 +47,8 @@ struct SettingsView: View {
         var icon: String {
             switch self {
             case .typing: return "keyboard.fill"
+            case .appearance: return "paintpalette"
+            case .history: return "waveform.path"
             case .voice: return "mic.fill"
             case .aiModel: return "cpu"
             case .data: return "folder.fill"
@@ -50,19 +62,22 @@ struct SettingsView: View {
             HStack(spacing: 0) {
                 // 左侧竖向 tab 栏
                 sidebar
-                    .frame(width: 176)
+                    .frame(width: Layout.sidebarWidth, alignment: .leading)
                     .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
 
                 Divider()
 
                 // 右侧内容区
-                ScrollView {
-                    tabContent
-                }
+                tabContent
                 .frame(maxWidth: .infinity)
             }
             .navigationTitle(NSLocalizedString("settings.title", comment: ""))
-            .frame(minWidth: 720, minHeight: 580)
+            .frame(
+                minWidth: MainWindowLayout.minimumSize.width,
+                idealWidth: 960,
+                minHeight: MainWindowLayout.minimumSize.height,
+                idealHeight: 720
+            )
         }
     }
 
@@ -80,9 +95,12 @@ struct SettingsView: View {
                 }
             }
             Spacer()
+            Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")
+                .font(.caption).foregroundStyle(.secondary).padding()
         }
-        .padding(.horizontal, 10)
-        .padding(.top, 16)
+        .padding(.horizontal, Layout.sidebarHorizontalPadding)
+        .padding(.top, Layout.sidebarTopPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -90,12 +108,16 @@ struct SettingsView: View {
         switch selectedTab {
         case .typing:
             TypingTab().id("typing")
+        case .appearance:
+            Form { CandidateAppearanceView() }.formStyle(.grouped)
+        case .history:
+            HistoryEvaluationSettingsView()
         case .voice:
-            VoiceInputTab().id("voice")
+            VoiceInputTab(showsSubtabs: false).id("voice")
         case .aiModel:
-            AIModelSettingsTab().id("aiModel")
+            AITextProcessingView().id("aiModel")
         case .data:
-            DataOtherSettingsTab().id("data")
+            PrivacyStorageSettingsView().id("data")
         case .help:
             HelpTab().id("help")
         }
@@ -124,6 +146,7 @@ private struct SidebarItem: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 7, style: .continuous)
                     .fill(isSelected ? Color.accentColor.opacity(0.14) : Color.clear)

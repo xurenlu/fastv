@@ -21,6 +21,8 @@ final class IMESettingsCoordinator {
     /// 仅控制 Rime 用户词典是否参与动态排序；独立采用率学习始终记录。
     private(set) var currentUserDictEnabled = IMESettings.default.enableUserDict
 
+    private(set) var recordsCandidateUsage = true
+
     private init() {}
 
     /// 幂等应用设置：焦点激活与「设置变更」消息都会调用，无变化时零成本返回
@@ -31,6 +33,7 @@ final class IMESettingsCoordinator {
 
         let settings = IMESettings.load()
         // 外观变更不涉及引擎，单独刷新（即使 settings 整体没变也保证首帧有值）
+        recordsCandidateUsage = settings.recordsCandidateUsage
         currentAppearance = settings.appearance
         currentUserDictEnabled = settings.enableUserDict
         guard settings != applied else { return }

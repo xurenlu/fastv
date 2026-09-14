@@ -38,32 +38,6 @@ struct InputMethodSettingsSection: View {
                     .foregroundStyle(.red)
             }
 
-            Picker(
-                NSLocalizedString("ime.scheme.label", comment: ""),
-                selection: Binding(
-                    get: { imeSettings.settings.schema },
-                    set: { imeSettings.setSchema($0) }
-                )
-            ) {
-                ForEach(IMESchema.allCases, id: \.self) { schema in
-                    Text(NSLocalizedString(schema.displayNameKey, comment: ""))
-                        .tag(schema)
-                }
-            }
-            .pickerStyle(.segmented)
-
-            Toggle(
-                NSLocalizedString("ime.userdict.toggle", comment: ""),
-                isOn: Binding(
-                    get: { imeSettings.settings.enableUserDict },
-                    set: { imeSettings.setUserDictEnabled($0) }
-                )
-            )
-
-            Text(NSLocalizedString("ime.userdict.learning.hint", comment: ""))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
             Text(NSLocalizedString("ime.shortcuts.hint", comment: ""))
                 .font(.caption)
                 .foregroundStyle(.secondary)

@@ -47,7 +47,7 @@ actor SpeechTranscriptionModel {
         guard SpeechModelLocator.resolvedModelURL() != nil else {
             return false
         }
-        if wrapper != nil {
+        if wrapper != nil, loadedVariant == SpeechModelLocator.resolvedVariant() {
             warmUpIfNeeded()
             return true
         }
@@ -68,7 +68,7 @@ actor SpeechTranscriptionModel {
 
     /// 获取或加载 ONNX 模型
     private func getOrLoadWrapper() throws -> ONNXRuntimeWrapper {
-        if let w = wrapper {
+        if let w = wrapper, loadedVariant == SpeechModelLocator.resolvedVariant() {
             lastUseTime = Date()
             return w
         }
